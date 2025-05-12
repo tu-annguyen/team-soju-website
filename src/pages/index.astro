@@ -1,0 +1,15 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero';
+import TeamLinks from '../components/TeamLinks';
+import TeamStaff from '../components/TeamStaff';
+---
+
+<Layout 
+  title="Team Soju - PokeMMO Team" 
+  description="Team Soju is a premier PokeMMO team dedicated to excellence, community, and the thrill of competitive Pokémon battles."
+>
+  <Hero client:load />
+  <TeamLinks client:load />
+  <TeamStaff client:load />
+</Layout>
