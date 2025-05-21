@@ -21,7 +21,7 @@ const Hero = () => {
               Welcome to <span className="text-primary-500 dark:text-primary-400">Team Soju</span>
             </h1>
             <p className="text-xl text-gray-700 dark:text-gray-300 mb-8">
-              A premier PokeMMO team dedicated to excellence, community, and the thrill of competitive Pokémon battles.
+              Team Soju is a budding PokeMMO team dedicated to fostering a growing community of rag tag friends with a good mix of veteran and new players. We are a PvE team mainly focused in shiny hunting but have some dedicated PvPers! 건배!
             </p>
             <div className="flex flex-wrap gap-4">
               <a 
