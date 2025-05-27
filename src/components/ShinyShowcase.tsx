@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import ShinyCard from './ShinyCard';
 
-interface ShinyTrainer {
+export interface ShinyPokemon {
   name: string;
-  count: number;
-  shinies: {
-    name: string;
-    imageUrl: string;
-  }[];
+  imageUrl: string;
+}
+
+interface Trainer {
+  name: string;
+  numOT: number;
+  shinies: ShinyPokemon[];
 }
 
 // Real data from the forum post
-const shinyData: ShinyTrainer[] = [
+const shinyData: Trainer[] = [
   {
     name: "xMEGUx",
-    count: 31,
+    numOT: 31,
     shinies: [
       { name: "Smeargle", imageUrl: "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif" },
       { name: "Magikarp", imageUrl: "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp.gif" },
@@ -51,7 +53,7 @@ const shinyData: ShinyTrainer[] = [
   },
   {
     name: "Aisukohi",
-    count: 27,
+    numOT: 27,
     shinies: [
       { name: "Tentacruel", imageUrl: "https://img.pokemondb.net/sprites/black-white/anim/shiny/tentacruel.gif" },
       { name: "Mantine", imageUrl: "https://img.pokemondb.net/sprites/black-white/anim/shiny/mantine.gif" },
@@ -84,7 +86,7 @@ const shinyData: ShinyTrainer[] = [
   },
   {
     name: "hefferson",
-    count: 22,
+    numOT: 22,
     shinies: [
       { name: "Vanillish", imageUrl: "https://img.pokemondb.net/sprites/black-white/anim/shiny/vanillish.gif" },
       { name: "Gyarados", imageUrl: "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif" },
@@ -165,7 +167,7 @@ const ShinyShowcase = () => {
               <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                 {trainer.name}
                 <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
-                  ({trainer.count} shinies)
+                  ({trainer.numOT} shinies)
                 </span>
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
