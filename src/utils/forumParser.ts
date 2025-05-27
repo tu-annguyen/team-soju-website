@@ -24,8 +24,7 @@ export interface Trainer {
  * Fetch and parse the shiny showcase forum post
  * @returns Promise<ShinyPokemon[]> Array of shiny Pokemon data
  */
-export async function fetchShinyShowcase() {
-// export async function fetchShinyShowcase(): Promise<ShinyPokemon[]> {
+export async function fetchShinyShowcase(): Promise<Trainer[]> {
   // In a real implementation, this would fetch the forum post and parse it
   // For now, we'll return mock data
   try {
@@ -108,7 +107,6 @@ export async function fetchShinyShowcase() {
       trainers.push(currentTrainer);
     }
 
-    // For debugging: log the trainers and their shinies
     // for (let trainer of trainers) {
       // for (let shiny of trainer.shinies) {
         // console.log(`Trainer: ${trainer.name}, Shiny: ${shiny.name}, Attribute: ${shiny.attribute}`);
