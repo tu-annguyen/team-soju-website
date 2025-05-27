@@ -19,7 +19,7 @@ const Footer = () => {
               </span>
             </div>
             <p className="text-gray-600 dark:text-gray-400 text-sm">
-              A premier PokeMMO team dedicated to excellence, community, and the thrill of competitive Pokémon battles.
+              A budding PokeMMO team dedicated to fostering a growing community of rag tag friends with a good mix of veteran and new players. 
             </p>
           </div>
           
