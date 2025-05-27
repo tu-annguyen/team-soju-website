@@ -5,6 +5,7 @@ import showcase from '../data/showcase.json';
 export interface ShinyPokemon {
   name: string;
   imageUrl: string;
+  attribute: string; // Optional: denote secret or safari shinies 
 }
 
 interface Trainer {
@@ -76,7 +77,7 @@ const ShinyShowcase = () => {
                     pokemonName={shiny.name}
                     trainerName={trainer.name}
                     imageUrl={shiny.imageUrl}
-                    date=""
+                    attribute={shiny.attribute}
                   />
                 ))}
               </div>

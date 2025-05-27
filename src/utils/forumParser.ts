@@ -75,8 +75,9 @@ export async function fetchShinyShowcase(): Promise<Trainer[]> {
           if (!rawName && imageUrl) {
             rawName = imageUrl.split('/').pop() || '';
           }
-          // Normalize: take first word before space, period or hyphen, lowercase
-          const pokemonName = rawName.split(/[ .-]/)[0].toLowerCase();
+          // Normalize: take first word before space, period or hyphen, capitalize first letter
+          let pokemonName = rawName.split(/[ .-]/)[0];
+          pokemonName = pokemonName.charAt(0).toUpperCase() + pokemonName.slice(1).toLowerCase();
 
           // Default attribute
           let attribute = '';
@@ -87,15 +88,16 @@ export async function fetchShinyShowcase(): Promise<Trainer[]> {
           if (nextSrc.includes('secret_shiny_particle')) {
             attribute = 'secret';
             i++; // Skip the indicator image in the next loop
-          } else if (nextSrc.includes('ut7SAgH')) {
+          } else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6')) {
             attribute = 'safari';
             i++; // Skip the indicator image in the next loop
           }
 
           // Only add if not a particle image itself
           if (
-            pokemonName !== 'secret_shiny_particle' &&
-            pokemonName !== 'ut7sagh'
+            pokemonName !== 'Secret_shiny_particle' &&
+            pokemonName !== 'Ut7sagh' &&
+            pokemonName !== 'Image'
           ) {
             currentTrainer.shinies.push({ name: pokemonName, imageUrl, attribute });
           }
