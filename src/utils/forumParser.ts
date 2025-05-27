@@ -3,7 +3,7 @@
  * to extract shiny showcase information. In a real implementation, this would
  * handle scraping the forum thread and parsing the content.
  */
-import axios from 'axios';
+import * as axios from 'axios';
 import * as cheerio from 'cheerio';
 
 const forumUrl = 'https://forums.pokemmo.com/index.php?/topic/181636-team-soj%C3%BC-shiny-showcase/';
@@ -33,7 +33,7 @@ export async function fetchShinyShowcase(): Promise<Trainer[]> {
     // return await response.json();
     
     const { data } = await axios.get(forumUrl);
-    const $ = cheerio.load(data);
+    const $ = cheerio.load(data as string);
 
     // const contentsList = $('div[data-ipsHook="postContent"].ipsRichText').children('p');
     // return contentsList.length;
