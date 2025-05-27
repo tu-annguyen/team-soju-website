@@ -66,10 +66,10 @@ const ShinyShowcase = () => {
               <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                 {trainer.name}
                 <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
-                  ({trainer.numOT} shinies)
+                  ({trainer.numOT} OT shinies)
                 </span>
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
                 {trainer.shinies.map((shiny, index) => (
                   <ShinyCard
                     key={`${trainer.name}-${shiny.name}-${index}`}
