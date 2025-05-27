@@ -5,7 +5,7 @@
     "moduleResolution": "node16",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "outDir": "dist/scripts",
+    "outDir": "dist",
     "strict": true,
     "skipLibCheck": true,
     "lib": ["es2020"],
