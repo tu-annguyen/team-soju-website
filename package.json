@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "build:scripts": "tsc src/scripts/fetch-showcase.ts --outDir dist/",
+    "build:scripts": "tsc -p tsconfig.scripts.json",
     "preview": "astro preview",
     "astro": "astro"
   },

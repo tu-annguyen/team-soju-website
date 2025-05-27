@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "Node16",
+    "moduleResolution": "node16",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "outDir": "dist/scripts",
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": ["es2020"],
+    "types": ["node"]
+  },
+  "include": ["src/scripts/**/*", "src/utils/**/*"]
+}

@@ -2,14 +2,4 @@
   "extends": "astro/tsconfigs/strict",
   "include": [".astro/types.d.ts", "**/*"],
   "exclude": ["dist"],
-  "compilerOptions": {
-    "target": "es2020",
-    "module": "es2022",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "outDir": "dist",
-    "strict": true,
-    "skipLibCheck": true,
-    "lib": ["es2020"],
-  }
 }

@@ -3,7 +3,7 @@
  * to extract shiny showcase information. In a real implementation, this would
  * handle scraping the forum thread and parsing the content.
  */
-import * as axios from 'axios';
+import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 const forumUrl = 'https://forums.pokemmo.com/index.php?/topic/181636-team-soj%C3%BC-shiny-showcase/';
