@@ -1,11 +1,11 @@
 {
   "name": "team-soju-website",
-  "type": "module",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:scripts": "tsc src/scripts/fetch-showcase.ts --outDir dist/",
     "preview": "astro preview",
     "astro": "astro"
   },
@@ -24,7 +24,6 @@
     "tailwindcss": "^3.4.1"
   },
   "devDependencies": {
-    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
 }

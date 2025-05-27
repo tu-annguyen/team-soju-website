@@ -13,8 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-      - run: npx ts-node scripts/fetch-showcase.ts
+      - run: npm run build:scripts
+      - run: node dist/scripts/fetch-showcase.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit and push if changed
