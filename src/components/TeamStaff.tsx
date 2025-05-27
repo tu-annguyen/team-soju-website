@@ -22,7 +22,7 @@ const staffData = [
   {
     id: 3,
     name: 'cubberkazookie',
-    role: 'Discord Moderator',
+    role: 'Tech Specialist',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_12/bearonskateboards.thumb.jpg.446c42a810225b2c64f6f43f716b89a3.jpg',
     discord: 'https://discordapp.com/users/757471359835177071',
     forum: 'https://forums.pokemmo.com/index.php?/profile/487174-cubberkazooie/'
@@ -50,10 +50,22 @@ const staffData = [
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_08/Camels_Face_pfp.thumb.webp.5f5ee343cc68a4c5b89aa09450ca7280.webp',
     discord: 'https://discordapp.com/users/272201126068092928',
     forum: 'https://forums.pokemmo.com/index.php?/profile/492263-tunacore/'
+  },
+  {
+    id: 7,
+    name: 'Jaap',
+    role: 'Mascot',
+    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_03/Porygon.thumb.png.317f7a234e6ea1fc06ac0be4bae0882f.png',
+    discord: 'https://discordapp.com/users/257948946565955586',
+    forum: 'https://forums.pokemmo.com/index.php?/profile/519494-hondjoch/'
   }
 ];
 
 const TeamStaff = () => {
+  const columns = 3;
+  const rows = Math.ceil(staffData.length / columns);
+  const lastRowCount = staffData.length % columns || columns;
+
   return (
     <section className="py-16">
       <div className="container">
@@ -61,18 +73,39 @@ const TeamStaff = () => {
         <p className="text-gray-700 dark:text-gray-300 text-center mb-12 max-w-3xl mx-auto">
           Meet the dedicated team members who manage and lead Team Soju.
         </p>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {staffData.map(staff => (
-            <StaffCard
-              key={staff.id}
-              name={staff.name}
-              role={staff.role}
-              avatar={staff.avatar}
-              discord={staff.discord}
-              forum={staff.forum}
-            />
-          ))}
+          {staffData.map((staff, idx) => {
+            // If last card and it's alone in the last row, center it
+            if (
+              idx === staffData.length - 1 &&
+              lastRowCount === 1
+            ) {
+              return (
+                <div key={staff.id} className="col-span-full flex justify-center">
+                  <div className="w-full max-w-sm">
+                    <StaffCard
+                      name={staff.name}
+                      role={staff.role}
+                      avatar={staff.avatar}
+                      discord={staff.discord}
+                      forum={staff.forum}
+                    />
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <StaffCard
+                key={staff.id}
+                name={staff.name}
+                role={staff.role}
+                avatar={staff.avatar}
+                discord={staff.discord}
+                forum={staff.forum}
+              />
+            );
+          })}
         </div>
       </div>
     </section>

@@ -12,7 +12,7 @@ const TeamLinks = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <LinkCard
-            title="[SOJÜ] Forum Club"
+            title="[SOJÜ] SojuSanctuary Club"
             description="Join our discussions and stay updated with the latest team news on the PokeMMO forums."
             url="https://forums.pokemmo.com/index.php?/clubs/261-soj%C3%BC-sojusanctuary/"
             icon={
