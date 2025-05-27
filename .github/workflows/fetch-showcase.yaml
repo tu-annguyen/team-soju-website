@@ -14,7 +14,9 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: node scripts/fetch-showcase.js
+      - run: npx ts-node scripts/fetch-showcase.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit and push if changed
         run: |
           git config --global user.name "github-actions[bot]"
