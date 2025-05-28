@@ -1319,52 +1319,6 @@
     ]
   },
   {
-    "name": "BokToy",
-    "numOT": 8,
-    "shinies": [
-      {
-        "name": "Magikarp",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Marill",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/marill.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Tentacruel",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/tentacruel.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Numel",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/numel-f.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Onix",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/onix.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Smeargle",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Teddiursa",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/teddiursa.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Wooper",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/wooper-f.gif",
-        "attribute": ""
-      }
-    ]
-  },
-  {
     "name": "vengelol",
     "numOT": 8,
     "shinies": [
@@ -1452,6 +1406,47 @@
     ]
   },
   {
+    "name": "pikachu1250",
+    "numOT": 7,
+    "shinies": [
+      {
+        "name": "Exeggcute",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/exeggcute.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Rhyperior",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Gyarados",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Piloswine",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/piloswine.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Vanilluxe",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/vanilluxe.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Krookodile",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/krookodile.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Mienfoo",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/mienfoo.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
     "name": "TsukiFromBilllie",
     "numOT": 6,
     "shinies": [
@@ -1525,7 +1520,7 @@
   },
   {
     "name": "Zofinaa",
-    "numOT": 6,
+    "numOT": 12,
     "shinies": [
       {
         "name": "Rapidash",
@@ -1556,46 +1551,35 @@
         "name": "Darumaka",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/darumaka.gif",
         "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "pikachu1250",
-    "numOT": 7,
-    "shinies": [
+      },
       {
-        "name": "Exeggcute",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/exeggcute.gif",
+        "name": "Sentret",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/sentret.gif",
         "attribute": ""
       },
       {
-        "name": "Rhyperior",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
+        "name": "Trapinch",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/trapinch.gif",
         "attribute": ""
       },
       {
-        "name": "Gyarados",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
+        "name": "Cottonee",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/cottonee.gif",
         "attribute": ""
       },
       {
-        "name": "Piloswine",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/piloswine.gif",
+        "name": "Spinda",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/spinda.gif",
         "attribute": ""
       },
       {
-        "name": "Vanilluxe",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/vanilluxe.gif",
+        "name": "Smeargle",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
         "attribute": ""
       },
       {
-        "name": "Krookodile",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/krookodile.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Mienfoo",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/mienfoo.gif",
+        "name": "Cottonee",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/cottonee.gif",
         "attribute": ""
       }
     ]
