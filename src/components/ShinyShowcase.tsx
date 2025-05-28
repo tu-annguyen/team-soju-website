@@ -29,10 +29,9 @@ const ShinyShowcase = () => {
     <section className="py-16">
       <div className="container">
         <div className="mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Shiny Showcase</h2>
+          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Search</h2>
           <p className="text-gray-700 dark:text-gray-300 mb-8 max-w-3xl">
-            Explore our team's rare shiny Pokémon collection! This showcase features the dedication and 
-            persistence of our trainers in finding these elusive variants.
+            Search our team's shiny Pokémon collection! Search terms may include trainer or pokemon names.
           </p>
           
           <div className="max-w-md">
@@ -61,6 +60,7 @@ const ShinyShowcase = () => {
           </div>
         </div>
         
+        <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Showcase</h2>
         {filteredTrainers.length > 0 ? (
           filteredTrainers.map(trainer => (
             <div key={trainer.name} className="mb-12">
