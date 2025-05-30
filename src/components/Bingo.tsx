@@ -1,43 +1,14 @@
 import React from 'react';
+import BingoCard from './BingoCard';
+import bingo from '../data/bingo.json';
 
-const bingoValues = [
-  [
-    "Johto Rotational Safari Shiny",
-    "3x Horde",
-    "Johto Shiny",
-    "Dratini / Larvitar",
-    "Egg Shiny"
-  ],
-  [
-    "Gym Leaders Full Team Shiny",
-    "Water Shiny",
-    "5x Horde",
-    "Electric Shiny",
-    "Petalburg Shiny"
-  ],
-  [
-    "Single / Double",
-    "3x Horde",
-    "SOJU Mascot Squirtle Shiny",
-    "Hoenn Shiny",
-    "Zorua"
-  ],
-  [
-    "Ralts",
-    "Kanto Shiny",
-    "5x Horde",
-    "Fire Shiny",
-    "Hoenn Safari"
-  ],
-  [
-    "Honey Tree Shiny",
-    "Sinnoh Shiny",
-    "Unova Shiny",
-    "Single / Double",
-    "Fishing Shiny"
-  ]
-];
+interface BingoSquare {
+  value: string;
+  teamNames?: string[];
+  trainerNames?: string[];
+}
 
+const bingoData: BingoSquare[] = bingo;
 const Bingo = () => {
   return (
     <section className="py-16">
@@ -58,13 +29,13 @@ const Bingo = () => {
         </div>
         <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Bingo Board</h3>
         <div className="grid grid-cols-5 gap-1 max-w-3xl mx-auto">
-          {bingoValues.flat().map((value, idx) => (
-            <div
-              key={idx}
-              className="text-center text-xs sm:text-lg font-medium text-gray-900 dark:text-white relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center p-2"
-            >
-              {value}
-            </div>
+          {bingoData.map((square, index) => (
+            <BingoCard
+              key={index}
+              value={square.value}
+              teamNames={square.teamNames || []}
+              trainerNames={square.trainerNames || []}
+            />
           ))}
         </div>
       </div>
