@@ -30,20 +30,27 @@ const getCardClasses = (teamNames?: string[]) => {
   return "bg-gray-100 dark:bg-gray-800";
 };
 
-const BingoCard = ({ value, teamNames = [], trainerNames = [] }: BingoCardProps) => {
+const BingoCard = ({ value, teamNames, trainerNames }: BingoCardProps) => {
   const diagonalSplit =
     teamNames &&
     teamNames.includes("Team Buddha") &&
     teamNames.includes("Team Aisu");
 
-  const hasTrainers = trainerNames && trainerNames.filter(name => name && name.trim() !== '').length > 0;
+  const tooltipContent = trainerNames && trainerNames.length > 0 && trainerNames[0] !== ""
+    ? `Completed by: ${trainerNames.join(', ')}`
+    : null;
 
   return (
-    <div className="relative group">
-      <motion.div 
-        className={`text-center text-xs sm:text-lg font-medium text-gray-900 dark:text-white aspect-square overflow-hidden flex items-center justify-center p-2 ${getCardClasses(teamNames)}`}
-        whileHover={{ y: -5 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+    <motion.div 
+      className="card group relative"
+      whileHover={{ y: -5 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+    >
+      <div
+        className={
+          "text-center text-xs sm:text-lg font-medium text-gray-900 dark:text-white aspect-square overflow-hidden flex items-center justify-center p-2 " +
+          getCardClasses(teamNames)
+        }
       >
         {diagonalSplit && (
           <>
@@ -58,19 +65,17 @@ const BingoCard = ({ value, teamNames = [], trainerNames = [] }: BingoCardProps)
           </>
         )}
         {!diagonalSplit && value}
-      </motion.div>
+      </div>
       
-      {hasTrainers && (
-        <div className="invisible group-hover:visible absolute left-1/2 -translate-x-1/2 translate-y-2 z-50 w-max">
-          <div className="bg-gray-900 text-white text-sm rounded px-3 py-1">
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-            <p className="whitespace-nowrap">
-              Completed by: {trainerNames.filter(name => name && name.trim() !== '').join(', ')}
-            </p>
+      {tooltipContent && (
+        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 translate-y-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 pointer-events-none">
+          <div className="bg-gray-900 text-white text-sm rounded-lg py-2 px-4 whitespace-nowrap">
+            {tooltipContent}
+            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
