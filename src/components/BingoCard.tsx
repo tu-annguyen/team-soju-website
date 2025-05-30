@@ -36,9 +36,13 @@ const BingoCard = ({ value, teamNames, trainerNames }: BingoCardProps) => {
     teamNames.includes("Team Buddha") &&
     teamNames.includes("Team Aisu");
 
+  const tooltipContent = trainerNames && trainerNames.length > 0 && trainerNames[0] !== ""
+    ? `Completed by: ${trainerNames.join(', ')}`
+    : null;
+
   return (
     <motion.div 
-      className="card"
+      className="card group relative"
       whileHover={{ y: -5 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
@@ -62,6 +66,15 @@ const BingoCard = ({ value, teamNames, trainerNames }: BingoCardProps) => {
         )}
         {!diagonalSplit && value}
       </div>
+      
+      {tooltipContent && (
+        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 translate-y-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 pointer-events-none">
+          <div className="bg-gray-900 text-white text-sm rounded-lg py-2 px-4 whitespace-nowrap">
+            {tooltipContent}
+            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };
