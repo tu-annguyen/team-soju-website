@@ -28,7 +28,7 @@ const Bingo = () => {
           </p>
         </div>
         <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Bingo Board</h3>
-        <div className="grid grid-cols-5 gap-1 max-w-3xl mx-auto">
+        <div className="grid grid-cols-5 gap-1 max-w-3xl mx-auto mb-12">
           {bingoData.map((square, index) => (
             <BingoCard
               key={index}
@@ -37,6 +37,10 @@ const Bingo = () => {
               trainerNames={square.trainerNames || []}
             />
           ))}
+        </div>
+        <div className="mb-12 grid grid-cols-2">
+          <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Team Buddha: 0 pts</h3>
+          <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Team Aisu: 0 pts</h3>
         </div>
       </div>
     </section>

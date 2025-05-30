@@ -62,8 +62,8 @@ const BingoCard = ({ value, teamNames = [], trainerNames = [] }: BingoCardProps)
       
       {hasTrainers && (
         <div className="invisible group-hover:visible absolute left-1/2 -translate-x-1/2 translate-y-2 z-50 w-max">
-          <div className="bg-gray-900 text-white text-sm rounded px-3 py-1">
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+          <div className="bg-gray-800 text-white dark:bg-gray-100 dark:text-black text-sm rounded px-3 py-1">
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 dark:bg-gray-100 rotate-45"></div>
             <p className="whitespace-nowrap">
               Completed by: {trainerNames.filter(name => name && name.trim() !== '').join(', ')}
             </p>

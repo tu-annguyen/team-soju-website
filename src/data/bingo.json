@@ -1,22 +1,22 @@
 [
   {
     "value": "Johto Rotational Safari Shiny",
-    "teamNames" : ["Team Buddha"],
-    "trainerNames": ["Buddhalicious", "Aisukohi"]
+    "teamNames" : [""],
+    "trainerNames": [""]
   },
   {
     "value": "3x Horde",
-    "teamNames" : ["Team Aisu"],
+    "teamNames" : [""],
     "trainerNames": [""]
   },
   {
     "value": "Johto Shiny",
-    "teamNames" : ["Team Buddha", "Team Aisu"],
+    "teamNames" : [""],
     "trainerNames": [""]
   },
   {
     "value": "Dratini / Larvitar",
-    "teamNames" : ["Team Aisu", "Team Buddha"],
+    "teamNames" : [""],
     "trainerNames": [""]
   },
   {
@@ -25,7 +25,7 @@
     "trainerNames": [""]
   },
   {
-    "value": "Gym Leaders Full Team Shiny",
+    "value": "Gym Leaders' Shiny Team",
     "teamNames" : [""],
     "trainerNames": [""]
   },
