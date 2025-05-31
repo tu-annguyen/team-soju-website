@@ -1,7 +1,7 @@
 [
   {
     "name": "xMEGUx",
-    "numOT": 36,
+    "numOT": 37,
     "shinies": [
       {
         "name": "Smeargle",
@@ -172,6 +172,11 @@
         "name": "Amoonguss",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/amoonguss.gif",
         "attribute": ""
+      },
+      {
+        "name": "Fearow",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/fearow.gif",
+        "attribute": ""
       }
     ]
   },
@@ -332,6 +337,11 @@
       {
         "name": "Spheal",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/spheal.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Shuppet",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/shuppet.gif",
         "attribute": ""
       }
     ]
