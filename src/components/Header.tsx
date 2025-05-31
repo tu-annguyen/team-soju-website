@@ -127,6 +127,13 @@ const Header = () => {
               >
                 Shiny Showcase
               </a>
+             <a 
+                href="/events" 
+                className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Events
+              </a>
               <a 
                 href="https://forums.pokemmo.com/index.php?/clubs/261-soj%C3%BC-sojusanctuary/" 
                 target="_blank" 
