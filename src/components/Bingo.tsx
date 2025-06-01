@@ -36,7 +36,7 @@ const mvpPoints = {
     "tunacore": 0,
     "belley": 0,
     "spounch": 0,
-    "SpriggyMew": 2,
+    "SpriggyMew": 3,
     "Zofina": 0,
     "Ubela": 0,
     "Megu": 0,
@@ -76,8 +76,8 @@ const Bingo = () => {
         <div className="mb-12 grid grid-cols-2">
           <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Team Buddha</h3>
           <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Team Aisu</h3>
-          <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: 1</p>
           <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: 2</p>
+          <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: 3</p>
           <div>
             <h4 className="text-center text-xl font-bold text-gray-900 dark:text-white">Member List</h4>
             <p className="text-center text-xs text-gray-400 dark:text-gray-600 mb-4">(IGN: MVP points)</p>
