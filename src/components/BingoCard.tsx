@@ -108,8 +108,8 @@ const BingoCard = ({ value, trainerNames = [], position = "center" }: BingoCardP
                   : "left-1/2 -translate-x-1/2"
               } w-2 h-2 bg-gray-800 dark:bg-gray-100 rotate-45`}
             ></div>
-            <p className="hidden sm:block text-left">Completed by:</p>
-            <p className="text-left whitespace-nowrap">
+            <p className="hidden sm:block text-center">Completed by:</p>
+            <p className="text-center whitespace-nowrap">
               {trainerNames.filter(name => name && name.trim() !== '').join(', ')}
             </p>
           </div>
