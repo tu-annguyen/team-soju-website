@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 interface BingoCardProps {
   value: string;
   trainerNames?: string[];
+  position?: "left" | "center" | "right";
 }
 
 const teamBuddhaMembers = [
@@ -54,13 +55,22 @@ const getCardClasses = (trainerNames?: string[]) => {
   return "bg-gray-100 dark:bg-gray-800";
 };
 
-const BingoCard = ({ value, trainerNames = [] }: BingoCardProps) => {
+const BingoCard = ({ value, trainerNames = [], position = "center" }: BingoCardProps) => {
   const diagonalSplit =
     trainerNames &&
     trainerNames.some(name => teamBuddhaMembers.includes(name)) &&
     trainerNames.some(name => teamAisuMembers.includes(name));
 
   const hasTrainers = trainerNames && trainerNames.filter(name => name && name.trim() !== '').length > 0;
+
+  let tooltipAlign = "";
+  if (position === "left") {
+    tooltipAlign = "left-0";
+  } else if (position === "right") {
+    tooltipAlign = "right-0";
+  } else {
+    tooltipAlign = "left-1/2 -translate-x-1/2";
+  }
 
   return (
     <div className="relative group">
@@ -85,11 +95,22 @@ const BingoCard = ({ value, trainerNames = [] }: BingoCardProps) => {
       </motion.div>
       
       {hasTrainers && (
-        <div className="invisible group-hover:visible absolute left-1/2 -translate-x-1/2 translate-y-2 z-50 w-max">
-          <div className="bg-gray-800 text-white dark:bg-gray-100 dark:text-black text-sm rounded px-3 py-1">
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 dark:bg-gray-100 rotate-45"></div>
-            <p className="whitespace-nowrap">
-              Completed by: {trainerNames.filter(name => name && name.trim() !== '').join(', ')}
+        <div
+          className={`invisible group-hover:visible absolute top-full ${tooltipAlign} translate-y-2 z-50 max-w-[90vw]`}
+        >
+          <div className="bg-gray-800 text-white dark:bg-gray-100 dark:text-black text-sm rounded px-3 py-1 relative w-max max-w-[90vw]">
+            <div
+              className={`absolute -top-1 ${
+                position === "right"
+                  ? "right-4"
+                  : position === "left"
+                  ? "left-4"
+                  : "left-1/2 -translate-x-1/2"
+              } w-2 h-2 bg-gray-800 dark:bg-gray-100 rotate-45`}
+            ></div>
+            <p className="hidden sm:block text-left">Completed by:</p>
+            <p className="text-left whitespace-nowrap">
+              {trainerNames.filter(name => name && name.trim() !== '').join(', ')}
             </p>
           </div>
         </div>

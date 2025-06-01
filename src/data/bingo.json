@@ -3,7 +3,8 @@
   [
     {
       "value": "Johto Rotational Safari Shiny",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "left"
     },
     {
       "value": "3x Horde",
@@ -19,11 +20,13 @@
     },
     {
       "value": "Egg Shiny",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "right"
     },
     {
       "value": "Gym Leader's Shiny Team",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "left"
     },
     {
       "value": "Water Shiny",
@@ -39,15 +42,17 @@
     },
     {
       "value": "Petalburg Shiny",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "right"
     },
     {
       "value": "Single / Double",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "left"
     },
     {
       "value": "3x Horde",
-      "trainerNames": ["SpriggyMew"]
+      "trainerNames": ["SpriggyMew", "spook"]
     },
     {
       "value": "SOJU Mascot Squirtle Shiny",
@@ -55,15 +60,17 @@
     },
     {
       "value": "Hoenn Shiny",
-      "trainerNames": ["Aisukohi"]
+      "trainerNames": ["XiaoLongBao"]
     },
     {
       "value": "Zorua",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "right"
     },
     {
       "value": "Ralts",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "left"
     },
     {
       "value": "Kanto Shiny",
@@ -79,11 +86,13 @@
     },
     {
       "value": "Hoenn Safari Shiny",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "right"
     },
     {
       "value": "Honey Tree Shiny",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "left"
     },
     {
       "value": "Sinnoh Shiny",
@@ -99,7 +108,8 @@
     },
     {
       "value": "Fishing Shiny",
-      "trainerNames": [""]
+      "trainerNames": [""],
+      "position": "right"
     }
   ],
   "Team Aisu": {
@@ -109,7 +119,7 @@
     "HogXD": 0,
     "Misc": 1,
     "Electra": 0,
-    "spook": 0,
+    "spook": 2,
     "TXMPXp": 0,
     "JustMagoo": 0,
     "fabriksgjord": 0,

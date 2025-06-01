@@ -4,8 +4,8 @@ import bingo from '../data/bingo.json';
 
 interface BingoSquare {
   value: string;
-  teamNames?: string[];
   trainerNames?: string[];
+  position?: "left" | "center" | "right";
 }
 
 const bingoData: BingoSquare[] = bingo["squares"];
@@ -36,12 +36,13 @@ const Bingo = () => {
               key={index}
               value={square.value}
               trainerNames={square.trainerNames || []}
+              position={square.position || 'center'}
             />
           ))}
         </div>
         <div className="mb-12 grid grid-cols-2">
-          <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Team Buddha</h3>
-          <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Team Aisu</h3>
+          <h3 className="text-center text-2xl font-bold mb-4 text-primary-700 dark:text-white">Team Buddha</h3>
+          <h3 className="text-center text-2xl font-bold mb-4 text-secondary-700 dark:text-white">Team Aisu</h3>
           <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: {Object.values(teamBuddha).reduce((a, b) => a + b, 0)}</p>
           <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: {Object.values(teamAisu).reduce((a, b) => a + b, 0)}</p>
           <div>
