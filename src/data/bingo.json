@@ -47,7 +47,7 @@
     },
     {
       "value": "Single / Double",
-      "trainerNames": [""],
+      "trainerNames": ["MumenRider"],
       "position": "left"
     },
     {
@@ -130,7 +130,7 @@
   },
   "Team Buddha": {
     "Buddhalicious": 0,
-    "MumenRider": 0,
+    "MumenRider": 7,
     "CaliKingCorey": 0,
     "pikachutiyaL": 0,
     "BlossomsDream": 0,
