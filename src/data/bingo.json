@@ -20,7 +20,7 @@
     },
     {
       "value": "Egg Shiny",
-      "trainerNames": [""],
+      "trainerNames": ["spounchderat"],
       "position": "right"
     },
     {
@@ -138,7 +138,7 @@
     "Axelokara": 0,
     "tunacore": 0,
     "belley": 0,
-    "spounch": 0,
+    "spounchderat": 15,
     "SpriggyMew": 3,
     "Zofina": 0,
     "Ubela": 0,

@@ -17,7 +17,7 @@ const teamBuddhaMembers = [
   "Axelokara",
   "tunacore",
   "belley",
-  "spounch",
+  "spounchderat",
   "SpriggyMew",
   "Zofina",
   "Ubela",
