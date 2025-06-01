@@ -41,8 +41,8 @@ const Bingo = () => {
           ))}
         </div>
         <div className="mb-12 grid grid-cols-2">
-          <h3 className="text-center text-2xl font-bold mb-4 text-primary-700 dark:text-white">Team Buddha</h3>
-          <h3 className="text-center text-2xl font-bold mb-4 text-secondary-700 dark:text-white">Team Aisu</h3>
+          <h3 className="text-center text-2xl font-bold mb-4 text-primary-500">Team Buddha</h3>
+          <h3 className="text-center text-2xl font-bold mb-4 text-secondary-500">Team Aisu</h3>
           <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: {Object.values(teamBuddha).reduce((a, b) => a + b, 0)}</p>
           <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: {Object.values(teamAisu).reduce((a, b) => a + b, 0)}</p>
           <div>
