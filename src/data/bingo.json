@@ -1,127 +1,137 @@
-[
-  {
-    "value": "Johto Rotational Safari Shiny",
-    "teamNames" : [""],
-    "trainerNames": ["Buddhalicious"]
+{
+  "squares":
+  [
+    {
+      "value": "Johto Rotational Safari Shiny",
+      "trainerNames": ["Buddhalicious"]
+    },
+    {
+      "value": "3x Horde",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Johto Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Dratini / Larvitar",
+      "trainerNames": ["Misc"]
+    },
+    {
+      "value": "Egg Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Gym Leader's Shiny Team",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Water Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "5x Horde",
+      "trainerNames": ["SpriggyMew"]
+    },
+    {
+      "value": "Electric Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Petalburg Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Single / Double",
+      "trainerNames": [""]
+    },
+    {
+      "value": "3x Horde",
+      "trainerNames": ["SpriggyMew"]
+    },
+    {
+      "value": "SOJU Mascot Squirtle Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Hoenn Shiny",
+      "trainerNames": ["Aisukohi"]
+    },
+    {
+      "value": "Zorua",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Ralts",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Kanto Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "5x Horde",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Fire Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Hoenn Safari Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Honey Tree Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Sinnoh Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Unova Shiny",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Single / Double",
+      "trainerNames": [""]
+    },
+    {
+      "value": "Fishing Shiny",
+      "trainerNames": [""]
+    }
+  ],
+  "Team Aisu": {
+    "XiaoLongBao": 1,
+    "gaandusulayman": 0,
+    "ReefBarrierGreat": 0,
+    "HogXD": 0,
+    "Misc": 1,
+    "Electra": 0,
+    "spook": 0,
+    "TXMPXp": 0,
+    "JustMagoo": 0,
+    "fabriksgjord": 0,
+    "Colty": 0,
+    "thelayar": 0,
+    "DingusDestiny": 0,
+    "hefferson": 0
   },
-  {
-    "value": "3x Horde",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Johto Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Dratini / Larvitar",
-    "teamNames" : ["Team Aisu"],
-    "trainerNames": ["Misc"]
-  },
-  {
-    "value": "Egg Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Gym Leader's Shiny Team",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Water Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "5x Horde",
-    "teamNames" : ["Team Buddha"],
-    "trainerNames": ["SpriggyMew"]
-  },
-  {
-    "value": "Electric Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Petalburg Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Single / Double",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "3x Horde",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "SOJU Mascot Squirtle Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Hoenn Shiny",
-    "teamNames" : ["Team Aisu"],
-    "trainerNames": ["Aisukohi"]
-  },
-  {
-    "value": "Zorua",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Ralts",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Kanto Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "5x Horde",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Fire Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Hoenn Safari Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Honey Tree Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Sinnoh Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Unova Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Single / Double",
-    "teamNames" : [""],
-    "trainerNames": [""]
-  },
-  {
-    "value": "Fishing Shiny",
-    "teamNames" : [""],
-    "trainerNames": [""]
+  "Team Buddha": {
+    "Buddhalicious": 0,
+    "MumenRider": 0,
+    "CaliKingCorey": 0,
+    "pikachutiyaL": 0,
+    "BlossomsDream": 0,
+    "Jaap": 0,
+    "Axelokara": 0,
+    "tunacore": 0,
+    "belley": 0,
+    "spounch": 0,
+    "SpriggyMew": 3,
+    "Zofina": 0,
+    "Ubela": 0,
+    "Megu": 0
   }
-]
+}

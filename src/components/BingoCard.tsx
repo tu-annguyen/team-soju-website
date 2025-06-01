@@ -3,45 +3,69 @@ import { motion } from 'framer-motion';
 
 interface BingoCardProps {
   value: string;
-  teamNames?: string[];
   trainerNames?: string[];
 }
 
-const getCardClasses = (teamNames?: string[]) => {
-  if (!teamNames || teamNames.length === 0) return "bg-gray-200 dark:bg-gray-700";
+const teamBuddhaMembers = [
+  "Buddhalicious",
+  "MumenRider",
+  "CaliKingCorey",
+  "pikachutiyaL",
+  "BlossomsDream",
+  "Jaap",
+  "Axelokara",
+  "tunacore",
+  "belley",
+  "spounch",
+  "SpriggyMew",
+  "Zofina",
+  "Ubela",
+  "Megu"
+];
+const teamAisuMembers = [
+  "XiaoLongBao",
+  "gaandusulayman",
+  "ReefBarrierGreat",
+  "HogXD",
+  "Misc",
+  "Electra",
+  "spook",
+  "TXMPXp",
+  "JustMagoo",
+  "fabriksgjord",
+  "Colty",
+  "thelayar",
+  "DingusDestiny",
+  "hefferson"
+];
 
-  if (teamNames.length === 1) {
-    if (teamNames[0] === "Team Buddha") {
+const getCardClasses = (trainerNames?: string[]) => {
+  if (!trainerNames || trainerNames.length === 0) return "bg-gray-200 dark:bg-gray-700";
+
+  if (trainerNames.length === 1) {
+    if (teamBuddhaMembers.includes(trainerNames[0])) {
       return "bg-primary-100 dark:bg-primary-800";
     }
-    if (teamNames[0] === "Team Aisu") {
+    if (teamAisuMembers.includes(trainerNames[0])) {
       return "bg-secondary-100 dark:bg-secondary-800";
     }
-  }
-
-  if (
-    teamNames.includes("Team Buddha") &&
-    teamNames.includes("Team Aisu")
-  ) {
-    // Will handle diagonal split with overlay divs
-    return "relative";
   }
 
   return "bg-gray-100 dark:bg-gray-800";
 };
 
-const BingoCard = ({ value, teamNames = [], trainerNames = [] }: BingoCardProps) => {
+const BingoCard = ({ value, trainerNames = [] }: BingoCardProps) => {
   const diagonalSplit =
-    teamNames &&
-    teamNames.includes("Team Buddha") &&
-    teamNames.includes("Team Aisu");
+    trainerNames &&
+    trainerNames.some(name => teamBuddhaMembers.includes(name)) &&
+    trainerNames.some(name => teamAisuMembers.includes(name));
 
   const hasTrainers = trainerNames && trainerNames.filter(name => name && name.trim() !== '').length > 0;
 
   return (
     <div className="relative group">
       <motion.div 
-        className={`text-center text-xs sm:text-lg font-medium text-gray-900 dark:text-white aspect-square overflow-hidden flex items-center justify-center p-2 ${getCardClasses(teamNames)}`}
+        className={`text-center text-xs sm:text-lg font-medium text-gray-900 dark:text-white aspect-square overflow-hidden flex items-center justify-center p-2 ${getCardClasses(trainerNames)}`}
         whileHover={{ y: -5 }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       >

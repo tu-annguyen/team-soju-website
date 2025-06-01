@@ -8,42 +8,9 @@ interface BingoSquare {
   trainerNames?: string[];
 }
 
-const mvpPoints = {
-  "Team Aisu": {
-    "XiaoLongBao": 1,
-    "gaandusulayman": 0,
-    "ReefBarrierGreat": 0,
-    "HogXD": 0,
-    "Misc": 1,
-    "Electra": 0,
-    "spook": 0,
-    "TXMPXp": 0,
-    "JustMagoo": 0,
-    "fabriksgjord": 0,
-    "Colty": 0,
-    "thelayar": 0,
-    "DingusDestiny": 0,
-    "hefferson": 0,
-  },
-  "Team Buddha": {
-    "Buddhalicious": 0,
-    "MumenRider": 0,
-    "CaliKingCorey": 0,
-    "pikachutiyaL": 0,
-    "BlossomsDream": 0,
-    "Jaap": 0,
-    "Axelokara": 0,
-    "tunacore": 0,
-    "belley": 0,
-    "spounch": 0,
-    "SpriggyMew": 3,
-    "Zofina": 0,
-    "Ubela": 0,
-    "Megu": 0,
-  }
-}
-
-const bingoData: BingoSquare[] = bingo;
+const bingoData: BingoSquare[] = bingo["squares"];
+const teamBuddha = bingo["Team Buddha"];
+const teamAisu = bingo["Team Aisu"];
 const Bingo = () => {
   return (
     <section className="py-16">
@@ -68,7 +35,6 @@ const Bingo = () => {
             <BingoCard
               key={index}
               value={square.value}
-              teamNames={square.teamNames || []}
               trainerNames={square.trainerNames || []}
             />
           ))}
@@ -76,8 +42,8 @@ const Bingo = () => {
         <div className="mb-12 grid grid-cols-2">
           <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Team Buddha</h3>
           <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Team Aisu</h3>
-          <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: {Object.values(mvpPoints["Team Buddha"]).reduce((a, b) => a + b, 0)}</p>
-          <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: {Object.values(mvpPoints["Team Aisu"]).reduce((a, b) => a + b, 0)}</p>
+          <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: {Object.values(teamBuddha).reduce((a, b) => a + b, 0)}</p>
+          <p className="text-center text-gray-700 dark:text-gray-300 mb-8">Team Points: {Object.values(teamAisu).reduce((a, b) => a + b, 0)}</p>
           <div>
             <h4 className="text-center text-xl font-bold text-gray-900 dark:text-white">Member List</h4>
             <p className="text-center text-xs text-gray-400 dark:text-gray-600 mb-4">(IGN: MVP points)</p>
@@ -87,14 +53,14 @@ const Bingo = () => {
             <p className="text-center text-xs text-gray-400 dark:text-gray-600 mb-4">(IGN: MVP points)</p>
           </div>
           <div>
-            {Object.entries(mvpPoints["Team Buddha"]).map(([trainer, points]) => (
+            {Object.entries(teamBuddha).map(([trainer, points]) => (
               <p key={trainer} className="text-center text-gray-700 dark:text-gray-300 mb-2">
                 {trainer}: {points}
               </p>
             ))}
           </div>
           <div>
-            {Object.entries(mvpPoints["Team Aisu"]).map(([trainer, points]) => (
+            {Object.entries(teamAisu).map(([trainer, points]) => (
               <p key={trainer} className="text-center text-gray-700 dark:text-gray-300 mb-2">
                 {trainer}: {points}
               </p>
