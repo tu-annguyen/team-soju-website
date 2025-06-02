@@ -32,12 +32,12 @@ const teamAisuMembers = [
   "Electra",
   "spook",
   "TXMPXp",
-  "JustMagoo",
+  "Magoo",
   "fabriksgjord",
   "Colty",
   "thelayar",
   "DingusDestiny",
-  "hefferson"
+  "heff"
 ];
 
 const getCardClasses = (trainerNames?: string[]) => {
