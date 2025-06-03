@@ -8,7 +8,7 @@
     },
     {
       "value": "3x Horde",
-      "trainerNames": ["Magoo"]
+      "trainerNames": ["Magoo", "SpriggyMew"]
     },
     {
       "value": "Johto Shiny",
@@ -47,12 +47,12 @@
     },
     {
       "value": "Single / Double",
-      "trainerNames": ["MumenRider"],
+      "trainerNames": ["MumenRider, heff"],
       "position": "left"
     },
     {
       "value": "3x Horde",
-      "trainerNames": ["SpriggyMew", "spook"]
+      "trainerNames": ["spook"]
     },
     {
       "value": "SOJU Mascot Squirtle Shiny",
@@ -126,7 +126,7 @@
     "Colty": 0,
     "thelayar": 0,
     "DingusDestiny": 0,
-    "heff": 0
+    "heff": 7
   },
   "Team Buddha": {
     "Buddhalicious": 0,
