@@ -100,7 +100,7 @@
     },
     {
       "value": "Unova Shiny",
-      "trainerNames": [""]
+      "trainerNames": ["spook"]
     },
     {
       "value": "Single / Double",
@@ -119,7 +119,7 @@
     "HogXD": 0,
     "Misc": 1,
     "Electra": 0,
-    "spook": 2,
+    "spook": 4,
     "TXMPXp": 0,
     "Magoo": 2,
     "fabriksgjord": 0,
