@@ -34,11 +34,11 @@
     },
     {
       "value": "5x Horde",
-      "trainerNames": ["SpriggyMew"]
+      "trainerNames": ["SpriggyMew", "Misc"]
     },
     {
       "value": "Electric Shiny",
-      "trainerNames": ["Magoo"]
+      "trainerNames": [""]
     },
     {
       "value": "Petalburg Shiny",
@@ -117,7 +117,7 @@
     "gaandusulayman": 0,
     "ReefBarrierGreat": 0,
     "HogXD": 0,
-    "Misc": 1,
+    "Misc": 2,
     "Electra": 0,
     "spook": 4,
     "TXMPXp": 0,
