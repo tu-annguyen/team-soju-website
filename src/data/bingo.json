@@ -82,7 +82,7 @@
     },
     {
       "value": "Fire Shiny",
-      "trainerNames": [""]
+      "trainerNames": ["pikachutiyaL"]
     },
     {
       "value": "Hoenn Safari Shiny",
@@ -100,7 +100,7 @@
     },
     {
       "value": "Unova Shiny",
-      "trainerNames": ["spook"]
+      "trainerNames": ["spook", "BlossomsDream"]
     },
     {
       "value": "Single / Double",
@@ -132,8 +132,8 @@
     "Buddhalicious": 0,
     "MumenRider": 7,
     "CaliKingCorey": 0,
-    "pikachutiyaL": 2,
-    "BlossomsDream": 0,
+    "pikachutiyaL": 3,
+    "BlossomsDream": 1,
     "Jaap": 0,
     "Axelokara": 0,
     "tunacore": 0,
