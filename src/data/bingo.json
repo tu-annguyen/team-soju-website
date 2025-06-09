@@ -60,7 +60,7 @@
     },
     {
       "value": "Hoenn Shiny",
-      "trainerNames": ["XiaoLongBao"]
+      "trainerNames": ["XiaoLongBao", "Jaap"]
     },
     {
       "value": "Zorua",
@@ -134,7 +134,7 @@
     "CaliKingCorey": 0,
     "pikachutiyaL": 3,
     "BlossomsDream": 1,
-    "Jaap": 0,
+    "Jaap": 1,
     "Axelokara": 0,
     "tunacore": 0,
     "belley": 0,
