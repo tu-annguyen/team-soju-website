@@ -54,8 +54,8 @@ const staffData = [
   {
     id: 7,
     name: 'Jaap',
-    role: 'Mascot',
-    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_05/DuxlyyBlorboFinished.thumb.png.dfa7dbb81d2fb93bff05338b38ca7957.png',
+    role: 'Team Mascot',
+    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_06/DuxlyyBlorbo.png.027ddba2a0e6fb419aa0e68ee0c3a699.png',
     discord: 'https://discordapp.com/users/257948946565955586',
     forum: 'https://forums.pokemmo.com/index.php?/profile/519494-hondjoch/'
   }
