@@ -12,7 +12,7 @@
     },
     {
       "value": "Johto Shiny",
-      "trainerNames": [""]
+      "trainerNames": ["Electra"]
     },
     {
       "value": "Dratini / Larvitar",
@@ -118,7 +118,7 @@
     "ReefBarrierGreat": 0,
     "HogXD": 0,
     "Misc": 2,
-    "Electra": 0,
+    "Electra": 1,
     "spook": 14,
     "TXMPXp": 0,
     "Magoo": 2,
