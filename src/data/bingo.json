@@ -52,7 +52,7 @@
     },
     {
       "value": "3x Horde",
-      "trainerNames": ["spook"]
+      "trainerNames": ["spook", "MumenRider"]
     },
     {
       "value": "SOJU Mascot Squirtle Shiny",
@@ -130,7 +130,7 @@
   },
   "Team Buddha": {
     "Buddhalicious": 0,
-    "MumenRider": 7,
+    "MumenRider": 9,
     "CaliKingCorey": 0,
     "pikachutiyaL": 3,
     "BlossomsDream": 1,
