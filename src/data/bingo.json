@@ -38,7 +38,7 @@
     },
     {
       "value": "Electric Shiny",
-      "trainerNames": [""]
+      "trainerNames": ["tunacore"]
     },
     {
       "value": "Petalburg Shiny",
@@ -136,7 +136,7 @@
     "BlossomsDream": 1,
     "Jaap": 1,
     "Axelokara": 0,
-    "tunacore": 0,
+    "tunacore": 1,
     "belley": 1,
     "spounchderat": 15,
     "SpriggyMew": 3,
