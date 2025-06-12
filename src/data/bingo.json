@@ -12,7 +12,7 @@
     },
     {
       "value": "Johto Shiny",
-      "trainerNames": ["Electra"]
+      "trainerNames": ["Electra", "belley"]
     },
     {
       "value": "Dratini / Larvitar",
@@ -137,7 +137,7 @@
     "Jaap": 1,
     "Axelokara": 0,
     "tunacore": 0,
-    "belley": 0,
+    "belley": 1,
     "spounchderat": 15,
     "SpriggyMew": 3,
     "Zofina": 0,
