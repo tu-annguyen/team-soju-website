@@ -986,8 +986,8 @@
         "attribute": ""
       },
       {
-        "name": "Gligar",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gligar-f.gif",
+        "name": "Gliscor",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gliscor.gif",
         "attribute": ""
       },
       {
@@ -1359,7 +1359,7 @@
   },
   {
     "name": "tunacore",
-    "numOT": 11,
+    "numOT": 12,
     "shinies": [
       {
         "name": "Piloswine",
@@ -1414,6 +1414,11 @@
       {
         "name": "Ninetales",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/ninetales.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Lanturn",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lanturn.gif",
         "attribute": ""
       }
     ]
