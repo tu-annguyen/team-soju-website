@@ -1,0 +1,25 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Anniversary from '../../../components/Anniversary';
+---
+
+<Layout 
+  title="Events - Team Soju" 
+  description="Explore Team Soju's events."
+>
+  <div class="py-16 bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-gray-900 dark:to-gray-800">
+    <div class="container">
+      <div class="text-center mb-12">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white">
+          Events
+        </h1>
+        <p class="text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
+          Our team's collection of past, current, and upcoming events. Go back to the 
+          <a href="../" class="text-primary-600">events page</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <Anniversary client:load />
+</Layout>
