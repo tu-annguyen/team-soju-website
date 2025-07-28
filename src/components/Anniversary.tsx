@@ -1,6 +1,6 @@
 import React from 'react';
 import AnniversaryLeaderboard from './AnniversaryLeaderboard';
-// import AnniversaryEventLog from './AnniversaryEventLog';
+import AnniversaryEventLog from './AnniversaryEventLog';
 
 const Anniversary = () => {
   return (
@@ -23,7 +23,7 @@ const Anniversary = () => {
       </div>
 
       <AnniversaryLeaderboard />
-      { /* <AnniversaryEventLog /> */ }
+      <AnniversaryEventLog />
     </section>
   );
 };
