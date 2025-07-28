@@ -64,9 +64,7 @@ const Header = () => {
             Forum
           </a>
           <a 
-            href="https://discord.gg/teamsoju" 
-            target="_blank" 
-            rel="noopener noreferrer"
+            href="/discord" 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
             Discord
@@ -144,9 +142,7 @@ const Header = () => {
                 Forum
               </a>
               <a 
-                href="https://discord.gg/teamsoju" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                href="/discord" 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >

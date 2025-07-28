@@ -1,0 +1,34 @@
+---
+import Layout from '../layouts/Layout.astro';
+import DiscordWidget from '../components/DiscordWidget.tsx';
+---
+
+<Layout 
+  title="Discord - Team Soju" 
+  description="Join the Team Soju Discord!"
+>
+  <div class="py-16 bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-gray-900 dark:to-gray-800">
+    <div class="container">
+      <div class="text-center mb-12">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white">
+          Soju Sanctuary Discord 
+        </h1>
+        <p class="text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
+          Chat with team members, participate in events, and get real-time support on our Discord server.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <section class="py-16">
+    <div class="container">
+      <div class="mb-12">
+        <h2 class="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Join Our Community!</h2>
+        <p class="text-gray-700 dark:text-gray-300 mb-8">
+          Our Discord server is the heart of Team Soju. Connect with fellow members, share your adventures, and stay updated with the latest news and events.
+        </p>
+        <DiscordWidget client:load />
+      </div>
+    </div>
+  </section>
+</Layout>

@@ -62,9 +62,7 @@ const Footer = () => {
               </li>
               <li>
                 <a 
-                  href="https://discord.gg/teamsoju" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+                  href="/discord" 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
                   Discord
