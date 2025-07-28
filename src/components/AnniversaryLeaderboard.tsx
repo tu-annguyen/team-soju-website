@@ -29,7 +29,7 @@ const AnniversaryLeaderboard = () => (
 			<h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">
 				Leaderboard
 			</h2>
-			<table className="min-w-full bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow">
+			<table className="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow">
 				<thead>
 					<tr>
 						<th className="px-6 py-3 text-left w-min whitespace-nowrap"></th>

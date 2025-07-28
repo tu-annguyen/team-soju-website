@@ -53,7 +53,7 @@ const DiscordWidget = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center mb-4">
         <img
           src="/images/team-soju-logo.png"
