@@ -4,7 +4,7 @@ type DiscordUser = {
   id: string;
   username: string;
   discriminator: string;
-  avatar: string | null;
+  avatar_url: string;
   status: string;
   bot?: boolean;
 };
