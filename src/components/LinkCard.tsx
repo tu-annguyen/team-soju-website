@@ -15,7 +15,7 @@ const LinkCard = ({ title, description, url, icon, color = 'bg-primary-500' }: L
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="card hover:shadow-lg group"
+      className="card hover:shadow-lg group bg-white dark:bg-gray-700"
       whileHover={{ y: -5 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
