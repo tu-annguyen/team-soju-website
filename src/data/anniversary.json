@@ -3,7 +3,7 @@
         {
             "name": "Reef Squad",
             "logo": "/images/2025/anniversary/reef-squad.png",
-            "score": 7
+            "score": 9
         },
         {
             "name": "Terrific Team Tunacore",
@@ -114,7 +114,7 @@
             "icon": "/images/2025/anniversary/shiny3.png",
             "name": "Shiny Cottonee",
             "OT": "Zofina - Reef Squad",
-            "shinyScore": 1
+            "shinyScore": 3
         }
     ]
 }
