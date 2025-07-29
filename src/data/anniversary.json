@@ -1,14 +1,14 @@
 {
     "teams": [
         {
+            "name": "Reef Squad",
+            "logo": "/images/2025/anniversary/reef-squad.png",
+            "score": 7
+        },
+        {
             "name": "Terrific Team Tunacore",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
             "score": 5
-        },
-        {
-            "name": "Reef Squad",
-            "logo": "/images/2025/anniversary/reef-squad.png",
-            "score": 4
         },
         {
             "name": "OnlyHeffs",
@@ -18,7 +18,7 @@
         {
             "name": "Cub Skouts",
             "logo": "/images/2025/anniversary/cub-skouts.png",
-            "score": 0
+            "score": 1
         }
     ],
     "mainEvents": [
@@ -65,7 +65,7 @@
         {
             "icon": "/images/2025/anniversary/mini1.png",
             "name": "SOJUnowns",
-            "first": ""
+            "first": "gaandusulayman - Reef Squad"
         },
         {
             "icon": "/images/2025/anniversary/mini2.png",
@@ -102,6 +102,18 @@
             "icon": "/images/2025/anniversary/shiny1.png",
             "name": "Shiny Magikarp",
             "OT": "Megu - OnlyHeffs",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny2.png",
+            "name": "Shiny Lunatone",
+            "OT": "belley - Cub Skouts",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny3.png",
+            "name": "Shiny Cottonee",
+            "OT": "Zofina - Reef Squad",
             "shinyScore": 1
         }
     ]
