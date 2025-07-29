@@ -1,27 +1,30 @@
 import React from "react";
+import anniversaryData from "../data/anniversary.json";
 
-const teams = [
-	{
-		name: "Terrific Team Tunacore",
-		logo: "/images/2025/anniversary/terrific-team-tunacore.png",
-		score: 5,
-	},
-	{
-		name: "Reef Squad",
-		logo: "/images/2025/anniversary/reef-squad.png",
-		score: 4,
-	},
-	{
-		name: "OnlyHeffs",
-		logo: "/images/2025/anniversary/onlyheffs_light-mode.png",
-		score: 1,
-	},
-	{
-		name: "Cub Skouts",
-		logo: "/images/2025/anniversary/cub-skouts.png",
-		score: 0,
-	},
-];
+const teams = anniversaryData.teams;
+
+// const teams = [
+	// {
+		// name: "Terrific Team Tunacore",
+		// logo: "/images/2025/anniversary/terrific-team-tunacore.png",
+		// score: 5,
+	// },
+	// {
+		// name: "Reef Squad",
+		// logo: "/images/2025/anniversary/reef-squad.png",
+		// score: 4,
+	// },
+	// {
+		// name: "OnlyHeffs",
+		// logo: "/images/2025/anniversary/onlyheffs_light-mode.png",
+		// score: 1,
+	// },
+	// {
+		// name: "Cub Skouts",
+		// logo: "/images/2025/anniversary/cub-skouts.png",
+		// score: 0,
+	// },
+// ];
 
 const AnniversaryLeaderboard = () => (
 	<section className="py-8">

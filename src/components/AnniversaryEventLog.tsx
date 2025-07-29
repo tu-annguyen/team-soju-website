@@ -1,88 +1,9 @@
 import React, { useState, useEffect } from "react";
+import anniversaryData from "../data/anniversary.json";
 
-// Example event data; update icons, names, and winners as needed
-const mainEvents = [
-    {
-        icon: "/images/2025/anniversary/main1.jpg",
-        name: "Squirtle Catch Event",
-        first: "tunacore - Terrific Team Tunacore",
-        second: "TINAWATERB - Reef Squad",
-        third: "Swifty - Reef Squad",
-    },
-    {
-        icon: "/images/2025/anniversary/main2.png",
-        name: "Unova Grand Prix",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/main3.png",
-        name: "Kecleon Metronome",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/main4.png",
-        name: "Secret Base Hide n Seek",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/main5.png",
-        name: "Spot the Spinda",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/main6.png",
-        name: "Shiny PvP",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/main7.png",
-        name: "Soju Trivia",
-        first: "",
-    },
-];
-
-const miniEvents = [
-    {
-        icon: "/images/2025/anniversary/mini1.png",
-        name: "SOJUnowns",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/mini2.png",
-        name: "SPIN TO WIN",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/mini3.png",
-        name: "Where's Jaap?",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/mini4.png",
-        name: "Sinnoh Marathon",
-        first: "",
-    },
-    {
-        icon: "/images/2025/anniversary/mini5.png",
-        name: "Clowns Going Viral",
-        first: "",
-    },
-    { icon: "/images/2025/anniversary/mini6.png", name: "LFF :)", first: "" },
-    {
-        icon: "/images/2025/anniversary/mini7.png",
-        name: "Magikarp Catch Event",
-        first: "",
-    },
-];
-
-const eventShinies = [
-    {
-        icon: "/images/2025/anniversary/shiny1.png",
-        name: "Shiny Magikarp",
-        OT: "Megu - OnlyHeffs",
-        shinyScore: 1,
-    },
-];
+const mainEvents = anniversaryData.mainEvents;
+const miniEvents = anniversaryData.miniEvents;
+const eventShinies = anniversaryData.eventShinies;
 
 const placeholder = "/images/2025/anniversary/placeholder.png";
 
