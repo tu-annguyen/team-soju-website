@@ -2,11 +2,6 @@ import React from "react";
 
 const teams = [
 	{
-		name: "Cub Skouts",
-		logo: "/images/2025/anniversary/cub-skouts.png", // Update with your actual path
-		score: 0,
-	},
-	{
 		name: "Terrific Team Tunacore",
 		logo: "/images/2025/anniversary/terrific-team-tunacore.png",
 		score: 5,
@@ -20,6 +15,11 @@ const teams = [
 		name: "OnlyHeffs",
 		logo: "/images/2025/anniversary/onlyheffs_light-mode.png",
 		score: 1,
+	},
+	{
+		name: "Cub Skouts",
+		logo: "/images/2025/anniversary/cub-skouts.png",
+		score: 0,
 	},
 ];
 
