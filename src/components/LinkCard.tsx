@@ -10,11 +10,12 @@ interface LinkCardProps {
 }
 
 const LinkCard = ({ title, description, url, icon, color = 'bg-primary-500' }: LinkCardProps) => {
+  const isExternal = /^https?:\/\//.test(url);
+
   return (
     <motion.a
       href={url}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className="card hover:shadow-lg group bg-white dark:bg-gray-700"
       whileHover={{ y: -5 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
