@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 
 // Example event data; update icons, names, and winners as needed
 const mainEvents = [
-  { icon: "/images/2025/anniversary/main1.jpg", name: "Squirtle Catch Event", winner: "" },
+  { icon: "/images/2025/anniversary/main1.jpg", name: "Squirtle Catch Event", winner: "Terrific Team Tunacore" },
   { icon: "/images/2025/anniversary/main2.png", name: "Unova Grand Prix", winner: "" },
   { icon: "/images/2025/anniversary/main3.png", name: "Kecleon Metronome", winner: "" },
   { icon: "/images/2025/anniversary/main4.png", name: "Secret Base Hide n Seek", winner: "" },

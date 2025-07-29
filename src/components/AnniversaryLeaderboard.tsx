@@ -9,17 +9,17 @@ const teams = [
 	{
 		name: "Terrific Team Tunacore",
 		logo: "/images/2025/anniversary/terrific-team-tunacore.png",
-		score: 0,
+		score: 5,
 	},
 	{
 		name: "Reef Squad",
 		logo: "/images/2025/anniversary/reef-squad.png",
-		score: 0,
+		score: 4,
 	},
 	{
 		name: "OnlyHeffs",
 		logo: "/images/2025/anniversary/onlyheffs_light-mode.png",
-		score: 0,
+		score: 1,
 	},
 ];
 
