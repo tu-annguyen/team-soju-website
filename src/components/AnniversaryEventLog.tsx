@@ -47,7 +47,7 @@ const EventCard = ({
             <div className="font-bold text-lg text-center text-gray-900 dark:text-white mb-2">
                 {name}
             </div>
-            <div className="text-sm text-gray-700 dark:text-gray-300">
+            <div className="text-sm text-center text-gray-700 dark:text-gray-300">
                 {type === "main" && (
                     <>
                         {first ? (
@@ -70,7 +70,10 @@ const EventCard = ({
                                 )}
                             </>
                         ) : (
-                            <span className="text-gray-400">Winner: TBD</span>
+                            <>
+                                <span className="font-semibold">Winners: </span>
+                                <span className="text-gray-400">TBD</span>
+                            </>
                         )}
                     </>
                 )}
