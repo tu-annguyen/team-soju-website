@@ -2,28 +2,40 @@ import React, { useState, useEffect } from "react";
 
 // Example event data; update icons, names, and winners as needed
 const mainEvents = [
-  { icon: "/images/2025/anniversary/main1.jpg", name: "Squirtle Catch Event", winner: "Terrific Team Tunacore" },
-  { icon: "/images/2025/anniversary/main2.png", name: "Unova Grand Prix", winner: "" },
-  { icon: "/images/2025/anniversary/main3.png", name: "Kecleon Metronome", winner: "" },
-  { icon: "/images/2025/anniversary/main4.png", name: "Secret Base Hide n Seek", winner: "" },
-  { icon: "/images/2025/anniversary/main5.png", name: "Spot the Spinda", winner: "" },
-  { icon: "/images/2025/anniversary/main6.png", name: "Shiny PvP", winner: "" },
-  { icon: "/images/2025/anniversary/main7.png", name: "Soju Trivia", winner: "" },
+  { icon: "/images/2025/anniversary/main1.jpg", name: "Squirtle Catch Event", first: "tunacore - Terrific Team Tunacore", second: "TINAWATERB - Reef Squad", third: "Swifty - Reef Squad" },
+  { icon: "/images/2025/anniversary/main2.png", name: "Unova Grand Prix", first: "" },
+  { icon: "/images/2025/anniversary/main3.png", name: "Kecleon Metronome", first: "" },
+  { icon: "/images/2025/anniversary/main4.png", name: "Secret Base Hide n Seek", first: "" },
+  { icon: "/images/2025/anniversary/main5.png", name: "Spot the Spinda", first: "" },
+  { icon: "/images/2025/anniversary/main6.png", name: "Shiny PvP", first: "" },
+  { icon: "/images/2025/anniversary/main7.png", name: "Soju Trivia", first: "" },
 ];
 
 const miniEvents = [
-  { icon: "/images/2025/anniversary/mini1.png", name: "SOJUnowns", winner: "" },
-  { icon: "/images/2025/anniversary/mini2.png", name: "SPIN TO WIN", winner: "" },
-  { icon: "/images/2025/anniversary/mini3.png", name: "Where's Jaap?", winner: "" },
-  { icon: "/images/2025/anniversary/mini4.png", name: "Sinnoh Marathon", winner: "" },
-  { icon: "/images/2025/anniversary/mini5.png", name: "Clowns Going Viral", winner: "" },
-  { icon: "/images/2025/anniversary/mini6.png", name: "LFF :)", winner: "" },
-  { icon: "/images/2025/anniversary/mini7.png", name: "Magikarp Catch Event", winner: "" },
+  { icon: "/images/2025/anniversary/mini1.png", name: "SOJUnowns", first: "" },
+  { icon: "/images/2025/anniversary/mini2.png", name: "SPIN TO WIN", first: "" },
+  { icon: "/images/2025/anniversary/mini3.png", name: "Where's Jaap?", first: "" },
+  { icon: "/images/2025/anniversary/mini4.png", name: "Sinnoh Marathon", first: "" },
+  { icon: "/images/2025/anniversary/mini5.png", name: "Clowns Going Viral", first: "" },
+  { icon: "/images/2025/anniversary/mini6.png", name: "LFF :)", first: "" },
+  { icon: "/images/2025/anniversary/mini7.png", name: "Magikarp Catch Event", first: "" },
 ];
 
 const placeholder = "/images/2025/anniversary/placeholder.png";
 
-const EventCard = ({ icon, name, winner }: { icon: string; name: string; winner: string }) => {
+const EventCard = ({
+  icon,
+  name,
+  first,
+  second,
+  third,
+}: {
+  icon: string;
+  name: string;
+  first?: string;
+  second?: string;
+  third?: string;
+}) => {
   // Always start with the placeholder (SSR-safe)
   const [imgSrc, setImgSrc] = useState(placeholder);
 
@@ -44,8 +56,22 @@ const EventCard = ({ icon, name, winner }: { icon: string; name: string; winner:
       />
       <div className="font-bold text-lg text-center text-gray-900 dark:text-white mb-2">{name}</div>
       <div className="text-sm text-gray-700 dark:text-gray-300">
-        {winner ? (
-          <>Winner: <span className="font-semibold">{winner}</span></>
+        {first ? (
+          <>
+            <span className="font-semibold">1st place: </span>{first} <span className="text-gray-400">(+5 pts)</span>
+            {second && (
+              <>
+                <br />
+                <span className="font-semibold">2nd place:</span>{second} <span className="text-gray-400">(+3 pts)</span>
+              </>
+            )}
+            {third && (
+              <>
+                <br />
+                <span className="font-semibold">3rd place: </span>{third} <span className="text-gray-400">(+1 pt)</span>
+              </>
+            )}
+          </>
         ) : (
           <span className="text-gray-400">Winner: TBD</span>
         )}
