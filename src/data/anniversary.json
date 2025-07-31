@@ -8,17 +8,17 @@
         {
             "name": "Terrific Team Tunacore",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
-            "score": 8
+            "score": 13
         },
         {
             "name": "OnlyHeffs",
             "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
-            "score": 6
+            "score": 7
         },
         {
             "name": "Cub Skouts",
             "logo": "/images/2025/anniversary/cub-skouts.png",
-            "score": 2
+            "score": 5
         }
     ],
     "mainEvents": [
@@ -39,7 +39,9 @@
         {
             "icon": "/images/2025/anniversary/main3.png",
             "name": "Kecleon Metronome",
-            "first": ""
+            "first": "ssjbluecrill - Terrific Team Tunacore",
+            "second": "DingusDestiny - Cub Skouts",
+            "third": "heff & YangXiaoLong - OnlyHeffs"
         },
         {
             "icon": "/images/2025/anniversary/main4.png",
