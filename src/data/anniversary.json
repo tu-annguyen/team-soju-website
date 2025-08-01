@@ -3,17 +3,17 @@
         {
             "name": "OnlyHeffs",
             "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
-            "score": 19
+            "score": 24
         },
         {
             "name": "Reef Squad",
             "logo": "/images/2025/anniversary/reef-squad.png",
-            "score": 15.5
+            "score": 18.5
         },
         {
-            "name": "Terrific Team Tunacore",
+            "name": "Terrific Team Tunacore (TTT)",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
-            "score": 13
+            "score": 14
         },
         {
             "name": "Cub Skouts",
@@ -25,7 +25,7 @@
         {
             "icon": "/images/2025/anniversary/main1.jpg",
             "name": "Squirtle Catch Event",
-            "first": "tunacore - Terrific Team Tunacore",
+            "first": "tunacore - TTT",
             "second": "TINAWATERB - Reef Squad",
             "third": "Swifty - Reef Squad"
         },
@@ -39,14 +39,16 @@
         {
             "icon": "/images/2025/anniversary/main3.png",
             "name": "Kecleon Metronome",
-            "first": "ssjbluecrill - Terrific Team Tunacore",
+            "first": "ssjbluecrill - TTT",
             "second": "DingusDestiny - Cub Skouts",
             "third": "heff & YangXiaoLong - OnlyHeffs"
         },
         {
             "icon": "/images/2025/anniversary/main4.png",
             "name": "Secret Base Hide n Seek",
-            "first": ""
+            "first": "YangXiaoLong - OnlyHeffs",
+            "second": "gaandusulayman - Reef Squad",
+            "third": "StrawberryPeel - TTT"
         },
         {
             "icon": "/images/2025/anniversary/main5.png",
