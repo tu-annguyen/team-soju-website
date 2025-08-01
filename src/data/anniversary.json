@@ -1,6 +1,11 @@
 {
     "teams": [
         {
+            "name": "OnlyHeffs",
+            "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
+            "score": 19
+        },
+        {
             "name": "Reef Squad",
             "logo": "/images/2025/anniversary/reef-squad.png",
             "score": 15.5
@@ -9,11 +14,6 @@
             "name": "Terrific Team Tunacore",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
             "score": 13
-        },
-        {
-            "name": "OnlyHeffs",
-            "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
-            "score": 7
         },
         {
             "name": "Cub Skouts",
@@ -84,7 +84,7 @@
         {
             "icon": "/images/2025/anniversary/mini4.png",
             "name": "Sinnoh Marathon",
-            "first": ""
+            "first": "YangXiaoLong - OnlyHeffs"
         },
         {
             "icon": "/images/2025/anniversary/mini5.png",
@@ -125,6 +125,18 @@
             "name": "Shiny Ditto",
             "OT": "Swifty - Reef Squad",
             "shinyScore": 2.5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny5.png",
+            "name": "Shiny Ralts",
+            "OT": "Misc - OnlyHeffs",
+            "shinyScore": 5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny6.png",
+            "name": "Shiny Cryogonal",
+            "OT": "YangXiaoLong - OnlyHeffs",
+            "shinyScore": 5
         }
     ]
 }
