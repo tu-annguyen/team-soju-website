@@ -3,7 +3,7 @@
         {
             "name": "OnlyHeffs",
             "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
-            "score": 24
+            "score": 36.5
         },
         {
             "name": "Reef Squad",
@@ -33,7 +33,7 @@
             "icon": "/images/2025/anniversary/main2.png",
             "name": "Unova Grand Prix",
             "first": "YangXiaoLong - OnlyHeffs",
-            "second": "Magoo - Terrific Team Tunacore",
+            "second": "Magoo - TTT",
             "third": "Cubby - Cub Skouts"
         },
         {
@@ -139,6 +139,12 @@
             "name": "Shiny Cryogonal",
             "OT": "YangXiaoLong - OnlyHeffs",
             "shinyScore": 5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny7.png",
+            "name": "Shiny Bonsly",
+            "OT": "Misc - OnlyHeffs",
+            "shinyScore": 12.5
         }
     ]
 }
