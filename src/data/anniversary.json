@@ -8,17 +8,17 @@
         {
             "name": "Reef Squad",
             "logo": "/images/2025/anniversary/reef-squad.png",
-            "score": 18.5
+            "score": 21.5
         },
         {
             "name": "Terrific Team Tunacore (TTT)",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
-            "score": 14
+            "score": 19
         },
         {
             "name": "Cub Skouts",
             "logo": "/images/2025/anniversary/cub-skouts.png",
-            "score": 5
+            "score": 6
         }
     ],
     "mainEvents": [
@@ -53,7 +53,9 @@
         {
             "icon": "/images/2025/anniversary/main5.png",
             "name": "Spot the Spinda",
-            "first": ""
+            "first": "StrawberryPeel & Magoo - TTT",
+            "second": "HogXD & ReefBarrierGreat - Reef Squad",
+            "third": "belley - Cub Skouts"
         },
         {
             "icon": "/images/2025/anniversary/main6.png",
