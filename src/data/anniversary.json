@@ -13,12 +13,12 @@
         {
             "name": "Terrific Team Tunacore (TTT)",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
-            "score": 16
+            "score": 18
         },
         {
             "name": "Cub Skouts",
             "logo": "/images/2025/anniversary/cub-skouts.png",
-            "score": 5
+            "score": 6
         }
     ],
     "mainEvents": [
@@ -145,6 +145,18 @@
             "name": "Shiny Bonsly",
             "OT": "Misc - OnlyHeffs",
             "shinyScore": 12.5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny8.png",
+            "name": "Shiny Cubchoo",
+            "OT": "belley - Cub Skouts",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny9.png",
+            "name": "Shiny Bibarel",
+            "OT": "StrawberryPeel - TTT",
+            "shinyScore": 2
         }
     ]
 }
