@@ -18,7 +18,7 @@
         {
             "name": "Cub Skouts",
             "logo": "/images/2025/anniversary/cub-skouts.png",
-            "score": 7
+            "score": 10
         }
     ],
     "mainEvents": [
@@ -161,6 +161,12 @@
             "name": "Shiny Bibarel",
             "OT": "StrawberryPeel - TTT",
             "shinyScore": 2
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny10.png",
+            "name": "Shiny Sunkern",
+            "OT": "belley - Cub Skouts",
+            "shinyScore": 3
         }
     ]
 }
