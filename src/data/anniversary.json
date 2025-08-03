@@ -3,17 +3,17 @@
         {
             "name": "OnlyHeffs",
             "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
-            "score": 39.5
+            "score": 40.5
+        },
+        {
+            "name": "Terrific Team Tunacore (TTT)",
+            "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
+            "score": 35.5
         },
         {
             "name": "Reef Squad",
             "logo": "/images/2025/anniversary/reef-squad.png",
             "score": 27.5
-        },
-        {
-            "name": "Terrific Team Tunacore (TTT)",
-            "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
-            "score": 23
         },
         {
             "name": "Cub Skouts",
@@ -167,6 +167,18 @@
             "name": "Shiny Sunkern",
             "OT": "belley - Cub Skouts",
             "shinyScore": 3
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny11.png",
+            "name": "Shiny Lanturn",
+            "OT": "YangXiaoLong - OnlyHeffs",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny12.png",
+            "name": "Shiny Absol",
+            "OT": "spook - TTT",
+            "shinyScore": 12.5
         }
     ]
 }
