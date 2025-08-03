@@ -3,22 +3,22 @@
         {
             "name": "OnlyHeffs",
             "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
-            "score": 36.5
+            "score": 39.5
         },
         {
             "name": "Reef Squad",
             "logo": "/images/2025/anniversary/reef-squad.png",
-            "score": 18.5
+            "score": 27.5
         },
         {
             "name": "Terrific Team Tunacore (TTT)",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
-            "score": 18
+            "score": 23
         },
         {
             "name": "Cub Skouts",
             "logo": "/images/2025/anniversary/cub-skouts.png",
-            "score": 6
+            "score": 7
         }
     ],
     "mainEvents": [
@@ -53,12 +53,16 @@
         {
             "icon": "/images/2025/anniversary/main5.png",
             "name": "Spot the Spinda",
-            "first": ""
+            "first": "StrawberryPeel & Magoo - TTT",
+            "second": "HogXD & ReefBarrierGreat - Reef Squad",
+            "third": "belley - Cub Skouts"
         },
         {
             "icon": "/images/2025/anniversary/main6.png",
             "name": "Shiny PvP",
-            "first": ""
+            "first": "ReefBarrierGreat - Reef Squad",
+            "second": "Megu - OnlyHeffs",
+            "third": "gaandusulayman - Reef Squad"
         },
         {
             "icon": "/images/2025/anniversary/main7.png",
