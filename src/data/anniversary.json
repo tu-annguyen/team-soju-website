@@ -13,7 +13,7 @@
         {
             "name": "Reef Squad",
             "logo": "/images/2025/anniversary/reef-squad.png",
-            "score": 27.5
+            "score": 28.5
         },
         {
             "name": "Cub Skouts",
@@ -179,6 +179,12 @@
             "name": "Shiny Absol",
             "OT": "spook - TTT",
             "shinyScore": 12.5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny13.png",
+            "name": "Shiny Magikarp",
+            "OT": "MumenRider - Reef Squad",
+            "shinyScore": 1
         }
     ]
 }
