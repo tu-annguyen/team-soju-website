@@ -1,4 +1,4 @@
-{
+
     "teams": [
         {
             "name": "OnlyHeffs",
@@ -8,7 +8,7 @@
         {
             "name": "Terrific Team Tunacore (TTT)",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
-            "score": 35.5
+            "score": 39.5
         },
         {
             "name": "Reef Squad",
@@ -185,6 +185,12 @@
             "name": "Shiny Magikarp",
             "OT": "MumenRider - Reef Squad",
             "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny14.png",
+            "name": "Shiny Venipede",
+            "OT": "TXMPXp - TTT",
+            "shinyScore": 4
         }
     ]
 }
