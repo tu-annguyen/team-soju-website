@@ -13,12 +13,12 @@
         {
             "name": "Reef Squad",
             "logo": "/images/2025/anniversary/reef-squad.png",
-            "score": 28.5
+            "score": 29.5
         },
         {
             "name": "Cub Skouts",
             "logo": "/images/2025/anniversary/cub-skouts.png",
-            "score": 10
+            "score": 16
         }
     ],
     "mainEvents": [
@@ -191,6 +191,18 @@
             "name": "Shiny Venipede",
             "OT": "TXMPXp - TTT",
             "shinyScore": 4
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny15.png",
+            "name": "Shiny Slowpoke",
+            "OT": "ReefBarrierGreat - Reef Squad",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny16.png",
+            "name": "Shiny Cryogonal",
+            "OT": "Electra - Cub Skouts",
+            "shinyScore": 6
         }
     ]
 }
