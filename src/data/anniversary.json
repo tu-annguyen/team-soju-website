@@ -3,12 +3,12 @@
         {
             "name": "OnlyHeffs",
             "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
-            "score": 42.5
+            "score": 50.5
         },
         {
             "name": "Terrific Team Tunacore (TTT)",
             "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
-            "score": 39.5
+            "score": 41.5
         },
         {
             "name": "Reef Squad",
@@ -18,7 +18,7 @@
         {
             "name": "Cub Skouts",
             "logo": "/images/2025/anniversary/cub-skouts.png",
-            "score": 16
+            "score": 17
         }
     ],
     "mainEvents": [
@@ -67,7 +67,9 @@
         {
             "icon": "/images/2025/anniversary/main7.png",
             "name": "Soju Trivia",
-            "first": ""
+            "first": "heff - OnlyHeffs",
+            "second": "YangXiaoLong - OnlyHeffs",
+            "third": "Zofina - Reef Squad"
         }
     ],
 
@@ -104,7 +106,8 @@
         },
         {
             "icon": "/images/2025/anniversary/mini7.png",
-            "name": "Magikarp Catch Event"
+            "name": "Magikarp Catch Event",
+            "first": "spook - TTT"
         }
     ],
     "eventShinies": [
