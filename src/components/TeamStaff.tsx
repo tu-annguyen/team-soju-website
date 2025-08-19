@@ -46,7 +46,7 @@ const staffData = [
   {
     id: 6,
     name: 'tunacore',
-    role: 'Developer & Designer',
+    role: 'Website & Content Lead',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_08/Camels_Face_pfp.thumb.webp.5f5ee343cc68a4c5b89aa09450ca7280.webp',
     discord: 'https://discordapp.com/users/272201126068092928',
     forum: 'https://forums.pokemmo.com/index.php?/profile/492263-tunacore/'
