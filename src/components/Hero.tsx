@@ -25,20 +25,18 @@ const Hero = () => {
             </p>
             <div className="flex flex-wrap gap-4">
               <a 
-                href="https://discord.gg/teamsoju"
+                href="https://forums.pokemmo.com/index.php?/topic/182111-team-soju-is-recruiting/#comment-2123917"
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="btn btn-primary"
               >
-                Join Discord
+                Apply Now
               </a>
               <a 
-                href="https://forums.pokemmo.com/index.php?/topic/182111-team-soju-is-recruiting/#comment-2123917"
-                target="_blank" 
-                rel="noopener noreferrer"
+                href="/discord"
                 className="btn btn-secondary"
               >
-                Apply Now
+                Join Discord
               </a>
             </div>
           </motion.div>
