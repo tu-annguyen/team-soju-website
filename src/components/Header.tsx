@@ -26,7 +26,7 @@ const Header = () => {
       <div className="container flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
           <img 
-            src="/images/team-soju-logo.png" 
+            src="/images/team-soju-icon.png" 
             alt="Team Soju Logo" 
             className="w-10 h-10 object-contain"
           />
