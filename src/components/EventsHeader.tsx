@@ -10,7 +10,7 @@ const EventsHeader = () => {
           </h1>
           <p className="text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
             Our team's collection of past, current, and upcoming events. Go back to the 
-            <a href="/events/" className="text-primary-600"> events page</a>.
+            <a href="/events/" className="text-primary-600 dark:text-primary-400 hover:underline ml-1">events page</a>.
           </p>
         </div>
       </div>
