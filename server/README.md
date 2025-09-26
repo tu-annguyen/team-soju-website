@@ -23,7 +23,7 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 
 1. **Clone and setup**:
    ```bash
-   cd backend
+   cd server
    npm install
    ```
 
