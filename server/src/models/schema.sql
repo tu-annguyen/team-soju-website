@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS team_members (
 -- Team shinies table
 CREATE TABLE IF NOT EXISTS team_shinies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  pokemon TEXT NOT NULL,
   national_number INTEGER NOT NULL,
   original_trainer UUID NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
   catch_date TIMESTAMPTZ DEFAULT now(),
