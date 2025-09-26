@@ -6,7 +6,7 @@ async function runMigrations() {
   try {
     console.log('Running database migrations...');
     
-    const schemaPath = '../models/schema.sql';
+    const schemaPath = path.join(__dirname, '../models/schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
     
     await pool.query(schema);
