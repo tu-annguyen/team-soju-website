@@ -16,6 +16,7 @@ const updateMemberSchema = Joi.object({
   discord_id: Joi.string().max(20).optional(),
   rank: Joi.string().max(20).optional(),
   notes: Joi.string().optional(),
+  join_date: Joi.date().optional(),
   is_active: Joi.boolean().optional()
 });
 
