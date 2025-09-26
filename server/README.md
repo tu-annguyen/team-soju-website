@@ -36,7 +36,7 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 3. **Database Setup**:
    ```bash
    # Create your PostgreSQL database first
-   createdb team_soju
+   createdb -U postgres team_soju
 
    # Run migrations
    npm run migrate
@@ -151,7 +151,8 @@ curl -X POST http://localhost:3001/api/members \
 curl -X POST http://localhost:3001/api/shinies \
   -H "Content-Type: application/json" \
   -d '{
-    "pokedex_number": 25,
+    "national_number": 25,
+    "pokemon": "pikachu",
     "original_trainer": "uuid-of-trainer",
     "catch_date": "2024-01-15",
     "total_encounters": 1247,

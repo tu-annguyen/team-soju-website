@@ -5,13 +5,14 @@ const router = express.Router();
 
 // Validation schema
 const shinySchema = Joi.object({
-  pokedex_number: Joi.number().integer().min(1).max(1010).required(),
+  national_number: Joi.number().integer().min(1).max(1010).required(),
+  pokemon: Joi.string().max(50).required(),
   original_trainer: Joi.string().uuid().required(),
   catch_date: Joi.date().required(),
   total_encounters: Joi.number().integer().min(0).default(0),
   species_encounters: Joi.number().integer().min(0).default(0),
   encounter_type: Joi.string().valid(
-    'wild', 'horde', 'safari', 'fishing', 'egg', 'gift', 'trade', 'event'
+    'single', 'horde', 'safari', 'fishing', 'egg', 'gift', 'trade', 'event'
   ).required(),
   location: Joi.string().max(100).optional(),
   level_caught: Joi.number().integer().min(1).max(100).optional(),
@@ -30,7 +31,7 @@ const shinySchema = Joi.object({
 });
 
 const updateShinySchema = shinySchema.fork(
-  ['pokedex_number', 'original_trainer', 'catch_date', 'encounter_type'],
+  ['national_number', 'pokemon', 'original_trainer', 'catch_date', 'encounter_type'],
   (schema) => schema.optional()
 );
 

@@ -24,12 +24,12 @@ async function seedDatabase() {
 
     // Insert sample team shinies
     const sampleShinies = [
-      { national_number: 25, original_trainer_ign: 'Buddhalicious', nature: 'Timid', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
-      { national_number: 150, original_trainer_ign: 'Aisuhoki', nature: 'Modest', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
-      { national_number: 6, original_trainer_ign: 'tunacore', nature: 'Jolly', iv_hp: 31, iv_attack: 31, iv_defense: 31, iv_sp_attack: 0, iv_sp_defense: 31, iv_speed: 31 },
-      { national_number: 130, original_trainer_ign: 'heff', nature: 'Adamant', iv_hp: 31, iv_attack: 31, iv_defense: 31, iv_sp_attack: 0, iv_sp_defense: 31, iv_speed: 31 },
-      { national_number: 143, original_trainer_ign: 'ReefBarrierGreat', nature: 'Bold', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
-      { national_number: 248, original_trainer_ign: 'Cubby', nature: 'Calm', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 }
+      { national_number: 25, pokemon: 'pikachu', original_trainer_ign: 'Buddhalicious', nature: 'Timid', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
+      { national_number: 150, pokemon: 'mewtwo', original_trainer_ign: 'Aisuhoki', nature: 'Modest', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
+      { national_number: 6, pokemon: 'charizard', original_trainer_ign: 'tunacore', nature: 'Jolly', iv_hp: 31, iv_attack: 31, iv_defense: 31, iv_sp_attack: 0, iv_sp_defense: 31, iv_speed: 31 },
+      { national_number: 130, pokemon: 'gyrados', original_trainer_ign: 'heff', nature: 'Adamant', iv_hp: 31, iv_attack: 31, iv_defense: 31, iv_sp_attack: 0, iv_sp_defense: 31, iv_speed: 31 },
+      { national_number: 143, pokemon: 'snorlax', original_trainer_ign: 'ReefBarrierGreat', nature: 'Bold', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
+      { national_number: 248, pokemon: 'tyranitar', original_trainer_ign: 'Cubby', nature: 'Calm', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 }
     ];
 
     for (const shiny of sampleShinies) {
@@ -42,9 +42,9 @@ async function seedDatabase() {
       const original_trainer = res.rows[0].id;
 
       await pool.query(`
-        INSERT INTO team_shinies (national_number, original_trainer, nature, iv_hp, iv_attack, iv_defense, iv_sp_attack, iv_sp_defense, iv_speed)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [shiny.national_number, original_trainer, shiny.nature, shiny.iv_hp, shiny.iv_attack, shiny.iv_defense, shiny.iv_sp_attack, shiny.iv_sp_defense, shiny.iv_speed]);
+        INSERT INTO team_shinies (national_number, pokemon, original_trainer, nature, iv_hp, iv_attack, iv_defense, iv_sp_attack, iv_sp_defense, iv_speed)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `, [shiny.national_number, shiny.pokemon, original_trainer, shiny.nature, shiny.iv_hp, shiny.iv_attack, shiny.iv_defense, shiny.iv_sp_attack, shiny.iv_sp_defense, shiny.iv_speed]);
     }
     
     console.log('Database seeded successfully!');
