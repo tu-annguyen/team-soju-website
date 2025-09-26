@@ -1,4 +1,4 @@
-const pool = require('../database/connection');
+const pool = require('../config/connection');
 
 class TeamShiny {
   static async findAll(filters = {}) {

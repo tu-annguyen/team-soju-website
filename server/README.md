@@ -177,8 +177,9 @@ curl -X POST http://localhost:3001/api/shinies \
 ```
 backend/
 ├── src/
-│   ├── database/          # Database connection, migrations, seeds
+│   ├── config/           # Database connection, migrations, seeds
 │   ├── models/           # Data models (TeamMember, TeamShiny)
+│   │   └── schema.sql    # Database schema
 │   ├── routes/           # API route handlers
 │   ├── middleware/       # Authentication and other middleware
 │   ├── discord/          # Discord bot implementation
