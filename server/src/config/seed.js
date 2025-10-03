@@ -7,7 +7,7 @@ async function seedDatabase() {
     // Insert sample team members (you can modify these)
     const sampleMembers = [
       { ign: 'Buddhalicious', rank: 'Champion', discord_id: '189168387824418816' },
-      { ign: 'Aisuhoki', rank: 'Champion', discord_id: '558122397971120133' },
+      { ign: 'Aisukohi', rank: 'Champion', discord_id: '558122397971120133' },
       { ign: 'tunacore', rank: 'Elite 4', discord_id: '272201126068092928' },
       { ign: 'heff', rank: 'Elite 4', discord_id: '234164830779604994' },
       { ign: 'ReefBarrierGreat', rank: 'Elite 4', discord_id: '164470609101717504' },
@@ -35,21 +35,21 @@ async function seedDatabase() {
       { ign: 'DingusDestiny', rank: 'Gym Leader', discord_id: '298160083584417802'},
       { ign: 'KxIrish', rank: 'Ace Trainer', discord_id: '114826685152624641'},
       { ign: 'fabriksgjord', rank: 'Gym Leader', discord_id: '394901401580339200'},
-      { ign: 'Jaap', rank: 'Gym Leader', discord_id: '257948946565955586'},
+      { ign: 'Jaap', rank: 'Gym Leader', discord_id: '257948946565955586'}
     ];
     
     for (const member of sampleMembers) {
       await pool.query(`
         INSERT INTO team_members (ign, rank, discord_id)
         VALUES ($1, $2, $3)
-        ON CONFLICT (ign) DO NOTHING
+        ON CONFLICT DO NOTHING
       `, [member.ign, member.rank, member.discord_id]);
     }
 
     // Insert sample team shinies
     const sampleShinies = [
       { national_number: 25, pokemon: 'pikachu', original_trainer_ign: 'Buddhalicious', nature: 'Timid', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
-      { national_number: 150, pokemon: 'mewtwo', original_trainer_ign: 'Aisuhoki', nature: 'Modest', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
+      { national_number: 150, pokemon: 'mewtwo', original_trainer_ign: 'Aisukohi', nature: 'Modest', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
       { national_number: 6, pokemon: 'charizard', original_trainer_ign: 'tunacore', nature: 'Jolly', iv_hp: 31, iv_attack: 31, iv_defense: 31, iv_sp_attack: 0, iv_sp_defense: 31, iv_speed: 31 },
       { national_number: 130, pokemon: 'gyrados', original_trainer_ign: 'heff', nature: 'Adamant', iv_hp: 31, iv_attack: 31, iv_defense: 31, iv_sp_attack: 0, iv_sp_defense: 31, iv_speed: 31 },
       { national_number: 143, pokemon: 'snorlax', original_trainer_ign: 'ReefBarrierGreat', nature: 'Bold', iv_hp: 31, iv_attack: 0, iv_defense: 31, iv_sp_attack: 31, iv_sp_defense: 31, iv_speed: 31 },
