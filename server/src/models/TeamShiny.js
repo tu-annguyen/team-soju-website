@@ -3,10 +3,9 @@ const pool = require('../config/connection');
 class TeamShiny {
   static async findAll(filters = {}) {
     let query = `
-      SELECT ts.*, tm.ign as trainer_name, ps.name as pokemon_name
+      SELECT ts.*, tm.ign as trainer_name, ts.pokemon as pokemon_name
       FROM team_shinies ts
       JOIN team_members tm ON ts.original_trainer = tm.id
-      JOIN pokemon_species ps ON ts.national_number = ps.national_number
       WHERE 1=1
     `;
     const params = [];
@@ -20,7 +19,7 @@ class TeamShiny {
 
     if (filters.pokemon_name) {
       paramCount++;
-      query += ` AND LOWER(ps.name) LIKE LOWER($${paramCount})`;
+      query += ` AND LOWER(ts.pokemon) LIKE LOWER($${paramCount})`;
       params.push(`%${filters.pokemon_name}%`);
     }
 
@@ -56,7 +55,7 @@ class TeamShiny {
 
   static async findById(id) {
     const result = await pool.query(`
-      SELECT ts.*, tm.ign as trainer_name, ps.name as pokemon_name
+      SELECT ts.*, tm.ign as trainer_name, ts.pokemon as pokemon_name
       FROM team_shinies ts
       JOIN team_members tm ON ts.original_trainer = tm.id
       JOIN pokemon_species ps ON ts.national_number = ps.national_number
@@ -75,13 +74,11 @@ class TeamShiny {
       species_encounters = 0,
       encounter_type,
       location,
-      level_caught,
       nature,
-      ability,
       iv_hp,
       iv_attack,
       iv_defense,
-      iv_sp_attack,
+      iv_sp_attack, 
       iv_sp_defense,
       iv_speed,
       is_secret = false,
@@ -93,16 +90,16 @@ class TeamShiny {
     const result = await pool.query(`
       INSERT INTO team_shinies (
         national_number, pokemon, original_trainer, catch_date, total_encounters,
-        species_encounters, encounter_type, location, level_caught,
-        nature, ability, iv_hp, iv_attack, iv_defense, iv_sp_attack,
+        species_encounters, encounter_type, location, 
+        nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
         iv_sp_defense, iv_speed, is_secret, is_safari, screenshot_url, notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *
     `, [
       national_number, pokemon, original_trainer, catch_date, total_encounters,
-      species_encounters, encounter_type, location, level_caught,
-      nature, ability, iv_hp, iv_attack, iv_defense, iv_sp_attack,
+      species_encounters, encounter_type, location, 
+      nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
       iv_sp_defense, iv_speed, is_secret, is_safari, screenshot_url, notes
     ]);
 
@@ -118,9 +115,7 @@ class TeamShiny {
       species_encounters,
       encounter_type,
       location,
-      level_caught,
       nature,
-      ability,
       iv_hp,
       iv_attack,
       iv_defense,
@@ -142,24 +137,22 @@ class TeamShiny {
           species_encounters = COALESCE($6, species_encounters),
           encounter_type = COALESCE($7, encounter_type),
           location = COALESCE($8, location),
-          level_caught = COALESCE($9, level_caught),
-          nature = COALESCE($10, nature),
-          ability = COALESCE($11, ability),
-          iv_hp = COALESCE($12, iv_hp),
-          iv_attack = COALESCE($13, iv_attack),
-          iv_defense = COALESCE($14, iv_defense),
-          iv_sp_attack = COALESCE($15, iv_sp_attack),
-          iv_sp_defense = COALESCE($16, iv_sp_defense),
-          iv_speed = COALESCE($17, iv_speed),
-          is_secret = COALESCE($18, is_secret),
-          is_safari = COALESCE($19, is_safari),
-          screenshot_url = COALESCE($20, screenshot_url),
-          notes = COALESCE($21, notes)
+          nature = COALESCE($9, nature),
+          iv_hp = COALESCE($10, iv_hp),
+          iv_attack = COALESCE($11, iv_attack),
+          iv_defense = COALESCE($12, iv_defense),
+          iv_sp_attack = COALESCE($13, iv_sp_attack),
+          iv_sp_defense = COALESCE($14, iv_sp_defense),
+          iv_speed = COALESCE($15, iv_speed),
+          is_secret = COALESCE($16, is_secret),
+          is_safari = COALESCE($17, is_safari),
+          screenshot_url = COALESCE($18, screenshot_url),
+          notes = COALESCE($19, notes)
       WHERE id = $1
       RETURNING *
     `, [
       id, national_number, pokemon, catch_date, total_encounters, species_encounters,
-      encounter_type, location, level_caught, nature, ability,
+      encounter_type, location, nature, 
       iv_hp, iv_attack, iv_defense, iv_sp_attack, iv_sp_defense, iv_speed,
       is_secret, is_safari, screenshot_url, notes
     ]);

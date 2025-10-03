@@ -15,9 +15,7 @@ const shinySchema = Joi.object({
     'single', 'horde', 'safari', 'fishing', 'egg', 'gift', 'trade', 'event'
   ).required(),
   location: Joi.string().max(100).optional(),
-  level_caught: Joi.number().integer().min(1).max(100).optional(),
   nature: Joi.string().max(20).optional(),
-  ability: Joi.string().max(30).optional(),
   iv_hp: Joi.number().integer().min(0).max(31).optional(),
   iv_attack: Joi.number().integer().min(0).max(31).optional(),
   iv_defense: Joi.number().integer().min(0).max(31).optional(),

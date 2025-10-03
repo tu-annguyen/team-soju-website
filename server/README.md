@@ -114,7 +114,7 @@ node src/discord/bot.js
 ### Team Shinies
 - Complete Pokemon data (Pokedex number, trainer, catch date)
 - Encounter details (type, location, encounters)
-- Pokemon stats (IVs, nature, ability, level)
+- Pokemon stats (IVs, nature, level)
 - Special flags (secret, safari)
 - Screenshots and notes
 
@@ -159,7 +159,6 @@ curl -X POST http://localhost:3001/api/shinies \
     "species_encounters": 1247,
     "encounter_type": "wild",
     "location": "Route 1",
-    "level_caught": 15,
     "nature": "Adamant",
     "iv_hp": 31,
     "iv_attack": 31,
