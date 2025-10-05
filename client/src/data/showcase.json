@@ -410,7 +410,7 @@
         "attribute": ""
       },
       {
-        "name": "Nidoran",
+        "name": "Nidoran-f",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoran-f.gif",
         "attribute": ""
       },
@@ -1792,7 +1792,7 @@
         "attribute": ""
       },
       {
-        "name": "Nidoran",
+        "name": "Nidoran-f",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoran-f.gif",
         "attribute": ""
       },
@@ -1878,7 +1878,7 @@
         "attribute": ""
       },
       {
-        "name": "Basculin",
+        "name": "Basculin-red-stripe",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/basculin-red-striped.gif",
         "attribute": ""
       }
@@ -2269,7 +2269,13 @@
         "name": "Pachirisu",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/pachirisu-f.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "TXMPXp",
+    "numOT": 6,
+    "shinies": [
       {
         "name": "Sentret",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/sentret.gif",

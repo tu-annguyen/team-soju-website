@@ -30,6 +30,7 @@ async function seedDatabase() {
       { ign: 'thelayar', rank: 'Gym Leader', discord_id: '251016407699947520'},
       { ign: 'Colty', rank: 'Gym Leader', discord_id: '168416102370639872'},
       { ign: 'rubunny', rank: 'Gym Leader', discord_id: '246875143006060544'},
+      { ign: 'TXMPXp', rank: 'Gym Leader', discord_id: '838969209580027914'},
       { ign: 'HinatShoyo', rank: 'Ace Trainer', discord_id: '724734257498423386'},
       { ign: 'BlossomsDream', rank: 'Gym Leader', discord_id: '643457841486626831'},
       { ign: 'Swifty', rank: 'Gym Leader', discord_id: '578968418393260032'},

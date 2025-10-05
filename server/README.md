@@ -157,7 +157,7 @@ curl -X POST http://localhost:3001/api/shinies \
     "catch_date": "2024-01-15",
     "total_encounters": 1247,
     "species_encounters": 1247,
-    "encounter_type": "wild",
+    "encounter_type": "single",
     "location": "Route 1",
     "nature": "Adamant",
     "iv_hp": 31,
