@@ -50,6 +50,12 @@ const Header = () => {
             Shiny Showcase
           </a>
           <a 
+            href="/submissions"
+            className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+          >
+            Submissions
+          </a>
+          <a 
             href="/events" 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
@@ -124,6 +130,13 @@ const Header = () => {
                 onClick={() => setIsOpen(false)}
               >
                 Shiny Showcase
+              </a>
+              <a 
+                href="/submissions"
+                className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Submissions
               </a>
              <a 
                 href="/events" 

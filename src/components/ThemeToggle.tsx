@@ -2,24 +2,38 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 const ThemeToggle = () => {
-  const [theme, setTheme] = useState(() => {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
-      return localStorage.getItem('theme');
-    }
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
-  });
+  // Default to light during SSR/hydration. Read storage on mount (client-only).
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage?.getItem('theme');
+      if (stored === 'light' || stored === 'dark') {
+        setTheme(stored);
+        return;
+      }
+    } catch (e) {
+      // ignore storage access errors (private mode, disabled storage, etc.)
     }
-    localStorage.setItem('theme', theme || 'light');
+    // fall back to system preference if no stored value
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (theme === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('theme', theme);
+      }
+    } catch (e) {
+      // ignore storage write errors
+    }
   }, [theme]);
 
   const toggleTheme = () => {
