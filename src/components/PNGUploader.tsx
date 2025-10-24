@@ -27,6 +27,7 @@ const PNGUploader: React.FC<Props> = ({
   const [stats, setStats] = useState<{
     name?: string | null;
     total?: number | null;
+    hp?: number | null;
     attack?: number | null;
     defense?: number | null;
     spAttack?: number | null;
@@ -77,7 +78,7 @@ const PNGUploader: React.FC<Props> = ({
     }
     var total = hp + attack + defense + spAttack + spDefense + speed;
 
-    return { name, total, attack, defense, spAttack, spDefense, speed };
+    return { name, total, hp, attack, defense, spAttack, spDefense, speed };
   };
 
 
@@ -244,6 +245,7 @@ const PNGUploader: React.FC<Props> = ({
         <div className="grid grid-cols-2 gap-2 text-sm text-gray-800 dark:text-gray-200">
           <div className="flex justify-between"><span>Name</span><span>{stats?.name ?? '-'}</span></div>
           <div className="flex justify-between"><span>Total IVs</span><span>{stats?.total ?? '-'}</span></div>
+          <div className="flex justify-between"><span>HP</span><span>{stats?.hp ?? '-'}</span></div>
           <div className="flex justify-between"><span>Attack</span><span>{stats?.attack ?? '-'}</span></div>
           <div className="flex justify-between"><span>Defense</span><span>{stats?.defense ?? '-'}</span></div>
           <div className="flex justify-between"><span>Sp. Attack</span><span>{stats?.spAttack ?? '-'}</span></div>
