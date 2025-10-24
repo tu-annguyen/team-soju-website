@@ -242,6 +242,11 @@ const PNGUploader: React.FC<Props> = ({
 
       <div className="mt-4 p-4 bg-white dark:bg-gray-900 border rounded">
         <h4 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Extracted Stats</h4>
+        {preview && (
+          <div className="mb-3 flex justify-center">
+            <img src={`https://img.pokemondb.net/sprites/black-white/anim/shiny/${stats?.name?.toLowerCase()}.gif`} alt="Uploaded PNG" className="max-w-xs max-h-32 rounded border" />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2 text-sm text-gray-800 dark:text-gray-200">
           <div className="flex justify-between"><span>Name</span><span>{stats?.name ?? '-'}</span></div>
           <div className="flex justify-between"><span>Total IVs</span><span>{stats?.total ?? '-'}</span></div>
