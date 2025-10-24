@@ -20,11 +20,65 @@ const PNGUploader: React.FC<Props> = ({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
 
-  // New: context state (Shiny | Alpha)
   const [context, setContext] = useState<'Shiny' | 'Alpha'>('Shiny');
 
-  // New: OCR result state
   const [ocrText, setOcrText] = useState<string | null>(null);
+
+  const [stats, setStats] = useState<{
+    name?: string | null;
+    total?: number | null;
+    attack?: number | null;
+    defense?: number | null;
+    spAttack?: number | null;
+    spDefense?: number | null;
+    speed?: number | null;
+  } | null>(null);
+
+  const parseStatsFromOcr = (text: string) => {
+    const get = (patterns: RegExp[]) => {
+      for (const p of patterns) {
+        const m = p.exec(text);
+        console.log(m);
+        if (m?.[1]) return m[1].trim();
+      }
+      return null;
+    };
+
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+    const name = (() => {
+      const m = /Shiny\s+([A-Za-z]+)/i.exec(text);
+      if (m?.[1]) return m[1].trim();
+      return lines.length ? lines[0] : null;
+    })();
+
+    var hp = 0;
+    var attack = 0;
+    var defense = 0;
+    var spAttack = 0;
+    var spDefense = 0;
+    var speed = 0;
+    
+    const statSpread = /([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])+/m.exec(text);
+    const parts = statSpread?.[0].split('/').map(p => Number(p));
+    console.log(statSpread);
+    console.log("Parts: " + parts);
+
+    if (parts?.length === 6 && parts?.every(n => Number.isFinite(n) && n >= 0 && n <= 31)) {
+      console.log(parts); // [19,12,13,14,15,18]
+      hp = parts[0];
+      attack = parts[1];
+      defense = parts[2];
+      spAttack = parts[3];
+      spDefense = parts[4];
+      speed = parts[5];
+    } else {
+      console.log('Invalid format or values out of range');
+    }
+    var total = hp + attack + defense + spAttack + spDefense + speed;
+
+    return { name, total, attack, defense, spAttack, spDefense, speed };
+  };
 
 
   useEffect(() => {
@@ -85,8 +139,12 @@ const PNGUploader: React.FC<Props> = ({
             // include context with OCR output
             console.log('OCR text:', text);
             setOcrText(text);
+
+            const parsed = parseStatsFromOcr(text);
+            setStats(parsed);
+
             console.log('Submission context:', context);
-            onSuccess?.({ text, context });
+            onSuccess?.({ text, context, stats: parsed });
             await worker.terminate();
             setProgress(100);
         })();
@@ -180,6 +238,21 @@ const PNGUploader: React.FC<Props> = ({
           <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">Context: {context}</p>
         </div>
       )}
+
+      <div className="mt-4 p-4 bg-white dark:bg-gray-900 border rounded">
+        <h4 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Extracted Stats</h4>
+        <div className="grid grid-cols-2 gap-2 text-sm text-gray-800 dark:text-gray-200">
+          <div className="flex justify-between"><span>Name</span><span>{stats?.name ?? '-'}</span></div>
+          <div className="flex justify-between"><span>Total IVs</span><span>{stats?.total ?? '-'}</span></div>
+          <div className="flex justify-between"><span>Attack</span><span>{stats?.attack ?? '-'}</span></div>
+          <div className="flex justify-between"><span>Defense</span><span>{stats?.defense ?? '-'}</span></div>
+          <div className="flex justify-between"><span>Sp. Attack</span><span>{stats?.spAttack ?? '-'}</span></div>
+          <div className="flex justify-between"><span>Sp. Defense</span><span>{stats?.spDefense ?? '-'}</span></div>
+          <div className="flex justify-between"><span>Speed</span><span>{stats?.speed ?? '-'}</span></div>
+        </div>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">Values are extracted from OCR and may need manual verification.</p>
+      </div>
+
     </form>
   );
 };
