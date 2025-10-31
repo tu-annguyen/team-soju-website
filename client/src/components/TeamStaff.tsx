@@ -13,7 +13,7 @@ const staffData = [
   },
   {
     id: 2,
-    name: 'Aisuhoki',
+    name: 'Aisukohi',
     role: 'Co-Leader',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_04/Nagi.thumb.jpg.eab474e28a04332997b091001d4bceef.jpg',
     discord: 'https://discordapp.com/users/558122397971120133',
