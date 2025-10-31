@@ -13,21 +13,29 @@ class TeamSojuBot {
     });
 
     this.apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
-    this.botToken = process.env.BOT_API_TOKEN; // JWT token for API authentication
+    this.botToken = process.env.JWT_SECRET; // JWT token for API authentication
     
     this.setupEventHandlers();
     this.setupCommands();
   }
 
   setupEventHandlers() {
-    this.client.once('ready', () => {
+    this.client.once('clientReady', () => {
       console.log(`🤖 Discord bot logged in as ${this.client.user.tag}!`);
       this.registerSlashCommands();
     });
 
+    this.client.on('debug', console.log);
+    this.client.on('warn', console.warn);
+    this.client.on('error', console.error);
     this.client.on('interactionCreate', async (interaction) => {
-      if (!interaction.isChatInputCommand()) return;
+      console.log('Interaction received:', interaction);
+      if (!interaction.isChatInputCommand()) {
+        console.log('Not a chat input command.');
+        return;
+      }
 
+      console.log('Command name:', interaction.commandName);
       try {
         await this.handleCommand(interaction);
       } catch (error) {
@@ -40,6 +48,10 @@ class TeamSojuBot {
           await interaction.reply({ content: errorMessage, ephemeral: true });
         }
       }
+    });
+
+    this.client.on('raw', (packet) => {
+      console.log('Raw event received:', packet);
     });
   }
 
@@ -128,7 +140,12 @@ class TeamSojuBot {
 
       new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('Show team statistics')
+        .setDescription('Show team statistics'),
+
+      new SlashCommandBuilder()
+        .setName('ping')
+        .setDescription('Replies with Pong!')
+        .setDefaultPermission(true),
     ];
   }
 
@@ -138,9 +155,11 @@ class TeamSojuBot {
       
       const guild = this.client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
       if (guild) {
+        await guild.commands.set([]); // Clear existing commands
         await guild.commands.set(this.commands);
         console.log('✅ Guild slash commands registered successfully!');
       } else {
+        await this.client.application.commands.set([]); // Clear existing commands
         await this.client.application.commands.set(this.commands);
         console.log('✅ Global slash commands registered successfully!');
       }
@@ -170,6 +189,9 @@ class TeamSojuBot {
         break;
       case 'stats':
         await this.handleStats(interaction);
+        break;
+      case 'ping':
+        await interaction.reply({ content: 'Pong!', ephemeral: true });
         break;
       default:
         await interaction.reply({ content: 'Unknown command!', ephemeral: true });
