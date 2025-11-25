@@ -58,7 +58,6 @@ class TeamShiny {
       SELECT ts.*, tm.ign as trainer_name, ts.pokemon as pokemon_name
       FROM team_shinies ts
       JOIN team_members tm ON ts.original_trainer = tm.id
-      JOIN pokemon_species ps ON ts.national_number = ps.national_number
       WHERE ts.id = $1
     `, [id]);
     return result.rows[0];
