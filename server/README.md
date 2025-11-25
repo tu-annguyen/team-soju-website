@@ -88,21 +88,33 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 
 ## Discord Bot Commands
 
-The bot provides these slash commands:
+The bot provides comprehensive slash commands for managing team data:
 
+### Member Management
 - `/addmember <ign> [discord] [rank]` - Add a new team member
-- `/addshiny <trainer> <pokemon> <encounter_type> [encounters] [secret]` - Add a shiny catch
+- `/editmember <ign> [new_ign] [discord] [rank]` - Edit an existing member
+- `/deletemember <ign>` - Remove a team member
 - `/member <ign>` - Get member information
+
+### Shiny Management
+- `/addshiny <trainer> <pokemon> <pokedex_number> <encounter_type> [encounters] [secret] [safari]` - Add a shiny catch
+- `/editshiny <shiny_id> [pokemon] [pokedex_number] [encounter_type] [encounters] [secret] [safari]` - Edit a shiny entry
+- `/deleteshiny <shiny_id>` - Delete a shiny entry
+- `/shiny <id>` - Get specific shiny information
 - `/shinies [trainer] [limit]` - List recent shinies
+
+### Statistics
 - `/leaderboard [limit]` - Show shiny leaderboard
 - `/stats` - Show team statistics
 
 ### Starting the Discord Bot
 
 ```bash
-# Make sure your .env has DISCORD_TOKEN and other Discord settings
+# Make sure your .env has DISCORD_TOKEN, DISCORD_CLIENT_ID, and DISCORD_GUILD_ID
 node src/discord/bot.js
 ```
+
+For detailed bot documentation, see [src/discord/README.md](src/discord/README.md)
 
 ## Database Schema
 
