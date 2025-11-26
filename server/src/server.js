@@ -76,15 +76,17 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Team Soju API server running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-  
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🔑 Generate bot token: http://localhost:${PORT}/generate-bot-token`);
-  }
-});
+// Start server (skipped during tests)
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Team Soju API server running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔑 Generate bot token: http://localhost:${PORT}/generate-bot-token`);
+    }
+  });
+}
 
 module.exports = app;

@@ -184,6 +184,19 @@ curl -X POST http://localhost:3001/api/shinies \
 
 ## Development
 
+### Testing
+
+- All backend Jest tests live in the monorepo root under `test/server`.
+- Run the full backend test suite (with coverage) from the `server` directory:
+
+  ```bash
+  cd server
+  npm test
+  ```
+
+- Route tests use `supertest` against the Express app and mock the database layer.
+- Model and config script tests mock the PostgreSQL pool and filesystem/`path` as needed.
+
 ### Project Structure
 
 ```

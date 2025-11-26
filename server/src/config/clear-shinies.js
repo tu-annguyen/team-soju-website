@@ -7,10 +7,14 @@ async function clearShinies() {
     await pool.query('DELETE FROM team_shinies');
     
     console.log('Successfully deleted all shinies!');
-    process.exit(0);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(0);
+    }
   } catch (error) {
     console.error('Failed to delete shinies:', error);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
   }
 }
 
