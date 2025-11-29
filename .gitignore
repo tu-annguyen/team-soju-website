@@ -22,3 +22,11 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+
+#ignore package locks
+*/package-lock.json
+*/yarn.lock
+
+#ignore generated test files
+**/coverage/*

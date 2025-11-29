@@ -12,10 +12,14 @@ async function runMigrations() {
     await pool.query(schema);
     console.log('Database migrations completed successfully!');
     
-    process.exit(0);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(0);
+    }
   } catch (error) {
     console.error('Migration failed:', error);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
   }
 }
 
