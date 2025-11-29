@@ -11,7 +11,7 @@ describe('DB connection config', () => {
     process.env.DATABASE_URL = 'postgres://user:pass@localhost:5432/db';
     process.env.NODE_ENV = 'production';
 
-    const pool = require('../../server/src/config/connection');
+    const pool = require('../src/config/connection');
 
     expect(Pool).toHaveBeenCalledTimes(1);
     const args = Pool.mock.calls[0][0];

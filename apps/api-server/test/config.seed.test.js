@@ -1,4 +1,4 @@
-jest.mock('../../server/src/config/connection', () => ({
+jest.mock('../src/config/connection', () => ({
   query: jest.fn(),
 }));
 
@@ -11,7 +11,7 @@ jest.mock('path', () => ({
   resolve: jest.fn(() => '/fake/showcase.json'),
 }));
 
-const pool = require('../../server/src/config/connection');
+const pool = require('../src/config/connection');
 
 describe('seed script', () => {
   it('seeds sample members and attempts to read showcase JSON if present', async () => {
@@ -23,7 +23,7 @@ describe('seed script', () => {
       // mock instances that seed.js uses internally.
       fsMock = require('fs');
       pathMock = require('path');
-      require('../../server/src/config/seed');
+      require('../src/config/seed');
     });
 
     // Allow the async seedDatabase function a tick to run to completion.

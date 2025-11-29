@@ -1,6 +1,7 @@
 {
-  "name": "team-soju-website",
-  "version": "0.1.0",
+  "name": "@team-soju/web-app",
+  "description": "Frontend web application for Team Soju website",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "astro dev",

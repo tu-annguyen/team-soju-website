@@ -1,6 +1,6 @@
 const request = require('supertest');
 
-const app = require('../../server/src/server');
+const app = require('../src/server');
 
 describe('Health endpoint', () => {
   it('returns 200 and expected body', async () => {

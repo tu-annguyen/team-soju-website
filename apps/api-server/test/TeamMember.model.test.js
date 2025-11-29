@@ -1,12 +1,12 @@
-const pool = require('../../server/src/config/connection');
-const TeamMember = require('../../server/src/models/TeamMember');
+const pool = require('../src/config/connection');
+const TeamMember = require('../src/models/TeamMember');
 
-jest.mock('../../server/src/config/connection', () => ({
+jest.mock('../src/config/connection', () => ({
   query: jest.fn(),
 }));
 
 describe('TeamMember model', () => {
-  const mockQuery = require('../../server/src/config/connection').query;
+  const mockQuery = require('../src/config/connection').query;
 
   beforeEach(() => {
     mockQuery.mockReset();

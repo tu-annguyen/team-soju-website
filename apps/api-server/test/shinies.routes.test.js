@@ -1,9 +1,9 @@
 const request = require('supertest');
 
-const app = require('../../server/src/server');
-const TeamShiny = require('../../server/src/models/TeamShiny');
+const app = require('../src/server');
+const TeamShiny = require('../src/models/TeamShiny');
 
-jest.mock('../../server/src/models/TeamShiny');
+jest.mock('../src/models/TeamShiny');
 
 describe('Shinies routes', () => {
   beforeEach(() => {

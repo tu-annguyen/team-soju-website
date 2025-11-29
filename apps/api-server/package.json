@@ -1,7 +1,8 @@
 {
-  "name": "team-soju-backend",
-  "version": "1.0.0",
+  "name": "@team-soju/api-server",
   "description": "Backend API for Team Soju website",
+  "version": "1.0.0",
+  "private": true,
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -27,14 +28,5 @@
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
     "supertest": "^6.3.4"
-  },
-  "keywords": [
-    "pokemmo",
-    "team",
-    "api",
-    "discord",
-    "bot"
-  ],
-  "author": "Team Soju",
-  "license": "MIT"
+  }
 }

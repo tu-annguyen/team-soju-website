@@ -2,6 +2,8 @@
 
 A Node.js backend API with PostgreSQL database for managing Team Soju members and shiny Pokemon data, with Discord bot integration.
 
+---
+
 ## Features
 
 - **Team Member Management**: Add, update, delete, and retrieve team member information
@@ -10,6 +12,8 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 - **RESTful API**: Clean API endpoints for frontend integration
 - **Data Validation**: Input validation using Joi
 - **Database Migrations**: Automated database setup and seeding
+
+---
 
 ## Quick Start
 
@@ -54,6 +58,8 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
    npm start
    ```
 
+---
+
 ## API Endpoints
 
 ### Team Members
@@ -86,6 +92,8 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 - `is_safari` - Filter safari shinies (true/false)
 - `limit` - Limit number of results
 
+---
+
 ## Discord Bot Commands
 
 The bot provides comprehensive slash commands for managing team data:
@@ -116,6 +124,8 @@ node src/discord/bot.js
 
 For detailed bot documentation, see [src/discord/README.md](src/discord/README.md)
 
+---
+
 ## Database Schema
 
 ### Team Members
@@ -142,6 +152,8 @@ The API uses JWT tokens for Discord bot authentication. Generate a token for dev
 # Visit http://localhost:3001/generate-bot-token (development only)
 curl http://localhost:3001/generate-bot-token
 ```
+
+---
 
 ## Example Usage
 
@@ -182,16 +194,17 @@ curl -X POST http://localhost:3001/api/shinies \
   }'
 ```
 
+---
+
 ## Development
 
 ### Testing
 
-- All backend Jest tests live in the monorepo root under `test/server`.
-- Run the full backend test suite (with coverage) from the `server` directory:
+- All backend Jest tests live under `test/`.
+- Run the full backend test suite (with coverage) from the monorepo root `team-soju-website/`:
 
   ```bash
-  cd server
-  npm test
+  npm run test:api
   ```
 
 - Route tests use `supertest` against the Express app and mock the database layer.
@@ -209,6 +222,7 @@ backend/
 │   ├── middleware/       # Authentication and other middleware
 │   ├── discord/          # Discord bot implementation
 │   └── server.js         # Main server file
+├── test/                 # Backend Jest tests
 ├── package.json
 └── README.md
 ```
@@ -220,6 +234,8 @@ backend/
 3. **Discord Commands**: Add commands in `discord/bot.js`
 4. **Models**: Update model files for new database operations
 
+---
+
 ## Deployment
 
 For production deployment:
@@ -230,6 +246,8 @@ For production deployment:
 4. Start with PM2 or similar: `pm2 start src/server.js`
 5. Set up reverse proxy (nginx) if needed
 
+---
+
 ## Contributing
 
 1. Follow the existing code structure
@@ -237,6 +255,8 @@ For production deployment:
 3. Validate all inputs
 4. Test API endpoints
 5. Update documentation
+
+---
 
 ## Support
 

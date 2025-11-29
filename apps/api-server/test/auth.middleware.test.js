@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-const { authenticateBot, generateBotToken } = require('../../server/src/middleware/auth');
+const { authenticateBot, generateBotToken } = require('../src/middleware/auth');
 
 describe('generateBotToken', () => {
   const originalEnv = process.env;

@@ -1,9 +1,9 @@
 const request = require('supertest');
 
-const app = require('../../server/src/server');
-const TeamMember = require('../../server/src/models/TeamMember');
+const app = require('../src/server');
+const TeamMember = require('../src/models/TeamMember');
 
-jest.mock('../../server/src/models/TeamMember');
+jest.mock('../src/models/TeamMember');
 
 describe('Members routes', () => {
   beforeEach(() => {

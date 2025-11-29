@@ -1,0 +1,32 @@
+{
+  "name": "team-soju",
+  "version": "1.0.0",
+  "description": "Welcome to the official [Team SOJU website](https://team-soju.netlify.app)! This site serves as the central hub for Team SOJU, featuring our shiny showcase, team staff, events, and more.",
+  "repository": "git@github.com:tu-annguyen/team-soju-website.git",
+  "author": "Tu-An Nguyen (https://tu-annguyen.com)",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@team-soju/web-app",
+    "dev:api": "npm run dev --workspace=@team-soju/api-server",
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "build": "npm run build --workspace=@team-soju/web-app",
+    "test:web": "npm run test --workspace=@team-soju/web-app -- --runInBand --coverage",
+    "test:api": "npm run test --workspace=@team-soju/api-server -- --runInBand --coverage",
+    "test": "concurrently \"npm run test:api\" \"npm run test:web\""
+  },
+  "keywords": [
+    "pokemmo",
+    "pokemon",
+    "api",
+    "discord",
+    "bot"
+  ],
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

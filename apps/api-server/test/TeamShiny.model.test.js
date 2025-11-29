@@ -1,12 +1,12 @@
-const pool = require('../../server/src/config/connection');
-const TeamShiny = require('../../server/src/models/TeamShiny');
+const pool = require('../src/config/connection');
+const TeamShiny = require('../src/models/TeamShiny');
 
-jest.mock('../../server/src/config/connection', () => ({
+jest.mock('../src/config/connection', () => ({
   query: jest.fn(),
 }));
 
 describe('TeamShiny model', () => {
-  const mockQuery = require('../../server/src/config/connection').query;
+  const mockQuery = require('../src/config/connection').query;
 
   beforeEach(() => {
     mockQuery.mockReset();
