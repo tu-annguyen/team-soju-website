@@ -23,7 +23,7 @@ const staffData = [
     id: 3,
     name: 'cubberkazookie',
     role: 'Tech Specialist',
-    avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_12/bearonskateboards.thumb.jpg.446c42a810225b2c64f6f43f716b89a3.jpg',
+    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_11/IMG_9484.thumb.jpg.5416c3c95048a3d58ff4465c724bbca6.jpg',
     discord: 'https://discordapp.com/users/757471359835177071',
     forum: 'https://forums.pokemmo.com/index.php?/profile/487174-cubberkazooie/'
   },
