@@ -6,7 +6,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
-const forumUrl = 'https://forums.pokemmo.com/index.php?/topic/181636-team-soj%C3%BC-shiny-showcase/';
+const forumUrl = 'https://forums.pokemmo.com/index.php?/topic/195298-team-soj%C3%BC-shiny-showcase/';
 
 export interface ShinyPokemon {
   name: string;
