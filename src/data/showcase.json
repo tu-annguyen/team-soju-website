@@ -1,6 +1,6 @@
 [
   {
-    "name": "xMEGUx@Jianybin@Immo@nayoe@Aisukohi",
+    "name": "xMEGUx",
     "numOT": 55,
     "shinies": [
       {
@@ -282,7 +282,13 @@
         "name": "Ipv9olm",
         "imageUrl": "https://i.imgur.com/IpV9OlM.gif",
         "attribute": "safari"
-      },
+      }
+    ]
+  },
+  {
+    "name": "Jianybin",
+    "numOT": 47,
+    "shinies": [
       {
         "name": "Ninetales",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/ninetales.gif",
@@ -532,7 +538,13 @@
         "name": "Z3ovque",
         "imageUrl": "https://i.imgur.com/Z3ovQue.gif",
         "attribute": "safari"
-      },
+      }
+    ]
+  },
+  {
+    "name": "Immo",
+    "numOT": 44,
+    "shinies": [
       {
         "name": "Rhyperior",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
@@ -777,7 +789,13 @@
         "name": "Ffjji9v",
         "imageUrl": "https://i.imgur.com/ffjjI9V.gif",
         "attribute": "safari"
-      },
+      }
+    ]
+  },
+  {
+    "name": "nayoe",
+    "numOT": 39,
+    "shinies": [
       {
         "name": "Gyarados",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
@@ -1001,8 +1019,8 @@
     ]
   },
   {
-    "name": "hefferson",
-    "numOT": 33,
+    "name": "Aisukohi",
+    "numOT": 36,
     "shinies": [
       {
         "name": "Tentacruel",
@@ -1183,7 +1201,13 @@
         "name": "Chinchou",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/chinchou.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "hefferson",
+    "numOT": 33,
+    "shinies": [
       {
         "name": "Vanillish",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/vanillish.gif",
@@ -1323,13 +1347,7 @@
         "name": "Sawk",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/sawk.gif",
         "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "MumenRiderZ",
-    "numOT": 29,
-    "shinies": [
+      },
       {
         "name": "Frillish",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/frillish.gif",
@@ -1363,8 +1381,8 @@
     ]
   },
   {
-    "name": "Pokio",
-    "numOT": 24,
+    "name": "MumenRiderZ",
+    "numOT": 29,
     "shinies": [
       {
         "name": "Bibarel",
@@ -1515,7 +1533,13 @@
         "name": "Gloom",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gloom-f.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "Pokio",
+    "numOT": 24,
+    "shinies": [
       {
         "name": "Rapidash",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rapidash.gif",
@@ -1580,13 +1604,7 @@
         "name": "Jynx",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/jynx.gif",
         "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "Miscellany",
-    "numOT": 22,
-    "shinies": [
+      },
       {
         "name": "Lopunny",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lopunny.gif",
@@ -1645,8 +1663,8 @@
     ]
   },
   {
-    "name": "cubberkazooie",
-    "numOT": 20,
+    "name": "Miscellany",
+    "numOT": 22,
     "shinies": [
       {
         "name": "Mareep",
@@ -1761,8 +1779,8 @@
     ]
   },
   {
-    "name": "pikachu1250",
-    "numOT": 19,
+    "name": "cubberkazooie",
+    "numOT": 20,
     "shinies": [
       {
         "name": "Smeargle",
@@ -1872,8 +1890,8 @@
     ]
   },
   {
-    "name": "Electrya",
-    "numOT": 18,
+    "name": "pikachu1250",
+    "numOT": 19,
     "shinies": [
       {
         "name": "Exeggcute",
@@ -1969,7 +1987,13 @@
         "name": "Horsea",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/horsea.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "Electrya",
+    "numOT": 18,
+    "shinies": [
       {
         "name": "Psyduck",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/psyduck.gif",
@@ -2044,13 +2068,7 @@
         "name": "Trapinch",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/trapinch.gif",
         "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "ReefBarrierGreat",
-    "numOT": 17,
-    "shinies": [
+      },
       {
         "name": "Bronzong",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/bronzong.gif",
@@ -2064,8 +2082,8 @@
     ]
   },
   {
-    "name": "Sath@skusage",
-    "numOT": 14,
+    "name": "ReefBarrierGreat",
+    "numOT": 17,
     "shinies": [
       {
         "name": "Zorua",
@@ -2151,7 +2169,13 @@
         "name": "Slowpoke",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/slowpoke.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "Sath",
+    "numOT": 14,
+    "shinies": [
       {
         "name": "Woobat",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/woobat.gif",
@@ -2225,8 +2249,8 @@
     ]
   },
   {
-    "name": "tunacore",
-    "numOT": 13,
+    "name": "skusage",
+    "numOT": 14,
     "shinies": [
       {
         "name": "Lunatone",
@@ -2301,7 +2325,7 @@
     ]
   },
   {
-    "name": "Buddhalicious",
+    "name": "tunacore",
     "numOT": 13,
     "shinies": [
       {
@@ -2372,8 +2396,8 @@
     ]
   },
   {
-    "name": "CaliKingCorey@BlossomsDream",
-    "numOT": 12,
+    "name": "Buddhalicious",
+    "numOT": 13,
     "shinies": [
       {
         "name": "Raticate",
@@ -2439,7 +2463,13 @@
         "name": "Bronzong",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/bronzong.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "CaliKingCorey",
+    "numOT": 12,
+    "shinies": [
       {
         "name": "Tentacruel",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/tentacruel.gif",
@@ -2503,8 +2533,8 @@
     ]
   },
   {
-    "name": "Zofinaa",
-    "numOT": 7,
+    "name": "BlossomsDream",
+    "numOT": 10,
     "shinies": [
       {
         "name": "Deino",
@@ -2554,7 +2584,7 @@
     ]
   },
   {
-    "name": "layar",
+    "name": "Zofinaa",
     "numOT": 7,
     "shinies": [
       {
@@ -2600,8 +2630,8 @@
     ]
   },
   {
-    "name": "Scotty@HinatShoyo",
-    "numOT": 6,
+    "name": "layar",
+    "numOT": 7,
     "shinies": [
       {
         "name": "Frillish",
@@ -2637,7 +2667,13 @@
         "name": "Arbok",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/arbok.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "Scotty",
+    "numOT": 6,
+    "shinies": [
       {
         "name": "Nidoking",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoking.gif",
@@ -2671,7 +2707,7 @@
     ]
   },
   {
-    "name": "swiftygecko",
+    "name": "HinatShoyo",
     "numOT": 5,
     "shinies": [
       {
@@ -2702,8 +2738,8 @@
     ]
   },
   {
-    "name": "KxIrish",
-    "numOT": 4,
+    "name": "swiftygecko",
+    "numOT": 5,
     "shinies": [
       {
         "name": "Poochyena",
@@ -2733,8 +2769,8 @@
     ]
   },
   {
-    "name": "DingusDestiny",
-    "numOT": 3,
+    "name": "KxIrish",
+    "numOT": 4,
     "shinies": [
       {
         "name": "Magikarp",
@@ -2759,7 +2795,7 @@
     ]
   },
   {
-    "name": "iyusu",
+    "name": "DingusDestiny",
     "numOT": 3,
     "shinies": [
       {
@@ -2780,8 +2816,8 @@
     ]
   },
   {
-    "name": "megapoola@SsjBlueCrill@BrutxL@HerbusWinkle69",
-    "numOT": 2,
+    "name": "iyusu",
+    "numOT": 3,
     "shinies": [
       {
         "name": "Lanturn",
@@ -2797,7 +2833,13 @@
         "name": "Geodude",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/geodude.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "megapoola",
+    "numOT": 2,
+    "shinies": [
       {
         "name": "Rapidash",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rapidash.gif",
@@ -2807,12 +2849,24 @@
         "name": "Camerupt",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/camerupt.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "SsjBlueCrill",
+    "numOT": 1,
+    "shinies": [
       {
         "name": "Heatmor",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/heatmor.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "BrutxL",
+    "numOT": 1,
+    "shinies": [
       {
         "name": "Magikarp",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
@@ -2821,14 +2875,20 @@
     ]
   },
   {
-    "name": "Ledoras",
+    "name": "HerbusWinkle69",
     "numOT": 1,
     "shinies": [
       {
         "name": "Rapidash",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rapidash.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "Ledoras",
+    "numOT": 1,
+    "shinies": [
       {
         "name": "Reuniclus",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/reuniclus.gif",
