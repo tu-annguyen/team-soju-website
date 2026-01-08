@@ -97,7 +97,8 @@ export async function fetchShinyShowcase(): Promise<Trainer[]> {
           if (
             pokemonName !== 'Secret_shiny_particle' &&
             pokemonName !== 'Ut7sagh' &&
-            pokemonName !== 'Image'
+            pokemonName !== 'Image' &&
+            pokemonName !== 'Safari'
           ) {
             currentTrainer.shinies.push({ name: pokemonName, imageUrl, attribute });
           }

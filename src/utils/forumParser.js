@@ -104,14 +104,15 @@ function fetchShinyShowcase() {
                                     attribute = 'secret';
                                     i++; // Skip the indicator image in the next loop
                                 }
-                                else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6')) {
+                                else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6') || nextSrc.includes('safariball')) {
                                     attribute = 'safari';
                                     i++; // Skip the indicator image in the next loop
                                 }
                                 // Only add if not a particle image itself
                                 if (pokemonName !== 'Secret_shiny_particle' &&
                                     pokemonName !== 'Ut7sagh' &&
-                                    pokemonName !== 'Image') {
+                                    pokemonName !== 'Image' &&
+                                    pokemonName !== 'Safari') {
                                     currentTrainer_1.shinies.push({ name: pokemonName, imageUrl: imageUrl, attribute: attribute });
                                 }
                             }
