@@ -84,14 +84,14 @@
         "attribute": ""
       },
       {
-        "name": "Spearow",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/spearow.gif",
-        "attribute": "secret"
-      },
-      {
         "name": "Donphan",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/donphan.gif",
         "attribute": ""
+      },
+      {
+        "name": "Spearow",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/spearow.gif",
+        "attribute": "secret"
       },
       {
         "name": "Gigalith",
