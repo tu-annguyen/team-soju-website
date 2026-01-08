@@ -44,7 +44,7 @@ exports.fetchShinyShowcase = fetchShinyShowcase;
  */
 var axios_1 = require("axios");
 var cheerio = require("cheerio");
-var forumUrl = 'https://forums.pokemmo.com/index.php?/topic/181636-team-soj%C3%BC-shiny-showcase/';
+var forumUrl = 'https://forums.pokemmo.com/index.php?/topic/195298-team-soj%C3%BC-shiny-showcase/';
 /**
  * Fetch and parse the shiny showcase forum post
  * @returns Promise<ShinyPokemon[]> Array of shiny Pokemon data
