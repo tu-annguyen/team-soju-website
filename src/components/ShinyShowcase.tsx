@@ -93,7 +93,7 @@ const ShinyShowcase = () => {
           <p className="text-gray-600 dark:text-gray-400 text-sm">
             This showcase is automatically updated from our 
             <a 
-              href="https://forums.pokemmo.com/index.php?/topic/181636-team-soj%C3%BC-shiny-showcase/" 
+              href="https://forums.pokemmo.com/index.php?/topic/195298-team-soj%C3%BC-shiny-showcase/" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-primary-600 dark:text-primary-400 hover:underline ml-1"

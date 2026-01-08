@@ -88,7 +88,7 @@ export async function fetchShinyShowcase(): Promise<Trainer[]> {
           if (nextSrc.includes('secret_shiny_particle')) {
             attribute = 'secret';
             i++; // Skip the indicator image in the next loop
-          } else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6')) {
+          } else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6') || nextSrc.includes('safariball')) {
             attribute = 'safari';
             i++; // Skip the indicator image in the next loop
           }
