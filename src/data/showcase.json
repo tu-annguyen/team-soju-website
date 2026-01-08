@@ -11,7 +11,7 @@
       {
         "name": "Magikarp",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Magikarp",
@@ -281,7 +281,7 @@
       {
         "name": "Ipv9olm",
         "imageUrl": "https://i.imgur.com/IpV9OlM.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Ninetales",
@@ -396,22 +396,22 @@
       {
         "name": "Lapras",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lapras.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Tauros",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/tauros.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Zubat",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/zubat-f.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Sandshrew",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/sandshrew.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Sewaddle",
@@ -521,17 +521,17 @@
       {
         "name": "3qwnnyv",
         "imageUrl": "https://i.imgur.com/3QwNnyV.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Kses8vi",
         "imageUrl": "https://i.imgur.com/kSes8Vi.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Z3ovque",
         "imageUrl": "https://i.imgur.com/Z3ovQue.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Rhyperior",
@@ -751,32 +751,32 @@
       {
         "name": "Nidoran",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoran-f.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "7itd7il",
         "imageUrl": "https://i.imgur.com/7ITd7Il.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Pckl3hr",
         "imageUrl": "https://i.imgur.com/pcKl3HR.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Nzwyrob",
         "imageUrl": "https://i.imgur.com/NzWYROb.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Ep1tbwk",
         "imageUrl": "https://i.imgur.com/ep1tbWK.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Ffjji9v",
         "imageUrl": "https://i.imgur.com/ffjjI9V.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Gyarados",
@@ -826,12 +826,12 @@
       {
         "name": "Hoothoot",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/hoothoot.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Aipom",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/aipom-f.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Muk",
@@ -856,12 +856,12 @@
       {
         "name": "Bellsprout",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/bellsprout.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Riolu",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/riolu.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Gulpin",
@@ -876,7 +876,7 @@
       {
         "name": "Shuckle",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/shuckle.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Marowak",
@@ -941,7 +941,7 @@
       {
         "name": "Politoed",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/politoed-f.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Deerling",
@@ -961,7 +961,7 @@
       {
         "name": "Lapras",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lapras.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Mightyena",
@@ -976,27 +976,27 @@
       {
         "name": "Rqrqbcv",
         "imageUrl": "https://i.imgur.com/RqrqBcv.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Ipv9olm",
         "imageUrl": "https://i.imgur.com/IpV9OlM.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Egntt1n",
         "imageUrl": "https://i.imgur.com/egNtt1N.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "3sxq99w",
         "imageUrl": "https://i.imgur.com/3sxQ99w.gif",
-        "attribute": ""
+        "attribute": "safari"
       },
       {
         "name": "Gejgevl",
         "imageUrl": "https://i.imgur.com/geJgEVl.gif",
-        "attribute": ""
+        "attribute": "safari"
       }
     ]
   },
@@ -2367,7 +2367,7 @@
       {
         "name": "Jumpluff",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/jumpluff.gif",
-        "attribute": ""
+        "attribute": "safari"
       }
     ]
   },
