@@ -104,7 +104,7 @@ function fetchShinyShowcase() {
                                     attribute = 'secret';
                                     i++; // Skip the indicator image in the next loop
                                 }
-                                else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6') || nextSrc.includes('safariball')) {
+                                else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6') || nextSrc.includes('image') || nextSrc.includes('safariball')) {
                                     attribute = 'safari';
                                     i++; // Skip the indicator image in the next loop
                                 }
