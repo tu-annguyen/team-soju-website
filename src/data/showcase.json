@@ -166,12 +166,7 @@
       {
         "name": "Charizard",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/charizard.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Es45am5",
-        "imageUrl": "https://i.imgur.com/Es45AM5.png",
-        "attribute": ""
+        "attribute": "egg"
       },
       {
         "name": "Meditite",
@@ -221,12 +216,7 @@
       {
         "name": "Zorua",
         "imageUrl": "https://forums.pokemmo.com/uploads/monthly_2026_01/Zorua.gif.cafb9f71dc3ee4069eb4709ac7d37ad2.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Es45am5",
-        "imageUrl": "https://i.imgur.com/Es45AM5.png",
-        "attribute": ""
+        "attribute": "egg"
       },
       {
         "name": "Burmy",
@@ -527,22 +517,12 @@
       {
         "name": "Larvesta",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/larvesta.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Es45am5",
-        "imageUrl": "https://i.imgur.com/Es45AM5.png",
-        "attribute": ""
+        "attribute": "egg"
       },
       {
         "name": "Snivy",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/snivy.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Es45am5",
-        "imageUrl": "https://i.imgur.com/Es45AM5.png",
-        "attribute": ""
+        "attribute": "egg"
       },
       {
         "name": "3qwnnyv",
@@ -778,12 +758,7 @@
       {
         "name": "Aerodactyl",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/aerodactyl.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Es45am5",
-        "imageUrl": "https://i.imgur.com/Es45AM5.png",
-        "attribute": ""
+        "attribute": "egg"
       },
       {
         "name": "Nidoran",
@@ -2269,12 +2244,7 @@
       {
         "name": "Tepig",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/tepig.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Es45am5",
-        "imageUrl": "https://i.imgur.com/Es45AM5.png",
-        "attribute": ""
+        "attribute": "egg"
       }
     ]
   },
