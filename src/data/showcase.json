@@ -169,6 +169,11 @@
         "attribute": ""
       },
       {
+        "name": "Es45am5",
+        "imageUrl": "https://i.imgur.com/Es45AM5.png",
+        "attribute": ""
+      },
+      {
         "name": "Meditite",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/meditite.gif",
         "attribute": ""
@@ -216,6 +221,11 @@
       {
         "name": "570",
         "imageUrl": "https://forums.pokemmo.com/uploads/monthly_2025_10/570-front-s.gif.4a0dcb356ad79092195f020bf5d44488.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Es45am5",
+        "imageUrl": "https://i.imgur.com/Es45AM5.png",
         "attribute": ""
       },
       {
@@ -520,8 +530,18 @@
         "attribute": ""
       },
       {
+        "name": "Es45am5",
+        "imageUrl": "https://i.imgur.com/Es45AM5.png",
+        "attribute": ""
+      },
+      {
         "name": "Snivy",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/snivy.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Es45am5",
+        "imageUrl": "https://i.imgur.com/Es45AM5.png",
         "attribute": ""
       },
       {
@@ -758,6 +778,11 @@
       {
         "name": "Aerodactyl",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/aerodactyl.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Es45am5",
+        "imageUrl": "https://i.imgur.com/Es45AM5.png",
         "attribute": ""
       },
       {
@@ -2244,6 +2269,11 @@
       {
         "name": "Tepig",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/tepig.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Es45am5",
+        "imageUrl": "https://i.imgur.com/Es45AM5.png",
         "attribute": ""
       }
     ]
