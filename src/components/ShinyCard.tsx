@@ -11,6 +11,7 @@ interface ShinyCardProps {
 const attributeIcons: Record<string, string> = {
   secret: '/images/secret.png',
   safari: '/images/safari.png',
+  egg: '/images/egg.png',
 };
 
 const ShinyCard = ({ pokemonName, imageUrl, attribute }: ShinyCardProps) => {

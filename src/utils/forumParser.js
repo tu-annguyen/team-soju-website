@@ -108,11 +108,16 @@ function fetchShinyShowcase() {
                                     attribute = 'safari';
                                     i++; // Skip the indicator image in the next loop
                                 }
+                                else if (nextSrc.includes('Es45AM5')) {
+                                    attribute = 'egg';
+                                    i++; // Skip the indicator image in the next loop
+                                }
                                 // Only add if not a particle image itself
                                 if (pokemonName !== 'Secret_shiny_particle' &&
                                     pokemonName !== 'Ut7sagh' &&
                                     pokemonName !== 'Image' &&
-                                    pokemonName !== 'Safari') {
+                                    pokemonName !== 'Safari' &&
+                                    pokemonName !== 'Es45am5') {
                                     currentTrainer_1.shinies.push({ name: pokemonName, imageUrl: imageUrl, attribute: attribute });
                                 }
                             }
