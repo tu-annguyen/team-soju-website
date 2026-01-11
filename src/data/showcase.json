@@ -1201,6 +1201,21 @@
         "name": "Chinchou",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/chinchou.gif",
         "attribute": ""
+      },
+      {
+        "name": "Jellicent",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/jellicent.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Ferrothorn",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/ferrothorn.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Liepard",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/liepard.gif",
+        "attribute": ""
       }
     ]
   },
