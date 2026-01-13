@@ -1553,7 +1553,7 @@
   },
   {
     "name": "Pokio",
-    "numOT": 24,
+    "numOT": 25,
     "shinies": [
       {
         "name": "Rapidash",
@@ -1673,6 +1673,11 @@
       {
         "name": "Chimecho",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/chimecho.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Lilligant",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lilligant.gif",
         "attribute": ""
       }
     ]
