@@ -2600,6 +2600,11 @@
         "name": "Primeape",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/primeape.gif",
         "attribute": ""
+      },
+      {
+        "name": "Arbok",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/arbok.gif",
+        "attribute": ""
       }
     ]
   },
