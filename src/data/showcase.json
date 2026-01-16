@@ -1911,7 +1911,7 @@
   },
   {
     "name": "pikachu1250",
-    "numOT": 19,
+    "numOT": 20,
     "shinies": [
       {
         "name": "Exeggcute",
@@ -2006,6 +2006,11 @@
       {
         "name": "Horsea",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/horsea.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Dragonair",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/dragonair.gif",
         "attribute": ""
       }
     ]
