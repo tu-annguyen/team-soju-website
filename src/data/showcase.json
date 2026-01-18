@@ -2989,6 +2989,11 @@
   {
     "name": "megapoola",
     "numOT": 2,
+    "shinies": []
+  },
+  {
+    "name": "BrutxL",
+    "numOT": 2,
     "shinies": [
       {
         "name": "Rapidash",
@@ -2998,6 +3003,16 @@
       {
         "name": "Camerupt",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/camerupt.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Magikarp",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Smeargle",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
         "attribute": ""
       }
     ]
@@ -3009,17 +3024,6 @@
       {
         "name": "Heatmor",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/heatmor.gif",
-        "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "BrutxL",
-    "numOT": 1,
-    "shinies": [
-      {
-        "name": "Magikarp",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
         "attribute": ""
       }
     ]
