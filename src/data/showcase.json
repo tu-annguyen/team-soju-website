@@ -2733,6 +2733,11 @@
         "name": "Marowak",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/marowak.gif",
         "attribute": ""
+      },
+      {
+        "name": "Hoppip",
+        "imageUrl": "https://i.postimg.cc/QBzVhgGk/Hoppip.gif",
+        "attribute": ""
       }
     ]
   },
