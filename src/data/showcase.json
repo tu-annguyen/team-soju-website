@@ -1685,11 +1685,6 @@
   {
     "name": "Miscellany",
     "numOT": 22,
-    "shinies": []
-  },
-  {
-    "name": "Nihilus",
-    "numOT": 20,
     "shinies": [
       {
         "name": "Mareep",
@@ -1800,7 +1795,13 @@
         "name": "Vanilluxe",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/vanilluxe.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "Nihilus",
+    "numOT": 20,
+    "shinies": [
       {
         "name": "Ditto",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/ditto.gif",
