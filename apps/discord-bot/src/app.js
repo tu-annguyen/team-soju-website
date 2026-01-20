@@ -29,7 +29,7 @@ class TeamSojuBot {
   }
 
   setupEventHandlers() {
-    this.client.once('ready', () => {
+    this.client.once('clientReady', () => {
       console.log(`🤖 Discord bot logged in as ${this.client.user.tag}!`);
       this.registerCommands();
     });

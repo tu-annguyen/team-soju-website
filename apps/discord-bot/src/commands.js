@@ -102,7 +102,7 @@ const COMMANDS = [
   new SlashCommandBuilder()
     .setName('editshiny')
     .setDescription('Edit an existing shiny entry')
-    .addIntegerOption(option =>
+    .addStringOption(option =>
       option.setName('shiny_id')
         .setDescription('ID of the shiny to edit')
         .setRequired(true))
@@ -135,7 +135,7 @@ const COMMANDS = [
   new SlashCommandBuilder()
     .setName('deleteshiny')
     .setDescription('Delete a shiny entry')
-    .addIntegerOption(option =>
+    .addStringOption(option =>
       option.setName('shiny_id')
         .setDescription('ID of the shiny to delete')
         .setRequired(true)),
@@ -151,7 +151,7 @@ const COMMANDS = [
   new SlashCommandBuilder()
     .setName('shiny')
     .setDescription('Get specific shiny information')
-    .addIntegerOption(option =>
+    .addStringOption(option =>
       option.setName('id')
         .setDescription('Shiny ID')
         .setRequired(true)),

@@ -62,7 +62,7 @@ async function handleAddShiny(interaction) {
 async function handleEditShiny(interaction) {
   await interaction.deferReply();
 
-  const shinyId = interaction.options.getInteger('shiny_id');
+  const shinyId = interaction.options.getString('shiny_id');
   const pokemon = interaction.options.getString('pokemon');
   const nationalNumber = interaction.options.getInteger('pokedex_number');
   const encounterType = interaction.options.getString('encounter_type');
@@ -109,7 +109,7 @@ async function handleEditShiny(interaction) {
 async function handleDeleteShiny(interaction) {
   await interaction.deferReply();
 
-  const shinyId = interaction.options.getInteger('shiny_id');
+  const shinyId = interaction.options.getString('shiny_id');
 
   try {
     const deleteResponse = await axios.delete(`${apiBaseUrl}/shinies/${shinyId}`, {
@@ -132,7 +132,7 @@ async function handleDeleteShiny(interaction) {
 async function handleGetShiny(interaction) {
   await interaction.deferReply();
 
-  const shinyId = interaction.options.getInteger('id');
+  const shinyId = interaction.options.getString('id');
 
   try {
     const response = await axios.get(`${apiBaseUrl}/shinies/${shinyId}`, {
