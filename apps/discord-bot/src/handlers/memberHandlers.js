@@ -144,6 +144,10 @@ async function handleGetMember(interaction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
+    if (error.response && error.response.status === 404) {
+      await interaction.editReply({ content: `Member with IGN "${ign}" not found.` });
+      return;
+    }
     await interaction.editReply({ content: `Error: ${error.message}` });
   }
 }
