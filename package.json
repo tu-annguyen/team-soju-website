@@ -13,8 +13,11 @@
   "scripts": {
     "dev:web": "npm run dev --workspace=@team-soju/web-app",
     "dev:api": "npm run dev --workspace=@team-soju/api-server",
+    "dev:bot": "npm run dev --workspace=@team-soju/discord-bot",
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:all": "concurrently \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:bot\"",
     "build": "npm run build --workspace=@team-soju/web-app",
+    "start:bot": "npm run start --workspace=@team-soju/discord-bot",
     "test:web": "npm run test --workspace=@team-soju/web-app -- --runInBand --coverage",
     "test:api": "npm run test --workspace=@team-soju/api-server -- --runInBand --coverage",
     "test": "concurrently \"npm run test:api\" \"npm run test:web\""
