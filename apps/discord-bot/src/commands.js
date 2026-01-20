@@ -14,14 +14,13 @@ const RANK_CHOICES = [
 ];
 
 const ENCOUNTER_TYPE_CHOICES = [
-  { name: 'Single', value: 'single' },
   { name: 'Horde', value: 'horde' },
-  { name: 'Safari', value: 'safari' },
+  { name: 'Single', value: 'single' },
   { name: 'Fishing', value: 'fishing' },
+  { name: 'Safari', value: 'safari' },
   { name: 'Egg', value: 'egg' },
-  { name: 'Gift', value: 'gift' },
-  { name: 'Trade', value: 'trade' },
-  { name: 'Event', value: 'event' },
+  { name: 'Mysterious Ball', value: 'mysterious_ball' },
+  { name: 'Gift/Event', value: 'gift' },
 ];
 
 const COMMANDS = [
@@ -98,10 +97,6 @@ const COMMANDS = [
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
-        .setRequired(false))
-    .addBooleanOption(option =>
-      option.setName('safari')
-        .setDescription('Is this a safari shiny?')
         .setRequired(false)),
 
   new SlashCommandBuilder()

@@ -12,7 +12,7 @@ const shinySchema = Joi.object({
   total_encounters: Joi.number().integer().min(0).default(0),
   species_encounters: Joi.number().integer().min(0).default(0),
   encounter_type: Joi.string().valid(
-    'single', 'horde', 'safari', 'fishing', 'egg', 'gift', 'trade', 'event'
+    'single', 'horde', 'safari', 'fishing', 'egg', 'gift', 'mysterious_ball'
   ).required(),
   location: Joi.string().max(100).optional(),
   nature: Joi.string().max(20).optional(),

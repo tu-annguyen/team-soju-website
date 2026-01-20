@@ -34,7 +34,7 @@ async function handleAddShiny(interaction) {
       species_encounters: encounters,
       encounter_type: encounterType,
       is_secret: isSecret,
-      is_safari: isSafari
+      is_safari: encounterType === 'Safari' ? true : isSafari
     }, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
