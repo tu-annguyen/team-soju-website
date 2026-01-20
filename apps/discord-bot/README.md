@@ -7,12 +7,10 @@ A Discord bot application for managing Team Soju members and tracking shiny Poke
 - **Member Management**: Add, edit, delete, and view team members
 - **Shiny Tracking**: Record and manage shiny Pokemon catches
 - **Statistics**: View team statistics and leaderboards
-- **Direct Database Access**: No API overhead - 10x faster responses
-- **Discord Best Practices**: Follows official Discord documentation
 
 ## Architecture
 
-This app uses the following structure (inspired by Discord's example app):
+This app uses the following structure:
 
 ```
 src/
@@ -55,6 +53,15 @@ src/
 
 3. **Ensure database is running**:
    The bot connects to the same database as the API server. Make sure the database is properly configured with all required tables and migrations applied.
+
+   Generate a JWT Secret at [https://jwtsecrets.com](https://jwtsecrets.com) and add it to `.env`:
+   ```env
+   JWT_SECRET=your-jwt-secret
+   ```
+   Generate a bot token by visiting [http://localhost:3001/generate-bot-token](http://localhost:3001/generate-bot-token) and add it to `.env`:
+   ```env
+   BOT_API_TOKEN=your-bot-token
+   ```
 
 ### Running the Bot
 
