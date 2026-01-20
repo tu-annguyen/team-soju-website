@@ -46,6 +46,7 @@ function getCommandHandlers(commandName) {
     'addmember': 'memberHandlers',
     'editmember': 'memberHandlers',
     'deletemember': 'memberHandlers',
+    'reactivatemember': 'memberHandlers',
     'member': 'memberHandlers',
     // Shiny commands
     'addshiny': 'shinyHandlers',
@@ -78,6 +79,7 @@ function getCommandHandler(commandName) {
     'addmember': 'handleAddMember',
     'editmember': 'handleEditMember',
     'deletemember': 'handleDeleteMember',
+    'reactivatemember': 'handleReactivateMember',
     'member': 'handleGetMember',
     'addshiny': 'handleAddShiny',
     'editshiny': 'handleEditShiny',

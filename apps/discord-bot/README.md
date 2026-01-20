@@ -58,7 +58,7 @@ src/
    ```env
    JWT_SECRET=your-jwt-secret
    ```
-   Generate a bot token by visiting [http://localhost:3001/generate-bot-token](http://localhost:3001/generate-bot-token) and add it to `.env`:
+   Generate a bot token for development by visiting [http://localhost:3001/generate-bot-token](http://localhost:3001/generate-bot-token) and add it to `.env`:
    ```env
    BOT_API_TOKEN=your-bot-token
    ```
@@ -121,6 +121,17 @@ Remove a team member (soft delete).
 **Example:**
 ```
 /deletemember ign:oldplayer
+```
+
+#### `/reactivatemember`
+Reactivate a previously removed team member.
+
+**Options:**
+- `ign` (required): IGN to reactivate
+
+**Example:**
+```
+/reactivatemember ign:oldplayer
 ```
 
 #### `/member`

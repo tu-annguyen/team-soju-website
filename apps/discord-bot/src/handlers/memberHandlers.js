@@ -116,6 +116,39 @@ async function handleDeleteMember(interaction) {
   }
 }
 
+async function handleReactivateMember(interaction) {
+  await interaction.deferReply();
+
+  const ign = interaction.options.getString('ign');
+
+  try {
+    const memberResponse = await axios.get(`${apiBaseUrl}/members/ign/inactive/${ign}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const member = memberResponse.data.data;
+
+    await axios.put(`${apiBaseUrl}/members/reactivate/${member.id}`, {}, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+
+    const embed = new EmbedBuilder()
+      .setColor(0x4CAF50)
+      .setTitle('Member Reactivated Successfully')
+      .addFields(
+        { name: 'IGN', value: member.ign, inline: true },
+        { name: 'Rank', value: member.rank, inline: true },
+        { name: 'Discord', value: member.discord_id ? `<@${member.discord_id}>` : 'Not linked', inline: true }
+      )
+      .setFooter({ text: `Member ID: ${member.id}` })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || error.message;
+    await interaction.editReply({ content: `Error: ${errorMessage}` });
+  }
+} 
+
 async function handleGetMember(interaction) {
   await interaction.deferReply();
 
@@ -156,5 +189,6 @@ module.exports = {
   handleAddMember,
   handleEditMember,
   handleDeleteMember,
+  handleReactivateMember,
   handleGetMember
 };

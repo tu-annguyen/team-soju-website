@@ -71,6 +71,14 @@ const COMMANDS = [
         .setRequired(true)),
 
   new SlashCommandBuilder()
+    .setName('reactivatemember')
+    .setDescription('Reactivate a previously removed team member')
+    .addStringOption(option =>
+      option.setName('ign')
+        .setDescription('IGN of the member to reactivate')
+        .setRequired(true)),
+
+  new SlashCommandBuilder()
     .setName('addshiny')
     .setDescription('Add a new shiny catch')
     .addStringOption(option =>
