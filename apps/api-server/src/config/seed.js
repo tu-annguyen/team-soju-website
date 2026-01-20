@@ -81,7 +81,7 @@ async function seedDatabase() {
     // JSON structure: [ { name: "<ign>", numOT: n, shinies: [ { name: "<pokemon>", imageUrl: "...", attribute: "safari"|"secret"|"" }, ... ] }, ... ]
     // We'll insert a row for each shiny with pokemon, original_trainer (id) and set is_safari / is_secret.
     // ---------------------------------------------------------------------
-    const showcasePath = path.resolve(__dirname, '../../../client/src/data/showcase.json');
+    const showcasePath = path.resolve(__dirname, '../../../web-app/src/data/showcase.json');
     if (fs.existsSync(showcasePath)) {
       console.log('Importing showcase shinies from', showcasePath);
       const showcaseData = JSON.parse(fs.readFileSync(showcasePath, 'utf8'));
@@ -95,6 +95,9 @@ async function seedDatabase() {
           continue;
         }
         const trainerId = tRes.rows[0].id;
+
+        // Clear existing shinies for this trainer before inserting new ones
+        await pool.query('DELETE FROM team_shinies WHERE original_trainer = $1', [trainerId]);
 
         if (!Array.isArray(trainer.shinies)) continue;
 
