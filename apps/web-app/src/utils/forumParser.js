@@ -44,7 +44,7 @@ exports.fetchShinyShowcase = fetchShinyShowcase;
  */
 var axios_1 = require("axios");
 var cheerio = require("cheerio");
-var forumUrl = 'https://forums.pokemmo.com/index.php?/topic/181636-team-soj%C3%BC-shiny-showcase/';
+var forumUrl = 'https://forums.pokemmo.com/index.php?/topic/195298-team-soj%C3%BC-shiny-showcase/';
 /**
  * Fetch and parse the shiny showcase forum post
  * @returns Promise<ShinyPokemon[]> Array of shiny Pokemon data
@@ -104,14 +104,20 @@ function fetchShinyShowcase() {
                                     attribute = 'secret';
                                     i++; // Skip the indicator image in the next loop
                                 }
-                                else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6')) {
+                                else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6') || nextSrc.includes('image') || nextSrc.includes('safariball')) {
                                     attribute = 'safari';
+                                    i++; // Skip the indicator image in the next loop
+                                }
+                                else if (nextSrc.includes('Es45AM5')) {
+                                    attribute = 'egg';
                                     i++; // Skip the indicator image in the next loop
                                 }
                                 // Only add if not a particle image itself
                                 if (pokemonName !== 'Secret_shiny_particle' &&
                                     pokemonName !== 'Ut7sagh' &&
-                                    pokemonName !== 'Image') {
+                                    pokemonName !== 'Image' &&
+                                    pokemonName !== 'Safari' &&
+                                    pokemonName !== 'Es45am5') {
                                     currentTrainer_1.shinies.push({ name: pokemonName, imageUrl: imageUrl, attribute: attribute });
                                 }
                             }

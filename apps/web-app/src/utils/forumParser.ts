@@ -6,7 +6,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
-const forumUrl = 'https://forums.pokemmo.com/index.php?/topic/181636-team-soj%C3%BC-shiny-showcase/';
+const forumUrl = 'https://forums.pokemmo.com/index.php?/topic/195298-team-soj%C3%BC-shiny-showcase/';
 
 export interface ShinyPokemon {
   name: string;
@@ -88,8 +88,11 @@ export async function fetchShinyShowcase(): Promise<Trainer[]> {
           if (nextSrc.includes('secret_shiny_particle')) {
             attribute = 'secret';
             i++; // Skip the indicator image in the next loop
-          } else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6')) {
+          } else if (nextSrc.includes('ut7SAgH') || nextSrc.includes('a9f43b3c7e1e30f4ca87500cabf014b6') || nextSrc.includes('image') || nextSrc.includes('safariball')) {
             attribute = 'safari';
+            i++; // Skip the indicator image in the next loop
+          } else if (nextSrc.includes('Es45AM5')) {
+            attribute = 'egg';
             i++; // Skip the indicator image in the next loop
           }
 
@@ -97,7 +100,9 @@ export async function fetchShinyShowcase(): Promise<Trainer[]> {
           if (
             pokemonName !== 'Secret_shiny_particle' &&
             pokemonName !== 'Ut7sagh' &&
-            pokemonName !== 'Image'
+            pokemonName !== 'Image' &&
+            pokemonName !== 'Safari' &&
+            pokemonName !== 'Es45am5'
           ) {
             currentTrainer.shinies.push({ name: pokemonName, imageUrl, attribute });
           }
