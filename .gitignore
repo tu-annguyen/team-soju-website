@@ -30,3 +30,6 @@ pnpm-debug.log*
 
 #ignore generated test files
 **/coverage/*
+
+#ignore Tesseract trained data
+*.traineddata
