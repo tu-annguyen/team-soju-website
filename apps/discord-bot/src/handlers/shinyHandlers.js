@@ -3,8 +3,10 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
-const TeamMember = require('../../../api-server/src/models/TeamMember');
-const TeamShiny = require('../../../api-server/src/models/TeamShiny');
+const axios = require('axios');
+
+const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
+const botToken = process.env.BOT_API_TOKEN;
 
 async function handleAddShiny(interaction) {
   await interaction.deferReply();
@@ -18,13 +20,12 @@ async function handleAddShiny(interaction) {
   const isSafari = interaction.options.getBoolean('safari') || false;
 
   try {
-    const trainer = await TeamMember.findByIgn(trainerIgn);
-    if (!trainer) {
-      await interaction.editReply({ content: `Trainer "${trainerIgn}" not found` });
-      return;
-    }
+    const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${trainerIgn}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const trainer = trainerResponse.data.data;
 
-    const shiny = await TeamShiny.create({
+    const shinyResponse = await axios.post(`${apiBaseUrl}/shinies`, {
       national_number: nationalNumber,
       pokemon: pokemon.toLowerCase(),
       original_trainer: trainer.id,
@@ -34,7 +35,10 @@ async function handleAddShiny(interaction) {
       encounter_type: encounterType,
       is_secret: isSecret,
       is_safari: isSafari
+    }, {
+      headers: { Authorization: `Bearer ${botToken}` }
     });
+    const shiny = shinyResponse.data.data;
 
     const embed = new EmbedBuilder()
       .setColor(isSecret ? 0xFFD700 : 0x4CAF50)
@@ -80,11 +84,10 @@ async function handleEditShiny(interaction) {
       return;
     }
 
-    const shiny = await TeamShiny.update(shinyId, updates);
-    if (!shiny) {
-      await interaction.editReply({ content: `Shiny with ID ${shinyId} not found` });
-      return;
-    }
+    const updateResponse = await axios.put(`${apiBaseUrl}/shinies/${shinyId}`, updates, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const shiny = updateResponse.data.data;
 
     const embed = new EmbedBuilder()
       .setColor(0x2196F3)
@@ -109,11 +112,10 @@ async function handleDeleteShiny(interaction) {
   const shinyId = interaction.options.getInteger('shiny_id');
 
   try {
-    const shiny = await TeamShiny.delete(shinyId);
-    if (!shiny) {
-      await interaction.editReply({ content: `Shiny with ID ${shinyId} not found` });
-      return;
-    }
+    const deleteResponse = await axios.delete(`${apiBaseUrl}/shinies/${shinyId}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const shiny = deleteResponse.data.data;
 
     const embed = new EmbedBuilder()
       .setColor(0xFF5722)
@@ -133,11 +135,10 @@ async function handleGetShiny(interaction) {
   const shinyId = interaction.options.getInteger('id');
 
   try {
-    const shiny = await TeamShiny.findById(shinyId);
-    if (!shiny) {
-      await interaction.editReply({ content: `Shiny with ID ${shinyId} not found` });
-      return;
-    }
+    const response = await axios.get(`${apiBaseUrl}/shinies/${shinyId}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const shiny = response.data.data;
 
     const embed = new EmbedBuilder()
       .setColor(shiny.is_secret ? 0xFFD700 : 0x4CAF50)
@@ -166,18 +167,21 @@ async function handleGetShinies(interaction) {
   const limit = interaction.options.getInteger('limit') || 10;
 
   try {
-    const filters = { limit };
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
 
     if (trainerIgn) {
-      const trainer = await TeamMember.findByIgn(trainerIgn);
-      if (!trainer) {
-        await interaction.editReply({ content: `Trainer "${trainerIgn}" not found` });
-        return;
-      }
-      filters.trainer_id = trainer.id;
+      const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${trainerIgn}`, {
+        headers: { Authorization: `Bearer ${botToken}` }
+      });
+      const trainer = trainerResponse.data.data;
+      params.append('trainer_id', trainer.id.toString());
     }
 
-    const shinies = await TeamShiny.findAll(filters);
+    const response = await axios.get(`${apiBaseUrl}/shinies?${params}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const shinies = response.data.data;
 
     if (shinies.length === 0) {
       await interaction.editReply({ content: 'No shinies found' });

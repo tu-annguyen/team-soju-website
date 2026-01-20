@@ -3,7 +3,10 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
-const TeamMember = require('../../../api-server/src/models/TeamMember');
+const axios = require('axios');
+
+const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
+const botToken = process.env.BOT_API_TOKEN;
 
 async function handleAddMember(interaction) {
   await interaction.deferReply();
@@ -13,11 +16,15 @@ async function handleAddMember(interaction) {
   const rank = interaction.options.getString('rank') || 'Trainer';
 
   try {
-    const member = await TeamMember.create({
+    const response = await axios.post(`${apiBaseUrl}/members`, {
       ign,
       discord_id: discordUser?.id,
       rank
+    }, {
+      headers: { Authorization: `Bearer ${botToken}` }
     });
+
+    const member = response.data.data;
 
     const embed = new EmbedBuilder()
       .setColor(0x4CAF50)
@@ -32,9 +39,7 @@ async function handleAddMember(interaction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    const errorMessage = error.code === '23505'
-      ? 'A member with this IGN or Discord ID already exists'
-      : error.message;
+    const errorMessage = error.response?.data?.message || error.message;
     await interaction.editReply({ content: `Error: ${errorMessage}` });
   }
 }
@@ -48,11 +53,10 @@ async function handleEditMember(interaction) {
   const rank = interaction.options.getString('rank');
 
   try {
-    const member = await TeamMember.findByIgn(ign);
-    if (!member) {
-      await interaction.editReply({ content: `Member "${ign}" not found` });
-      return;
-    }
+    const memberResponse = await axios.get(`${apiBaseUrl}/members/ign/${ign}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const member = memberResponse.data.data;
 
     const updates = {};
     if (newIgn) updates.ign = newIgn;
@@ -64,7 +68,10 @@ async function handleEditMember(interaction) {
       return;
     }
 
-    const updatedMember = await TeamMember.update(member.id, updates);
+    const updateResponse = await axios.put(`${apiBaseUrl}/members/${member.id}`, updates, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const updatedMember = updateResponse.data.data;
 
     const embed = new EmbedBuilder()
       .setColor(0x2196F3)
@@ -88,13 +95,14 @@ async function handleDeleteMember(interaction) {
   const ign = interaction.options.getString('ign');
 
   try {
-    const member = await TeamMember.findByIgn(ign);
-    if (!member) {
-      await interaction.editReply({ content: `Member "${ign}" not found` });
-      return;
-    }
+    const memberResponse = await axios.get(`${apiBaseUrl}/members/ign/${ign}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const member = memberResponse.data.data;
 
-    await TeamMember.delete(member.id);
+    await axios.delete(`${apiBaseUrl}/members/${member.id}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
 
     const embed = new EmbedBuilder()
       .setColor(0xFF5722)
@@ -114,11 +122,10 @@ async function handleGetMember(interaction) {
   const ign = interaction.options.getString('ign');
 
   try {
-    const member = await TeamMember.findByIgn(ign);
-    if (!member) {
-      await interaction.editReply({ content: `Member "${ign}" not found` });
-      return;
-    }
+    const response = await axios.get(`${apiBaseUrl}/members/ign/${ign}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const member = response.data.data;
 
     const embed = new EmbedBuilder()
       .setColor(0x2196F3)

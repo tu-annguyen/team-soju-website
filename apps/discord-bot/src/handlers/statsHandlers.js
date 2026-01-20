@@ -3,8 +3,10 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
-const TeamMember = require('../../../api-server/src/models/TeamMember');
-const TeamShiny = require('../../../api-server/src/models/TeamShiny');
+const axios = require('axios');
+
+const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
+const botToken = process.env.BOT_API_TOKEN;
 
 async function handleLeaderboard(interaction) {
   await interaction.deferReply();
@@ -12,7 +14,10 @@ async function handleLeaderboard(interaction) {
   const limit = interaction.options.getInteger('limit') || 10;
 
   try {
-    const leaderboard = await TeamShiny.getTopTrainers(limit);
+    const response = await axios.get(`${apiBaseUrl}/shinies/leaderboard?limit=${limit}`, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const leaderboard = response.data.data;
 
     if (leaderboard.length === 0) {
       await interaction.editReply({ content: 'No data available for leaderboard' });
@@ -40,10 +45,17 @@ async function handleStats(interaction) {
   await interaction.deferReply();
 
   try {
-    const [stats, members] = await Promise.all([
-      TeamShiny.getStats(),
-      TeamMember.findAll()
+    const [statsResponse, membersResponse] = await Promise.all([
+      axios.get(`${apiBaseUrl}/shinies/stats`, {
+        headers: { Authorization: `Bearer ${botToken}` }
+      }),
+      axios.get(`${apiBaseUrl}/members`, {
+        headers: { Authorization: `Bearer ${botToken}` }
+      })
     ]);
+
+    const stats = statsResponse.data.data;
+    const members = membersResponse.data.data;
 
     const totalShinies = stats.reduce((sum, stat) => sum + parseInt(stat.count_by_type || 0), 0);
     const secretShinies = stats.reduce((sum, stat) => sum + parseInt(stat.secret_shinies || 0), 0);
