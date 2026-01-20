@@ -108,6 +108,27 @@ const COMMANDS = [
         .setRequired(false)),
 
   new SlashCommandBuilder()
+    .setName('addshinyscreenshot')
+    .setDescription('Add a shiny using a screenshot')
+    .addAttachmentOption(option =>
+      option.setName('screenshot')
+        .setDescription('Picture of the shiny\'s share screen')
+        .setRequired(true))
+    .addBooleanOption(option =>
+      option.setName('date_is_mdy')
+        .setDescription('Is the date format in MM/DD/YY? (default is DD/MM/YY)')
+        .setRequired(false))
+    .addStringOption(option =>
+      option.setName('encounter_type')
+        .setDescription('How was it encountered?')
+        .setRequired(false)
+        .addChoices(...ENCOUNTER_TYPE_CHOICES))
+    .addBooleanOption(option =>
+      option.setName('secret')
+        .setDescription('Is this a secret shiny?')
+        .setRequired(false)),
+
+  new SlashCommandBuilder()
     .setName('editshiny')
     .setDescription('Edit an existing shiny entry')
     .addStringOption(option =>
