@@ -67,10 +67,12 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 - `GET /api/members` - Get all team members
 - `GET /api/members/:id` - Get member by ID
 - `GET /api/members/ign/:ign` - Get member by IGN
+- `GET /api/members/ign/inactive/:ign` - Get member by IGN (including inactive members)
 - `GET /api/members/discord/:discordId` - Get member by Discord ID
 - `POST /api/members` - Create new member
 - `PUT /api/members/:id` - Update member
 - `DELETE /api/members/:id` - Deactivate member
+- `PUT /api/members/reactivate/:id` - Reactivate member
 - `GET /api/members/:id/stats` - Get member's shiny statistics
 
 ### Team Shinies
@@ -91,40 +93,6 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 - `is_secret` - Filter secret shinies (true/false)
 - `is_safari` - Filter safari shinies (true/false)
 - `limit` - Limit number of results
-
----
-
-## Discord Bot Commands
-
-The bot provides comprehensive slash commands for managing team data:
-
-### Member Management
-- `/addmember <ign> [discord] [rank]` - Add a new team member
-- `/editmember <ign> [new_ign] [discord] [rank]` - Edit an existing member
-- `/deletemember <ign>` - Remove a team member
-- `/member <ign>` - Get member information
-
-### Shiny Management
-- `/addshiny <trainer> <pokemon> <pokedex_number> <encounter_type> [encounters] [secret] [safari]` - Add a shiny catch
-- `/editshiny <shiny_id> [pokemon] [pokedex_number] [encounter_type] [encounters] [secret] [safari]` - Edit a shiny entry
-- `/deleteshiny <shiny_id>` - Delete a shiny entry
-- `/shiny <id>` - Get specific shiny information
-- `/shinies [trainer] [limit]` - List recent shinies
-
-### Statistics
-- `/leaderboard [limit]` - Show shiny leaderboard
-- `/stats` - Show team statistics
-
-### Starting the Discord Bot
-
-```bash
-# Make sure your .env has DISCORD_TOKEN, DISCORD_CLIENT_ID, and DISCORD_GUILD_ID
-node src/discord/bot.js
-```
-
-For detailed bot documentation, see [src/discord/README.md](src/discord/README.md)
-
----
 
 ## Database Schema
 
@@ -151,6 +119,11 @@ The API uses JWT tokens for Discord bot authentication. Generate a token for dev
 ```bash
 # Visit http://localhost:3001/generate-bot-token (development only)
 curl http://localhost:3001/generate-bot-token
+```
+
+Add this token to the root `.env` file:
+```env
+BOT_API_TOKEN=your-bot-token
 ```
 
 ---
@@ -220,7 +193,6 @@ backend/
 │   │   └── schema.sql    # Database schema
 │   ├── routes/           # API route handlers
 │   ├── middleware/       # Authentication and other middleware
-│   ├── discord/          # Discord bot implementation
 │   └── server.js         # Main server file
 ├── test/                 # Backend Jest tests
 ├── package.json

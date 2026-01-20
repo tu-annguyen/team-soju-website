@@ -83,6 +83,35 @@ router.get('/ign/:ign', async (req, res) => {
   }
 });
 
+// GET /api/members/ign/inactive/:ign - Get member by IGN including inactive
+router.get('/ign/inactive/:ign', async (req, res) => {
+  try {
+    const member = await TeamMember.findByIgnIncludingInactive(req.params.ign);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Team member not found'
+      });
+    }
+    if (member.is_active) {
+      return res.status(400).json({
+        success: false,
+        message: 'Team member is already active'
+      });
+    }
+    res.json({
+      success: true,
+      data: member
+    });
+  } catch (error) {
+    console.error('Error fetching member:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch team member'
+    });
+  }
+});
+
 // GET /api/members/discord/:discordId - Get member by Discord ID
 router.get('/discord/:discordId', async (req, res) => {
   try {
@@ -193,6 +222,30 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete team member'
+    });
+  }
+});
+
+// PUT /api/members/reactivate/:id - Reactivate team member
+router.put('/reactivate/:id', async (req, res) => {
+  try {
+    const member = await TeamMember.reactivate(req.params.id);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Team member not found'
+      });
+    }
+    res.json({
+      success: true,
+      data: member,
+      message: 'Team member reactivated successfully'
+    });
+  } catch (error) {
+    console.error('Error reactivating member:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reactivate team member'
     });
   }
 });

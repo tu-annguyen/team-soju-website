@@ -38,6 +38,18 @@ class TeamMember {
     return result.rows[0];
   }
 
+  static async findByIgnIncludingInactive(ign) {
+    const result = await pool.query(`
+      SELECT tm.*, 
+             COUNT(ts.id) as shiny_count
+      FROM team_members tm
+      LEFT JOIN team_shinies ts ON tm.id = ts.original_trainer
+      WHERE LOWER(tm.ign) = LOWER($1)
+      GROUP BY tm.id
+    `, [ign]);
+    return result.rows[0];
+  }
+
   static async findByDiscordId(discordId) {
     const result = await pool.query(`
       SELECT tm.*, 
@@ -80,6 +92,17 @@ class TeamMember {
     const result = await pool.query(`
       UPDATE team_members 
       SET is_active = false
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+    return result.rows[0];
+  }
+
+  static async reactivate(id) {
+    // Reactivate member by setting is_active to true
+    const result = await pool.query(`
+      UPDATE team_members 
+      SET is_active = true
       WHERE id = $1
       RETURNING *
     `, [id]);
