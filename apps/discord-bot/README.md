@@ -173,7 +173,7 @@ Update an existing shiny entry.
 
 **Example:**
 ```
-/editshiny shiny_id:42 encounters:2000 secret:true
+/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 encounters:2000 secret:true
 ```
 
 #### `/deleteshiny`
@@ -184,7 +184,7 @@ Delete a shiny entry.
 
 **Example:**
 ```
-/deleteshiny shiny_id:42
+/deleteshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817
 ```
 
 #### `/shiny`
@@ -195,7 +195,7 @@ View details about a specific shiny.
 
 **Example:**
 ```
-/shiny id:42
+/shiny id:4f645599-a184-4f17-97f5-a8ccd18f2817
 ```
 
 #### `/shinies`
