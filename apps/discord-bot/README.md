@@ -41,6 +41,7 @@ src/
 2. **Configure environment**:
    Copy `.env.example` to `.env`:
    ```bash
+   # Run at project root
    cp .env.example .env
    ```
 
@@ -58,6 +59,13 @@ src/
    ```env
    JWT_SECRET=your-jwt-secret
    ```
+
+   Start the api server
+   ```bash
+   # Run at project root
+   npm run dev:api
+   ```
+
    Generate a bot token for development by visiting [http://localhost:3001/generate-bot-token](http://localhost:3001/generate-bot-token) and add it to `.env`:
    ```env
    BOT_API_TOKEN=your-bot-token

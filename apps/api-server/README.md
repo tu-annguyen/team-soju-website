@@ -33,6 +33,7 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 
 2. **Environment Configuration**:
    ```bash
+   # Run at project root
    cp .env.example .env
    # Edit .env with your database and Discord credentials
    ```
