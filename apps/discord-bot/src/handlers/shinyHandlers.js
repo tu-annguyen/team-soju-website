@@ -79,7 +79,6 @@ async function handleAddShinyScreenshot(interaction) {
     console.log('OCR Result:', text);
     // Parse the OCR text to extract shiny details
     data = parseDataFromOcr(text, isMDY);
-    console.log('Parsed Data:', data);
   }).catch(error => {
     console.error('OCR Error:', error);
     throw error;
@@ -98,20 +97,32 @@ async function handleAddShinyScreenshot(interaction) {
     });
     const trainer = trainerResponse.data.data;
 
+    console.log('Parsed Data:', data);
+
     const shinyResponse = await axios.post(`${apiBaseUrl}/shinies`, {
       national_number: nationalNumber,
       pokemon: data.name,
       original_trainer: trainer.id,
       catch_date: data.date,
-      total_encounters: data.total_encounters,
-      species_encounters: data.species_encounters,
+      total_encounters: data.totalEncounters,
+      species_encounters: data.speciesEncounters,
       encounter_type: encounterType,
+      nature: data.nature,
+      iv_hp: data.hp,
+      iv_attack: data.atk,
+      iv_defense: data.def,
+      iv_sp_attack: data.spa,
+      iv_sp_defense: data.spd,
+      iv_speed: data.spe,
       is_secret: isSecret,
-      is_safari: encounterType === 'Safari' ? true : isSafari 
+      is_safari: encounterType === 'safari' ? true : isSafari,
+      screenshot_url: screenshotUrl,
     }, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const shiny = shinyResponse.data.data;
+
+    console.log('Shiny Created:', shiny);
 
     const embed = new EmbedBuilder()
       .setColor(isSecret ? 0xFFD700 : 0x4CAF50)
@@ -120,8 +131,8 @@ async function handleAddShinyScreenshot(interaction) {
         { name: 'Trainer', value: data.trainer, inline: true },
         { name: 'Pokemon', value: `${data.name} (#${nationalNumber})`, inline: true },
         { name: 'Encounter Type', value: encounterType, inline: true },
-        { name: 'Encounters', value: data.total_encounters?.toString() || '0', inline: true },
-        { name: 'Special', value: isSecret ? 'Secret' : (isSafari ? 'Safari' : 'None'), inline: true }
+        { name: 'Encounters', value: data.totalEncounters.toString() || '0', inline: true },
+        { name: 'Special', value: isSecret ? 'Secret' : (encounterType === 'safari' ? 'Safari' : 'None'), inline: true }
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
       .setTimestamp();
