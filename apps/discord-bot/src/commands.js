@@ -23,6 +23,34 @@ const ENCOUNTER_TYPE_CHOICES = [
   { name: 'Gift/Event', value: 'gift' },
 ];
 
+const NATURE_CHOICES = [
+  { name: 'Hardy', value: 'Hardy' },
+  { name: 'Lonely', value: 'Lonely' },
+  { name: 'Brave', value: 'Brave' },
+  { name: 'Adamant', value: 'Adamant' },
+  { name: 'Naughty', value: 'Naughty' },
+  { name: 'Bold', value: 'Bold' },
+  { name: 'Docile', value: 'Docile' },
+  { name: 'Relaxed', value: 'Relaxed' },
+  { name: 'Impish', value: 'Impish' },
+  { name: 'Lax', value: 'Lax' },
+  { name: 'Timid', value: 'Timid' },
+  { name: 'Hasty', value: 'Hasty' },
+  { name: 'Serious', value: 'Serious' },
+  { name: 'Jolly', value: 'Jolly' },
+  { name: 'Naive', value: 'Naive' },
+  { name: 'Modest', value: 'Modest' },
+  { name: 'Mild', value: 'Mild' },
+  { name: 'Quiet', value: 'Quiet' },
+  { name: 'Bashful', value: 'Bashful' },
+  { name: 'Rash', value: 'Rash' },
+  { name: 'Calm', value: 'Calm' },
+  { name: 'Gentle', value: 'Gentle' },
+  { name: 'Sassy', value: 'Sassy' },
+  { name: 'Careful', value: 'Careful' },
+  { name: 'Quirky', value: 'Quirky' },
+];
+
 const COMMANDS = [
   new SlashCommandBuilder()
     .setName('addmember')
@@ -94,17 +122,58 @@ const COMMANDS = [
         .setDescription('Pokemon Pokedex number')
         .setRequired(true))
     .addStringOption(option =>
+      option.setName('original_trainer')
+        .setDescription('Original trainer IGN')
+        .setRequired(true))
+    .addStringOption(option =>
       option.setName('encounter_type')
         .setDescription('How was it encountered?')
         .setRequired(true)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
-    .addIntegerOption(option =>
-      option.setName('encounters')
-        .setDescription('Total encounters')
-        .setRequired(false))
+    .addStringOption(option =>
+      option.setName('catch_date')
+        .setDescription('Date of catch (YYYY-MM-DD)')
+        .setRequired(true))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('total_encounters')
+        .setDescription('Total encounters')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('species_encounters')
+        .setDescription('Species encounters')
+        .setRequired(false))
+    .addStringOption(option =>
+      option.setName('nature')
+        .setDescription('Nature of the Pokemon')
+        .setRequired(false)
+        .addChoices(...NATURE_CHOICES))
+    .addIntegerOption(option =>
+      option.setName('iv_hp')
+        .setDescription('HP IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_attack')
+        .setDescription('ATK IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_defense')
+        .setDescription('DEF IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_sp_attack')
+        .setDescription('SPATK IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_sp_defense')
+        .setDescription('SPDEF IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_speed')
+        .setDescription('SPEED IV of the Pokemon')
         .setRequired(false)),
 
   new SlashCommandBuilder()
@@ -148,17 +217,50 @@ const COMMANDS = [
         .setDescription('Encounter type')
         .setRequired(false)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
-    .addIntegerOption(option =>
-      option.setName('encounters')
-        .setDescription('Total encounters')
-        .setRequired(false))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
         .setRequired(false))
-    .addBooleanOption(option =>
-      option.setName('safari')
-        .setDescription('Is this a safari shiny?')
+    .addIntegerOption(option =>
+      option.setName('total_encounters')
+        .setDescription('Total encounters')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('species_encounters')
+        .setDescription('Species encounters')
+        .setRequired(false))
+    .addStringOption(option =>
+      option.setName('nature')
+        .setDescription('Nature of the Pokemon')
+        .setRequired(false)
+        .addChoices(...NATURE_CHOICES))
+    .addStringOption(option =>
+      option.setName('ivs')
+        .setDescription('Comma-separated IVs in the order: HP, ATK, DEF, SPATK, SPDEF, SPEED')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_hp')
+        .setDescription('HP IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_attack')
+        .setDescription('ATK IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_defense')
+        .setDescription('DEF IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_sp_attack')
+        .setDescription('SPATK IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_sp_defense')
+        .setDescription('SPDEF IV of the Pokemon')
+        .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('iv_speed')
+        .setDescription('SPEED IV of the Pokemon')
         .setRequired(false)),
 
   new SlashCommandBuilder()
