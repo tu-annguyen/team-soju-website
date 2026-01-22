@@ -151,32 +151,39 @@ function parseDataFromOcr(text, isMDY = false) {
     return null;
   })();
 
-  let hp = 0;
-  let atk = 0;
-  let def = 0;
-  let spa = 0;
-  let spd = 0;
-  let spe = 0;
+  let hp = null;
+  let atk = null;
+  let def = null;
+  let spa = null;
+  let spd = null;
+  let spe = null;
 
-  const statSpread = /([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])\/([0-9]|[12][0-9]|3[01])+/m.exec(text);
-  const parts = statSpread?.[0].split('/').map(p => Number(p));
-  console.log(statSpread);
-  console.log("Parts: " + parts);
-
-  if (parts?.length === 6 && parts?.every(n => Number.isFinite(n) && n >= 0 && n <= 31)) {
-    console.log(parts); // [19,12,13,14,15,18]
-    hp = parts[0];
-    atk = parts[1];
-    def = parts[2];
-    spa = parts[3];
-    spd = parts[4];
-    spe = parts[5];
-  } else {
-    console.log('Invalid format or values out of range');
+  // Find IVs line and extract numbers
+  const ivLine = lines.find(l => l.toLowerCase().includes('iv'));
+  if (ivLine) {
+    const parts = ivLine.split('/');
+    const numbers = [];
+    for (const part of parts) {
+      const cleaned = part.replace(/[^0-9]/g, '');
+      const num = parseInt(cleaned, 10);
+      if (!isNaN(num) && num >= 0 && num <= 31) {
+        numbers.push(num);
+      } else if (!isNaN(num) && num > 31 && cleaned.length === 3) {
+        // Try to split 3-digit number into two 2-digit
+        const a = parseInt(cleaned.slice(0, 2), 10);
+        const b = parseInt(cleaned.slice(2), 10);
+        if (a >= 0 && a <= 31 && b >= 0 && b <= 31) {
+          numbers.push(a, b);
+        }
+      }
+    }
+    if (numbers.length >= 6) {
+      [hp, atk, def, spa, spd, spe] = numbers.slice(0, 6);
+    }
   }
 
   const nature = (() => {
-    const m = /Nature:\s+([A-Za-z]+)/i.exec(text);
+    const m = /N?atu?r?e?:\s+([A-Za-z]+)/i.exec(text);
     if (m?.[1]) return m[1].trim();
     return null;
   })();
@@ -215,6 +222,66 @@ async function getNationalNumber(pokemon) {
   }
 }
 
+/**
+ * Validates parsed OCR data
+ * @param {object} data - Parsed data from OCR
+ * @returns {object} { isValid: boolean, error: string }
+ */
+function validateParsedData(data) {
+  const validNatures = [
+    'Hardy', 'Lonely', 'Adamant', 'Naughty', 'Brave', 'Bold', 'Docile', 'Impish', 'Lax', 'Relaxed',
+    'Modest', 'Mild', 'Bashful', 'Rash', 'Quiet', 'Calm', 'Gentle', 'Careful', 'Quirky', 'Sassy',
+    'Timid', 'Hasty', 'Jolly', 'Naive', 'Serious'
+  ];
+
+  // Check Pokemon name
+  if (!data.name || typeof data.name !== 'string' || data.name.trim() === '') {
+    return { isValid: false, error: 'Pokemon name is missing or invalid.' };
+  }
+
+  // Check date
+  if (!data.date || !(data.date instanceof Date) || isNaN(data.date)) {
+    return { isValid: false, error: 'Date is missing or invalid.' };
+  }
+
+  // Check IVs
+  const ivs = [data.hp, data.atk, data.def, data.spa, data.spd, data.spe];
+  if (ivs.some(iv => typeof iv !== 'number' || iv < 0 || iv > 31 || !Number.isInteger(iv))) {
+    return { isValid: false, error: 'IVs must be 6 integers between 0 and 31.' };
+  }
+
+  // Check encounters
+  if (data.totalEncounters !== null && (typeof data.totalEncounters !== 'number' || !Number.isInteger(data.totalEncounters) || data.totalEncounters < 0)) {
+    return { isValid: false, error: 'Total encounters must be a non-negative integer.' };
+  }
+  if (data.speciesEncounters !== null && (typeof data.speciesEncounters !== 'number' || !Number.isInteger(data.speciesEncounters) || data.speciesEncounters < 0)) {
+    return { isValid: false, error: 'Species encounters must be a non-negative integer.' };
+  }
+
+  // Check nature
+  if (data.nature && !validNatures.includes(data.nature)) {
+    return { isValid: false, error: `Nature "${data.nature}" is not valid. Valid natures: ${validNatures.join(', ')}.` };
+  }
+
+  return { isValid: true, error: null };
+}
+
+/**
+ * 
+ * @param {*} pokemonId national pokedex number of the pokemon
+ * @returns a URL to the Gen V animated shiny sprite associated with the pokemonId
+ */
+async function getSpriteUrl(pokemonId) {
+  try {
+    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
+    const data = await response.json();
+    return data.sprites.versions["generation-v"]["black-white"].animated.front_shiny;
+  } catch (err) {
+    console.error(`Error fetching data for Pokémon "${pokemonId}":`, err.message || err);
+    return null;
+  }
+}
+
 module.exports = {
   API_ENDPOINT,
   registerSlashCommands,
@@ -222,5 +289,7 @@ module.exports = {
   getCommandHandler,
   validateEnvironment,
   parseDataFromOcr,
-  getNationalNumber
+  validateParsedData,
+  getNationalNumber,
+  getSpriteUrl
 };

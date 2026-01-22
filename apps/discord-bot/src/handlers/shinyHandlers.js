@@ -5,7 +5,8 @@
 const { EmbedBuilder, WebhookClient } = require('discord.js');
 const axios = require('axios');
 const Tesseract = require('tesseract.js');
-const { parseDataFromOcr, getNationalNumber } = require('../utils');
+const sharp = require('sharp');
+const { parseDataFromOcr, validateParsedData, getNationalNumber, getSpriteUrl } = require('../utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;
@@ -71,18 +72,48 @@ async function handleAddShinyScreenshot(interaction) {
   const isSafari = interaction.options.getBoolean('safari') || false;
 
   let data = {};
+
+  // Download and preprocess the image for better OCR
+  const imageResponse = await axios.get(screenshotUrl, { responseType: 'arraybuffer' });
+  const imageBuffer = Buffer.from(imageResponse.data);
+  const processedBuffer = await sharp(imageBuffer)
+    .greyscale()
+    .normalise() // Enhance contrast
+    .threshold(128) // Convert to binary for clearer text
+    .sharpen({ sigma: 1 }) // Sharpen the image
+    .toBuffer();
+
+  let ocrText;
   await Tesseract.recognize(
-    screenshotUrl,
+    processedBuffer,
     'eng',
-    { logger: m => console.log(m) }
+    { 
+      logger: m => console.log(m),
+      tessedit_pageseg_mode: '6',
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/°: -_—'
+    }
   ).then(async ({ data: { text } }) => {
-    console.log('OCR Result:', text);
-    // Parse the OCR text to extract shiny details
-    data = parseDataFromOcr(text, isMDY);
+    ocrText = text;
   }).catch(error => {
     console.error('OCR Error:', error);
     throw error;
   });
+
+  if (!ocrText) {
+    await interaction.editReply({ content: 'Failed to perform OCR on the image.' });
+    return;
+  }
+
+  console.log('OCR Result:', ocrText);
+  // Parse the OCR text to extract shiny details
+  data = parseDataFromOcr(ocrText, isMDY);
+
+  // Validate the parsed data
+  const validation = validateParsedData(data);
+  if (!validation.isValid) {
+    await interaction.editReply({ content: `OCR validation failed: ${validation.error}. Try uploading a desktop screenshot or adding the shiny manually.` });
+    return;
+  }
 
   let nationalNumber;
   try {
@@ -225,14 +256,7 @@ async function handleGetShiny(interaction) {
     });
     const shiny = response.data.data;
 
-    let spriteUrl;
-    try {
-      const pokeapiResponse = await axios.get(`https://pokeapi.co/api/v2/pokemon/${shiny.national_number}`);
-      spriteUrl = pokeapiResponse.data.sprites.versions["generation-v"]["black-white"].animated.front_shiny;
-    } catch (error) {
-      spriteUrl = null;
-      console.error('Error fetching sprite from PokeAPI:', error);
-    }
+    let spriteUrl = await getSpriteUrl(shiny.national_number);
 
     // Format encounters string
     let encountersString;
@@ -254,17 +278,14 @@ async function handleGetShiny(interaction) {
         ...[
           shiny.catch_date ? { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true } : null,
           shiny.encounter_type ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
+          shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
           shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
           encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
-          shiny.iv_hp && shiny.iv_attack && shiny.iv_defense && shiny.iv_sp_attack && shiny.iv_sp_defense && shiny.iv_speed ? { name: 'IVs', value: `${shiny.iv_hp} HP/${shiny.iv_attack} Atk/${shiny.iv_defense} Def/${shiny.iv_sp_attack} SpA/${shiny.iv_sp_defense} SpD/${shiny.iv_speed} Spe`, inline: false } : null,
+          shiny.iv_hp && shiny.iv_attack && shiny.iv_defense && shiny.iv_sp_attack && shiny.iv_sp_defense && shiny.iv_speed ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: `${shiny.iv_hp}/${shiny.iv_attack}/${shiny.iv_defense}/${shiny.iv_sp_attack}/${shiny.iv_sp_defense}/${shiny.iv_speed}`, inline: false } : null,
         ].filter(Boolean),
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
       .setTimestamp();
-
-    if (shiny.is_secret) {
-      embed.addFields({ name: 'Secret Shiny', value: '✅', inline: true });
-    }
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
