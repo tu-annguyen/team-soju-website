@@ -127,6 +127,7 @@ async function handleAddShinyScreenshot(interaction) {
     const embed = new EmbedBuilder()
       .setColor(isSecret ? 0xFFD700 : 0x4CAF50)
       .setTitle(`${isSecret ? 'Secret ' : ''}Shiny Added!`)
+      .setImage(screenshotUrl)
       .addFields(
         { name: 'Trainer', value: data.trainer, inline: true },
         { name: 'Pokemon', value: `${data.name} (#${nationalNumber})`, inline: true },
