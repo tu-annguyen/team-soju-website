@@ -198,6 +198,7 @@ router.delete('/:id', async (req, res) => {
 
     res.json({
       success: true,
+      data: shiny,
       message: 'Shiny entry deleted successfully'
     });
   } catch (error) {
