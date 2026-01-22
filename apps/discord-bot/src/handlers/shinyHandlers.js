@@ -2,7 +2,7 @@
  * Shiny command handlers
  */
 
-const { EmbedBuilder, WebhookClient } = require('discord.js');
+const { EmbedBuilder, codeBlock } = require('discord.js');
 const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
@@ -111,7 +111,8 @@ async function handleAddShinyScreenshot(interaction) {
   // Validate the parsed data
   const validation = validateParsedData(data);
   if (!validation.isValid) {
-    await interaction.editReply({ content: `OCR validation failed: ${validation.error}. Try uploading a desktop screenshot or adding the shiny manually.` });
+    const ocrCodeblock = codeBlock(ocrText);
+    await interaction.editReply({ content: `OCR validation failed: ${validation.error}\nOCR result:\n${ocrCodeblock}\nTry uploading a desktop screenshot or adding the shiny manually.` });
     return;
   }
 
