@@ -2,7 +2,7 @@
  * Shiny command handlers
  */
 
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, WebhookClient } = require('discord.js');
 const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const { parseDataFromOcr, getNationalNumber } = require('../utils');
@@ -225,19 +225,46 @@ async function handleGetShiny(interaction) {
     });
     const shiny = response.data.data;
 
+    let spriteUrl;
+    try {
+      const pokeapiResponse = await axios.get(`https://pokeapi.co/api/v2/pokemon/${shiny.national_number}`);
+      spriteUrl = pokeapiResponse.data.sprites.versions["generation-v"]["black-white"].animated.front_shiny;
+    } catch (error) {
+      spriteUrl = null;
+      console.error('Error fetching sprite from PokeAPI:', error);
+    }
+
+    // Format encounters string
+    let encountersString;
+    if (shiny.total_encounters === 0) {
+      encountersString = null;
+    } else if (shiny.species_encounters === 0) {
+      encountersString = `${shiny.total_encounters}`;
+    } else {
+      encountersString = `${shiny.total_encounters} Total (${shiny.species_encounters} ${shiny.pokemon})`;
+    }
+    
     const embed = new EmbedBuilder()
       .setColor(shiny.is_secret ? 0xFFD700 : 0x4CAF50)
       .setTitle(`${shiny.pokemon} (#${shiny.national_number})`)
+      .setThumbnail(spriteUrl || null)
+      .setImage(shiny.screenshot_url)
       .addFields(
-        { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
-        { name: 'Encounter Type', value: shiny.encounter_type || 'N/A', inline: true },
-        { name: 'Encounters', value: shiny.total_encounters?.toString() || 'N/A', inline: true },
-        { name: 'Secret', value: shiny.is_secret ? 'Yes' : 'No', inline: true },
-        { name: 'Safari', value: shiny.is_safari ? 'Yes' : 'No', inline: true }
+          { name: 'Trainer', value: shiny.trainer_name, inline: true },
+        ...[
+          shiny.catch_date ? { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true } : null,
+          shiny.encounter_type ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
+          shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
+          encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
+          shiny.iv_hp && shiny.iv_attack && shiny.iv_defense && shiny.iv_sp_attack && shiny.iv_sp_defense && shiny.iv_speed ? { name: 'IVs', value: `${shiny.iv_hp} HP/${shiny.iv_attack} Atk/${shiny.iv_defense} Def/${shiny.iv_sp_attack} SpA/${shiny.iv_sp_defense} SpD/${shiny.iv_speed} Spe`, inline: false } : null,
+        ].filter(Boolean),
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
       .setTimestamp();
+
+    if (shiny.is_secret) {
+      embed.addFields({ name: 'Secret Shiny', value: '✅', inline: true });
+    }
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
