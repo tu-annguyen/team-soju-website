@@ -169,8 +169,6 @@ async function handleAddShinyScreenshot(interaction) {
     });
     const shiny = shinyResponse.data.data;
 
-    console.log('Shiny Created:', shiny);
-
     const embed = new EmbedBuilder()
       .setColor(isSecret ? 0xFFD700 : 0x4CAF50)
       .setTitle(`${isSecret ? 'Secret ' : ''}Shiny Added!`)
@@ -217,7 +215,7 @@ async function handleEditShiny(interaction) {
     if (pokemon) updates.pokemon = pokemon;
     if (nationalNumber) updates.national_number = nationalNumber;
     if (originalTrainer) updates.original_trainer = originalTrainer;
-    if (catchDate) updates.catch_date = catchDate;
+    if (catchDate) updates.catch_date = new Date(catchDate).toISOString().split('T')[0];
     if (encounterType) updates.encounter_type = encounterType;
     if (isSecret) updates.is_secret = isSecret;
     if (totalEncounters) updates.total_encounters = totalEncounters;
@@ -239,12 +237,12 @@ async function handleEditShiny(interaction) {
         throw new Error('IVs must be a comma-separated list of 6 integers.');
       }
     }
-    if (ivHp) updates.iv_hp = ivHp;
-    if (ivAttack) updates.iv_attack = ivAttack;
-    if (ivDefense) updates.iv_defense = ivDefense;
-    if (ivSpAttack) updates.iv_sp_attack = ivSpAttack;
-    if (ivSpDefense) updates.iv_sp_defense = ivSpDefense;
-    if (ivSpeed) updates.iv_speed = ivSpeed;
+    if (ivHp !== null) updates.iv_hp = ivHp;
+    if (ivAttack !== null) updates.iv_attack = ivAttack;
+    if (ivDefense !== null) updates.iv_defense = ivDefense;
+    if (ivSpAttack !== null) updates.iv_sp_attack = ivSpAttack;
+    if (ivSpDefense !== null) updates.iv_sp_defense = ivSpDefense;
+    if (ivSpeed !== null) updates.iv_speed = ivSpeed;
 
     if (Object.keys(updates).length === 0) {
       await interaction.editReply({ content: 'No updates provided' });
@@ -256,21 +254,31 @@ async function handleEditShiny(interaction) {
     });
     const shiny = updateResponse.data.data;
 
+    console.log('Shiny Edited:', shiny);
+
+    let spriteUrl = null;
+    try {
+      spriteUrl = await getSpriteUrl(shiny.national_number);
+    } catch (spriteError) {
+      console.error('Error fetching sprite:', spriteError.message);
+    }
+
     const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
 
     const embed = new EmbedBuilder()
       .setColor(0x2196F3)
       .setTitle('Shiny Updated Successfully')
+      .setThumbnail(spriteUrl || null)
       .addFields(
         { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
         { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Catch Date', value: shiny.catch_date, inline: true },
+        { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
         ...[
           encounterType ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
           isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
           encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
           nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
-          (ivHp && ivAttack && ivDefense && ivSpAttack && ivSpDefense && ivSpeed) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: `${shiny.iv_hp}/${shiny.iv_attack}/${shiny.iv_defense}/${shiny.iv_sp_attack}/${shiny.iv_sp_defense}/${shiny.iv_speed}`, inline: false } : null,
+          (shiny.iv_hp !== null && shiny.iv_attack !== null && shiny.iv_defense !== null && shiny.iv_sp_attack !== null && shiny.iv_sp_defense !== null && shiny.iv_speed !== null) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: `${shiny.iv_hp}/${shiny.iv_attack}/${shiny.iv_defense}/${shiny.iv_sp_attack}/${shiny.iv_sp_defense}/${shiny.iv_speed}`, inline: false } : null,
         ].filter(Boolean),
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
@@ -338,7 +346,7 @@ async function handleGetShiny(interaction) {
           shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
           shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
           encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
-          shiny.iv_hp && shiny.iv_attack && shiny.iv_defense && shiny.iv_sp_attack && shiny.iv_sp_defense && shiny.iv_speed ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: `${shiny.iv_hp}/${shiny.iv_attack}/${shiny.iv_defense}/${shiny.iv_sp_attack}/${shiny.iv_sp_defense}/${shiny.iv_speed}`, inline: false } : null,
+          shiny.iv_hp !== null && shiny.iv_attack !== null && shiny.iv_defense !== null && shiny.iv_sp_attack !== null && shiny.iv_sp_defense !== null && shiny.iv_speed !== null ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: `${shiny.iv_hp}/${shiny.iv_attack}/${shiny.iv_defense}/${shiny.iv_sp_attack}/${shiny.iv_sp_defense}/${shiny.iv_speed}`, inline: false } : null,
         ].filter(Boolean),
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })

@@ -156,7 +156,8 @@ class TeamShiny {
       is_secret, is_safari, screenshot_url, notes
     ]);
 
-    return result.rows[0];
+    // Return the updated shiny with joined trainer_name
+    return await this.findById(id);
   }
 
   static async delete(id) {
