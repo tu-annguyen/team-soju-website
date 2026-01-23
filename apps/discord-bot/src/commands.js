@@ -213,14 +213,14 @@ const COMMANDS = [
         .setDescription('Pokemon Pokedex number')
         .setRequired(false))
     .addStringOption(option =>
-      option.setName('catch_date')
-        .setDescription('Date of catch (YYYY-MM-DD)')
-        .setRequired(false))
-    .addStringOption(option =>
       option.setName('encounter_type')
         .setDescription('Encounter type')
         .setRequired(false)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
+    .addStringOption(option =>
+      option.setName('catch_date')
+        .setDescription('Date of catch (YYYY-MM-DD)')
+        .setRequired(false))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
