@@ -94,7 +94,7 @@ class TeamShiny {
         iv_sp_defense, iv_speed, is_secret, is_safari, screenshot_url, notes
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-      RETURNING *
+      RETURNING id
     `, [
       national_number, pokemon, original_trainer, catch_date, total_encounters,
       species_encounters, encounter_type, location, 
@@ -102,7 +102,8 @@ class TeamShiny {
       iv_sp_defense, iv_speed, is_secret, is_safari, screenshot_url, notes
     ]);
 
-    return result.rows[0];
+    const insertedId = result.rows[0].id;
+    return await this.findById(insertedId);
   }
 
   static async update(id, shinyData) {
@@ -161,12 +162,14 @@ class TeamShiny {
   }
 
   static async delete(id) {
-    const result = await pool.query(`
+    const shiny = await this.findById(id);
+    if (!shiny) return null;
+
+    await pool.query(`
       DELETE FROM team_shinies 
       WHERE id = $1
-      RETURNING *
     `, [id]);
-    return result.rows[0];
+    return shiny;
   }
 
   static async getStats() {
