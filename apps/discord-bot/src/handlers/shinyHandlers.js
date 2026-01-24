@@ -16,7 +16,6 @@ async function handleAddShiny(interaction) {
 
   const trainerIgn = interaction.options.getString('trainer');
   const pokemon = interaction.options.getString('pokemon');
-  const nationalNumber = getNationalNumber(pokemon.toLowerCase());
   const catchDate = interaction.options.getString('catch_date') || new Date().toISOString().split('T')[0];
   const encounterType = interaction.options.getString('encounter_type');
   const isSecret = interaction.options.getBoolean('secret') || false;
@@ -33,12 +32,40 @@ async function handleAddShiny(interaction) {
   // const ivSpDefense = interaction.options.getInteger('iv_sp_defense');
   // const ivSpeed = interaction.options.getInteger('iv_speed');
 
+  let nationalNumber;
+  try {
+    nationalNumber = await getNationalNumber(pokemon.toLowerCase());
+    if (!nationalNumber) {
+      await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"` });
+      return;
+    }
+  } catch (error) {
+    await interaction.editReply({ content: `Error: ${error.message}` });
+    return;
+  }
+
+  let trainer;
   try {
     const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${trainerIgn}`, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
-    const trainer = trainerResponse.data.data;
+    trainer = trainerResponse.data.data;
+  } catch (error) {
+    await interaction.editReply({ content: `Error: Could not find trainer with IGN "${trainerIgn}"` });
+    return;
+  }
 
+  try {
+    const info = {};
+    if (trainer) info.original_trainer = trainer.id;
+    if (pokemon) info.pokemon = pokemon;
+    if (nationalNumber) info.national_number = nationalNumber;
+    if (catchDate) info.catch_date = new Date(catchDate).toISOString().split('T')[0];
+    if (encounterType) info.encounter_type = encounterType;
+    if (isSecret) info.is_secret = isSecret;
+    if (totalEncounters) info.total_encounters = totalEncounters;
+    if (speciesEncounters) info.species_encounters = speciesEncounters;
+    if (nature) info.nature = nature;
     if (ivs) {
       const ivArray = ivs.split(',').map(iv => parseInt(iv.trim(), 10));
       if (ivArray.length === 6) {
@@ -55,25 +82,14 @@ async function handleAddShiny(interaction) {
         throw new Error('IVs must be a comma-separated list of 6 integers.');
       }
     }
+    if (ivHp !== null) info.iv_hp = ivHp;
+    if (ivAttack !== null) info.iv_attack = ivAttack;
+    if (ivDefense !== null) info.iv_defense = ivDefense;
+    if (ivSpAttack !== null) info.iv_sp_attack = ivSpAttack;
+    if (ivSpDefense !== null) info.iv_sp_defense = ivSpDefense;
+    if (ivSpeed !== null) info.iv_speed = ivSpeed;
 
-    const shinyResponse = await axios.post(`${apiBaseUrl}/shinies`, {
-      national_number: nationalNumber,
-      pokemon: pokemon.toLowerCase(),
-      original_trainer: trainer.id,
-      catch_date: catchDate,
-      total_encounters: totalEncounters,
-      species_encounters: speciesEncounters,
-      encounter_type: encounterType,
-      nature: nature,
-      iv_hp: ivHp,
-      iv_attack: ivAttack,
-      iv_defense: ivDefense,
-      iv_sp_attack: ivSpAttack,
-      iv_sp_defense: ivSpDefense,
-      iv_speed: ivSpeed,
-      is_secret: isSecret,
-      is_safari: encounterType === 'Safari' ? true : isSafari
-    }, {
+    const shinyResponse = await axios.post(`${apiBaseUrl}/shinies`, info, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const shiny = shinyResponse.data.data;
@@ -81,8 +97,6 @@ async function handleAddShiny(interaction) {
     const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
     const spriteUrl = await getSpriteUrl(shiny.national_number);
 
-    console.log('Shiny Added:', shiny);
-    
     const embed = new EmbedBuilder()
       .setColor(isSecret ? 0xFFD700 : 0x4CAF50)
       .setTitle(`${isSecret ? 'Secret ' : ''}Shiny Added!`)
