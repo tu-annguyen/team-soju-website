@@ -117,14 +117,6 @@ const COMMANDS = [
       option.setName('pokemon')
         .setDescription('Pokemon name')
         .setRequired(true))
-    .addIntegerOption(option =>
-      option.setName('pokedex_number')
-        .setDescription('Pokemon Pokedex number')
-        .setRequired(true))
-    .addStringOption(option =>
-      option.setName('original_trainer')
-        .setDescription('Original trainer IGN')
-        .setRequired(true))
     .addStringOption(option =>
       option.setName('encounter_type')
         .setDescription('How was it encountered?')
@@ -151,6 +143,10 @@ const COMMANDS = [
         .setDescription('Nature of the Pokemon')
         .setRequired(false)
         .addChoices(...NATURE_CHOICES))
+    .addStringOption(option =>
+      option.setName('ivs')
+        .setDescription('Comma-separated IVs in the order: HP, ATK, DEF, SPATK, SPDEF, SPEED')
+        .setRequired(false))
     .addIntegerOption(option =>
       option.setName('iv_hp')
         .setDescription('HP IV of the Pokemon')

@@ -16,19 +16,22 @@ async function handleAddShiny(interaction) {
 
   const trainerIgn = interaction.options.getString('trainer');
   const pokemon = interaction.options.getString('pokemon');
-  const nationalNumber = interaction.options.getInteger('pokedex_number');
+  const nationalNumber = getNationalNumber(pokemon.toLowerCase());
+  const catchDate = interaction.options.getString('catch_date') || new Date().toISOString().split('T')[0];
   const encounterType = interaction.options.getString('encounter_type');
   const isSecret = interaction.options.getBoolean('secret') || false;
   const isSafari = encounterType === 'Safari';
   const totalEncounters = interaction.options.getInteger('total_encounters') || 0;
   const speciesEncounters = interaction.options.getInteger('species_encounters') || 0;
   const nature = interaction.options.getString('nature');
-  const ivHp = interaction.options.getInteger('iv_hp');
-  const ivAttack = interaction.options.getInteger('iv_attack');
-  const ivDefense = interaction.options.getInteger('iv_defense');
-  const ivSpAttack = interaction.options.getInteger('iv_sp_attack');
-  const ivSpDefense = interaction.options.getInteger('iv_sp_defense');
-  const ivSpeed = interaction.options.getInteger('iv_speed');
+  const ivs = interaction.options.getString('ivs');
+  let ivHp, ivAttack, ivDefense, ivSpAttack, ivSpDefense, ivSpeed;
+  // const ivHp = interaction.options.getInteger('iv_hp');
+  // const ivAttack = interaction.options.getInteger('iv_attack');
+  // const ivDefense = interaction.options.getInteger('iv_defense');
+  // const ivSpAttack = interaction.options.getInteger('iv_sp_attack');
+  // const ivSpDefense = interaction.options.getInteger('iv_sp_defense');
+  // const ivSpeed = interaction.options.getInteger('iv_speed');
 
   try {
     const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${trainerIgn}`, {
@@ -36,11 +39,28 @@ async function handleAddShiny(interaction) {
     });
     const trainer = trainerResponse.data.data;
 
+    if (ivs) {
+      const ivArray = ivs.split(',').map(iv => parseInt(iv.trim(), 10));
+      if (ivArray.length === 6) {
+        if (ivArray.some(iv => iv < 0 || iv > 31)) {
+          throw new Error('IVs must be integers in between 0 and 31.');
+        }
+        ivHp = ivArray[0];
+        ivAttack = ivArray[1];
+        ivDefense = ivArray[2];
+        ivSpAttack = ivArray[3];
+        ivSpDefense = ivArray[4];
+        ivSpeed = ivArray[5];
+      } else {
+        throw new Error('IVs must be a comma-separated list of 6 integers.');
+      }
+    }
+
     const shinyResponse = await axios.post(`${apiBaseUrl}/shinies`, {
       national_number: nationalNumber,
       pokemon: pokemon.toLowerCase(),
       original_trainer: trainer.id,
-      catch_date: new Date().toISOString().split('T')[0],
+      catch_date: catchDate,
       total_encounters: totalEncounters,
       species_encounters: speciesEncounters,
       encounter_type: encounterType,
@@ -58,15 +78,27 @@ async function handleAddShiny(interaction) {
     });
     const shiny = shinyResponse.data.data;
 
+    const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
+    const spriteUrl = await getSpriteUrl(shiny.national_number);
+
+    console.log('Shiny Added:', shiny);
+    
     const embed = new EmbedBuilder()
       .setColor(isSecret ? 0xFFD700 : 0x4CAF50)
       .setTitle(`${isSecret ? 'Secret ' : ''}Shiny Added!`)
+      .setThumbnail(spriteUrl || null)
       .addFields(
-        { name: 'Trainer', value: trainerIgn, inline: true },
-        { name: 'Pokemon', value: `${pokemon} (#${nationalNumber})`, inline: true },
-        { name: 'Encounter Type', value: encounterType, inline: true },
-        { name: 'Encounters', value: totalEncounters.toString(), inline: true },
-        { name: 'Special', value: isSecret ? 'Secret' : (isSafari ? 'Safari' : 'None'), inline: true }
+        { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
+        { name: 'Trainer', value: shiny.trainer_name, inline: true },
+        { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
+        ...[
+          encounterType ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
+          isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
+          encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
+          nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
+          (shiny.iv_hp !== null && shiny.iv_attack !== null && shiny.iv_defense !== null && shiny.iv_sp_attack !== null && shiny.iv_sp_defense !== null && shiny.iv_speed !== null) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: `${shiny.iv_hp}/${shiny.iv_attack}/${shiny.iv_defense}/${shiny.iv_sp_attack}/${shiny.iv_sp_defense}/${shiny.iv_speed}`, inline: false } : null,
+          (isSecret || isSafari) ? { name: 'Special', value: isSecret ? 'Secret' : (isSafari ? 'Safari' : 'None'), inline: true } : null,
+        ].filter(Boolean),
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
       .setTimestamp();
