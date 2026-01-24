@@ -2932,6 +2932,11 @@
   {
     "name": "KxIrish",
     "numOT": 4,
+    "shinies": []
+  },
+  {
+    "name": "BrutxL",
+    "numOT": 4,
     "shinies": [
       {
         "name": "Magikarp",
@@ -2952,16 +2957,31 @@
         "name": "Zigzagoon",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/zigzagoon.gif",
         "attribute": ""
+      },
+      {
+        "name": "Magikarp",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Smeargle",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Camerupt",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/camerupt.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Golett",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/golett.gif",
+        "attribute": ""
       }
     ]
   },
   {
     "name": "DingusDestiny",
-    "numOT": 3,
-    "shinies": []
-  },
-  {
-    "name": "iyusu",
     "numOT": 3,
     "shinies": [
       {
@@ -2982,7 +3002,7 @@
     ]
   },
   {
-    "name": "BrutxL",
+    "name": "iyusu",
     "numOT": 3,
     "shinies": [
       {
@@ -2998,21 +3018,6 @@
       {
         "name": "Geodude",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/geodude.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Magikarp",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Smeargle",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Golett",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/golett.gif",
         "attribute": ""
       }
     ]
