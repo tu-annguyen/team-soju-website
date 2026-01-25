@@ -291,9 +291,9 @@ async function getSpriteUrl(pokemonId) {
  */
 function generateEncountersString(total, species, pokemon) {
   let encountersString;
-  if (total === 0) {
+  if (total === 0 || total === null) {
     encountersString = null;
-  } else if (species === 0) {
+  } else if (species === 0 || species === null) {
     encountersString = `${total}`;
   } else {
     encountersString = `${total} Total (${species} ${pokemon})`;

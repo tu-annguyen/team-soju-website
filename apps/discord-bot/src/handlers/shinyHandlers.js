@@ -240,13 +240,12 @@ async function handleEditShiny(interaction) {
 
   const shinyId = interaction.options.getString('shiny_id');
   const pokemon = interaction.options.getString('pokemon');
-  const nationalNumber = interaction.options.getInteger('pokedex_number');
   const originalTrainer = interaction.options.getString('original_trainer');
   const catchDate = interaction.options.getString('catch_date');
   const encounterType = interaction.options.getString('encounter_type');
   const isSecret = interaction.options.getBoolean('secret') || false;
-  const totalEncounters = interaction.options.getInteger('total_encounters') || 0;
-  const speciesEncounters = interaction.options.getInteger('species_encounters') || 0;
+  const totalEncounters = interaction.options.getInteger('total_encounters');
+  const speciesEncounters = interaction.options.getInteger('species_encounters');
   const nature = interaction.options.getString('nature');
   const ivs = interaction.options.getString('ivs');
   let ivHp = interaction.options.getInteger('iv_hp');
@@ -256,16 +255,26 @@ async function handleEditShiny(interaction) {
   let ivSpDefense = interaction.options.getInteger('iv_sp_defense');
   let ivSpeed = interaction.options.getInteger('iv_speed');
 
+  let nationalNumber;
+
   try {
     const updates = {};
-    if (pokemon) updates.pokemon = pokemon;
+    if (pokemon) {
+      updates.pokemon = pokemon;
+      try {
+        nationalNumber = await getNationalNumber(pokemon.toLowerCase());
+      } catch (error) {
+        await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"` });
+        return;
+      }
+    }
     if (nationalNumber) updates.national_number = nationalNumber;
     if (originalTrainer) updates.original_trainer = originalTrainer;
     if (catchDate) updates.catch_date = new Date(catchDate).toISOString().split('T')[0];
     if (encounterType) updates.encounter_type = encounterType;
     if (isSecret) updates.is_secret = isSecret;
-    if (totalEncounters) updates.total_encounters = totalEncounters;
-    if (speciesEncounters) updates.species_encounters = speciesEncounters;
+    if (totalEncounters !== null) updates.total_encounters = totalEncounters;
+    if (speciesEncounters !== null) updates.species_encounters = speciesEncounters;
     if (nature) updates.nature = nature;
     if (ivs) {
       const ivArray = ivs.split(',').map(iv => parseInt(iv.trim(), 10));
@@ -300,8 +309,6 @@ async function handleEditShiny(interaction) {
     });
     const shiny = updateResponse.data.data;
 
-    console.log('Shiny Edited:', shiny);
-
     let spriteUrl = null;
     try {
       spriteUrl = await getSpriteUrl(shiny.national_number);
@@ -309,7 +316,10 @@ async function handleEditShiny(interaction) {
       console.error('Error fetching sprite:', spriteError.message);
     }
 
-    const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
+    let encountersString;
+    if (totalEncounters !== null || speciesEncounters !== null) {
+      encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
+    }
 
     const embed = new EmbedBuilder()
       .setColor(0x2196F3)

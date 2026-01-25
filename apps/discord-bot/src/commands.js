@@ -204,10 +204,6 @@ const COMMANDS = [
       option.setName('pokemon')
         .setDescription('Pokemon name')
         .setRequired(false))
-    .addIntegerOption(option =>
-      option.setName('pokedex_number')
-        .setDescription('Pokemon Pokedex number')
-        .setRequired(false))
     .addStringOption(option =>
       option.setName('encounter_type')
         .setDescription('Encounter type')

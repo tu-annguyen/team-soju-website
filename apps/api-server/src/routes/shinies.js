@@ -28,10 +28,29 @@ const shinySchema = Joi.object({
   notes: Joi.string().optional()
 });
 
-const updateShinySchema = shinySchema.fork(
-  ['national_number', 'pokemon', 'original_trainer', 'catch_date', 'encounter_type'],
-  (schema) => schema.optional()
-);
+const updateShinySchema = Joi.object({
+  national_number: Joi.number().integer().min(1).max(1010).optional(),
+  pokemon: Joi.string().max(50).optional(),
+  original_trainer: Joi.string().uuid().optional(),
+  catch_date: Joi.date().optional(),
+  total_encounters: Joi.number().integer().min(0).optional(),
+  species_encounters: Joi.number().integer().min(0).optional(),
+  encounter_type: Joi.string().valid(
+    'single', 'horde', 'safari', 'fishing', 'egg', 'gift', 'mysterious_ball'
+  ).optional(),
+  location: Joi.string().max(100).optional(),
+  nature: Joi.string().max(20).optional(),
+  iv_hp: Joi.number().integer().min(0).max(31).optional(),
+  iv_attack: Joi.number().integer().min(0).max(31).optional(),
+  iv_defense: Joi.number().integer().min(0).max(31).optional(),
+  iv_sp_attack: Joi.number().integer().min(0).max(31).optional(),
+  iv_sp_defense: Joi.number().integer().min(0).max(31).optional(),
+  iv_speed: Joi.number().integer().min(0).max(31).optional(),
+  is_secret: Joi.boolean().optional(),
+  is_safari: Joi.boolean().optional(),
+  screenshot_url: Joi.string().uri().optional(),
+  notes: Joi.string().optional()
+});
 
 // GET /api/shinies - Get all team shinies with optional filters
 router.get('/', async (req, res) => {
