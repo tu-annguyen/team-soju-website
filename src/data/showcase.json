@@ -2870,6 +2870,11 @@
   {
     "name": "HinatShoyo",
     "numOT": 5,
+    "shinies": []
+  },
+  {
+    "name": "swiftygecko",
+    "numOT": 5,
     "shinies": [
       {
         "name": "Bellossom",
@@ -2895,18 +2900,7 @@
         "name": "Phanpy",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/phanpy.gif",
         "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "swiftygecko",
-    "numOT": 5,
-    "shinies": []
-  },
-  {
-    "name": "KxIrish",
-    "numOT": 4,
-    "shinies": [
+      },
       {
         "name": "Poochyena",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/poochyena.gif",
@@ -2933,6 +2927,11 @@
         "attribute": ""
       }
     ]
+  },
+  {
+    "name": "KxIrish",
+    "numOT": 4,
+    "shinies": []
   },
   {
     "name": "BrutxL",
