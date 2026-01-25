@@ -2901,6 +2901,11 @@
   {
     "name": "swiftygecko",
     "numOT": 5,
+    "shinies": []
+  },
+  {
+    "name": "KxIrish",
+    "numOT": 4,
     "shinies": [
       {
         "name": "Poochyena",
@@ -2928,11 +2933,6 @@
         "attribute": ""
       }
     ]
-  },
-  {
-    "name": "KxIrish",
-    "numOT": 4,
-    "shinies": []
   },
   {
     "name": "BrutxL",
