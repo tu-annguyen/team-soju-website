@@ -2829,11 +2829,6 @@
   {
     "name": "Scotty",
     "numOT": 6,
-    "shinies": []
-  },
-  {
-    "name": "BrutxL",
-    "numOT": 5,
     "shinies": [
       {
         "name": "Nidoking",
@@ -2869,7 +2864,13 @@
         "name": "Hoppip",
         "imageUrl": "https://i.postimg.cc/QBzVhgGk/Hoppip.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "BrutxL",
+    "numOT": 5,
+    "shinies": [
       {
         "name": "Magikarp",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
@@ -2900,11 +2901,6 @@
   {
     "name": "HinatShoyo",
     "numOT": 5,
-    "shinies": []
-  },
-  {
-    "name": "swiftygecko",
-    "numOT": 5,
     "shinies": [
       {
         "name": "Bellossom",
@@ -2930,7 +2926,13 @@
         "name": "Phanpy",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/phanpy.gif",
         "attribute": ""
-      },
+      }
+    ]
+  },
+  {
+    "name": "swiftygecko",
+    "numOT": 5,
+    "shinies": [
       {
         "name": "Poochyena",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/poochyena.gif",
