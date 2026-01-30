@@ -543,7 +543,7 @@
   },
   {
     "name": "Immo",
-    "numOT": 44,
+    "numOT": 46,
     "shinies": [
       {
         "name": "Rhyperior",
@@ -798,6 +798,16 @@
       {
         "name": "Machop",
         "imageUrl": "https://i.postimg.cc/d78phLPz/Machop.gif",
+        "attribute": "safari"
+      },
+      {
+        "name": "Budew",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/budew.gif",
+        "attribute": "safari"
+      },
+      {
+        "name": "Skorupi",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/skorupi.gif",
         "attribute": "safari"
       }
     ]
