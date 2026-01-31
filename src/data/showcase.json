@@ -1820,7 +1820,7 @@
   },
   {
     "name": "cubberkazooie",
-    "numOT": 21,
+    "numOT": 22,
     "shinies": [
       {
         "name": "Smeargle",
@@ -1930,6 +1930,11 @@
       {
         "name": "Camerupt",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/camerupt.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Swadloon",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/swadloon.gif",
         "attribute": ""
       }
     ]
@@ -2889,7 +2894,7 @@
   },
   {
     "name": "BrutxL",
-    "numOT": 5,
+    "numOT": 6,
     "shinies": [
       {
         "name": "Magikarp",
@@ -2914,6 +2919,11 @@
       {
         "name": "Spearow",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/spearow.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Koffing",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/koffing.gif",
         "attribute": ""
       }
     ]
