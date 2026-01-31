@@ -551,6 +551,11 @@
         "attribute": ""
       },
       {
+        "name": "Salamence",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/salamence.gif",
+        "attribute": ""
+      },
+      {
         "name": "Haxorus",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/haxorus.gif",
         "attribute": ""
@@ -566,9 +571,24 @@
         "attribute": ""
       },
       {
+        "name": "Magnemite",
+        "imageUrl": "https://i.postimg.cc/fV3FRpyR/Magnemite.gif",
+        "attribute": "safari"
+      },
+      {
         "name": "Altaria",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/altaria.gif",
         "attribute": ""
+      },
+      {
+        "name": "Noctowl",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/noctowl.gif",
+        "attribute": "secret"
+      },
+      {
+        "name": "Nidoran",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoran-f.gif",
+        "attribute": "safari"
       },
       {
         "name": "Gible",
@@ -581,14 +601,34 @@
         "attribute": ""
       },
       {
+        "name": "Cherubi",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/cherubi.gif",
+        "attribute": ""
+      },
+      {
         "name": "Magby",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magby.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Linoone",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/linoone.gif",
         "attribute": ""
       },
       {
         "name": "Murkrow",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/murkrow-f.gif",
         "attribute": ""
+      },
+      {
+        "name": "Machoke",
+        "imageUrl": "https://i.postimg.cc/dkKwCvND/machoke.gif",
+        "attribute": "safari"
+      },
+      {
+        "name": "Skorupi",
+        "imageUrl": "https://i.postimg.cc/sQRsW-yHV/skorupi.gif",
+        "attribute": "secret"
       },
       {
         "name": "Cacnea",
@@ -616,6 +656,11 @@
         "attribute": ""
       },
       {
+        "name": "Milotic",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/milotic.gif",
+        "attribute": ""
+      },
+      {
         "name": "Purrloin",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/purrloin.gif",
         "attribute": ""
@@ -626,6 +671,11 @@
         "attribute": ""
       },
       {
+        "name": "Riolu",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/riolu.gif",
+        "attribute": ""
+      },
+      {
         "name": "Druddigon",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/druddigon.gif",
         "attribute": ""
@@ -633,6 +683,16 @@
       {
         "name": "Froslass",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/froslass.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Tangrowth",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/tangrowth.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Corphish",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/corphish.gif",
         "attribute": ""
       },
       {
@@ -651,6 +711,11 @@
         "attribute": ""
       },
       {
+        "name": "Aerodactyl",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/aerodactyl.gif",
+        "attribute": "egg"
+      },
+      {
         "name": "Dugtrio",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/dugtrio.gif",
         "attribute": ""
@@ -663,6 +728,11 @@
       {
         "name": "Herdier",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/herdier.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Absol",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/absol.gif",
         "attribute": ""
       },
       {
@@ -686,63 +756,13 @@
         "attribute": ""
       },
       {
-        "name": "Politoed",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/politoed-f.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Koffing",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/koffing.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Salamence",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/salamence.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Noctowl",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/noctowl.gif",
-        "attribute": "secret"
-      },
-      {
-        "name": "Cherubi",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/cherubi.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Linoone",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/linoone.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Milotic",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/milotic.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Riolu",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/riolu.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Tangrowth",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/tangrowth.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Corphish",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/corphish.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Absol",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/absol.gif",
-        "attribute": ""
-      },
-      {
         "name": "Wailord",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/wailord.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Politoed",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/politoed-f.gif",
         "attribute": ""
       },
       {
@@ -751,34 +771,9 @@
         "attribute": ""
       },
       {
-        "name": "Geodude",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/geodude.gif",
+        "name": "Koffing",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/koffing.gif",
         "attribute": ""
-      },
-      {
-        "name": "Aerodactyl",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/aerodactyl.gif",
-        "attribute": "egg"
-      },
-      {
-        "name": "Magnemite",
-        "imageUrl": "https://i.postimg.cc/fV3FRpyR/Magnemite.gif",
-        "attribute": "safari"
-      },
-      {
-        "name": "Nidoran",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoran-f.gif",
-        "attribute": "safari"
-      },
-      {
-        "name": "Machoke",
-        "imageUrl": "https://i.postimg.cc/dkKwCvND/machoke.gif",
-        "attribute": "safari"
-      },
-      {
-        "name": "Skorupi",
-        "imageUrl": "https://i.postimg.cc/sQRsW-yHV/skorupi.gif",
-        "attribute": "secret"
       },
       {
         "name": "Kangaskhan",
@@ -789,6 +784,11 @@
         "name": "Quagsire",
         "imageUrl": "https://i.postimg.cc/R6z4t9p4/quagsire.gif",
         "attribute": "safari"
+      },
+      {
+        "name": "Geodude",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/geodude.gif",
+        "attribute": ""
       },
       {
         "name": "Skorupi",
@@ -3147,6 +3147,22 @@
       {
         "name": "Camerupt",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/camerupt.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
+    "name": "ThePGPanda",
+    "numOT": 2,
+    "shinies": [
+      {
+        "name": "Sandslash",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/sandslash.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Dunsparce",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/dunsparce.gif",
         "attribute": ""
       }
     ]
