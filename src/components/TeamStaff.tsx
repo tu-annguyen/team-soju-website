@@ -14,7 +14,7 @@ const staffData = [
   {
     id: 2,
     name: 'Aisuhoki',
-    role: 'Co-Leader',
+    role: 'Co-Founder',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_04/Nagi.thumb.jpg.eab474e28a04332997b091001d4bceef.jpg',
     discord: 'https://discordapp.com/users/558122397971120133',
     forum: 'https://forums.pokemmo.com/index.php?/profile/490746-aisukohi/'
@@ -22,7 +22,7 @@ const staffData = [
   {
     id: 3,
     name: 'cubberkazookie',
-    role: 'Community Manager',
+    role: 'Community & Onboarding Manager',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_11/IMG_9484.thumb.jpg.5416c3c95048a3d58ff4465c724bbca6.jpg',
     discord: 'https://discordapp.com/users/757471359835177071',
     forum: 'https://forums.pokemmo.com/index.php?/profile/487174-cubberkazooie/'
