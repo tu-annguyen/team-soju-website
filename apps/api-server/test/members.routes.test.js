@@ -159,6 +159,63 @@ describe('Members routes', () => {
     });
   });
 
+  describe('GET /api/members/ign/inactive/:ign', () => {
+    it('returns an inactive member when found', async () => {
+      TeamMember.findByIgnIncludingInactive.mockResolvedValue({ id: 1, ign: 'MemberOne', is_active: false });
+
+      const res = await request(app).get('/api/members/ign/inactive/MemberOne');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.ign).toBe('MemberOne');
+      expect(TeamMember.findByIgnIncludingInactive).toHaveBeenCalledWith('MemberOne');
+    });
+
+    it('returns 400 when member is already active', async () => {
+      TeamMember.findByIgnIncludingInactive.mockResolvedValue({ id: 1, ign: 'MemberOne', is_active: true });
+
+      const res = await request(app).get('/api/members/ign/inactive/MemberOne');
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Team member is already active');
+    });
+
+    it('returns 404 when member not found', async () => {
+      TeamMember.findByIgnIncludingInactive.mockResolvedValue(null);
+
+      const res = await request(app).get('/api/members/ign/inactive/Unknown');
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Team member not found');
+    });
+  });
+
+  describe('PUT /api/members/reactivate/:id', () => {
+    it('returns 404 when member not found', async () => {
+      TeamMember.reactivate.mockResolvedValue(null);
+
+      const res = await request(app).put('/api/members/reactivate/999');
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Team member not found');
+    });
+
+    it('reactivates member when found', async () => {
+      const reactivated = { id: 1, ign: 'MemberOne', is_active: true };
+      TeamMember.reactivate.mockResolvedValue(reactivated);
+
+      const res = await request(app).put('/api/members/reactivate/1');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toEqual(reactivated);
+      expect(res.body.message).toBe('Team member reactivated successfully');
+    });
+  });
+
   describe('GET /api/members/:id/stats', () => {
     it('returns shiny stats for member', async () => {
       const stats = [{ encounter_type: 'horde', count_by_type: 5 }];
