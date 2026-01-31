@@ -22,23 +22,23 @@ const staffData = [
   {
     id: 3,
     name: 'cubberkazookie',
-    role: 'Tech Specialist',
+    role: 'Community Manager',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_11/IMG_9484.thumb.jpg.5416c3c95048a3d58ff4465c724bbca6.jpg',
     discord: 'https://discordapp.com/users/757471359835177071',
     forum: 'https://forums.pokemmo.com/index.php?/profile/487174-cubberkazooie/'
   },
   {
     id: 4,
-    name: 'ReefBarrierGreat',
-    role: 'Event Coordinator',
-    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_01/Screenshot2024-12-31113703.thumb.png.c371cb918eb2889245c205f2eab62721.png',
-    discord: 'https://discordapp.com/users/164470609101717504',
-    forum: 'https://forums.pokemmo.com/index.php?/profile/506391-reefbarriergreat/'
+    name: 'Immo',
+    role: 'Showcase Kid',
+    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_12/image_2025-12-20_085301764.png.310774dcfab98b9757d603653d6c933c.png',
+    discord: 'https://discordapp.com/users/683832833705377802',
+    forum: 'https://forums.pokemmo.com/index.php?/profile/505616-immo/'
   },
   {
     id: 5,
     name: 'hefferson',
-    role: 'Team Recruiter',
+    role: 'Event Coordinator',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2023_12/8a97b55150df7dbf80dd1b12b3d9fc26.thumb.jpg.0fac3953b5f4365c34f2a8fd98188aa5.jpg',
     discord: 'https://discordapp.com/users/234164830779604994',
     forum: 'https://forums.pokemmo.com/index.php?/profile/478751-hefferson/'
@@ -51,14 +51,6 @@ const staffData = [
     discord: 'https://discordapp.com/users/272201126068092928',
     forum: 'https://forums.pokemmo.com/index.php?/profile/492263-tunacore/'
   },
-  {
-    id: 7,
-    name: 'Jaap',
-    role: 'Team Mascot',
-    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_06/DuxlyyBlorbo.png.027ddba2a0e6fb419aa0e68ee0c3a699.png',
-    discord: 'https://discordapp.com/users/257948946565955586',
-    forum: 'https://forums.pokemmo.com/index.php?/profile/519494-hondjoch/'
-  }
 ];
 
 const TeamStaff = () => {
