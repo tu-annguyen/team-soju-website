@@ -2934,6 +2934,78 @@
     ]
   },
   {
+    "name": "rubunny",
+    "numOT": 6,
+    "shinies": [
+      {
+        "name": "Roserade",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/roserade-f.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Lilligant",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lilligant.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Dunsparce",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/dunsparce.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Magikarp",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Budew",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/budew.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Pachirisu",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/pachirisu-f.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
+    "name": "TsukiFromBilllie",
+    "numOT": 6,
+    "shinies": [
+      {
+        "name": "Honchkrow",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/honchkrow.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Mienfoo",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/mienfoo.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Cofagrigus",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/cofagrigus.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Snover",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/snover-f.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Vanillish",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/vanillish.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Zubat",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/zubat-f.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
     "name": "HinatShoyo",
     "numOT": 5,
     "shinies": [
@@ -3100,10 +3172,5 @@
         "attribute": ""
       }
     ]
-  },
-  {
-    "name": "Ledoras",
-    "numOT": 1,
-    "shinies": []
   }
 ]
