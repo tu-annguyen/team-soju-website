@@ -1858,8 +1858,8 @@
         "attribute": ""
       },
       {
-        "name": "Venipede",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/venipede.gif",
+        "name": "Whirlipede",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/whirlipede.gif",
         "attribute": ""
       },
       {
@@ -1873,8 +1873,8 @@
         "attribute": ""
       },
       {
-        "name": "Buizel",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/buizel-f.gif",
+        "name": "Floatzel",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/floatzel.gif",
         "attribute": ""
       },
       {
@@ -1883,13 +1883,13 @@
         "attribute": ""
       },
       {
-        "name": "Poliwhirl",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/poliwhirl.gif",
+        "name": "Politoed",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/politoed-f.gif",
         "attribute": ""
       },
       {
-        "name": "Venipede",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/venipede.gif",
+        "name": "Scolipede",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/scolipede.gif",
         "attribute": ""
       },
       {
@@ -1938,8 +1938,8 @@
         "attribute": ""
       },
       {
-        "name": "Swadloon",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/swadloon.gif",
+        "name": "Leavanny",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/leavanny.gif",
         "attribute": ""
       }
     ]
