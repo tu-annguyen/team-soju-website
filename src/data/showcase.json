@@ -1249,8 +1249,8 @@
     "numOT": 33,
     "shinies": [
       {
-        "name": "Vanillish",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/vanillish.gif",
+        "name": "Vanilluxe",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/vanilluxe.gif",
         "attribute": ""
       },
       {
@@ -1274,8 +1274,8 @@
         "attribute": ""
       },
       {
-        "name": "Whirlipede",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/whirlipede.gif",
+        "name": "Scolipede",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/scolipede.gif",
         "attribute": ""
       },
       {
@@ -1294,8 +1294,8 @@
         "attribute": ""
       },
       {
-        "name": "Gligar",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gligar-f.gif",
+        "name": "Gliscor",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gliscor.gif",
         "attribute": ""
       },
       {
@@ -1304,8 +1304,8 @@
         "attribute": ""
       },
       {
-        "name": "Geodude",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/geodude.gif",
+        "name": "Golem",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/golem.gif",
         "attribute": ""
       },
       {
@@ -1324,8 +1324,8 @@
         "attribute": ""
       },
       {
-        "name": "Piloswine",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/piloswine-f.gif",
+        "name": "Mamoswine",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/mamoswine-f.gif",
         "attribute": ""
       },
       {
@@ -1354,13 +1354,18 @@
         "attribute": ""
       },
       {
-        "name": "Mareep",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/mareep.gif",
+        "name": "Ampharos",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/ampharos.gif",
         "attribute": ""
       },
       {
         "name": "Jigglypuff",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/jigglypuff.gif",
+        "attribute": "safari"
+      },
+      {
+        "name": "Koffing",
+        "imageUrl": "https://i.postimg.cc/xkm9qq59/koffing.gif",
         "attribute": "safari"
       },
       {
@@ -1374,8 +1379,8 @@
         "attribute": ""
       },
       {
-        "name": "Shelmet",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/shelmet.gif",
+        "name": "Accelgor",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/accelgor.gif",
         "attribute": ""
       },
       {
@@ -1411,11 +1416,6 @@
       {
         "name": "Tangela",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/tangela.gif",
-        "attribute": "safari"
-      },
-      {
-        "name": "Koffing",
-        "imageUrl": "https://i.postimg.cc/xkm9qq59/koffing.gif",
         "attribute": "safari"
       }
     ]
