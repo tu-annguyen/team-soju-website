@@ -146,30 +146,6 @@ const COMMANDS = [
     .addStringOption(option =>
       option.setName('ivs')
         .setDescription('Comma-separated IVs in the order: HP, ATK, DEF, SPATK, SPDEF, SPEED')
-        .setRequired(false))
-    .addIntegerOption(option =>
-      option.setName('iv_hp')
-        .setDescription('HP IV of the Pokemon')
-        .setRequired(false))
-    .addIntegerOption(option =>
-      option.setName('iv_attack')
-        .setDescription('ATK IV of the Pokemon')
-        .setRequired(false))
-    .addIntegerOption(option =>
-      option.setName('iv_defense')
-        .setDescription('DEF IV of the Pokemon')
-        .setRequired(false))
-    .addIntegerOption(option =>
-      option.setName('iv_sp_attack')
-        .setDescription('SPATK IV of the Pokemon')
-        .setRequired(false))
-    .addIntegerOption(option =>
-      option.setName('iv_sp_defense')
-        .setDescription('SPDEF IV of the Pokemon')
-        .setRequired(false))
-    .addIntegerOption(option =>
-      option.setName('iv_speed')
-        .setDescription('SPEED IV of the Pokemon')
         .setRequired(false)),
 
   new SlashCommandBuilder()
@@ -179,15 +155,15 @@ const COMMANDS = [
       option.setName('screenshot')
         .setDescription('Picture of the shiny\'s share screen')
         .setRequired(true))
+    .addStringOption(option =>
+      option.setName('encounter_type')
+        .setDescription('How was it encountered?')
+        .setRequired(true)
+        .addChoices(...ENCOUNTER_TYPE_CHOICES))
     .addBooleanOption(option =>
       option.setName('date_is_mdy')
         .setDescription('Is the date format in MM/DD/YY? (default is DD/MM/YY)')
         .setRequired(false))
-    .addStringOption(option =>
-      option.setName('encounter_type')
-        .setDescription('How was it encountered?')
-        .setRequired(false)
-        .addChoices(...ENCOUNTER_TYPE_CHOICES))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
