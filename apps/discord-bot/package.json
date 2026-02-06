@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "node --watch src/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --runInBand --coverage"
   },
   "keywords": [
     "discord",
@@ -23,5 +23,10 @@
     "dotenv": "^16.3.1",
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0"
   }
 }
