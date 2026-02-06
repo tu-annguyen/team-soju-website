@@ -163,13 +163,30 @@ Record a new shiny Pokemon catch.
 - `pokemon` (required): Pokemon name
 - `pokedex_number` (required): National Pokedex number
 - `encounter_type` (required): How it was encountered
-- `encounters` (optional): Total encounters before catch
+- `catch_date` (required): Date of the catch (YYYY-MM-DD)
 - `secret` (optional): Is this a secret shiny?
-- `safari` (optional): Is this a safari shiny?
+- `total_encounters` (optional): Total encounters before catch
+- `specie_encounters` (optional): Species encounters before catch
+- `nature` (optional): Nature of the Pokemon
+- `ivs` (optional): Comma-separated IVs in the order: HP, ATK, DEF, SPATK, SPDEF, SPEED 
 
 **Example:**
 ```
-/addshiny trainer:tunacore pokemon:Pikachu pokedex_number:25 encounter_type:single encounters:1247
+/addshiny trainer:tunacore pokemon:dratini encounter_type:Horde catch_date:2026-01-15 total_encounters:20374 species_encounters:3332 nature:Bold ivs:11,1,15,31,14,4
+```
+
+#### `/addshinyscreenshot`
+Record a new shiny Pokemon catch with an uploaded screenshot.
+
+**Options:**
+- `screenshot` (required): Screenshot of the shiny Pokemon's share page
+- `encounter_type` (required): How it was encountered
+- `date_is_mdy` (optional): Specify if date format is MM/DD/YY
+- `secret` (optional): Is this a secret shiny?
+
+**Example:**
+```
+/addshinyscreenshot screenshot:image.png encounter_type:Horde date_is_mdy:True secret:False
 ```
 
 #### `/editshiny`
@@ -181,7 +198,7 @@ Update an existing shiny entry.
 
 **Example:**
 ```
-/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 encounters:2000 secret:true
+/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 total_encounters:2000 secret:true
 ```
 
 #### `/deleteshiny`

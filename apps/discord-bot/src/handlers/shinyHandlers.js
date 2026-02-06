@@ -25,12 +25,6 @@ async function handleAddShiny(interaction) {
   const nature = interaction.options.getString('nature');
   const ivs = interaction.options.getString('ivs');
   let ivHp, ivAttack, ivDefense, ivSpAttack, ivSpDefense, ivSpeed;
-  // const ivHp = interaction.options.getInteger('iv_hp');
-  // const ivAttack = interaction.options.getInteger('iv_attack');
-  // const ivDefense = interaction.options.getInteger('iv_defense');
-  // const ivSpAttack = interaction.options.getInteger('iv_sp_attack');
-  // const ivSpDefense = interaction.options.getInteger('iv_sp_defense');
-  // const ivSpeed = interaction.options.getInteger('iv_speed');
 
   let nationalNumber;
   try {
