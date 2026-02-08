@@ -2507,7 +2507,7 @@
   },
   {
     "name": "tunacore",
-    "numOT": 13,
+    "numOT": 14,
     "shinies": [
       {
         "name": "Piloswine",
@@ -2573,6 +2573,11 @@
         "name": "Jumpluff",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/jumpluff.gif",
         "attribute": "safari"
+      },
+      {
+        "name": "Combee",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/combee.gif",
+        "attribute": ""
       }
     ]
   },
