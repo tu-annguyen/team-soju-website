@@ -3099,6 +3099,32 @@
     ]
   },
   {
+    "name": "ThePGPanda",
+    "numOT": 4,
+    "shinies": [
+      {
+        "name": "Sandslash",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/sandslash.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Dunsparce",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/dunsparce.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Pachirisu",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/pachirisu-f.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Bibarel",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/bibarel-f.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
     "name": "DingusDestiny",
     "numOT": 3,
     "shinies": [
@@ -3152,22 +3178,6 @@
       {
         "name": "Camerupt",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/camerupt.gif",
-        "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "ThePGPanda",
-    "numOT": 2,
-    "shinies": [
-      {
-        "name": "Sandslash",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/sandslash.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Dunsparce",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/dunsparce.gif",
         "attribute": ""
       }
     ]
