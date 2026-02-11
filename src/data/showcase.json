@@ -1,7 +1,7 @@
 [
   {
     "name": "xMEGUx",
-    "numOT": 55,
+    "numOT": 56,
     "shinies": [
       {
         "name": "Swoobat",
@@ -281,6 +281,11 @@
       {
         "name": "Koffing",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/koffing.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Garchomp",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/garchomp.gif",
         "attribute": ""
       }
     ]
