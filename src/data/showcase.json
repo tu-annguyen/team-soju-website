@@ -2931,6 +2931,42 @@
     ]
   },
   {
+    "name": "Shwfityz",
+    "numOT": 6,
+    "shinies": [
+      {
+        "name": "Rhyperior",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Gyarados",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Gallade",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gallade.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Rattata",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rattata.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Blastoise",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/blastoise.gif",
+        "attribute": "egg"
+      },
+      {
+        "name": "Lucario",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lucario.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
     "name": "ThePGPanda",
     "numOT": 5,
     "shinies": [
@@ -2958,37 +2994,6 @@
         "name": "Politoed",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/politoed-f.gif",
         "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "Shwfityz",
-    "numOT": 5,
-    "shinies": [
-      {
-        "name": "Rhyperior",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Gyarados",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Gallade",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gallade.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Rattata",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rattata.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Blastoise",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/blastoise.gif",
-        "attribute": "egg"
       }
     ]
   },
