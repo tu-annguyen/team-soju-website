@@ -2746,6 +2746,47 @@
     ]
   },
   {
+    "name": "Avataradd98",
+    "numOT": 7,
+    "shinies": [
+      {
+        "name": "Pelipper",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/pelipper.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Gyarados",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Mankey",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/mankey.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Natu",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/natu.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Politoed",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/politoed-f.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Smeargle",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Nidoking",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoking.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
     "name": "Scotty",
     "numOT": 6,
     "shinies": [
@@ -2890,42 +2931,6 @@
       {
         "name": "Zubat",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/zubat-f.gif",
-        "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "Avataradd98",
-    "numOT": 6,
-    "shinies": [
-      {
-        "name": "Pelipper",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/pelipper.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Gyarados",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Mankey",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/mankey.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Natu",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/natu.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Politoed",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/politoed-f.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Smeargle",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
         "attribute": ""
       }
     ]
