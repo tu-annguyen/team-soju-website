@@ -2659,6 +2659,47 @@
     ]
   },
   {
+    "name": "BrutxL",
+    "numOT": 7,
+    "shinies": [
+      {
+        "name": "Magikarp",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Smeargle",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Camerupt",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/camerupt.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Golett",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/golett.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Spearow",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/spearow.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Koffing",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/koffing.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Treecko",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/treecko.gif",
+        "attribute": "egg"
+      }
+    ]
+  },
+  {
     "name": "Zofinaa",
     "numOT": 7,
     "shinies": [
@@ -2823,42 +2864,6 @@
       {
         "name": "Hoppip",
         "imageUrl": "https://i.postimg.cc/QBzVhgGk/Hoppip.gif",
-        "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "BrutxL",
-    "numOT": 6,
-    "shinies": [
-      {
-        "name": "Magikarp",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/magikarp-f.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Smeargle",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/smeargle.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Camerupt",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/camerupt.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Golett",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/golett.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Spearow",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/spearow.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Koffing",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/koffing.gif",
         "attribute": ""
       }
     ]
