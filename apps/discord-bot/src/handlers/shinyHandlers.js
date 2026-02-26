@@ -175,7 +175,7 @@ async function handleAddShinyScreenshot(interaction) {
   const validation = validateParsedData(data);
   if (!validation.isValid) {
     const ocrCodeblock = codeBlock(ocrText);
-    await interaction.editReply({ content: `OCR validation failed: ${validation.error}\nOCR result:\n${ocrCodeblock}\nTry uploading a desktop screenshot or adding the shiny manually.`, ephemeral: true });
+    await interaction.editReply({ content: `OCR validation failed: ${validation.error}\nOCR result:\n${ocrCodeblock}\nTry uploading a high resolution desktop screenshot with minimal particles crowding the text areas or adding the shiny manually.`, ephemeral: true });
     return;
   }
 
