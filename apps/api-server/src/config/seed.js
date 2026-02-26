@@ -103,8 +103,9 @@ async function seedDatabase() {
         await pool.query('DELETE FROM team_shinies WHERE original_trainer = $1', [trainerId]);
 
         if (!Array.isArray(trainer.shinies)) continue;
+        const reversedShinies = [...trainer.shinies].reverse(); // Reverse to maintain original order when inserting
 
-        for (const shiny of trainer.shinies) {
+        for (const shiny of reversedShinies) {
           if (!shiny || !shiny.name) continue;
           const pokemon = String(shiny.name).toLowerCase();
           const attr = (shiny.attribute || '').toString().toLowerCase();
