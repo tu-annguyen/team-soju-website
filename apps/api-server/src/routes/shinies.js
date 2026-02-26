@@ -63,6 +63,7 @@ router.get('/', async (req, res) => {
     if (req.query.is_secret !== undefined) filters.is_secret = req.query.is_secret === 'true';
     if (req.query.is_safari !== undefined) filters.is_safari = req.query.is_safari === 'true';
     if (req.query.limit) filters.limit = parseInt(req.query.limit);
+    if (req.query.active !== undefined) filters.active = req.query.active === 'true';
 
     const shinies = await TeamShiny.findAll(filters);
     res.json({

@@ -16,13 +16,23 @@ describe('TeamShiny model', () => {
     const rows = [{ id: 1, pokemon_name: 'pikachu' }];
     mockQuery.mockResolvedValue({ rows });
 
-    const filters = { trainer_id: 1, pokemon_name: 'pika', encounter_type: 'horde', is_secret: true, is_safari: false, limit: 10 };
+    const filters = {
+      trainer_id: 1,
+      pokemon_name: 'pika',
+      encounter_type: 'horde',
+      is_secret: true,
+      is_safari: false,
+      active: true,
+      limit: 10
+    };
     const result = await TeamShiny.findAll(filters);
 
     expect(mockQuery).toHaveBeenCalled();
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('FROM team_shinies');
-    expect(params).toEqual([1, '%pika%', 'horde', true, false, 10]);
+    // active filter should be included after is_safari
+    expect(sql).toMatch(/tm\.is_active/);
+    expect(params).toEqual([1, '%pika%', 'horde', true, false, true, 10]);
     expect(result).toEqual(rows);
   });
 

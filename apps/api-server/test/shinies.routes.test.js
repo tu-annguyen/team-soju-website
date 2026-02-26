@@ -27,6 +27,17 @@ describe('Shinies routes', () => {
       expect(TeamShiny.findAll).toHaveBeenCalledTimes(1);
     });
 
+    it('passes active query parameter correctly', async () => {
+      const shinies = [{ id: 3, pokemon_name: 'bulbasaur' }];
+      TeamShiny.findAll.mockResolvedValue(shinies);
+
+      const res = await request(app).get('/api/shinies?active=true');
+
+      expect(res.status).toBe(200);
+      expect(TeamShiny.findAll).toHaveBeenCalledWith({ active: true });
+      expect(res.body.data).toEqual(shinies);
+    });
+
     it('handles errors with 500', async () => {
       TeamShiny.findAll.mockRejectedValue(new Error('db error'));
 

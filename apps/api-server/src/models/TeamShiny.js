@@ -41,6 +41,13 @@ class TeamShiny {
       params.push(filters.is_safari);
     }
 
+    // filter by active trainers if requested
+    if (filters.active !== undefined) {
+      paramCount++;
+      query += ` AND tm.is_active = $${paramCount}`;
+      params.push(filters.active);
+    }
+
     query += ` ORDER BY ts.catch_date DESC`;
 
     if (filters.limit) {
