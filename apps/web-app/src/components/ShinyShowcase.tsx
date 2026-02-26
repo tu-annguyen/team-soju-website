@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ShinyCard from './ShinyCard';
-import showcase from '../data/showcase.json';
 
 export interface ShinyPokemon {
   name: string;
@@ -14,9 +13,75 @@ interface Trainer {
   shinies: ShinyPokemon[];
 }
 
-const shinyData: Trainer[] = showcase;
+interface ShinyFromAPI {
+  pokemon_name: string;
+  trainer_name: string;
+  screenshot_url: string;
+  is_secret: boolean;
+  is_safari: boolean;
+}
+
+const transformAPIDataToShowcase = (shinies: ShinyFromAPI[]): Trainer[] => {
+  // Group shinies by trainer
+  const trainerMap = new Map<string, ShinyFromAPI[]>();
+  
+  shinies.forEach(shiny => {
+    const existing = trainerMap.get(shiny.trainer_name) || [];
+    trainerMap.set(shiny.trainer_name, [...existing, shiny]);
+  });
+
+  // Transform to showcase format
+  return Array.from(trainerMap.entries())
+    .map(([trainerName, trainerShinies]) => {
+      // Count unique OT shinies
+      const otCount = trainerShinies.length;
+      
+      return {
+        name: trainerName,
+        numOT: otCount,
+        shinies: trainerShinies.map(shiny => ({
+          name: shiny.pokemon_name,
+          imageUrl: shiny.screenshot_url || '',
+          attribute: shiny.is_secret ? 'secret' : (shiny.is_safari ? 'safari' : '')
+        }))
+      };
+    })
+    .sort((a, b) => b.numOT - a.numOT); // Sort by OT count descending
+};
+
 const ShinyShowcase = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [shinyData, setShinyData] = useState<Trainer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchShinies = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiBaseUrl}/shinies?limit=10000`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch shinies: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const shinies = data.data || [];
+        const transformedData = transformAPIDataToShowcase(shinies);
+        setShinyData(transformedData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load shinies');
+        console.error('Error fetching shinies:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShinies();
+  }, []);
   
   const filteredTrainers = shinyData.filter(trainer => 
     trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -24,6 +89,30 @@ const ShinyShowcase = () => {
       shiny.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
+  
+  if (loading) {
+    return (
+      <section className="py-16">
+        <div className="container">
+          <div className="text-center py-12">
+            <p className="text-gray-600 dark:text-gray-400">Loading shiny collection...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-16">
+        <div className="container">
+          <div className="text-center py-12">
+            <p className="text-red-600 dark:text-red-400">Error loading shinies: {error}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
   
   return (
     <section className="py-16">
