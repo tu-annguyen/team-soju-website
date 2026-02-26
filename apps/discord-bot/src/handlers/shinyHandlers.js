@@ -2,7 +2,7 @@
  * Shiny command handlers
  */
 
-const { EmbedBuilder, codeBlock } = require('discord.js');
+const { EmbedBuilder, codeBlock, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
@@ -466,15 +466,64 @@ async function handleGetShiny(interaction) {
   }
 }
 
+// Helper: build embed for a specific page of shinies
+function buildShiniesEmbed(shinies, page, pageSize, trainerIgn) {
+  const totalPages = Math.ceil(shinies.length / pageSize) || 1;
+  const startIndex = (page - 1) * pageSize;
+  const pageItems = shinies.slice(startIndex, startIndex + pageSize);
+
+  const description = pageItems.map((shiny, idx) => {
+    const special = shiny.is_secret ? ' (Secret)' : '';
+    return `${startIndex + idx + 1}. **${shiny.pokemon_name}** by ${shiny.trainer_name}${special} - ID: ${shiny.id}`;
+  }).join('\n');
+
+  return new EmbedBuilder()
+    .setColor(0xFFD700)
+    .setTitle(`Recent Shinies ${trainerIgn ? `by ${trainerIgn}` : ''}`)
+    .setDescription(description || 'No shinies found')
+    .setFooter({ text: `Page ${page} of ${totalPages}` })
+    .setTimestamp();
+}
+
+// Helper: create pagination button row
+function buildPaginationComponents(page, totalPages) {
+  const first = new ButtonBuilder()
+    .setCustomId('shinies_page_first')
+    .setLabel('<<')
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(page === 1);
+
+  const prev = new ButtonBuilder()
+    .setCustomId('shinies_page_prev')
+    .setLabel('<')
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(page === 1);
+
+  const next = new ButtonBuilder()
+    .setCustomId('shinies_page_next')
+    .setLabel('>')
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(page === totalPages);
+
+  const last = new ButtonBuilder()
+    .setCustomId('shinies_page_last')
+    .setLabel('>>')
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(page === totalPages);
+
+  return [new ActionRowBuilder().addComponents(first, prev, next, last)];
+}
+
 async function handleGetShinies(interaction) {
   await interaction.deferReply();
 
   const trainerIgn = interaction.options.getString('trainer');
-  const limit = interaction.options.getInteger('limit') || 10;
+  const pageSize = interaction.options.getInteger('limit') || 10;
 
   try {
     const params = new URLSearchParams();
-    params.append('limit', limit.toString());
+    // fetch a large upper bound so we can paginate client-side
+    params.append('limit', '10000');
 
     if (trainerIgn) {
       const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${trainerIgn}`, {
@@ -487,26 +536,47 @@ async function handleGetShinies(interaction) {
     const response = await axios.get(`${apiBaseUrl}/shinies?${params}`, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
-    const shinies = response.data.data;
+    const shinies = response.data.data || [];
 
     if (shinies.length === 0) {
       await interaction.editReply({ content: 'No shinies found' });
       return;
     }
 
-    const embed = new EmbedBuilder()
-      .setColor(0xFFD700)
-      .setTitle(`Recent Shinies ${trainerIgn ? `by ${trainerIgn}` : ''}`)
-      .setDescription(
-        shinies.slice(0, limit).map((shiny, idx) => {
-          const special = shiny.is_secret ? ' (Secret)' : (shiny.is_safari ? ' (Safari)' : '');
-          return `${idx + 1}. **${shiny.pokemon_name}** by ${shiny.trainer_name}${special} - ID: ${shiny.id}`;
-        }).join('\n')
-      )
-      .setFooter({ text: `Showing ${Math.min(shinies.length, limit)} shinies` })
-      .setTimestamp();
+    const totalPages = Math.ceil(shinies.length / pageSize) || 1;
+    let currentPage = 1;
 
-    await interaction.editReply({ embeds: [embed] });
+    let embed = buildShiniesEmbed(shinies, currentPage, pageSize, trainerIgn);
+    let components = buildPaginationComponents(currentPage, totalPages);
+
+    await interaction.editReply({ embeds: [embed], components });
+    const message = await interaction.fetchReply();
+
+    const filter = i => i.user.id === interaction.user.id && i.customId.startsWith('shinies_page_');
+    const collector = message.createMessageComponentCollector({ filter, time: 600000 });
+
+    collector.on('collect', async i => {
+      const action = i.customId.split('_').pop();
+      if (action === 'first') currentPage = 1;
+      else if (action === 'prev') currentPage = Math.max(1, currentPage - 1);
+      else if (action === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+      else if (action === 'last') currentPage = totalPages;
+
+      embed = buildShiniesEmbed(shinies, currentPage, pageSize, trainerIgn);
+      components = buildPaginationComponents(currentPage, totalPages);
+
+      await i.update({ embeds: [embed], components });
+    });
+
+    collector.on('end', () => {
+      // disable remaining buttons when collector expires
+      const disabled = components.map(row => {
+        row.components.forEach(btn => btn.setDisabled(true));
+        return row;
+      });
+      message.edit({ components: disabled }).catch(() => {});
+    });
+
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
   }

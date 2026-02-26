@@ -224,11 +224,11 @@ View details about a specific shiny.
 ```
 
 #### `/shinies`
-List recent shiny catches.
+List recent shiny catches with interactive pagination.
 
 **Options:**
 - `trainer` (optional): Filter by trainer IGN
-- `limit` (optional): Maximum results (default: 10)
+- `limit` (optional): Page size (default: 10). Use buttons below the response to navigate between pages.
 
 **Example:**
 ```
