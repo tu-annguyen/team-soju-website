@@ -158,27 +158,14 @@ function parseDataFromOcr(text, isMDY = false) {
   let spd = null;
   let spe = null;
 
-  // Find IVs line and extract numbers
-  const ivLine = lines.find(l => l.toLowerCase().includes('iv'));
-  if (ivLine) {
-    const parts = ivLine.split('/');
-    const numbers = [];
-    for (const part of parts) {
-      const cleaned = part.replace(/[^0-9]/g, '');
-      const num = parseInt(cleaned, 10);
-      if (!isNaN(num) && num >= 0 && num <= 31) {
-        numbers.push(num);
-      } else if (!isNaN(num) && num > 31 && cleaned.length === 3) {
-        // Try to split 3-digit number into two 2-digit
-        const a = parseInt(cleaned.slice(0, 2), 10);
-        const b = parseInt(cleaned.slice(2), 10);
-        if (a >= 0 && a <= 31 && b >= 0 && b <= 31) {
-          numbers.push(a, b);
-        }
-      }
-    }
-    if (numbers.length >= 6) {
-      [hp, atk, def, spa, spd, spe] = numbers.slice(0, 6);
+  // Find IVs using regex pattern
+  const ivRegex = /((?:[0-9]|[12][0-9]|3[01])\/){5}(?:[0-9]|[12][0-9]|3[01])/;
+  const ivMatch = ivRegex.exec(text);
+
+  if (ivMatch) {
+    const numbers = ivMatch[0].split('/').map(n => parseInt(n, 10));
+    if (numbers.length === 6) {
+      [hp, atk, def, spa, spd, spe] = numbers;
     }
   }
 
@@ -227,6 +214,7 @@ function validateParsedData(data) {
 
   // Check IVs
   const ivs = [data.hp, data.atk, data.def, data.spa, data.spd, data.spe];
+  console.log('Validating IVs:', ivs);
   if (ivs.some(iv => typeof iv !== 'number' || iv < 0 || iv > 31 || !Number.isInteger(iv))) {
     return { isValid: false, error: 'IVs must be 6 integers between 0 and 31.' };
   }
@@ -245,41 +233,6 @@ function validateParsedData(data) {
   }
 
   return { isValid: true, error: null };
-}
-
-/** Fetches the national number for a given Pokémon name
- * @param {string} pokemon - Pokémon name
- * @returns {number|null} National number or null if not found
- */
-async function getNationalNumber(pokemon) {
-  try {
-    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon}`);
-
-    if (!response.ok) {
-      console.error(`Failed to fetch data for Pokémon "${pokemon}": ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    return data.id; // PokeAPI uses 'id' for national number
-  } catch (err) {
-    console.error(`Error fetching data for Pokémon "${pokemon}":`, err.message || err);
-  }
-}
-
-/**
- * 
- * @param {*} pokemonId national pokedex number of the pokemon
- * @returns a URL to the Gen V animated shiny sprite associated with the pokemonId
- */
-async function getSpriteUrl(pokemonId) {
-  try {
-    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
-    const data = await response.json();
-    return data.sprites.versions["generation-v"]["black-white"].animated.front_shiny;
-  } catch (err) {
-    console.error(`Error fetching data for Pokémon "${pokemonId}":`, err.message || err);
-    return null;
-  }
 }
 
 /**
@@ -422,8 +375,6 @@ module.exports = {
   validateEnvironment,
   parseDataFromOcr,
   validateParsedData,
-  getNationalNumber,
-  getSpriteUrl,
   generateEncountersString,
   checkCommandPermission,
   getCommandRequiredRoles,

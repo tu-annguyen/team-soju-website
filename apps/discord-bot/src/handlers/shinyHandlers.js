@@ -6,7 +6,8 @@ const { EmbedBuilder, codeBlock } = require('discord.js');
 const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
-const { parseDataFromOcr, validateParsedData, getNationalNumber, getSpriteUrl, generateEncountersString, validateSojuTrainerIGN } = require('../utils');
+const { parseDataFromOcr, validateParsedData, generateEncountersString, validateSojuTrainerIGN } = require('../utils');
+const { getNationalNumber, getSpriteUrl } = require('../../../../packages/utils/pokeapi');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;
@@ -151,7 +152,6 @@ async function handleAddShinyScreenshot(interaction) {
     processedBuffer,
     'eng',
     { 
-      logger: m => console.log(m),
       tessedit_pageseg_mode: '6',
       tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/°: -_—'
     }
