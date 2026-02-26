@@ -82,7 +82,7 @@ async function seedDatabase() {
     // ---------------------------------------------------------------------
     // Import shinies from client/src/data/showcase.json
     // JSON structure: [ { name: "<ign>", numOT: n, shinies: [ { name: "<pokemon>", imageUrl: "...", attribute: "safari"|"secret"|"" }, ... ] }, ... ]
-    // We'll insert a row for each shiny with pokemon, original_trainer (id) and set is_safari / is_secret.
+    // We'll insert a row for each shiny with pokemon, original_trainer (id) and set is_secret.
     // ---------------------------------------------------------------------
     const showcasePath = path.resolve(__dirname, '../../../web-app/src/data/showcase.json');
     if (fs.existsSync(showcasePath)) {
@@ -109,7 +109,6 @@ async function seedDatabase() {
           if (!shiny || !shiny.name) continue;
           const pokemon = String(shiny.name).toLowerCase();
           const attr = (shiny.attribute || '').toString().toLowerCase();
-          const is_safari = attr === 'safari';
           const is_secret = attr === 'secret';
 
           // Fetch national number from PokeAPI
@@ -131,11 +130,11 @@ async function seedDatabase() {
 
           try {
             await pool.query(
-              `INSERT INTO team_shinies (pokemon, national_number, original_trainer, is_safari, is_secret)
-               VALUES ($1, $2, $3, $4, $5)
+              `INSERT INTO team_shinies (pokemon, national_number, original_trainer, is_secret)
+               VALUES ($1, $2, $3, $4)
                ON CONFLICT DO NOTHING
               `,
-              [pokemon, national_number, trainerId, is_safari, is_secret]
+              [pokemon, national_number, trainerId, is_secret]
             );
           } catch (err) {
             console.warn(`Failed to insert shiny "${shiny.name}" for trainer "${trainer.name}":`, err.message || err);

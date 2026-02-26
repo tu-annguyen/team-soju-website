@@ -37,7 +37,7 @@ class TeamShiny {
 
     if (filters.is_safari !== undefined) {
       paramCount++;
-      query += ` AND ts.is_safari = $${paramCount}`;
+      query += ` AND ts.encounter_type = 'safari' = $${paramCount}`;
       params.push(filters.is_safari);
     }
 
@@ -88,7 +88,6 @@ class TeamShiny {
       iv_sp_defense,
       iv_speed,
       is_secret = false,
-      is_safari = false,
       screenshot_url,
       notes
     } = shinyData;
@@ -98,15 +97,15 @@ class TeamShiny {
         national_number, pokemon, original_trainer, catch_date, total_encounters,
         species_encounters, encounter_type, location, 
         nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
-        iv_sp_defense, iv_speed, is_secret, is_safari, screenshot_url, notes
+        iv_sp_defense, iv_speed, is_secret, screenshot_url, notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING id
     `, [
       national_number, pokemon, original_trainer, catch_date, total_encounters,
       species_encounters, encounter_type, location, 
       nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
-      iv_sp_defense, iv_speed, is_secret, is_safari, screenshot_url, notes
+      iv_sp_defense, iv_speed, is_secret, screenshot_url, notes
     ]);
 
     const insertedId = result.rows[0].id;
@@ -130,7 +129,6 @@ class TeamShiny {
       iv_sp_defense,
       iv_speed,
       is_secret,
-      is_safari,
       screenshot_url,
       notes
     } = shinyData;
@@ -152,16 +150,15 @@ class TeamShiny {
           iv_sp_defense = COALESCE($14, iv_sp_defense),
           iv_speed = COALESCE($15, iv_speed),
           is_secret = COALESCE($16, is_secret),
-          is_safari = COALESCE($17, is_safari),
-          screenshot_url = COALESCE($18, screenshot_url),
-          notes = COALESCE($19, notes)
+          screenshot_url = COALESCE($17, screenshot_url),
+          notes = COALESCE($18, notes)
       WHERE id = $1
       RETURNING *
     `, [
       id, national_number, pokemon, catch_date, total_encounters, species_encounters,
       encounter_type, location, nature, 
       iv_hp, iv_attack, iv_defense, iv_sp_attack, iv_sp_defense, iv_speed,
-      is_secret, is_safari, screenshot_url, notes
+      is_secret, screenshot_url, notes
     ]);
 
     // Return the updated shiny with joined trainer_name
@@ -185,7 +182,7 @@ class TeamShiny {
         COUNT(*) as total_shinies,
         COUNT(DISTINCT original_trainer) as unique_trainers,
         COUNT(CASE WHEN is_secret THEN 1 END) as secret_shinies,
-        COUNT(CASE WHEN is_safari THEN 1 END) as safari_shinies,
+        COUNT(CASE WHEN encounter_type = 'safari' THEN 1 END) as safari_shinies,
         AVG(total_encounters) as avg_encounters,
         encounter_type,
         COUNT(*) as count_by_type
@@ -203,7 +200,7 @@ class TeamShiny {
         tm.rank,
         COUNT(ts.id) as shiny_count,
         COUNT(CASE WHEN ts.is_secret THEN 1 END) as secret_count,
-        COUNT(CASE WHEN ts.is_safari THEN 1 END) as safari_count
+        COUNT(CASE WHEN ts.encounter_type = 'safari' THEN 1 END) as safari_count
       FROM team_members tm
       LEFT JOIN team_shinies ts ON tm.id = ts.original_trainer
       WHERE tm.is_active = true

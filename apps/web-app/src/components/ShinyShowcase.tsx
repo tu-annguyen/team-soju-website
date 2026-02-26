@@ -17,8 +17,8 @@ interface Trainer {
 interface ShinyFromAPI {
   pokemon_name: string;
   trainer_name: string;
+  encounter_type: string | null;
   is_secret: boolean;
-  is_safari: boolean;
 }
 
 const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trainer[]> => {
@@ -40,7 +40,7 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
         trainerShinies.map(async (shiny) => ({
           name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(), // Capitalize first letter
           imageUrl: (await getSpriteUrl(shiny.pokemon_name)) || '',
-          attribute: shiny.is_secret ? 'secret' : (shiny.is_safari ? 'safari' : '')
+          attribute: shiny.is_secret ? 'secret' : (shiny.encounter_type === 'safari' ? 'safari' : (shiny.encounter_type === 'egg' ? 'egg' : ''))
         }))
       );
       

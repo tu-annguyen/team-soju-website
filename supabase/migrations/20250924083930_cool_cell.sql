@@ -54,7 +54,6 @@ CREATE TABLE IF NOT EXISTS team_shinies (
     
     -- Additional metadata
     is_secret BOOLEAN DEFAULT false, -- Secret shiny indicator
-    is_safari BOOLEAN DEFAULT false, -- Safari shiny indicator
     screenshot_url VARCHAR(255),
     notes TEXT,
     

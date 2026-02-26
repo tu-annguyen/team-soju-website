@@ -5,12 +5,13 @@ interface ShinyCardProps {
   pokemonName: string;
   trainerName: string;
   imageUrl: string;
-  attribute?: string; // Optional: denote secret or safari shinies
+  attribute?: string; // Optional: denote secret, safari, or egg shinies
 }
 
 const attributeIcons: Record<string, string> = {
   secret: '/images/secret.png',
   safari: '/images/safari.png',
+  egg: '/images/egg.png'
 };
 
 const ShinyCard = ({ pokemonName, imageUrl, attribute }: ShinyCardProps) => {

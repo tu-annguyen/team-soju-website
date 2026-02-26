@@ -23,7 +23,6 @@ const shinySchema = Joi.object({
   iv_sp_defense: Joi.number().integer().min(0).max(31).optional(),
   iv_speed: Joi.number().integer().min(0).max(31).optional(),
   is_secret: Joi.boolean().default(false),
-  is_safari: Joi.boolean().default(false),
   screenshot_url: Joi.string().uri().optional(),
   notes: Joi.string().optional()
 });
@@ -47,7 +46,6 @@ const updateShinySchema = Joi.object({
   iv_sp_defense: Joi.number().integer().min(0).max(31).optional(),
   iv_speed: Joi.number().integer().min(0).max(31).optional(),
   is_secret: Joi.boolean().optional(),
-  is_safari: Joi.boolean().optional(),
   screenshot_url: Joi.string().uri().optional(),
   notes: Joi.string().optional()
 });
@@ -61,7 +59,6 @@ router.get('/', async (req, res) => {
     if (req.query.pokemon_name) filters.pokemon_name = req.query.pokemon_name;
     if (req.query.encounter_type) filters.encounter_type = req.query.encounter_type;
     if (req.query.is_secret !== undefined) filters.is_secret = req.query.is_secret === 'true';
-    if (req.query.is_safari !== undefined) filters.is_safari = req.query.is_safari === 'true';
     if (req.query.limit) filters.limit = parseInt(req.query.limit);
     if (req.query.active !== undefined) filters.active = req.query.active === 'true';
 

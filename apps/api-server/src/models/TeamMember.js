@@ -114,7 +114,7 @@ class TeamMember {
       SELECT 
         COUNT(*) as total_shinies,
         COUNT(CASE WHEN is_secret THEN 1 END) as secret_shinies,
-        COUNT(CASE WHEN is_safari THEN 1 END) as safari_shinies,
+        COUNT(CASE WHEN encounter_type = 'safari' THEN 1 END) as safari_shinies,
         AVG(total_encounters) as avg_encounters,
         encounter_type,
         COUNT(*) as count_by_type

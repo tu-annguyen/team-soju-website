@@ -223,7 +223,6 @@ async function handleAddShinyScreenshot(interaction) {
       iv_sp_defense: data.spd,
       iv_speed: data.spe,
       is_secret: isSecret,
-      is_safari: encounterType === 'safari' ? true : isSafari,
       screenshot_url: screenshotUrl,
     }, {
       headers: { Authorization: `Bearer ${botToken}` }
