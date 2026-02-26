@@ -63,12 +63,12 @@ const COMMAND_PERMISSIONS = {
   'addshiny': ['Soju'],
   'addshinyscreenshot': ['Soju'],
   'editshiny': ['Soju'],
+  'deleteshiny': ['Soju'],
   // Elite 4 / Champion role (highest access)
   'addmember': ['Elite 4', 'Champion'],
   'editmember': ['Elite 4', 'Champion'],
   'deletemember': ['Elite 4', 'Champion'],
   'reactivatemember': ['Elite 4', 'Champion'],
-  'deleteshiny': ['Elite 4', 'Champion'],
 };
 
 const COMMANDS = [

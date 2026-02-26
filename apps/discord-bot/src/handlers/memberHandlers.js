@@ -40,7 +40,7 @@ async function handleAddMember(interaction) {
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
     const errorMessage = error.response?.data?.message || error.message;
-    await interaction.editReply({ content: `Error: ${errorMessage}` });
+    await interaction.editReply({ content: `Error: ${errorMessage}`, ephemeral: true });
   }
 }
 
@@ -85,7 +85,7 @@ async function handleEditMember(interaction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}` });
+    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
   }
 }
 
@@ -112,7 +112,7 @@ async function handleDeleteMember(interaction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}` });
+    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
   }
 }
 
@@ -145,7 +145,7 @@ async function handleReactivateMember(interaction) {
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
     const errorMessage = error.response?.data?.message || error.message;
-    await interaction.editReply({ content: `Error: ${errorMessage}` });
+    await interaction.editReply({ content: `Error: ${errorMessage}`, ephemeral: true });
   }
 } 
 
@@ -178,10 +178,10 @@ async function handleGetMember(interaction) {
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
     if (error.response && error.response.status === 404) {
-      await interaction.editReply({ content: `Member with IGN "${ign}" not found.` });
+      await interaction.editReply({ content: `Member with IGN "${ign}" not found.`, ephemeral: true });
       return;
     }
-    await interaction.editReply({ content: `Error: ${error.message}` });
+    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
   }
 }
 

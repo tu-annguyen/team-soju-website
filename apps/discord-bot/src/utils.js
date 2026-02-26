@@ -302,27 +302,71 @@ function generateEncountersString(total, species, pokemon) {
 }
 
 /**
+ * Fetches a team member from the database by Discord ID
+ * @param {string} discordId - Discord user ID
+ * @returns {Promise<object|null>} Member object or null if not found
+ */
+async function getMemberByDiscordId(discordId) {
+  const axios = require('axios');
+  const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
+  
+  try {
+    const response = await axios.get(`${apiBaseUrl}/members`, {
+      headers: { Authorization: `Bearer ${process.env.BOT_API_TOKEN}` }
+    });
+    
+    const members = response.data.data || [];
+    return members.find(m => m.discord_id === discordId) || null;
+  } catch (error) {
+    console.error(`Error fetching member by Discord ID ${discordId}:`, error.message);
+    return null;
+  }
+}
+
+/**
  * Checks if a user has the required roles for a command
  * @param {Interaction} interaction - Discord interaction object
  * @param {Array<string>} requiredRoles - Array of required role names
- * @returns {boolean} True if user has required role(s), false otherwise
+ * @param {string} commandName - Name of the command being executed
+ * @returns {Promise<{allowed: boolean, reason?: string}>} Permission check result
  */
-function checkCommandPermission(interaction, requiredRoles) {
+async function checkCommandPermission(interaction, requiredRoles, commandName) {
   // If no roles are required, allow all members
   if (!requiredRoles || requiredRoles.length === 0) {
-    return true;
+    return { allowed: true };
   }
 
   // Get member's roles
   const memberRoles = interaction.member?.roles?.cache;
   if (!memberRoles) {
-    return false;
+    return { allowed: false, reason: 'Could not retrieve your roles' };
   }
 
   // Check if member has any of the required roles
-  return requiredRoles.some(requiredRole =>
+  const hasRequiredRole = requiredRoles.some(requiredRole =>
     memberRoles.some(role => role.name === requiredRole)
   );
+
+  if (!hasRequiredRole) {
+    return { 
+      allowed: false, 
+      reason: `Required role(s): ${requiredRoles.join(', ')}` 
+    };
+  }
+
+  // For Soju role, verify Discord ID is registered in the database
+  const hasSojuRole = memberRoles.some(role => role.name === 'Soju');
+  if (hasSojuRole && requiredRoles.includes('Soju')) {
+    const member = await getMemberByDiscordId(interaction.user.id);
+    if (!member) {
+      return { 
+        allowed: false, 
+        reason: 'Your Discord account is not registered in the member database. Contact an Elite 4 or Champion to register.' 
+      };
+    }
+  }
+
+  return { allowed: true };
 }
 
 /**
@@ -333,6 +377,41 @@ function checkCommandPermission(interaction, requiredRoles) {
 function getCommandRequiredRoles(commandName) {
   const { COMMAND_PERMISSIONS } = require('./commands');
   return COMMAND_PERMISSIONS[commandName] || [];
+}
+
+/**
+ * Validates that the trainer IGN matches the user's registered member IGN (for Soju role)
+ * @param {Interaction} interaction - Discord interaction object
+ * @param {string} trainerIGN - The IGN provided in the command
+ * @returns {Promise<{valid: boolean, reason?: string, member?: object}>} Validation result
+ */
+async function validateSojuTrainerIGN(interaction, trainerIGN) {
+  const memberRoles = interaction.member?.roles?.cache;
+  const hasSojuRole = memberRoles?.some(role => role.name === 'Soju');
+  const hasStaffRole = memberRoles?.some(role => role.name === 'Elite 4' || role.name === 'Champion');
+
+  // Only validate for Soju-only role members (not if they also have Elite 4 or Champion)
+  if (!hasSojuRole || hasStaffRole) {
+    return { valid: true };
+  }
+
+  const member = await getMemberByDiscordId(interaction.user.id);
+  if (!member) {
+    return { 
+      valid: false, 
+      reason: 'Your Discord account is not registered in the member database.' 
+    };
+  }
+
+  // Check if the provided trainer IGN matches their registered IGN
+  if (member.ign.toLowerCase() !== trainerIGN.toLowerCase()) {
+    return { 
+      valid: false, 
+      reason: `You can only manage shinies for your registered IGN: ${member.ign}` 
+    };
+  }
+
+  return { valid: true, member };
 }
 
 module.exports = {
@@ -348,4 +427,6 @@ module.exports = {
   generateEncountersString,
   checkCommandPermission,
   getCommandRequiredRoles,
+  getMemberByDiscordId,
+  validateSojuTrainerIGN,
 };
