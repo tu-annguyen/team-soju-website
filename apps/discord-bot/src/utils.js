@@ -301,6 +301,40 @@ function generateEncountersString(total, species, pokemon) {
   return encountersString;
 }
 
+/**
+ * Checks if a user has the required roles for a command
+ * @param {Interaction} interaction - Discord interaction object
+ * @param {Array<string>} requiredRoles - Array of required role names
+ * @returns {boolean} True if user has required role(s), false otherwise
+ */
+function checkCommandPermission(interaction, requiredRoles) {
+  // If no roles are required, allow all members
+  if (!requiredRoles || requiredRoles.length === 0) {
+    return true;
+  }
+
+  // Get member's roles
+  const memberRoles = interaction.member?.roles?.cache;
+  if (!memberRoles) {
+    return false;
+  }
+
+  // Check if member has any of the required roles
+  return requiredRoles.some(requiredRole =>
+    memberRoles.some(role => role.name === requiredRole)
+  );
+}
+
+/**
+ * Gets the required roles for a command
+ * @param {string} commandName - Name of the command
+ * @returns {Array<string>} Array of required role names
+ */
+function getCommandRequiredRoles(commandName) {
+  const { COMMAND_PERMISSIONS } = require('./commands');
+  return COMMAND_PERMISSIONS[commandName] || [];
+}
+
 module.exports = {
   API_ENDPOINT,
   registerSlashCommands,
@@ -312,4 +346,6 @@ module.exports = {
   getNationalNumber,
   getSpriteUrl,
   generateEncountersString,
+  checkCommandPermission,
+  getCommandRequiredRoles,
 };

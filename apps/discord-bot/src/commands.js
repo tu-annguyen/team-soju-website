@@ -51,6 +51,26 @@ const NATURE_CHOICES = [
   { name: 'Quirky', value: 'Quirky' },
 ];
 
+// Define required roles for commands
+const COMMAND_PERMISSIONS = {
+  // Public commands (all members)
+  'member': [],
+  'shiny': [],
+  'shinies': [],
+  'leaderboard': [],
+  'stats': [],
+  // Soju role and above
+  'addshiny': ['Soju'],
+  'addshinyscreenshot': ['Soju'],
+  'editshiny': ['Soju'],
+  // Elite 4 / Champion role (highest access)
+  'addmember': ['Elite 4', 'Champion'],
+  'editmember': ['Elite 4', 'Champion'],
+  'deletemember': ['Elite 4', 'Champion'],
+  'reactivatemember': ['Elite 4', 'Champion'],
+  'deleteshiny': ['Elite 4', 'Champion'],
+};
+
 const COMMANDS = [
   new SlashCommandBuilder()
     .setName('addmember')
@@ -284,4 +304,4 @@ const COMMANDS = [
     .setDescription('Show team statistics'),
 ];
 
-module.exports = { COMMANDS, RANK_CHOICES, ENCOUNTER_TYPE_CHOICES };
+module.exports = { COMMANDS, RANK_CHOICES, ENCOUNTER_TYPE_CHOICES, COMMAND_PERMISSIONS };

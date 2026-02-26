@@ -11,7 +11,9 @@ const { COMMANDS } = require('./commands');
 const {
   registerSlashCommands,
   getCommandHandler,
-  validateEnvironment
+  validateEnvironment,
+  checkCommandPermission,
+  getCommandRequiredRoles,
 } = require('./utils');
 
 class TeamSojuBot {
@@ -43,6 +45,22 @@ class TeamSojuBot {
       console.log(`Command received: ${interaction.commandName} from ${interaction.user.tag}`);
 
       try {
+        // Check if user has required permissions
+        const requiredRoles = getCommandRequiredRoles(interaction.commandName);
+        if (!checkCommandPermission(interaction, requiredRoles)) {
+          const rolesText = requiredRoles.length > 0 
+            ? `${requiredRoles.join(', ')} `
+            : '';
+          const errorMessage = `❌ You don't have permission to use this command. Required role(s): ${rolesText || 'None (public command)'}`;
+          
+          if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: errorMessage, ephemeral: true });
+          } else {
+            await interaction.editReply({ content: errorMessage, ephemeral: true });
+          }
+          return;
+        }
+
         const handler = getCommandHandler(interaction.commandName);
         await handler(interaction);
       } catch (error) {
