@@ -34,7 +34,7 @@ async function seedDatabase() {
       { ign: 'Scotty', rank: 'Trainer', discord_id: '917293919698575361'},
       { ign: 'rubunny', rank: 'Gym Leader', discord_id: '246875143006060544'},
       { ign: 'Colty', rank: 'Gym Leader', discord_id: '168416102370639872'},
-      { ign: 'Shwiftyz', rank: 'Ace Trainer', discord_id: '573195723940560906'},
+      { ign: 'Shwfityz', rank: 'Ace Trainer', discord_id: '573195723940560906'},
       { ign: 'HinatShoyo', rank: 'Ace Trainer', discord_id: '724734257498423386'},
       { ign: 'Swifty', rank: 'Gym Leader', discord_id: '578968418393260032'},
       { ign: 'KxIrish', rank: 'Ace Trainer', discord_id: '114826685152624641'},
