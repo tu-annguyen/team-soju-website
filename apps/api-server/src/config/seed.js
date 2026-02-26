@@ -29,7 +29,7 @@ async function seedDatabase() {
       { ign: 'BlossomsDream', rank: 'Gym Leader', discord_id: '643457841486626831'},
       { ign: 'Brutal', rank: 'Trainer', discord_id: '428013831910981642'},
       { ign: 'Zofina', rank: 'Gym Leader', discord_id: '460681300802535436'},
-      { ign: 'thelayar', rank: 'Gym Leader', discord_id: '251016407699947520'},
+      { ign: 'layar', rank: 'Gym Leader', discord_id: '251016407699947520'},
       { ign: 'TMAvatar', rank: 'Ace Trainer', discord_id: '314136535232413697'},
       { ign: 'Scotty', rank: 'Trainer', discord_id: '917293919698575361'},
       { ign: 'rubunny', rank: 'Gym Leader', discord_id: '246875143006060544'},
@@ -41,6 +41,7 @@ async function seedDatabase() {
       { ign: 'DingusDestiny', rank: 'Gym Leader', discord_id: '298160083584417802'},
       { ign: 'iyusu', rank: 'Trainer', discord_id: '154007376234676224'},
       { ign: 'MPLA', rank: 'Ace Trainer', discord_id: '142753824820559872'},
+      { ign: 'Ssjbluecrill', rank: 'Gym Leader', discord_id: '507450215096254464'},
       { ign: 'HerbusShinkle', rank: 'Ace Trainer', discord_id: '738442223149908100'},
       { ign: 'TXMPXp', rank: 'Gym Leader', discord_id: '838969209580027914'},
     ];
