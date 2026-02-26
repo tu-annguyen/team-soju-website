@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ShinyCard from './ShinyCard';
+import { getSpriteUrl } from '../../../../packages/utils/pokeapi.js';
 
 export interface ShinyPokemon {
   name: string;
@@ -16,12 +17,11 @@ interface Trainer {
 interface ShinyFromAPI {
   pokemon_name: string;
   trainer_name: string;
-  screenshot_url: string;
   is_secret: boolean;
   is_safari: boolean;
 }
 
-const transformAPIDataToShowcase = (shinies: ShinyFromAPI[]): Trainer[] => {
+const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trainer[]> => {
   // Group shinies by trainer
   const trainerMap = new Map<string, ShinyFromAPI[]>();
   
@@ -31,22 +31,28 @@ const transformAPIDataToShowcase = (shinies: ShinyFromAPI[]): Trainer[] => {
   });
 
   // Transform to showcase format
-  return Array.from(trainerMap.entries())
-    .map(([trainerName, trainerShinies]) => {
+  const trainers = await Promise.all(
+    Array.from(trainerMap.entries()).map(async ([trainerName, trainerShinies]) => {
       // Count unique OT shinies
       const otCount = trainerShinies.length;
+      
+      const shiniesWithUrls = await Promise.all(
+        trainerShinies.map(async (shiny) => ({
+          name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(), // Capitalize first letter
+          imageUrl: (await getSpriteUrl(shiny.pokemon_name)) || '',
+          attribute: shiny.is_secret ? 'secret' : (shiny.is_safari ? 'safari' : '')
+        }))
+      );
       
       return {
         name: trainerName,
         numOT: otCount,
-        shinies: trainerShinies.map(shiny => ({
-          name: shiny.pokemon_name,
-          imageUrl: shiny.screenshot_url || '',
-          attribute: shiny.is_secret ? 'secret' : (shiny.is_safari ? 'safari' : '')
-        }))
+        shinies: shiniesWithUrls
       };
     })
-    .sort((a, b) => b.numOT - a.numOT); // Sort by OT count descending
+  );
+
+  return trainers.sort((a, b) => b.numOT - a.numOT); // Sort by OT count descending
 };
 
 const ShinyShowcase = () => {
@@ -62,7 +68,7 @@ const ShinyShowcase = () => {
         setError(null);
         
         const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${apiBaseUrl}/shinies?limit=10000`);
+        const response = await fetch(`${apiBaseUrl}/shinies?active=true&limit=10000`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch shinies: ${response.statusText}`);
@@ -70,7 +76,7 @@ const ShinyShowcase = () => {
         
         const data = await response.json();
         const shinies = data.data || [];
-        const transformedData = transformAPIDataToShowcase(shinies);
+        const transformedData = await transformAPIDataToShowcase(shinies);
         setShinyData(transformedData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load shinies');
