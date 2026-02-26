@@ -194,10 +194,16 @@ async function handleAddShinyScreenshot(interaction) {
       return;
     }
 
-    const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${data.trainer}`, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
-    const trainer = trainerResponse.data.data;
+    let trainer;
+    try {
+      const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${data.trainer}`, {
+        headers: { Authorization: `Bearer ${botToken}` }
+      });
+      trainer = trainerResponse.data.data;
+    } catch (error) {
+      await interaction.editReply({ content: `Error: Could not find trainer with IGN "${data.trainer}"`, ephemeral: true });
+      return;
+    }
 
     console.log('Parsed Data:', data);
 
