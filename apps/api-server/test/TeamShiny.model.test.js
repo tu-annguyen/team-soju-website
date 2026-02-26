@@ -21,7 +21,6 @@ describe('TeamShiny model', () => {
       pokemon_name: 'pika',
       encounter_type: 'horde',
       is_secret: true,
-      is_safari: false,
       active: true,
       limit: 10
     };
@@ -32,7 +31,7 @@ describe('TeamShiny model', () => {
     expect(sql).toContain('FROM team_shinies');
     // active filter should be included after is_safari
     expect(sql).toMatch(/tm\.is_active/);
-    expect(params).toEqual([1, '%pika%', 'horde', true, false, true, 10]);
+    expect(params).toEqual([1, '%pika%', 'horde', true, true, 10]);
     expect(result).toEqual(rows);
   });
 
