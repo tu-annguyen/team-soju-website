@@ -2833,6 +2833,42 @@
     ]
   },
   {
+    "name": "Shwfityz",
+    "numOT": 6,
+    "shinies": [
+      {
+        "name": "Rhyperior",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Gyarados",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Gallade",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gallade.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Rattata",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rattata.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Blastoise",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/blastoise.gif",
+        "attribute": "egg"
+      },
+      {
+        "name": "Lucario",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lucario.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
     "name": "Scotty",
     "numOT": 6,
     "shinies": [
@@ -2941,42 +2977,6 @@
       {
         "name": "Zubat",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/zubat-f.gif",
-        "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "Shwfityz",
-    "numOT": 6,
-    "shinies": [
-      {
-        "name": "Rhyperior",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Gyarados",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Gallade",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gallade.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Rattata",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rattata.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Blastoise",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/blastoise.gif",
-        "attribute": "egg"
-      },
-      {
-        "name": "Lucario",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lucario.gif",
         "attribute": ""
       }
     ]
