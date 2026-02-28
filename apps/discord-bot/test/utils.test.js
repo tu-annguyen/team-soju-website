@@ -127,4 +127,12 @@ describe('Utils', () => {
       }).toThrow('No handler found for command: unknowncommand');
     });
   });
+
+  describe('utils package exports', () => {
+    it('should export pokeapi helpers', () => {
+      const utils = require('@team-soju/utils');
+      expect(typeof utils.getNationalNumber).toBe('function');
+      expect(typeof utils.getSpriteUrl).toBe('function');
+    });
+  });
 });

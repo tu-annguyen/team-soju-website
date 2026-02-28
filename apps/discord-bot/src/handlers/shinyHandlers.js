@@ -7,7 +7,7 @@ const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
 const { parseDataFromOcr, validateParsedData, generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { getNationalNumber, getSpriteUrl, greyscale, greyscaleGifwrap } = require('@team-soju/utils');
+const { getNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;
@@ -414,11 +414,11 @@ async function handleFailShiny(interaction) {
       spriteUrl = await getSpriteUrl(shiny.national_number);
       if (spriteUrl) {
         try {
-          const greyscaled = await greyscaleGifwrap(spriteUrl);
+          const greyscaled = await greyscale(spriteUrl);
           attachments.push({ attachment: greyscaled, name: 'sprite.gif' });
           spriteUrl = 'attachment://sprite.gif';
         } catch (gErr) {
-          console.error('Greyscale failed for spritgreyscaleGifwrape in failShiny:', gErr.message);
+          console.error('Greyscale failed for sprite in failShiny:', gErr.message);
           // fall back to original spriteUrl
         }
       }
@@ -510,7 +510,7 @@ async function handleGetShiny(interaction) {
     
     if (shiny.notes && shiny.notes.toLowerCase() === "failed") {
       try {
-        const greyscaledSprite = await greyscaleGifwrap(spriteUrl);
+        const greyscaledSprite = await greyscale(spriteUrl);
         // store the greyscaled image as an attachment so we don't exceed URL length limits
         attachments.push({ attachment: greyscaledSprite, name: 'sprite.gif' });
         spriteUrl = 'attachment://sprite.gif';
