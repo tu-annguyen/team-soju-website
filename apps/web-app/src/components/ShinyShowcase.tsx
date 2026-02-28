@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import ShinyCard from './ShinyCard';
-import { getSpriteUrl } from '../../../../packages/utils/pokeapi.js';
+import { getSpriteUrl } from '@team-soju/utils';
 
 export interface ShinyPokemon {
   name: string;
   imageUrl: string;
-  attribute: string; // Optional: denote secret or safari shinies 
+  isFailed: boolean;
+  isSecret: boolean;
+  isSafari: boolean;
+  isEgg: boolean;
 }
 
 interface Trainer {
@@ -19,6 +22,7 @@ interface ShinyFromAPI {
   trainer_name: string;
   encounter_type: string | null;
   is_secret: boolean;
+  notes: string | null;
 }
 
 const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trainer[]> => {
@@ -37,11 +41,22 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
       const otCount = trainerShinies.length;
       
       const shiniesWithUrls = await Promise.all(
-        trainerShinies.map(async (shiny) => ({
-          name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(), // Capitalize first letter
-          imageUrl: (await getSpriteUrl(shiny.pokemon_name)) || '',
-          attribute: shiny.is_secret ? 'secret' : (shiny.encounter_type === 'safari' ? 'safari' : (shiny.encounter_type === 'egg' ? 'egg' : ''))
-        }))
+        trainerShinies.map(async (shiny) => {
+          const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
+          const isSecret = shiny.is_secret;
+          const isSafari = shiny.encounter_type === 'safari';
+          const isEgg = shiny.encounter_type === 'egg';
+          const baseUrl = await getSpriteUrl(shiny.pokemon_name);
+
+          return {
+            name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(), // Capitalize first letter
+            imageUrl: baseUrl || '',
+            isFailed,
+            isSecret,
+            isSafari,
+            isEgg,
+          };
+        })
       );
       
       return {
@@ -172,7 +187,10 @@ const ShinyShowcase = () => {
                     pokemonName={shiny.name}
                     trainerName={trainer.name}
                     imageUrl={shiny.imageUrl}
-                    attribute={shiny.attribute}
+                    isFailed={shiny.isFailed}
+                    isSecret={shiny.isSecret}
+                    isSafari={shiny.isSafari}
+                    isEgg={shiny.isEgg}
                   />
                 ))}
               </div>

@@ -5,7 +5,10 @@ interface ShinyCardProps {
   pokemonName: string;
   trainerName: string;
   imageUrl: string;
-  attribute?: string; // Optional: denote secret, safari, or egg shinies
+  isFailed: boolean;
+  isSecret: boolean;
+  isSafari: boolean;
+  isEgg: boolean;
 }
 
 const attributeIcons: Record<string, string> = {
@@ -14,7 +17,7 @@ const attributeIcons: Record<string, string> = {
   egg: '/images/egg.png'
 };
 
-const ShinyCard = ({ pokemonName, imageUrl, attribute }: ShinyCardProps) => {
+const ShinyCard = ({ pokemonName, imageUrl, isFailed, isSecret, isSafari, isEgg}: ShinyCardProps) => {
   return (
     <motion.div 
       className="card"
@@ -22,18 +25,34 @@ const ShinyCard = ({ pokemonName, imageUrl, attribute }: ShinyCardProps) => {
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center p-2">
-        {attribute && attributeIcons[attribute] && (
+        {isSecret && (
           <img
-            src={attributeIcons[attribute]}
-            alt={attribute}
+            src={attributeIcons['secret']}
+            alt="Secret shiny"
+            className="absolute top-2 left-2 w-6 h-6 z-10"
+            draggable={false}
+          />
+        )}
+        {isSafari && (
+          <img
+            src={attributeIcons['safari']}
+            alt="Safari shiny"
             className="absolute top-2 right-2 w-6 h-6 z-10"
+            draggable={false}
+          />
+        )}
+        {isEgg && (
+          <img
+            src={attributeIcons['egg']}
+            alt="Egg shiny"
+            className="absolute bottom-2 left-2 w-6 h-6 z-10"
             draggable={false}
           />
         )}
         <img 
           src={imageUrl} 
           alt={`Shiny ${pokemonName}`} 
-          className="w-full h-full object-contain pixelated"
+          className={`w-full h-full object-contain pixelated ${isFailed ? 'grayscale' : ''}`}
           loading="lazy"
         />
       </div>
