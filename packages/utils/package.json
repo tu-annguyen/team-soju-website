@@ -1,0 +1,11 @@
+{
+  "name": "@team-soju/utils",
+  "version": "1.0.0",
+  "description": "Utility functions for Team Soju projects",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "sharp": "^0.34.5",
+    "gifwrap": "^0.10.1"
+  }
+}

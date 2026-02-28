@@ -33,7 +33,8 @@ async function getSpriteUrl(pokemonId) {
   }
 }
 
-export {
+// export utilities for other packages
+module.exports = {
   getNationalNumber,
-  getSpriteUrl
+  getSpriteUrl,
 };
