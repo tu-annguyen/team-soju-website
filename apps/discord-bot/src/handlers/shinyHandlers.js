@@ -7,7 +7,7 @@ const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
 const { parseDataFromOcr, validateParsedData, generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { getNationalNumber, getSpriteUrl } = require('../../../../packages/utils/pokeapi');
+const { getNationalNumber, getSpriteUrl, greyscale, greyscaleGifwrap } = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;
@@ -102,9 +102,9 @@ async function handleAddShiny(interaction) {
 
     const embed = new EmbedBuilder()
       .setColor(isSecret ? 0xFFD700 : 0x4CAF50)
-      .setTitle(`${isSecret ? 'Secret ' : ''}Shiny Added!`)
-      .setThumbnail(spriteUrl || null)
-      .addFields(
+      .setTitle(`${isSecret ? 'Secret ' : ''}Shiny Added!`);
+    if (spriteUrl) embed.setThumbnail(spriteUrl);
+    embed.addFields(
         { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
         { name: 'Trainer', value: shiny.trainer_name, inline: true },
         { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
@@ -356,9 +356,9 @@ async function handleEditShiny(interaction) {
 
     const embed = new EmbedBuilder()
       .setColor(0x2196F3)
-      .setTitle('Shiny Updated Successfully')
-      .setThumbnail(spriteUrl || null)
-      .addFields(
+      .setTitle('Shiny Updated Successfully');
+    if (spriteUrl) embed.setThumbnail(spriteUrl);
+    embed.addFields(
         { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
         { name: 'Trainer', value: shiny.trainer_name, inline: true },
         { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
@@ -374,6 +374,72 @@ async function handleEditShiny(interaction) {
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+  }
+}
+
+async function handleFailShiny(interaction) {
+  await interaction.deferReply();
+
+  const shinyId = interaction.options.getString('shiny_id');
+  try {
+    // Fetch the existing shiny to validate Soju role members can only edit their own shinies
+    let existingShiny;
+    try {
+      const shinyResponse = await axios.get(`${apiBaseUrl}/shinies/${shinyId}`, {
+        headers: { Authorization: `Bearer ${botToken}` }
+      });
+      existingShiny = shinyResponse.data.data;
+    } catch (error) {
+      await interaction.editReply({ content: `Error: Could not find shiny with ID "${shinyId}"` });
+      return;
+    }
+
+    // Validate Soju role members can only edit shinies for their registered IGN
+    const ignValidation = await validateSojuTrainerIGN(interaction, existingShiny.trainer_name);
+    if (!ignValidation.valid) {
+      await interaction.editReply({ content: `❌ ${ignValidation.reason}`, ephemeral: true });
+      return;
+    }
+
+    const updateResponse = await axios.put(`${apiBaseUrl}/shinies/${shinyId}`, { notes: "Failed" }, {
+      headers: { Authorization: `Bearer ${botToken}` }
+    });
+    const shiny = updateResponse.data.data;
+
+    let spriteUrl = null;
+    const attachments = [];
+    try {
+      spriteUrl = await getSpriteUrl(shiny.national_number);
+      if (spriteUrl) {
+        try {
+          const greyscaled = await greyscaleGifwrap(spriteUrl);
+          attachments.push({ attachment: greyscaled, name: 'sprite.gif' });
+          spriteUrl = 'attachment://sprite.gif';
+        } catch (gErr) {
+          console.error('Greyscale failed for spritgreyscaleGifwrape in failShiny:', gErr.message);
+          // fall back to original spriteUrl
+        }
+      }
+    } catch (spriteError) {
+      console.error('Error fetching sprite:', spriteError.message);
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x2196F3)
+      .setTitle('Shiny Successfully Marked as Failed');
+    if (spriteUrl) embed.setThumbnail(spriteUrl);
+    embed.addFields(
+        { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
+        { name: 'Trainer', value: shiny.trainer_name, inline: true },
+        { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
+        { name: 'Status', value: 'Failed', inline: true },
+      )
+      .setFooter({ text: `Shiny ID: ${shiny.id}` })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed], files: attachments });
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
   }
@@ -433,6 +499,7 @@ async function handleGetShiny(interaction) {
     const shiny = response.data.data;
 
     let spriteUrl = null;
+    const attachments = [];
     try {
       spriteUrl = await getSpriteUrl(shiny.national_number);
     } catch (spriteError) {
@@ -441,12 +508,24 @@ async function handleGetShiny(interaction) {
 
     const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
     
+    if (shiny.notes && shiny.notes.toLowerCase() === "failed") {
+      try {
+        const greyscaledSprite = await greyscaleGifwrap(spriteUrl);
+        // store the greyscaled image as an attachment so we don't exceed URL length limits
+        attachments.push({ attachment: greyscaledSprite, name: 'sprite.gif' });
+        spriteUrl = 'attachment://sprite.gif';
+      } catch (gErr) {
+        console.error('Greyscale failed for sprite:', gErr.message);
+        // leave original spriteUrl intact if greyscale fails
+      }
+    }
+
     const embed = new EmbedBuilder()
       .setColor(shiny.is_secret ? 0xFFD700 : 0x4CAF50)
-      .setTitle(`${shiny.pokemon} (#${shiny.national_number})`)
-      .setThumbnail(spriteUrl || null)
-      .setImage(shiny.screenshot_url)
-      .addFields(
+      .setTitle(`${shiny.pokemon} (#${shiny.national_number})`);
+    if (spriteUrl) embed.setThumbnail(spriteUrl);
+    if (shiny.screenshot_url) embed.setImage(shiny.screenshot_url);
+    embed.addFields(
           { name: 'Trainer', value: shiny.trainer_name, inline: true },
         ...[
           shiny.catch_date ? { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true } : null,
@@ -455,12 +534,18 @@ async function handleGetShiny(interaction) {
           shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
           encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
           shiny.iv_hp !== null && shiny.iv_attack !== null && shiny.iv_defense !== null && shiny.iv_sp_attack !== null && shiny.iv_sp_defense !== null && shiny.iv_speed !== null ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: `${shiny.iv_hp}/${shiny.iv_attack}/${shiny.iv_defense}/${shiny.iv_sp_attack}/${shiny.iv_sp_defense}/${shiny.iv_speed}`, inline: false } : null,
+          shiny.notes ? { name: 'Notes', value: shiny.notes, inline: false } : null,
         ].filter(Boolean),
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    try {
+      await interaction.editReply({ embeds: [embed], files: attachments });
+    } catch (err) {
+      console.error('Error editing reply for getShiny:', err);
+      await interaction.editReply({ content: `Error: ${err.message}`, ephemeral: true });
+    }
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
   }
@@ -586,6 +671,7 @@ module.exports = {
   handleAddShiny,
   handleAddShinyScreenshot,
   handleEditShiny,
+  handleFailShiny,
   handleDeleteShiny,
   handleGetShiny,
   handleGetShinies

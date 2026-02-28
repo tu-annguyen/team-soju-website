@@ -54,6 +54,7 @@ function getCommandHandlers(commandName) {
     'addshinyscreenshot': 'shinyHandlers',
     'editshiny': 'shinyHandlers',
     'deleteshiny': 'shinyHandlers',
+    'failshiny': 'shinyHandlers',
     'shiny': 'shinyHandlers',
     'shinies': 'shinyHandlers',
     // Stats commands
@@ -87,6 +88,7 @@ function getCommandHandler(commandName) {
     'addshinyscreenshot': 'handleAddShinyScreenshot',
     'editshiny': 'handleEditShiny',
     'deleteshiny': 'handleDeleteShiny',
+    'failshiny': 'handleFailShiny',
     'shiny': 'handleGetShiny',
     'shinies': 'handleGetShinies',
     'leaderboard': 'handleLeaderboard',

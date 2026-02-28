@@ -12,6 +12,8 @@ class MockEmbedBuilder {
   setDescription() { return this; }
   setFooter() { return this; }
   setTimestamp() { return this; }
+  setThumbnail() { return this; }
+  setImage() { return this; }
   addFields() { return this; }
 }
 
@@ -38,12 +40,19 @@ jest.mock('discord.js', () => ({
 
 jest.mock('axios');
 // avoid importing the real pokeapi (uses ESM export syntax) during tests
-jest.mock('../../../../packages/utils/pokeapi', () => ({
+
+// mock the utils package as a whole so we can stub greyscale
+jest.mock('@team-soju/utils', () => ({
   getNationalNumber: jest.fn(),
-  getSpriteUrl: jest.fn()
+  getSpriteUrl: jest.fn(),
+  greyscale: jest.fn()
 }));
 
-const { handleGetShinies } = require('../src/handlers/shinyHandlers');
+const { handleGetShinies, handleGetShiny, handleFailShiny } = require('../src/handlers/shinyHandlers');
+const localUtils = require('../src/utils');
+
+// always allow trainer validation in tests
+jest.spyOn(localUtils, 'validateSojuTrainerIGN').mockResolvedValue({ valid: true });
 const { createMockInteraction } = require('./fixtures/mockInteraction');
 const axios = require('axios');
 
@@ -90,7 +99,7 @@ describe('shinyHandlers pagination', () => {
 
   it('should handle no shinies gracefully', async () => {
     const interaction = createMockInteraction({
-      options: { limit: 5 }
+      options: { limit: 5, trainer: null }
     });
 
     axios.get.mockResolvedValueOnce({ data: { data: [] } });
@@ -111,5 +120,100 @@ describe('shinyHandlers pagination', () => {
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({ content: expect.stringContaining('Error') })
     );
+  });
+
+  describe('handleGetShiny greyscale behaviour', () => {
+    it('should attach greyscale sprite when shiny notes indicate failed', async () => {
+      const { greyscale, getSpriteUrl } = require('@team-soju/utils');
+      const interaction = createMockInteraction({ options: { id: 'abc' } });
+
+      const fakeShiny = {
+        national_number: 1,
+        pokemon: 'Testmon',
+        trainer_name: 'T1',
+        catch_date: '2020-01-01',
+        notes: 'Failed',
+        is_secret: false
+      };
+
+      // stub API call for fetching shiny
+      axios.get.mockResolvedValueOnce({ data: { data: fakeShiny } });
+      getSpriteUrl.mockResolvedValue('http://example.com/sprite.gif');
+      greyscale.mockResolvedValue(Buffer.from('grey')); // dummy greyscale output
+
+      await handleGetShiny(interaction);
+
+      expect(getSpriteUrl).toHaveBeenCalledWith(fakeShiny.national_number);
+      expect(greyscale).toHaveBeenCalledWith('http://example.com/sprite.gif');
+
+      // expect editReply called with files array containing our buffer
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          embeds: expect.any(Array),
+          files: expect.any(Array)
+        })
+      );
+    });
+
+    it('should not call greyscale when shiny is not failed', async () => {
+      const { greyscale, getSpriteUrl } = require('@team-soju/utils');
+      const interaction = createMockInteraction({ options: { id: 'xyz' } });
+
+      const fakeShiny = { national_number: 2, pokemon: 'Foo', notes: null };
+      axios.get.mockResolvedValueOnce({ data: { data: fakeShiny } });
+      getSpriteUrl.mockResolvedValue('http://example.com/sprite.gif');
+
+      await handleGetShiny(interaction);
+
+      expect(greyscale).not.toHaveBeenCalled();
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ embeds: expect.any(Array) })
+      );
+    });
+  });
+
+  describe('handleFailShiny greyscale behaviour', () => {
+    it('should greyscale the sprite when marking a shiny as failed', async () => {
+      const { greyscale, getSpriteUrl } = require('@team-soju/utils');
+      const interaction = createMockInteraction({ options: { shiny_id: 'abc' } });
+
+      const fakeShiny = {
+        national_number: 1,
+        pokemon: 'Testmon',
+        trainer_name: 'T1',
+        catch_date: '2020-01-01'
+      };
+
+      axios.get.mockResolvedValueOnce({ data: { data: fakeShiny } });
+      axios.put.mockResolvedValueOnce({ data: { data: fakeShiny } });
+      getSpriteUrl.mockResolvedValue('http://example.com/sprite.gif');
+      greyscale.mockResolvedValue(Buffer.from('grey'));
+
+      await handleFailShiny(interaction);
+
+      expect(getSpriteUrl).toHaveBeenCalledWith(fakeShiny.national_number);
+      expect(greyscale).toHaveBeenCalledWith('http://example.com/sprite.gif');
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ embeds: expect.any(Array) })
+      );
+    });
+
+    it('should still reply even if greyscale fails', async () => {
+      const { greyscale, getSpriteUrl } = require('@team-soju/utils');
+      const interaction = createMockInteraction({ options: { shiny_id: 'def' } });
+
+      const fakeShiny = { national_number: 2, pokemon: 'Foo', trainer_name: 'T1', catch_date: '2020-01-01' };
+      axios.get.mockResolvedValueOnce({ data: { data: fakeShiny } });
+      axios.put.mockResolvedValueOnce({ data: { data: fakeShiny } });
+      getSpriteUrl.mockResolvedValue('http://example.com/sprite.png');
+      greyscale.mockRejectedValue(new Error('oops'));
+
+      await handleFailShiny(interaction);
+
+      // greyscale error should be caught but call still proceeds
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ embeds: expect.any(Array) })
+      );
+    });
   });
 });

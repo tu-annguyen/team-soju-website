@@ -256,6 +256,14 @@ const COMMANDS = [
         .setRequired(false)),
 
   new SlashCommandBuilder()
+    .setName('failshiny')
+    .setDescription('Log a shiny as failed')
+    .addStringOption(option =>
+      option.setName('shiny_id')
+        .setDescription('ID of the shiny to mark as failed')
+        .setRequired(true)),
+
+  new SlashCommandBuilder()
     .setName('deleteshiny')
     .setDescription('Delete a shiny entry')
     .addStringOption(option =>
