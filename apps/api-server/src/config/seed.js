@@ -111,6 +111,7 @@ async function seedDatabase() {
           const attr = (shiny.attribute || '').toString().toLowerCase();
           const is_secret = attr === 'secret';
           const encounter_type = attr === 'safari' ? 'safari' : (attr === 'egg' ? 'egg' : null);
+          const notes = shiny.imageUrl.includes('postimg') ? 'failed' : null; // Mark shinies with postimg URLs as "failed" in notes
 
           // Fetch national number from PokeAPI
           let national_number = null;
@@ -131,11 +132,11 @@ async function seedDatabase() {
 
           try {
             await pool.query(
-              `INSERT INTO team_shinies (pokemon, national_number, original_trainer, is_secret, encounter_type)
-               VALUES ($1, $2, $3, $4, $5)
+              `INSERT INTO team_shinies (pokemon, national_number, original_trainer, is_secret, encounter_type, notes)
+               VALUES ($1, $2, $3, $4, $5, $6)
                ON CONFLICT DO NOTHING
               `,
-              [pokemon, national_number, trainerId, is_secret, encounter_type]
+              [pokemon, national_number, trainerId, is_secret, encounter_type, notes]
             );
           } catch (err) {
             console.warn(`Failed to insert shiny "${shiny.name}" for trainer "${trainer.name}":`, err.message || err);
