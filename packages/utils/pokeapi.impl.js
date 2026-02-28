@@ -2,7 +2,7 @@
  * @param {string} pokemon - Pokémon name
  * @returns {number|null} National number or null if not found
  */
-async function getNationalNumber(pokemon) {
+export async function getNationalNumber(pokemon) {
   try {
     const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon}`);
 
@@ -11,18 +11,17 @@ async function getNationalNumber(pokemon) {
     }
     
     const data = await response.json();
-    return data.id; // PokeAPI uses 'id' for national number
+    return data.id;
   } catch (err) {
     console.error(`Error fetching data for Pokémon "${pokemon}":`, err.message || err);
   }
 }
 
 /**
- * 
  * @param {*} pokemonId national pokedex number of the pokemon
  * @returns a URL to the Gen V animated shiny sprite associated with the pokemonId
  */
-async function getSpriteUrl(pokemonId) {
+export async function getSpriteUrl(pokemonId) {
   try {
     const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
     const data = await response.json();
@@ -32,9 +31,3 @@ async function getSpriteUrl(pokemonId) {
     return null;
   }
 }
-
-// export utilities for other packages
-module.exports = {
-  getNationalNumber,
-  getSpriteUrl,
-};

@@ -38,11 +38,10 @@ async function greyscale(url) {
     return encodedGif.buffer;
 }
 
-// PokeAPI utilities for fetching Pokémon data
-const pokeapi = require('./pokeapi');
+// PokeAPI utilities for fetching Pokémon data (CJS version)
+const pokeapi = require('./pokeapi.cjs');
 
 module.exports = {
   greyscale,
-  greyscaleGifwrap,
   ...pokeapi
 };
