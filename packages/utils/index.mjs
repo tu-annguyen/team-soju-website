@@ -4,4 +4,4 @@
 // For the browser/ASTRO side we re‑export the core pokeapi helpers
 // from the implementation wrapper, which itself is pure ESM.
 
-export * from './pokeapi.mjs';
+export { getSpriteUrl, getNationalNumber } from './pokeapi.mjs';
