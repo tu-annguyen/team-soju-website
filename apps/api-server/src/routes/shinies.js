@@ -36,7 +36,7 @@ const updateShinySchema = Joi.object({
   total_encounters: Joi.number().integer().min(0).optional(),
   species_encounters: Joi.number().integer().min(0).optional(),
   encounter_type: Joi.string().valid(
-    'single', 'horde', 'safari', 'fishing', 'egg', 'gift', 'mysterious_ball'
+    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'gift'
   ).optional(),
   location: Joi.string().max(100).optional(),
   nature: Joi.string().max(20).optional(),
