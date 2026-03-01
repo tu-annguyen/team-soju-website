@@ -9,6 +9,7 @@ export interface ShinyPokemon {
   isSecret: boolean;
   isSafari: boolean;
   isEgg: boolean;
+  encounterType: string;
 }
 
 interface Trainer {
@@ -44,6 +45,7 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
         trainerShinies.map(async (shiny) => {
           const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
           const isSecret = shiny.is_secret;
+          const encounterType = shiny.encounter_type || '';
           const isSafari = shiny.encounter_type === 'safari';
           const isEgg = shiny.encounter_type === 'egg';
           const baseUrl = await getSpriteUrl(shiny.pokemon_name);
@@ -55,6 +57,7 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
             isSecret,
             isSafari,
             isEgg,
+            encounterType,
           };
         })
       );
@@ -191,6 +194,7 @@ const ShinyShowcase = () => {
                     isSecret={shiny.isSecret}
                     isSafari={shiny.isSafari}
                     isEgg={shiny.isEgg}
+                    encounterType={shiny.encounterType}
                   />
                 ))}
               </div>

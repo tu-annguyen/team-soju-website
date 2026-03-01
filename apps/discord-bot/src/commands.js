@@ -19,6 +19,10 @@ const ENCOUNTER_TYPE_CHOICES = [
   { name: 'Fishing', value: 'fishing' },
   { name: 'Safari', value: 'safari' },
   { name: 'Egg', value: 'egg' },
+  { name: 'Swarm', value: 'swarm' },
+  { name: 'Honey Tree', value: 'honey_tree' },
+  { name: 'Rock Smash', value: 'rock_smash' },
+  { name: 'Fossil', value: 'fossil' },
   { name: 'Mysterious Ball', value: 'mysterious_ball' },
   { name: 'Gift/Event', value: 'gift' },
 ];
