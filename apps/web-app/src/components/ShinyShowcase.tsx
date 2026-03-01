@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import ShinyCard from './ShinyCard';
-import { getSpriteUrl } from '@team-soju/utils';
+import { getSpriteUrl } from '@team-soju/utils/pokeapi'
 
 export interface ShinyPokemon {
   name: string;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
-  isSafari: boolean;
-  isEgg: boolean;
+  isAlpha: boolean;
   encounterType: string;
 }
 
@@ -23,6 +22,7 @@ interface ShinyFromAPI {
   trainer_name: string;
   encounter_type: string | null;
   is_secret: boolean;
+  is_alpha: boolean;
   notes: string | null;
 }
 
@@ -45,18 +45,16 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
         trainerShinies.map(async (shiny) => {
           const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
           const isSecret = shiny.is_secret;
+          const isAlpha = shiny.is_alpha;
           const encounterType = shiny.encounter_type || '';
-          const isSafari = shiny.encounter_type === 'safari';
-          const isEgg = shiny.encounter_type === 'egg';
-          const baseUrl = await getSpriteUrl(shiny.pokemon_name);
+          const baseUrl = await getSpriteUrl(shiny.pokemon_name.toLowerCase());
 
           return {
             name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(), // Capitalize first letter
             imageUrl: baseUrl || '',
             isFailed,
             isSecret,
-            isSafari,
-            isEgg,
+            isAlpha,
             encounterType,
           };
         })
@@ -192,8 +190,7 @@ const ShinyShowcase = () => {
                     imageUrl={shiny.imageUrl}
                     isFailed={shiny.isFailed}
                     isSecret={shiny.isSecret}
-                    isSafari={shiny.isSafari}
-                    isEgg={shiny.isEgg}
+                    isAlpha={shiny.isAlpha}
                     encounterType={shiny.encounterType}
                   />
                 ))}

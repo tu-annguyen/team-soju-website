@@ -28,6 +28,7 @@ async function handleAddShiny(interaction) {
   const catchDate = interaction.options.getString('catch_date') || new Date().toISOString().split('T')[0];
   const encounterType = interaction.options.getString('encounter_type');
   const isSecret = interaction.options.getBoolean('secret') || false;
+  const isAlpha = interaction.options.getBoolean('alpha') || false;
   const isSafari = encounterType === 'Safari';
   const totalEncounters = interaction.options.getInteger('total_encounters') || 0;
   const speciesEncounters = interaction.options.getInteger('species_encounters') || 0;
@@ -66,6 +67,7 @@ async function handleAddShiny(interaction) {
     if (catchDate) info.catch_date = new Date(catchDate).toISOString().split('T')[0];
     if (encounterType) info.encounter_type = encounterType;
     if (isSecret) info.is_secret = isSecret;
+    if (isAlpha) info.is_alpha = isAlpha;
     if (totalEncounters) info.total_encounters = totalEncounters;
     if (speciesEncounters) info.species_encounters = speciesEncounters;
     if (nature) info.nature = nature;
@@ -133,7 +135,7 @@ async function handleAddShinyScreenshot(interaction) {
   const isMDY= interaction.options.getBoolean('date_is_mdy') || false;
   const encounterType = interaction.options.getString('encounter_type');
   const isSecret = interaction.options.getBoolean('secret') || false;
-  const isSafari = interaction.options.getBoolean('safari') || false;
+  const isAlpha = interaction.options.getBoolean('alpha') || false;
 
   let data = {};
 
@@ -223,6 +225,7 @@ async function handleAddShinyScreenshot(interaction) {
       iv_sp_defense: data.spd,
       iv_speed: data.spe,
       is_secret: isSecret,
+      is_alpha: isAlpha,
       screenshot_url: screenshotUrl,
     }, {
       headers: { Authorization: `Bearer ${botToken}` }
@@ -258,6 +261,7 @@ async function handleEditShiny(interaction) {
   const catchDate = interaction.options.getString('catch_date');
   const encounterType = interaction.options.getString('encounter_type');
   const isSecret = interaction.options.getBoolean('secret') || false;
+  const isAlpha = interaction.options.getBoolean('alpha') || false;
   const totalEncounters = interaction.options.getInteger('total_encounters');
   const speciesEncounters = interaction.options.getInteger('species_encounters');
   const nature = interaction.options.getString('nature');
@@ -306,6 +310,7 @@ async function handleEditShiny(interaction) {
     if (catchDate) updates.catch_date = new Date(catchDate).toISOString().split('T')[0];
     if (encounterType) updates.encounter_type = encounterType;
     if (isSecret) updates.is_secret = isSecret;
+    if (isAlpha) updates.is_alpha = isAlpha;
     if (totalEncounters !== null) updates.total_encounters = totalEncounters;
     if (speciesEncounters !== null) updates.species_encounters = speciesEncounters;
     if (nature) updates.nature = nature;
@@ -521,7 +526,7 @@ async function handleGetShiny(interaction) {
     }
 
     const embed = new EmbedBuilder()
-      .setColor(shiny.is_secret ? 0xFFD700 : 0x4CAF50)
+      .setColor(shiny.is_secret || shiny.is_alpha ? 0xFFD700 : 0x4CAF50)
       .setTitle(`${shiny.pokemon} (#${shiny.national_number})`);
     if (spriteUrl) embed.setThumbnail(spriteUrl);
     if (shiny.screenshot_url) embed.setImage(shiny.screenshot_url);
@@ -531,6 +536,7 @@ async function handleGetShiny(interaction) {
           shiny.catch_date ? { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true } : null,
           shiny.encounter_type ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
           shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
+          shiny.is_alpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
           shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
           encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
           shiny.iv_hp !== null && shiny.iv_attack !== null && shiny.iv_defense !== null && shiny.iv_sp_attack !== null && shiny.iv_sp_defense !== null && shiny.iv_speed !== null ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: `${shiny.iv_hp}/${shiny.iv_attack}/${shiny.iv_defense}/${shiny.iv_sp_attack}/${shiny.iv_sp_defense}/${shiny.iv_speed}`, inline: false } : null,
@@ -558,7 +564,16 @@ function buildShiniesEmbed(shinies, page, pageSize, trainerIgn) {
   const pageItems = shinies.slice(startIndex, startIndex + pageSize);
 
   const description = pageItems.map((shiny, idx) => {
-    const special = shiny.is_secret ? ' (Secret)' : '';
+    let special = '';
+    if (shiny.is_alpha) {
+      special = '(Alpha)';
+      if (shiny.is_secret) {
+        special = ' (Secret Alpha)';
+      }
+    } else if (shiny.is_secret) {
+      special = ' (Secret)';
+    }
+
     return `${startIndex + idx + 1}. **${shiny.pokemon_name}** by ${shiny.trainer_name}${special} - ID: ${shiny.id}`;
   }).join('\n');
 

@@ -67,6 +67,7 @@ const COMMAND_PERMISSIONS = {
   'addshiny': ['Soju'],
   'addshinyscreenshot': ['Soju'],
   'editshiny': ['Soju'],
+  'failshiny': ['Soju'],
   'deleteshiny': ['Soju'],
   // Elite 4 / Champion role (highest access)
   'addmember': ['Elite 4', 'Champion'],
@@ -154,6 +155,10 @@ const COMMANDS = [
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
         .setRequired(false))
+    .addBooleanOption(option =>
+      option.setName('alpha')
+        .setDescription('Is this an alpha shiny?')
+        .setRequired(false))
     .addIntegerOption(option =>
       option.setName('total_encounters')
         .setDescription('Total encounters')
@@ -191,6 +196,10 @@ const COMMANDS = [
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
+        .setRequired(false))
+    .addBooleanOption(option =>
+      option.setName('alpha')
+        .setDescription('Is this an alpha shiny?')
         .setRequired(false)),
 
   new SlashCommandBuilder()
@@ -216,6 +225,10 @@ const COMMANDS = [
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
+        .setRequired(false))
+    .addBooleanOption(option =>
+      option.setName('alpha')
+        .setDescription('Is this an alpha shiny?')
         .setRequired(false))
     .addIntegerOption(option =>
       option.setName('total_encounters')

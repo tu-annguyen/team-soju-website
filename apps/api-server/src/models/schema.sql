@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS team_shinies (
   iv_sp_defense INTEGER,
   iv_speed INTEGER,
   is_secret BOOLEAN DEFAULT false,
+  is_alpha BOOLEAN DEFAULT false,
   screenshot_url TEXT,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()

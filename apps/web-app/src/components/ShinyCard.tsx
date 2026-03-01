@@ -7,9 +7,8 @@ interface ShinyCardProps {
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
+  isAlpha: boolean;
   encounterType: string;
-  isSafari: boolean;
-  isEgg: boolean;
 }
 
 const attributeIcons: Record<string, string> = {
@@ -26,7 +25,7 @@ const attributeIcons: Record<string, string> = {
   alpha: '/images/alpha.png',
 };
 
-const ShinyCard = ({ pokemonName, imageUrl, isFailed, isSecret, isSafari, isEgg, encounterType}: ShinyCardProps) => {
+const ShinyCard = ({ pokemonName, imageUrl, isFailed, isSecret, isAlpha, encounterType}: ShinyCardProps) => {
   return (
     <motion.div 
       className="card"
@@ -42,7 +41,15 @@ const ShinyCard = ({ pokemonName, imageUrl, isFailed, isSecret, isSafari, isEgg,
             draggable={false}
           />
         )}
-        {isSafari && (
+        {isAlpha && (
+          <img
+            src={attributeIcons['alpha']}
+            alt="Alpha shiny"
+            className="absolute bottom-2 right-2 w-6 h-6 z-10"
+            draggable={false}
+          />
+        )}
+        {encounterType && attributeIcons[encounterType] && (
           <img
             src={attributeIcons[encounterType]}
             alt={`${encounterType} encounter`}

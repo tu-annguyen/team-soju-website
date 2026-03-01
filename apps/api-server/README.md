@@ -92,7 +92,7 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 - `pokemon_name` - Filter by Pokemon name
 - `encounter_type` - Filter by encounter type
 - `is_secret` - Filter secret shinies (true/false)
-- `is_safari` - Filter safari shinies (true/false)
+- `is_alpha` - Filter alpha shinies (true/false)
 - `limit` - Limit number of results
 
 ## Database Schema
@@ -165,6 +165,7 @@ curl -X POST http://localhost:3001/api/shinies \
     "iv_sp_defense": 28,
     "iv_speed": 31,
     "is_secret": false
+    "is_alpha": false
   }'
 ```
 
