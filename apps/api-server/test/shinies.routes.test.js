@@ -119,7 +119,7 @@ describe('Shinies routes', () => {
           national_number: 25,
           pokemon: 'pikachu',
           original_trainer: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-          catch_date: new Date().toISOString(),
+          catch_date: new Date().toISOString().split('T')[0],
           encounter_type: 'horde',
         });
 
@@ -140,7 +140,7 @@ describe('Shinies routes', () => {
           national_number: 25,
           pokemon: 'pikachu',
           original_trainer: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-          catch_date: new Date().toISOString(),
+          catch_date: new Date().toISOString().split('T')[0],
           encounter_type: 'horde',
         });
 

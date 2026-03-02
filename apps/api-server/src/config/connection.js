@@ -1,6 +1,10 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../../../.env') });
+
+// Force SQL DATE (OID 1082) to be returned as the raw 'YYYY-MM-DD' string.
+// This prevents the pg driver from converting DATE -> JS Date (which JSON-serializes to an ISO timestamp).
+types.setTypeParser(1082, (val) => val);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

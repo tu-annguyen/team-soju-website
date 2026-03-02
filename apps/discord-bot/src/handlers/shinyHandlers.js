@@ -25,7 +25,7 @@ async function handleAddShiny(interaction) {
   }
 
   const pokemon = interaction.options.getString('pokemon');
-  const catchDate = interaction.options.getString('catch_date') || new Date().toISOString().split('T')[0];
+  const catchDate = interaction.options.getString('catch_date');
   const encounterType = interaction.options.getString('encounter_type');
   const isSecret = interaction.options.getBoolean('secret') || false;
   const isAlpha = interaction.options.getBoolean('alpha') || false;
@@ -64,7 +64,7 @@ async function handleAddShiny(interaction) {
     if (trainer) info.original_trainer = trainer.id;
     if (pokemon) info.pokemon = pokemon;
     if (nationalNumber) info.national_number = nationalNumber;
-    if (catchDate) info.catch_date = new Date(catchDate).toISOString().split('T')[0];
+    if (catchDate) info.catch_date = catchDate;
     if (encounterType) info.encounter_type = encounterType;
     if (isSecret) info.is_secret = isSecret;
     if (isAlpha) info.is_alpha = isAlpha;
@@ -109,7 +109,7 @@ async function handleAddShiny(interaction) {
     embed.addFields(
         { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
         { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
+        { name: 'Catch Date', value: shiny.catch_date, inline: true },
         ...[
           encounterType ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
           isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
@@ -241,7 +241,6 @@ async function handleAddShinyScreenshot(interaction) {
         { name: 'Pokemon', value: `${data.name} (#${nationalNumber})`, inline: true },
         { name: 'Encounter Type', value: encounterType, inline: true },
         { name: 'Encounters', value: data.totalEncounters.toString() || '0', inline: true },
-        { name: 'Special', value: isSecret ? 'Secret' : (encounterType === 'safari' ? 'Safari' : 'None'), inline: true }
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
       .setTimestamp();
@@ -307,7 +306,7 @@ async function handleEditShiny(interaction) {
     }
     if (nationalNumber) updates.national_number = nationalNumber;
     if (originalTrainer) updates.original_trainer = originalTrainer;
-    if (catchDate) updates.catch_date = new Date(catchDate).toISOString().split('T')[0];
+    if (catchDate) updates.catch_date = catchDate;
     if (encounterType) updates.encounter_type = encounterType;
     if (isSecret) updates.is_secret = isSecret;
     if (isAlpha) updates.is_alpha = isAlpha;
@@ -366,7 +365,7 @@ async function handleEditShiny(interaction) {
     embed.addFields(
         { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
         { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
+        { name: 'Catch Date', value: shiny.catch_date, inline: true },
         ...[
           encounterType ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
           isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
@@ -438,7 +437,7 @@ async function handleFailShiny(interaction) {
     embed.addFields(
         { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
         { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true },
+        { name: 'Catch Date', value: shiny.catch_date, inline: true },
         { name: 'Status', value: 'Failed', inline: true },
       )
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
@@ -533,7 +532,7 @@ async function handleGetShiny(interaction) {
     embed.addFields(
           { name: 'Trainer', value: shiny.trainer_name, inline: true },
         ...[
-          shiny.catch_date ? { name: 'Catch Date', value: new Date(shiny.catch_date).toLocaleDateString(), inline: true } : null,
+          shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
           shiny.encounter_type ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
           shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
           shiny.is_alpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
@@ -574,7 +573,7 @@ function buildShiniesEmbed(shinies, page, pageSize, trainerIgn) {
       special = ' (Secret)';
     }
 
-    return `${startIndex + idx + 1}. **${shiny.pokemon_name}** by ${shiny.trainer_name}${special} - ID: ${shiny.id}`;
+    return `${startIndex + idx + 1}. **${shiny.pokemon_name.charAt(0).toUpperCase() + shiny.pokemon_name.slice(1)}** by ${shiny.trainer_name}${special} - ID: ${shiny.id}`;
   }).join('\n');
 
   return new EmbedBuilder()

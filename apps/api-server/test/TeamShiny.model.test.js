@@ -53,7 +53,7 @@ describe('TeamShiny model', () => {
       national_number: 25,
       pokemon: 'pikachu',
       original_trainer: 'uuid-1',
-      catch_date: new Date().toISOString(),
+      catch_date: new Date().toISOString().split('T')[0],
       encounter_type: 'horde',
     });
 

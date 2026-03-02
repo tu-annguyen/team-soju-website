@@ -137,7 +137,7 @@ function parseDataFromOcr(text, isMDY = false) {
         [monthIndex, day] = [parseInt(m[1], 10) - 1, parseInt(m[2], 10)];
       }
       const year = 2000 + parseInt(m[3], 10);
-      return new Date(year, monthIndex, day);
+      return new Date(year, monthIndex, day).toISOString().split('T')[0]; // Return as YYYY-MM-DD string
     }
   })();
   

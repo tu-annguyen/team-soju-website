@@ -8,7 +8,7 @@ const shinySchema = Joi.object({
   national_number: Joi.number().integer().min(1).max(1010).required(),
   pokemon: Joi.string().max(50).required(),
   original_trainer: Joi.string().uuid().required(),
-  catch_date: Joi.date().required(),
+  catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   total_encounters: Joi.number().integer().min(0).default(0),
   species_encounters: Joi.number().integer().min(0).default(0),
   encounter_type: Joi.string().valid(
@@ -32,7 +32,7 @@ const updateShinySchema = Joi.object({
   national_number: Joi.number().integer().min(1).max(1010).optional(),
   pokemon: Joi.string().max(50).optional(),
   original_trainer: Joi.string().uuid().optional(),
-  catch_date: Joi.date().optional(),
+  catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
   total_encounters: Joi.number().integer().min(0).optional(),
   species_encounters: Joi.number().integer().min(0).optional(),
   encounter_type: Joi.string().valid(

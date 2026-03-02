@@ -165,7 +165,7 @@ async function handleGetMember(interaction) {
       .setTitle(member.ign)
       .addFields(
         { name: 'Rank', value: member.rank, inline: true },
-        { name: 'Join Date', value: new Date(member.join_date).toLocaleDateString(), inline: true },
+        { name: 'Join Date', value: member.join_date, inline: true },
         { name: 'Shinies', value: member.shiny_count.toString(), inline: true }
       )
       .setFooter({ text: `Member ID: ${member.id}` })

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS team_members (
   discord_id TEXT UNIQUE,
   rank TEXT DEFAULT 'Trainer',
   notes TEXT,
-  join_date TIMESTAMPTZ DEFAULT now(),
+  join_date DATE DEFAULT CURRENT_DATE,
   is_active BOOLEAN DEFAULT true
 );
 
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS team_shinies (
   pokemon TEXT NOT NULL,
   national_number INTEGER NOT NULL,
   original_trainer UUID NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
-  catch_date TIMESTAMPTZ DEFAULT now(),
+  catch_date DATE DEFAULT CURRENT_DATE,
   total_encounters INTEGER DEFAULT 0,
   species_encounters INTEGER DEFAULT 0,
   encounter_type TEXT,
@@ -37,8 +37,7 @@ CREATE TABLE IF NOT EXISTS team_shinies (
   is_alpha BOOLEAN DEFAULT false,
   screenshot_url TEXT,
   notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+  created_at TIMESTAMPTZ DEFAULT now());
 
 -- Indexes for common lookups
 CREATE INDEX IF NOT EXISTS idx_team_shinies_trainer ON team_shinies(original_trainer);
