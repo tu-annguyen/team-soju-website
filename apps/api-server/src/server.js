@@ -2,7 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
+}
 
 const membersRoutes = require('./routes/members');
 const shiniesRoutes = require('./routes/shinies');
