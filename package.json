@@ -17,6 +17,8 @@
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:all": "concurrently \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:bot\"",
     "build": "npm run build --workspace=@team-soju/web-app",
+    "start": "npm run start:api",
+    "start:api": "npm run start --workspace=@team-soju/api-server",
     "start:bot": "npm run start --workspace=@team-soju/discord-bot",
     "test:web": "npm run test --workspace=@team-soju/web-app -- --runInBand --coverage",
     "test:api": "npm run test --workspace=@team-soju/api-server -- --runInBand --coverage",
@@ -29,7 +31,10 @@
     "discord",
     "bot"
   ],
-  "dependencies": {
+  "devDependencies": {
     "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
