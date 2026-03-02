@@ -209,8 +209,9 @@ function validateParsedData(data) {
     return { isValid: false, error: 'Pokemon name is missing or invalid.' };
   }
 
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   // Check date
-  if (!data.date || !(data.date instanceof Date) || isNaN(data.date)) {
+  if (!data.date || !dateRegex.test(data.date)) {
     return { isValid: false, error: 'Date is missing or invalid.' };
   }
 
