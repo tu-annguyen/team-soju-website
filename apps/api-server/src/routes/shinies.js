@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const TeamShiny = require('../models/TeamShiny');
 const router = express.Router();
+const { authenticateBot } = require('../middleware/auth');
 
 // Validation schema
 const shinySchema = Joi.object({
@@ -139,7 +140,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/shinies - Create new shiny entry
-router.post('/', async (req, res) => {
+router.post('/', authenticateBot, async (req, res) => {
   try {
     const { error, value } = shinySchema.validate(req.body);
     if (error) {
@@ -172,7 +173,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/shinies/:id - Update shiny entry
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateBot, async (req, res) => {
   try {
     const { error, value } = updateShinySchema.validate(req.body);
     if (error) {
@@ -206,7 +207,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/shinies/:id - Delete shiny entry
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateBot, async (req, res) => {
   try {
     const shiny = await TeamShiny.delete(req.params.id);
     if (!shiny) {

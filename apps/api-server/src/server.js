@@ -57,7 +57,7 @@ app.get('/generate-bot-token', (req, res) => {
 
 // API Routes
 app.use('/api/members', membersRoutes);
-app.use('/api/shinies', shiniesRoutes);
+app.use('/api/shinies', shiniesRoutes); 
 
 // 404 handler
 app.use('*', (req, res) => {

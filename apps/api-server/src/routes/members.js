@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const TeamMember = require('../models/TeamMember');
 const router = express.Router();
+const { authenticateBot } = require('../middleware/auth');
 
 // Validation schemas
 const memberSchema = Joi.object({
@@ -37,14 +38,20 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/members/:id - Get member by ID
-router.get('/:id', async (req, res) => {
+// GET /api/members/ign/inactive/:ign - Get member by IGN including inactive
+router.get('/ign/inactive/:ign', async (req, res) => {
   try {
-    const member = await TeamMember.findById(req.params.id);
+    const member = await TeamMember.findByIgnIncludingInactive(req.params.ign);
     if (!member) {
       return res.status(404).json({
         success: false,
         message: 'Team member not found'
+      });
+    }
+    if (member.is_active) {
+      return res.status(400).json({
+        success: false,
+        message: 'Team member is already active'
       });
     }
     res.json({
@@ -68,35 +75,6 @@ router.get('/ign/:ign', async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Team member not found'
-      });
-    }
-    res.json({
-      success: true,
-      data: member
-    });
-  } catch (error) {
-    console.error('Error fetching member:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch team member'
-    });
-  }
-});
-
-// GET /api/members/ign/inactive/:ign - Get member by IGN including inactive
-router.get('/ign/inactive/:ign', async (req, res) => {
-  try {
-    const member = await TeamMember.findByIgnIncludingInactive(req.params.ign);
-    if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: 'Team member not found'
-      });
-    }
-    if (member.is_active) {
-      return res.status(400).json({
-        success: false,
-        message: 'Team member is already active'
       });
     }
     res.json({
@@ -136,7 +114,7 @@ router.get('/discord/:discordId', async (req, res) => {
 });
 
 // POST /api/members - Create new team member
-router.post('/', async (req, res) => {
+router.post('/', authenticateBot, async (req, res) => {
   try {
     const { error, value } = memberSchema.validate(req.body);
     if (error) {
@@ -169,7 +147,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/members/:id - Update team member
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateBot, async (req, res) => {
   try {
     const { error, value } = updateMemberSchema.validate(req.body);
     if (error) {
@@ -203,7 +181,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/members/:id - Delete (deactivate) team member
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateBot, async (req, res) => {
   try {
     const member = await TeamMember.delete(req.params.id);
     if (!member) {
@@ -227,7 +205,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // PUT /api/members/reactivate/:id - Reactivate team member
-router.put('/reactivate/:id', async (req, res) => {
+router.put('/reactivate/:id', authenticateBot, async (req, res) => {
   try {
     const member = await TeamMember.reactivate(req.params.id);
     if (!member) {
@@ -263,6 +241,29 @@ router.get('/:id/stats', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch member statistics'
+    });
+  }
+});
+
+// GET /api/members/:id - Get member by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const member = await TeamMember.findById(req.params.id);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Team member not found'
+      });
+    }
+    res.json({
+      success: true,
+      data: member
+    });
+  } catch (error) {
+    console.error('Error fetching member:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch team member'
     });
   }
 });
