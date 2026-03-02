@@ -106,12 +106,13 @@ class TeamSojuBot {
   async start() {
     try {
       console.log("🔑 Attempting Discord login. Token present?", !!process.env.DISCORD_TOKEN);
-      await this.client.login(process.env.DISCORD_TOKEN)
-        .then(() => console.log("✅ Discord login successful"))
-        .catch((err) => {
-          console.error("❌ Discord login failed:", err);
-          throw err;
-        });
+      await Promise.race([
+        this.client.login(process.env.DISCORD_TOKEN),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Discord login timed out after 20s")), 20000)
+        )
+      ]);
+      console.log("✅ Discord login successful");
     } catch (error) {
       console.error('❌ Failed to start Discord bot:', error);
       process.exit(1);
