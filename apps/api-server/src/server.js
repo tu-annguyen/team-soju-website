@@ -15,7 +15,10 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://team-soju.netlify.app', 'https://teamsoju.com', 'https://soju.team', 'https://team-soju-hpzrujm4n-tu-annguyens-projects.vercel.app']
+    ? ['https://team-soju.netlify.app',
+      'https://teamsoju.com', 'https://www.teamsoju.com',
+      'https://soju.team', 'https://www.soju.team',
+      'https://team-soju-hpzrujm4n-tu-annguyens-projects.vercel.app']
     : ['http://localhost:3000', 'http://localhost:4321'],
   credentials: true
 }));
