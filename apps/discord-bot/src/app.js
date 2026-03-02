@@ -5,7 +5,16 @@
 
 const { Client, GatewayIntentBits } = require('discord.js');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
+}
+
+console.log("🚀 Discord bot process starting...");
+
+// Optional: helpful to see clean exits
+process.on("exit", (code) => {
+  console.log("👋 process exit with code:", code);
+});
 
 const { COMMANDS } = require('./commands');
 const {
@@ -32,7 +41,7 @@ class TeamSojuBot {
   }
 
   setupEventHandlers() {
-    this.client.once('clientReady', () => {
+    this.client.once('ready', () => {
       console.log(`🤖 Discord bot logged in as ${this.client.user.tag}!`);
 
       if (process.env.REGISTER_COMMANDS_ON_START === 'true') {
@@ -96,7 +105,13 @@ class TeamSojuBot {
 
   async start() {
     try {
-      await this.client.login(process.env.DISCORD_TOKEN);
+      console.log("🔑 Attempting Discord login. Token present?", !!process.env.DISCORD_TOKEN);
+      await this.client.login(process.env.DISCORD_TOKEN)
+        .then(() => console.log("✅ Discord login successful"))
+        .catch((err) => {
+          console.error("❌ Discord login failed:", err);
+          throw err;
+        });
     } catch (error) {
       console.error('❌ Failed to start Discord bot:', error);
       process.exit(1);
