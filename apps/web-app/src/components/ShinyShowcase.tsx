@@ -41,11 +41,12 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
   const trainers = await Promise.all(
     Array.from(trainerMap.entries()).map(async ([trainerName, trainerShinies]) => {
       // Count unique OT shinies
-      const otCount = trainerShinies.length;
+      let otCount = trainerShinies.length;
       
       const shiniesWithUrls = await Promise.all(
         trainerShinies.map(async (shiny) => {
           const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
+          if (isFailed) otCount--; // Don't count failed shinies as OT
           const isSecret = shiny.is_secret;
           const isAlpha = shiny.is_alpha;
           const encounterType = shiny.encounter_type || '';
