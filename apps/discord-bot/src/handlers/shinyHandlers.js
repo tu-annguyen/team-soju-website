@@ -20,7 +20,7 @@ async function handleAddShiny(interaction) {
   // Validate Soju role members can only add shinies for their registered IGN
   const ignValidation = await validateSojuTrainerIGN(interaction, trainerIgn);
   if (!ignValidation.valid) {
-    await interaction.editReply({ content: `❌ ${ignValidation.reason}`, ephemeral: true });
+    await interaction.editReply({ content: `❌ ${ignValidation.reason}`});
     return;
   }
 
@@ -40,11 +40,11 @@ async function handleAddShiny(interaction) {
   try {
     nationalNumber = await getNationalNumber(pokemon.toLowerCase());
     if (!nationalNumber) {
-      await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"`, ephemeral: true });
+      await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"`});
       return;
     }
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.editReply({ content: `Error: ${error.message}`});
     return;
   }
 
@@ -55,7 +55,7 @@ async function handleAddShiny(interaction) {
     });
     trainer = trainerResponse.data.data;
   } catch (error) {
-    await interaction.editReply({ content: `Error: Could not find trainer with IGN "${trainerIgn}"`, ephemeral: true });
+    await interaction.editReply({ content: `Error: Could not find trainer with IGN "${trainerIgn}"`});
     return;
   }
 
@@ -124,7 +124,7 @@ async function handleAddShiny(interaction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.editReply({ content: `Error: ${error.message}`});
   }
 }
 
@@ -165,7 +165,7 @@ async function handleAddShinyScreenshot(interaction) {
   });
 
   if (!ocrText) {
-    await interaction.editReply({ content: 'Failed to perform OCR on the image.', ephemeral: true });
+    await interaction.editReply({ content: 'Failed to perform OCR on the image.'});
     return;
   }
 
@@ -177,14 +177,14 @@ async function handleAddShinyScreenshot(interaction) {
   const validation = validateParsedData(data);
   if (!validation.isValid) {
     const ocrCodeblock = codeBlock(ocrText);
-    await interaction.editReply({ content: `OCR validation failed: ${validation.error}\nOCR result:\n${ocrCodeblock}\nTry uploading a high resolution desktop screenshot with minimal particles crowding the text areas or adding the shiny manually.`, ephemeral: true });
+    await interaction.editReply({ content: `OCR validation failed: ${validation.error}\nOCR result:\n${ocrCodeblock}\nTry uploading a high resolution desktop screenshot with minimal particles crowding the text areas or adding the shiny manually.`});
     return;
   }
 
   // Validate Soju role members can only add shinies for their registered IGN
   const ignValidation = await validateSojuTrainerIGN(interaction, data.trainer);
   if (!ignValidation.valid) {
-    await interaction.editReply({ content: `❌ ${ignValidation.reason}`, ephemeral: true });
+    await interaction.editReply({ content: `❌ ${ignValidation.reason}`});
     return;
   }
 
@@ -192,7 +192,7 @@ async function handleAddShinyScreenshot(interaction) {
   try {
     nationalNumber = await getNationalNumber(data.name.toLowerCase());
     if (!nationalNumber) {
-      await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${data.name}"`, ephemeral: true });
+      await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${data.name}"`});
       return;
     }
 
@@ -203,7 +203,7 @@ async function handleAddShinyScreenshot(interaction) {
       });
       trainer = trainerResponse.data.data;
     } catch (error) {
-      await interaction.editReply({ content: `Error: Could not find trainer with IGN "${data.trainer}"`, ephemeral: true });
+      await interaction.editReply({ content: `Error: Could not find trainer with IGN "${data.trainer}"`});
       return;
     }
 
@@ -247,7 +247,7 @@ async function handleAddShinyScreenshot(interaction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.editReply({ content: `Error: ${error.message}`});
   }
 }
 
@@ -290,7 +290,7 @@ async function handleEditShiny(interaction) {
     // Validate Soju role members can only edit shinies for their registered IGN
     const ignValidation = await validateSojuTrainerIGN(interaction, existingShiny.trainer_name);
     if (!ignValidation.valid) {
-      await interaction.editReply({ content: `❌ ${ignValidation.reason}`, ephemeral: true });
+      await interaction.editReply({ content: `❌ ${ignValidation.reason}`});
       return;
     }
 
@@ -300,7 +300,7 @@ async function handleEditShiny(interaction) {
       try {
         nationalNumber = await getNationalNumber(pokemon.toLowerCase());
       } catch (error) {
-        await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"`, ephemeral: true });
+        await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"`});
         return;
       }
     }
@@ -379,7 +379,7 @@ async function handleEditShiny(interaction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.editReply({ content: `Error: ${error.message}`});
   }
 }
 
@@ -403,7 +403,7 @@ async function handleFailShiny(interaction) {
     // Validate Soju role members can only edit shinies for their registered IGN
     const ignValidation = await validateSojuTrainerIGN(interaction, existingShiny.trainer_name);
     if (!ignValidation.valid) {
-      await interaction.editReply({ content: `❌ ${ignValidation.reason}`, ephemeral: true });
+      await interaction.editReply({ content: `❌ ${ignValidation.reason}`});
       return;
     }
 
@@ -445,7 +445,7 @@ async function handleFailShiny(interaction) {
 
     await interaction.editReply({ embeds: [embed], files: attachments });
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.editReply({ content: `Error: ${error.message}`});
   }
 }
 
@@ -470,7 +470,7 @@ async function handleDeleteShiny(interaction) {
     // Validate Soju role members can only delete shinies for their registered IGN
     const ignValidation = await validateSojuTrainerIGN(interaction, existingShiny.trainer_name);
     if (!ignValidation.valid) {
-      await interaction.editReply({ content: `❌ ${ignValidation.reason}`, ephemeral: true });
+      await interaction.editReply({ content: `❌ ${ignValidation.reason}`});
       return;
     }
 
@@ -487,7 +487,7 @@ async function handleDeleteShiny(interaction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.editReply({ content: `Error: ${error.message}`});
   }
 }
 
@@ -549,10 +549,10 @@ async function handleGetShiny(interaction) {
       await interaction.editReply({ embeds: [embed], files: attachments });
     } catch (err) {
       console.error('Error editing reply for getShiny:', err);
-      await interaction.editReply({ content: `Error: ${err.message}`, ephemeral: true });
+      await interaction.editReply({ content: `Error: ${err.message}`});
     }
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.editReply({ content: `Error: ${error.message}`});
   }
 }
 
@@ -679,7 +679,7 @@ async function handleGetShinies(interaction) {
     });
 
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.editReply({ content: `Error: ${error.message}`});
   }
 }
 
