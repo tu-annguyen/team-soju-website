@@ -642,6 +642,8 @@ async function handleGetShinies(interaction) {
       return;
     }
 
+    shinies.sort((a, b) => new Date(b.catch_date) - new Date(a.catch_date));
+
     const totalPages = Math.ceil(shinies.length / pageSize) || 1;
     let currentPage = 1;
 
