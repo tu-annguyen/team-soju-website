@@ -31,10 +31,10 @@ async function seedDatabase() {
       { ign: 'Zofina', rank: 'Gym Leader', discord_id: '460681300802535436'},
       { ign: 'layar', rank: 'Gym Leader', discord_id: '251016407699947520'},
       { ign: 'TMAvatar', rank: 'Ace Trainer', discord_id: '314136535232413697'},
+      { ign: 'Shwfityz', rank: 'Ace Trainer', discord_id: '573195723940560906'},
       { ign: 'Scotty', rank: 'Trainer', discord_id: '917293919698575361'},
       { ign: 'rubunny', rank: 'Gym Leader', discord_id: '246875143006060544'},
       { ign: 'Colty', rank: 'Gym Leader', discord_id: '168416102370639872'},
-      { ign: 'Shwfityz', rank: 'Ace Trainer', discord_id: '573195723940560906'},
       { ign: 'HinatShoyo', rank: 'Ace Trainer', discord_id: '724734257498423386'},
       { ign: 'Swifty', rank: 'Gym Leader', discord_id: '578968418393260032'},
       { ign: 'KxIrish', rank: 'Ace Trainer', discord_id: '114826685152624641'},
@@ -90,9 +90,46 @@ async function seedDatabase() {
       const showcaseData = JSON.parse(fs.readFileSync(showcasePath, 'utf8'));
 
       for (const trainer of showcaseData) {
+        const trainerForumNames = {
+          xMEGUx: "Megu",
+          Jianybin: "Jiany",
+          Immo: "Immo",
+          nayoe: "nayo",
+          Aisukohi: "Aisukohi",
+          heff: "heff",
+          MumenRiderZ: "MumenRider",
+          Pokio: "Pokio",
+          Miscellany: "Misc",
+          pikachu1250: "pikachutiyaL",
+          Nihilus: "Nihilus",
+          Electrya: "Electra",
+          ReefBarrierGreat: "ReefBarrierGreat",
+          Sath: "Sath",
+          skusage: "gaandusulayman",
+          tunacore: "tunacore",
+          Buddhalicious: "Buddhalicious",
+          CaliKingCorey: "CaliKingCorey",
+          BlossomsDream: "BlossomsDream",
+          BrutxL: "Brutal",
+          Zofinaa: "Zofina",
+          layar: "layar",
+          Avataradd98: "TMAvatar",
+          Shwfityz: "Shwfityz",
+          Scotty: "Scotty",
+          rubunny: "rubunny",
+          TsukiFromBilllie: "Colty",
+          HinatShoyo: "HinatShoyo",
+          swiftygecko: "Swifty",
+          KxIrish: "KxIrish",
+          DingusDestiny: "DingusDestiny",
+          iyusu: "iyusu",
+          megapoola: "MPLA",
+          SsjBlueCrill: "Ssjbluecrill",
+          HerbusWinkle69: "HerbusShinkle"
+        }
         if (!trainer || !trainer.name) continue;
         // find trainer id
-        const tRes = await pool.query('SELECT id FROM team_members WHERE ign = $1', [trainer.name]);
+        const tRes = await pool.query('SELECT id FROM team_members WHERE ign = $1', [trainerForumNames[trainer.name]]);
         if (tRes.rows.length === 0) {
           console.warn(`Trainer "${trainer.name}" not found in team_members, skipping their shinies.`);
           continue;
@@ -103,8 +140,9 @@ async function seedDatabase() {
         await pool.query('DELETE FROM team_shinies WHERE original_trainer = $1', [trainerId]);
 
         if (!Array.isArray(trainer.shinies)) continue;
+        const reversedShinies = [...trainer.shinies].reverse(); // Reverse to maintain original order after inserting
 
-        for (const shiny of trainer.shinies) {
+        for (const shiny of reversedShinies) {
           if (!shiny || !shiny.name) continue;
           const pokemon = String(shiny.name).toLowerCase();
           const attr = (shiny.attribute || '').toString().toLowerCase();

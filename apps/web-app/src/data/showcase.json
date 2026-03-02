@@ -1,6 +1,6 @@
 [
   {
-    "name": "Megu",
+    "name": "xMEGUx",
     "numOT": 56,
     "shinies": [
       {
@@ -291,7 +291,7 @@
     ]
   },
   {
-    "name": "Jiany",
+    "name": "Jianybin",
     "numOT": 47,
     "shinies": [
       {
@@ -591,7 +591,7 @@
         "attribute": "secret"
       },
       {
-        "name": "Nidoran",
+        "name": "Nidoran-F",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoran-f.gif",
         "attribute": "safari"
       },
@@ -823,7 +823,7 @@
     ]
   },
   {
-    "name": "nayo",
+    "name": "nayoe",
     "numOT": 39,
     "shinies": [
       {
@@ -1426,7 +1426,7 @@
     ]
   },
   {
-    "name": "MumenRider",
+    "name": "MumenRiderZ",
     "numOT": 29,
     "shinies": [
       {
@@ -1713,7 +1713,7 @@
     ]
   },
   {
-    "name": "Misc",
+    "name": "Miscellany",
     "numOT": 22,
     "shinies": [
       {
@@ -1829,7 +1829,7 @@
     ]
   },
   {
-    "name": "pikachutiyaL",
+    "name": "pikachu1250",
     "numOT": 21,
     "shinies": [
       {
@@ -2014,7 +2014,7 @@
         "attribute": ""
       },
       {
-        "name": "Wormadam",
+        "name": "Wormadam-Trash",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/wormadam-trash.gif",
         "attribute": ""
       },
@@ -2056,7 +2056,7 @@
     ]
   },
   {
-    "name": "Electra",
+    "name": "Electrya",
     "numOT": 18,
     "shinies": [
       {
@@ -2314,7 +2314,7 @@
     ]
   },
   {
-    "name": "gaandusulayman",
+    "name": "skusage",
     "numOT": 14,
     "shinies": [
       {
@@ -2525,7 +2525,7 @@
         "attribute": ""
       },
       {
-        "name": "Basculin",
+        "name": "Basculin-Red-Striped",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/basculin-red-striped.gif",
         "attribute": ""
       },
@@ -2576,7 +2576,7 @@
         "attribute": ""
       },
       {
-        "name": "Nidoran",
+        "name": "Nidoran-F",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoran-f.gif",
         "attribute": ""
       },
@@ -2659,7 +2659,7 @@
     ]
   },
   {
-    "name": "Brutal",
+    "name": "BrutxL",
     "numOT": 8,
     "shinies": [
       {
@@ -2705,7 +2705,7 @@
     ]
   },
   {
-    "name": "Zofina",
+    "name": "Zofinaa",
     "numOT": 7,
     "shinies": [
       {
@@ -2792,7 +2792,7 @@
     ]
   },
   {
-    "name": "TMAvatar",
+    "name": "Avataradd98",
     "numOT": 7,
     "shinies": [
       {
@@ -2828,6 +2828,47 @@
       {
         "name": "Nidoking",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/nidoking.gif",
+        "attribute": ""
+      }
+    ]
+  },
+  {
+    "name": "Shwfityz",
+    "numOT": 7,
+    "shinies": [
+      {
+        "name": "Rhyperior",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Gyarados",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Gallade",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gallade.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Rattata",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rattata.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Blastoise",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/blastoise.gif",
+        "attribute": "egg"
+      },
+      {
+        "name": "Lucario",
+        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lucario.gif",
+        "attribute": ""
+      },
+      {
+        "name": "Purugly",
+        "imageUrl": "https://forums.pokemmo.com/uploads/monthly_2026_02/Purugly.gif.d944ef29dcb74ea7ab66055c415ab452.gif",
         "attribute": ""
       }
     ]
@@ -2910,7 +2951,7 @@
     ]
   },
   {
-    "name": "Colty",
+    "name": "TsukiFromBilllie",
     "numOT": 6,
     "shinies": [
       {
@@ -2941,42 +2982,6 @@
       {
         "name": "Zubat",
         "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/zubat-f.gif",
-        "attribute": ""
-      }
-    ]
-  },
-  {
-    "name": "Shwfityz",
-    "numOT": 6,
-    "shinies": [
-      {
-        "name": "Rhyperior",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rhyperior.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Gyarados",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gyarados.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Gallade",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/gallade.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Rattata",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/rattata.gif",
-        "attribute": ""
-      },
-      {
-        "name": "Blastoise",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/blastoise.gif",
-        "attribute": "egg"
-      },
-      {
-        "name": "Lucario",
-        "imageUrl": "https://img.pokemondb.net/sprites/black-white/anim/shiny/lucario.gif",
         "attribute": ""
       }
     ]
@@ -3044,7 +3049,7 @@
     ]
   },
   {
-    "name": "Swifty",
+    "name": "swiftygecko",
     "numOT": 5,
     "shinies": [
       {
@@ -3143,7 +3148,7 @@
     ]
   },
   {
-    "name": "MPLA",
+    "name": "megapoola",
     "numOT": 2,
     "shinies": [
       {
@@ -3159,7 +3164,7 @@
     ]
   },
   {
-    "name": "Ssjbluecrill",
+    "name": "SsjBlueCrill",
     "numOT": 1,
     "shinies": [
       {
@@ -3170,7 +3175,7 @@
     ]
   },
   {
-    "name": "HerbusShinkle",
+    "name": "HerbusWinkle69",
     "numOT": 1,
     "shinies": [
       {
