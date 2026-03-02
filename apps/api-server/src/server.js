@@ -79,7 +79,7 @@ app.use((error, req, res, next) => {
 
 // Start server (skipped during tests)
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Team Soju API server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
@@ -89,5 +89,8 @@ if (process.env.NODE_ENV !== 'test') {
     }
   });
 }
+
+// Trust proxy settings for secure cookies in production
+app.set("trust proxy", 1);
 
 module.exports = app;
