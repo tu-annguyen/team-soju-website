@@ -34,7 +34,12 @@ class TeamSojuBot {
   setupEventHandlers() {
     this.client.once('clientReady', () => {
       console.log(`🤖 Discord bot logged in as ${this.client.user.tag}!`);
-      this.registerCommands();
+
+      if (process.env.REGISTER_COMMANDS_ON_START === 'true') {
+        this.registerCommands();
+      } else {
+        console.log('ℹ️ Skipping command registration (REGISTER_COMMANDS_ON_START not true)');
+      }
     });
 
     this.client.on('warn', console.warn);
@@ -105,4 +110,26 @@ module.exports = TeamSojuBot;
 if (require.main === module) {
   const bot = new TeamSojuBot();
   bot.start();
+  const shutdown = async (signal) => {
+    console.log(`🛑 ${signal} received. Shutting down Discord bot...`);
+    try {
+      // closes the Discord gateway connection cleanly
+      await bot.client.destroy();
+    } catch (e) {
+      console.error('Error during shutdown:', e);
+    } finally {
+      process.exit(0);
+    }
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM')); // Render sends this on deploy/restart
+  process.on('SIGINT', () => shutdown('SIGINT'));   // Ctrl+C locally
+
+  process.on('unhandledRejection', (err) => {
+    console.error('Unhandled promise rejection:', err);
+  });
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    shutdown('uncaughtException');
+  });
 }
