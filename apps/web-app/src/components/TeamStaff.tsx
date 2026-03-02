@@ -21,30 +21,14 @@ const staffData = [
   },
   {
     id: 3,
-    name: 'cubberkazookie',
-    role: 'Community & Onboarding Manager',
-    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_11/IMG_9484.thumb.jpg.5416c3c95048a3d58ff4465c724bbca6.jpg',
-    discord: 'https://discordapp.com/users/757471359835177071',
-    forum: 'https://forums.pokemmo.com/index.php?/profile/487174-cubberkazooie/'
-  },
-  {
-    id: 4,
     name: 'Immo',
-    role: 'Showcase Kid',
+    role: 'Showcase Curator',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_12/image_2025-12-20_085301764.png.310774dcfab98b9757d603653d6c933c.png',
     discord: 'https://discordapp.com/users/683832833705377802',
     forum: 'https://forums.pokemmo.com/index.php?/profile/505616-immo/'
   },
   {
-    id: 5,
-    name: 'hefferson',
-    role: 'Event Coordinator',
-    avatar: 'https://forums.pokemmo.com/uploads/monthly_2023_12/8a97b55150df7dbf80dd1b12b3d9fc26.thumb.jpg.0fac3953b5f4365c34f2a8fd98188aa5.jpg',
-    discord: 'https://discordapp.com/users/234164830779604994',
-    forum: 'https://forums.pokemmo.com/index.php?/profile/478751-hefferson/'
-  },
-  {
-    id: 6,
+    id: 4,
     name: 'tunacore',
     role: 'Website & Content Lead',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_08/Camels_Face_pfp.thumb.webp.5f5ee343cc68a4c5b89aa09450ca7280.webp',
