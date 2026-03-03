@@ -208,15 +208,13 @@ const ShinyShowcase = () => {
         
         <div className="mt-12 text-center">
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            This showcase is automatically updated from our 
+            This showcase is updated using our in house Discord application.
             <a 
-              href="https://forums.pokemmo.com/index.php?/topic/195298-team-soj%C3%BC-shiny-showcase/" 
-              target="_blank" 
-              rel="noopener noreferrer"
+              href="./discord"
               className="text-primary-600 dark:text-primary-400 hover:underline ml-1"
             >
-              forum thread
-            </a>.
+              Join our Discord server
+            </a>to add your shinies today!
           </p>
         </div>
       </div>
