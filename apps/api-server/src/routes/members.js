@@ -8,7 +8,7 @@ const { authenticateBot } = require('../middleware/auth');
 const memberSchema = Joi.object({
   ign: Joi.string().min(1).max(50).required(),
   discord_id: Joi.string().max(20).optional(),
-  rank: Joi.string().max(20).default('Member'),
+  rank: Joi.string().max(20).default('Trainer'),
   notes: Joi.string().optional()
 });
 

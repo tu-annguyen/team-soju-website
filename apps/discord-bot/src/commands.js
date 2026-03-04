@@ -9,6 +9,7 @@ const RANK_CHOICES = [
   { name: 'Trainer', value: 'Trainer' },
   { name: 'Ace Trainer', value: 'Ace Trainer' },
   { name: 'Gym Leader', value: 'Gym Leader' },
+  { name: 'Frontier Brain', value: 'Frontier Brain' },
   { name: 'Elite 4', value: 'Elite 4' },
   { name: 'Champion', value: 'Champion' },
 ];
@@ -23,6 +24,7 @@ const ENCOUNTER_TYPE_CHOICES = [
   { name: 'Honey Tree', value: 'honey_tree' },
   { name: 'Rock Smash', value: 'rock_smash' },
   { name: 'Fossil', value: 'fossil' },
+  { name: 'Headbutt', value: 'headbutt' },
   { name: 'Mysterious Ball', value: 'mysterious_ball' },
   { name: 'Gift/Event', value: 'gift' },
 ];

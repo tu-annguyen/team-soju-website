@@ -21,6 +21,7 @@ const attributeIcons: Record<string, string> = {
   swarm: '/images/swarm.png',
   fossil: '/images/fossil.png',
   rock_smash: '/images/rock.png',
+  headbutt: '/images/headbutt.png',
   gift: '/images/gift.png',
   alpha: '/images/alpha.png',
 };

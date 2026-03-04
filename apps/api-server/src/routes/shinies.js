@@ -13,7 +13,7 @@ const shinySchema = Joi.object({
   total_encounters: Joi.number().integer().min(0).default(0),
   species_encounters: Joi.number().integer().min(0).default(0),
   encounter_type: Joi.string().valid(
-    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'gift'
+    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'headbutt', 'gift'
   ).required(),
   location: Joi.string().max(100).optional(),
   nature: Joi.string().max(20).optional(),
@@ -37,7 +37,7 @@ const updateShinySchema = Joi.object({
   total_encounters: Joi.number().integer().min(0).optional(),
   species_encounters: Joi.number().integer().min(0).optional(),
   encounter_type: Joi.string().valid(
-    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'gift'
+    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'headbutt', 'gift'
   ).optional(),
   location: Joi.string().max(100).optional(),
   nature: Joi.string().max(20).optional(),
