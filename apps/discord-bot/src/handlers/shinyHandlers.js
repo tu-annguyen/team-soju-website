@@ -625,11 +625,16 @@ async function handleGetShinies(interaction) {
     params.append('limit', '10000');
 
     if (trainerIgn) {
-      const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${trainerIgn}`, {
-        headers: { Authorization: `Bearer ${botToken}` }
-      });
-      const trainer = trainerResponse.data.data;
-      params.append('trainer_id', trainer.id.toString());
+      try {
+        const trainerResponse = await axios.get(`${apiBaseUrl}/members/ign/${trainerIgn}`, {
+          headers: { Authorization: `Bearer ${botToken}` }
+        });
+        const trainer = trainerResponse.data.data;
+        params.append('trainer_id', trainer.id.toString());
+      } catch (error) {
+        await interaction.editReply({ content: `Error fetching trainer: ${error.message} does not exist.` });
+        return;
+      }
     }
 
     const response = await axios.get(`${apiBaseUrl}/shinies?${params}`, {
