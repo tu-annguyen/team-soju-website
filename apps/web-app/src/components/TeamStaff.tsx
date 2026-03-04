@@ -14,7 +14,7 @@ const staffData = [
   {
     id: 2,
     name: 'Aisukohi',
-    role: 'Co-Leader',
+    role: 'Co-Founder',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_04/Nagi.thumb.jpg.eab474e28a04332997b091001d4bceef.jpg',
     discord: 'https://discordapp.com/users/558122397971120133',
     forum: 'https://forums.pokemmo.com/index.php?/profile/490746-aisukohi/'
