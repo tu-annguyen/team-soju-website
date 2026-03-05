@@ -98,4 +98,8 @@ if (process.env.NODE_ENV !== 'test') {
 // Trust proxy settings for secure cookies in production
 app.set("trust proxy", 1);
 
+// Start the cron job to keep the server alive
+const job = require('./cron').job;
+job.start();
+
 module.exports = app;
