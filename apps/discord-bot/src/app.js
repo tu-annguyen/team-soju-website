@@ -109,7 +109,7 @@ class TeamSojuBot {
       await Promise.race([
         this.client.login(process.env.DISCORD_TOKEN),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Discord login timed out after 20s")), 20000)
+          setTimeout(() => reject(new Error("Discord login timed out after 60s")), 60000)
         )
       ]);
       console.log("✅ Discord login successful");
