@@ -53,6 +53,16 @@ class TeamSojuBot {
       }
     });
 
+    if (process.env.DISCORD_DEBUG === 'true') {
+      this.client.on('debug', (m) => console.log('[discord:debug]', m));
+    }
+
+    // Shard events can provide insight into connectivity issues
+    this.client.on('shardReady', (id) => console.log('shardReady', id));
+    this.client.on('shardDisconnect', (e, id) => console.log('shardDisconnect', id, e));
+    this.client.on('shardError', (e, id) => console.log('shardError', id, e));
+    this.client.on('shardReconnecting', (id) => console.log('shardReconnecting', id));
+
     this.client.on('warn', console.warn);
     this.client.on('error', console.error);
 
