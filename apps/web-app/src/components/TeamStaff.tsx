@@ -31,7 +31,7 @@ const staffData = [
     id: 4,
     name: 'pikachutiyaL',
     role: 'Event Coordinator',
-    avatar: 'https://forums.pokemmo.com/static/resources/core_84c1e40ea0e759e3f1505eb1788ddf3c_default_photo.png',
+    avatar: '../../public/images/pika-pfp.jpeg',
     discord: 'https://discordapp.com/users/668402074295468062',
     forum: 'https://forums.pokemmo.com/index.php?/profile/529856-pikachu1250/'
   },
