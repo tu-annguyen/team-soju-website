@@ -150,13 +150,15 @@ class TeamSojuBot {
       process.exit(1);
     });
 
-    // Watchdog: if not ready within deadline, exit(1) to let Render restart us.
-    setTimeout(() => {
-      if (!this.loggedIn) {
-        console.error(`⏱️ Login did not reach ready() within ${LOGIN_DEADLINE_MS / 1000}s.`);
-        process.exit(1);
-      }
-    }, LOGIN_DEADLINE_MS);
+    if (process.env.NODE_ENV === 'production') {
+      // Watchdog: if not ready within deadline, exit(1) to let Render restart us.
+      setTimeout(() => {
+        if (!this.loggedIn) {
+          console.error(`⏱️ Login did not reach ready() within ${LOGIN_DEADLINE_MS / 1000}s.`);
+          process.exit(1);
+        }
+      }, LOGIN_DEADLINE_MS);
+    }
   }
 }
 
@@ -164,17 +166,21 @@ module.exports = TeamSojuBot;
 
 // Start bot if run directly
 if (require.main === module) {
-  // bump attempt counter
-  const attempt = readAttemptCount() + 1;
-  writeAttemptCount(attempt);
+  if (process.env.NODE_ENV === 'production') {
+    // bump attempt counter
+    const attempt = readAttemptCount() + 1;
+    writeAttemptCount(attempt);
 
-  console.log(`🔁 Login attempt ${attempt}/${MAX_RESTARTS}`);
+    console.log(`🔁 Login attempt ${attempt}/${MAX_RESTARTS}`);
 
-  if (attempt > MAX_RESTARTS) {
-    console.error(`🛑 Exceeded max restart attempts (${MAX_RESTARTS}). Not restarting anymore.`);
-    // Exit 0 so Render won't endlessly churn; you’ll see it “live” but stopped.
-    // Alternatively use exit(1) if you prefer to keep it restarting forever.
-    process.exit(0);
+    if (attempt > MAX_RESTARTS) {
+      console.error(`🛑 Exceeded max restart attempts (${MAX_RESTARTS}). Not restarting anymore.`);
+      // Exit 0 so Render won't endlessly churn; you’ll see it “live” but stopped.
+      // Alternatively use exit(1) if you prefer to keep it restarting forever.
+      process.exit(0);
+    }
+  } else {
+    console.log('⚠️ Running in non-production environment; login attempts will not be counted.');
   }
 
   const bot = new TeamSojuBot();
