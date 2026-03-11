@@ -26,6 +26,41 @@ const {
   validateSojuTrainerIGN,
 } = require('./utils');
 
+/**
+ * Restart control
+ * - If bot isn't ready within LOGIN_DEADLINE_MS, exit(1) to let Render restart the worker
+ * - Persist attempt count to a small file so it survives process restarts
+ */
+const LOGIN_DEADLINE_MS = 60_000;
+const MAX_RESTARTS = 3;
+const ATTEMPT_FILE = path.join(process.cwd(), '.bot-login-attempt');
+
+function readAttemptCount() {
+  try {
+    const raw = fs.readFileSync(ATTEMPT_FILE, 'utf8').trim();
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeAttemptCount(n) {
+  try {
+    fs.writeFileSync(ATTEMPT_FILE, String(n), 'utf8');
+  } catch (e) {
+    console.error('Failed to write attempt file:', e);
+  }
+}
+
+function resetAttemptCount() {
+  try {
+    fs.unlinkSync(ATTEMPT_FILE);
+  } catch {
+    // ignore if missing
+  }
+}
+
 class TeamSojuBot {
   constructor() {
     validateEnvironment(['DISCORD_TOKEN', 'DISCORD_CLIENT_ID']);
@@ -104,19 +139,22 @@ class TeamSojuBot {
   }
 
   async start() {
-    try {
-      console.log("🔑 Attempting Discord login. Token present?", !!process.env.DISCORD_TOKEN);
-      await Promise.race([
-        this.client.login(process.env.DISCORD_TOKEN),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Discord login timed out after 60s")), 60000)
-        )
-      ]);
-      console.log("✅ Discord login successful");
-    } catch (error) {
-      console.error('❌ Failed to start Discord bot:', error);
+    console.log("🔑 Attempting Discord login. Token present?", !!process.env.DISCORD_TOKEN);
+
+    // Kick off login but don't await it here; we’ll watchdog readiness.
+    this.client.login(process.env.DISCORD_TOKEN).catch((err) => {
+      console.error("❌ Discord login failed:", err);
+      // Fail fast on immediate errors (bad token, etc.)
       process.exit(1);
-    }
+    });
+
+    // Watchdog: if not ready within deadline, exit(1) to let Render restart us.
+    setTimeout(() => {
+      if (!this.loggedIn) {
+        console.error(`⏱️ Login did not reach ready() within ${LOGIN_DEADLINE_MS / 1000}s.`);
+        process.exit(1);
+      }
+    }, LOGIN_DEADLINE_MS);
   }
 }
 
@@ -124,12 +162,25 @@ module.exports = TeamSojuBot;
 
 // Start bot if run directly
 if (require.main === module) {
+  // bump attempt counter
+  const attempt = readAttemptCount() + 1;
+  writeAttemptCount(attempt);
+
+  console.log(`🔁 Login attempt ${attempt}/${MAX_RESTARTS}`);
+
+  if (attempt > MAX_RESTARTS) {
+    console.error(`🛑 Exceeded max restart attempts (${MAX_RESTARTS}). Not restarting anymore.`);
+    // Exit 0 so Render won't endlessly churn; you’ll see it “live” but stopped.
+    // Alternatively use exit(1) if you prefer to keep it restarting forever.
+    process.exit(0);
+  }
+
   const bot = new TeamSojuBot();
   bot.start();
+
   const shutdown = async (signal) => {
     console.log(`🛑 ${signal} received. Shutting down Discord bot...`);
     try {
-      // closes the Discord gateway connection cleanly
       await bot.client.destroy();
     } catch (e) {
       console.error('Error during shutdown:', e);
@@ -138,12 +189,13 @@ if (require.main === module) {
     }
   };
 
-  process.on('SIGTERM', () => shutdown('SIGTERM')); // Render sends this on deploy/restart
-  process.on('SIGINT', () => shutdown('SIGINT'));   // Ctrl+C locally
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 
   process.on('unhandledRejection', (err) => {
     console.error('Unhandled promise rejection:', err);
   });
+
   process.on('uncaughtException', (err) => {
     console.error('Uncaught exception:', err);
     shutdown('uncaughtException');
