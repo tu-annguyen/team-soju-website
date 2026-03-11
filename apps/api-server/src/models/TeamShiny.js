@@ -54,7 +54,7 @@ class TeamShiny {
       params.push(filters.active);
     }
 
-    query += ` ORDER BY ts.catch_date DESC`;
+    query += ` ORDER BY ts.catch_date DESC NULLS FIRST, ts.created_at DESC`;
 
     if (filters.limit) {
       paramCount++;
