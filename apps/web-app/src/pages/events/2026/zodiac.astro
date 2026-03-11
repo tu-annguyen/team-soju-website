@@ -1,0 +1,13 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import EventsHeader from '../../../components/EventsHeader';
+import Zodiac from '../../../components/Zodiac';
+---
+
+<Layout 
+  title="Events - Team Soju" 
+  description="Explore Team Soju's events."
+>
+  <EventsHeader client:load />
+  <Zodiac client:load />
+</Layout>
