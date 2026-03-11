@@ -30,8 +30,6 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
   // Group shinies by trainer
   const trainerMap = new Map<string, ShinyFromAPI[]>();
   
-  shinies.reverse();
-  
   shinies.forEach(shiny => {
     const existing = trainerMap.get(shiny.trainer_name) || [];
     trainerMap.set(shiny.trainer_name, [...existing, shiny]);
