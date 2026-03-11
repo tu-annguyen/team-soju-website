@@ -21,19 +21,27 @@ const staffData = [
   },
   {
     id: 3,
-    name: 'Immo',
-    role: 'Showcase Curator',
-    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_12/image_2025-12-20_085301764.png.310774dcfab98b9757d603653d6c933c.png',
-    discord: 'https://discordapp.com/users/683832833705377802',
-    forum: 'https://forums.pokemmo.com/index.php?/profile/505616-immo/'
-  },
-  {
-    id: 4,
     name: 'tunacore',
     role: 'Website & Content Lead',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2024_08/Camels_Face_pfp.thumb.webp.5f5ee343cc68a4c5b89aa09450ca7280.webp',
     discord: 'https://discordapp.com/users/272201126068092928',
     forum: 'https://forums.pokemmo.com/index.php?/profile/492263-tunacore/'
+  },
+  {
+    id: 4,
+    name: 'pikachutiyaL',
+    role: 'Event Coordinator',
+    avatar: 'https://forums.pokemmo.com/static/resources/core_84c1e40ea0e759e3f1505eb1788ddf3c_default_photo.png',
+    discord: 'https://discordapp.com/users/668402074295468062',
+    forum: 'https://forums.pokemmo.com/index.php?/profile/529856-pikachu1250/'
+  },
+  {
+    id: 5,
+    name: 'Pokio',
+    role: 'Artist',
+    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_04/IMG_96975.png.88a810cafe3782e0c82926dd2fe97e98.png',
+    discord: 'https://discordapp.com/users/701127393326399558',
+    forum: 'https://forums.pokemmo.com/index.php?/profile/241159-pokio/'
   },
 ];
 
