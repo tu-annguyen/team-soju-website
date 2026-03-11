@@ -204,35 +204,68 @@ function validateParsedData(data) {
     'Timid', 'Hasty', 'Jolly', 'Naive', 'Serious'
   ];
 
+  // -------------------------
+  // HARD VALIDATION (FAILS)
+  // -------------------------
+
   // Check Pokemon name
   if (!data.name || typeof data.name !== 'string' || data.name.trim() === '') {
     return { isValid: false, error: 'Pokemon name is missing or invalid.' };
   }
 
+  // Check date (YYYY-MM-DD)
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  // Check date
   if (!data.date || !dateRegex.test(data.date)) {
     return { isValid: false, error: 'Date is missing or invalid.' };
   }
 
-  // Check IVs
+  // -------------------------
+  // SOFT VALIDATION (LOGS)
+  // -------------------------
+
+  // IVs (6 integers 0-31)
   const ivs = [data.hp, data.atk, data.def, data.spa, data.spd, data.spe];
-  console.log('Validating IVs:', ivs);
-  if (ivs.some(iv => typeof iv !== 'number' || iv < 0 || iv > 31 || !Number.isInteger(iv))) {
-    return { isValid: false, error: 'IVs must be 6 integers between 0 and 31.' };
+  const ivsInvalid = ivs.some(
+    (iv) => typeof iv !== 'number' || !Number.isInteger(iv) || iv < 0 || iv > 31
+  );
+  if (ivsInvalid) {
+    console.warn('[OCR validation warning] IVs failed validation:', {
+      ivs,
+      dataSnippet: { name: data.name, date: data.date }
+    });
+    data.hp = data.atk = data.def = data.spa = data.spd = data.spe = null;
   }
 
-  // Check encounters
-  if (data.totalEncounters !== null && (typeof data.totalEncounters !== 'number' || !Number.isInteger(data.totalEncounters) || data.totalEncounters < 0)) {
-    return { isValid: false, error: 'Total encounters must be a non-negative integer.' };
-  }
-  if (data.speciesEncounters !== null && (typeof data.speciesEncounters !== 'number' || !Number.isInteger(data.speciesEncounters) || data.speciesEncounters < 0)) {
-    return { isValid: false, error: 'Species encounters must be a non-negative integer.' };
+  // Encounters (non-negative integers, allow null)
+  const totalBad =
+    data.totalEncounters !== null &&
+    (typeof data.totalEncounters !== 'number' ||
+      !Number.isInteger(data.totalEncounters) ||
+      data.totalEncounters < 0);
+
+  const speciesBad =
+    data.speciesEncounters !== null &&
+    (typeof data.speciesEncounters !== 'number' ||
+      !Number.isInteger(data.speciesEncounters) ||
+      data.speciesEncounters < 0);
+
+  if (totalBad || speciesBad) {
+    console.warn('[OCR validation warning] Encounters failed validation:', {
+      totalEncounters: data.totalEncounters,
+      speciesEncounters: data.speciesEncounters,
+      dataSnippet: { name: data.name, date: data.date }
+    });
+    if (totalBad) data.totalEncounters = null;
+    if (speciesBad) data.speciesEncounters = null;
   }
 
-  // Check nature
+  // Nature (if present, must be valid)
   if (data.nature && !validNatures.includes(data.nature)) {
-    return { isValid: false, error: `Nature "${data.nature}" is not valid. Valid natures: ${validNatures.join(', ')}.` };
+    console.warn('[OCR validation warning] Nature failed validation:', {
+      nature: data.nature,
+      dataSnippet: { name: data.name, date: data.date }
+    });
+    data.nature = null;
   }
 
   return { isValid: true, error: null };

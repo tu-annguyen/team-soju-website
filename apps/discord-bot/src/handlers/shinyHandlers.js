@@ -25,7 +25,7 @@ async function handleAddShiny(interaction) {
   }
 
   const pokemon = interaction.options.getString('pokemon');
-  const catchDate = interaction.options.getString('catch_date');
+  const catchDate = interaction.options.getString('catch_date') || new Date().toISOString().split('T')[0]; // default to today if not provided
   const encounterType = interaction.options.getString('encounter_type');
   const isSecret = interaction.options.getBoolean('secret') || false;
   const isAlpha = interaction.options.getBoolean('alpha') || false;
@@ -209,25 +209,31 @@ async function handleAddShinyScreenshot(interaction) {
 
     console.log('Parsed Data:', data);
 
-    const shinyResponse = await axios.post(`${apiBaseUrl}/shinies`, {
+    const body = {
       national_number: nationalNumber,
       pokemon: data.name,
       original_trainer: trainer.id,
       catch_date: data.date,
-      total_encounters: data.totalEncounters,
-      species_encounters: data.speciesEncounters,
       encounter_type: encounterType,
-      nature: data.nature,
-      iv_hp: data.hp,
-      iv_attack: data.atk,
-      iv_defense: data.def,
-      iv_sp_attack: data.spa,
-      iv_sp_defense: data.spd,
-      iv_speed: data.spe,
       is_secret: isSecret,
       is_alpha: isAlpha,
       screenshot_url: screenshotUrl,
-    }, {
+      total_encounters: Number.isInteger(data.totalEncounters) ? data.totalEncounters : 0,
+      species_encounters: Number.isInteger(data.speciesEncounters) ? data.speciesEncounters : 0,
+    };
+
+    // Only include optional fields if they are NOT null/undefined
+    if (typeof data.nature === 'string' && data.nature.trim()) body.nature = data.nature;
+
+    // IVs: include only if integer 0-31 (note: 0 is valid!)
+    if (Number.isInteger(data.hp)  && data.hp  >= 0 && data.hp  <= 31) body.iv_hp = data.hp;
+    if (Number.isInteger(data.atk) && data.atk >= 0 && data.atk <= 31) body.iv_attack = data.atk;
+    if (Number.isInteger(data.def) && data.def >= 0 && data.def <= 31) body.iv_defense = data.def;
+    if (Number.isInteger(data.spa) && data.spa >= 0 && data.spa <= 31) body.iv_sp_attack = data.spa;
+    if (Number.isInteger(data.spd) && data.spd >= 0 && data.spd <= 31) body.iv_sp_defense = data.spd;
+    if (Number.isInteger(data.spe) && data.spe >= 0 && data.spe <= 31) body.iv_speed = data.spe;
+
+    const shinyResponse = await axios.post(`${apiBaseUrl}/shinies`, body, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const shiny = shinyResponse.data.data;

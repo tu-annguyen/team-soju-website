@@ -152,7 +152,7 @@ const COMMANDS = [
     .addStringOption(option =>
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
-        .setRequired(true))
+        .setRequired(false))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
