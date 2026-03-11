@@ -5,8 +5,6 @@
 
 const { Client, GatewayIntentBits } = require('discord.js');
 const path = require('path');
-const fs = require('fs');
-const os = require('os');
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 }
@@ -25,47 +23,12 @@ const {
   validateEnvironment,
   checkCommandPermission,
   getCommandRequiredRoles,
-  validateSojuTrainerIGN,
 } = require('./utils');
-
-/**
- * Restart control
- * - If bot isn't ready within LOGIN_DEADLINE_MS, exit(1) to let Render restart the worker
- * - Persist attempt count to a small file so it survives process restarts
- */
-const LOGIN_DEADLINE_MS = 60_000;
-const MAX_RESTARTS = 3;
-const ATTEMPT_FILE = path.join(os.tmpdir(), 'team-soju-bot-login-attempt');
-
-function readAttemptCount() {
-  try {
-    const raw = fs.readFileSync(ATTEMPT_FILE, 'utf8').trim();
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function writeAttemptCount(n) {
-  try {
-    fs.writeFileSync(ATTEMPT_FILE, String(n), 'utf8');
-  } catch (e) {
-    console.error('Failed to write attempt file:', e);
-  }
-}
-
-function resetAttemptCount() {
-  try {
-    fs.unlinkSync(ATTEMPT_FILE);
-  } catch {
-    // ignore if missing
-  }
-}
 
 class TeamSojuBot {
   constructor() {
     validateEnvironment(['DISCORD_TOKEN', 'DISCORD_CLIENT_ID']);
+    this.loggedIn = false;
 
     this.client = new Client({
       intents: [
@@ -79,6 +42,8 @@ class TeamSojuBot {
 
   setupEventHandlers() {
     this.client.once('ready', () => {
+      this.loggedIn = true;
+
       console.log(`🤖 Discord bot logged in as ${this.client.user.tag}!`);
 
       if (process.env.REGISTER_COMMANDS_ON_START === 'true') {
@@ -143,21 +108,28 @@ class TeamSojuBot {
   async start() {
     console.log("🔑 Attempting Discord login. Token present?", !!process.env.DISCORD_TOKEN);
 
-    // Kick off login but don't await it here; we’ll watchdog readiness.
     this.client.login(process.env.DISCORD_TOKEN).catch((err) => {
       console.error("❌ Discord login failed:", err);
-      // Fail fast on immediate errors (bad token, etc.)
       process.exit(1);
     });
 
-    if (process.env.NODE_ENV === 'production') {
-      // Watchdog: if not ready within deadline, exit(1) to let Render restart us.
+    const watchdogEnabled = process.env.LOGIN_WATCHDOG_ENABLED === 'true';
+    const deadline = Number(process.env.LOGIN_DEADLINE_MS || 180_000);
+
+    if (watchdogEnabled) {
       setTimeout(() => {
-        if (!this.loggedIn) {
-          console.error(`⏱️ Login did not reach ready() within ${LOGIN_DEADLINE_MS / 1000}s.`);
-          process.exit(1);
+        const isReady = this.client.isReady?.() || !!this.client.readyAt || this.loggedIn;
+
+        if (!isReady) {
+          console.error(`⏱️ Login did not reach ready() within ${Math.round(deadline / 1000)}s.`);
+          console.error('Debug state:', {
+            loggedInFlag: this.loggedIn,
+            readyAt: this.client.readyAt,
+            wsStatus: this.client.ws?.status,
+          });
+          process.exit(1); // Render restarts worker
         }
-      }, LOGIN_DEADLINE_MS);
+      }, deadline);
     }
   }
 }
@@ -166,23 +138,6 @@ module.exports = TeamSojuBot;
 
 // Start bot if run directly
 if (require.main === module) {
-  if (process.env.NODE_ENV === 'production') {
-    // bump attempt counter
-    const attempt = readAttemptCount() + 1;
-    writeAttemptCount(attempt);
-
-    console.log(`🔁 Login attempt ${attempt}/${MAX_RESTARTS}`);
-
-    if (attempt > MAX_RESTARTS) {
-      console.error(`🛑 Exceeded max restart attempts (${MAX_RESTARTS}). Not restarting anymore.`);
-      // Exit 0 so Render won't endlessly churn; you’ll see it “live” but stopped.
-      // Alternatively use exit(1) if you prefer to keep it restarting forever.
-      process.exit(0);
-    }
-  } else {
-    console.log('⚠️ Running in non-production environment; login attempts will not be counted.');
-  }
-
   const bot = new TeamSojuBot();
   bot.start();
 
@@ -193,7 +148,7 @@ if (require.main === module) {
     } catch (e) {
       console.error('Error during shutdown:', e);
     } finally {
-      process.exit(0);
+      process.exit(1);
     }
   };
 
