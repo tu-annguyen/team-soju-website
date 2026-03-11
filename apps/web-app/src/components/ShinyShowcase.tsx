@@ -212,7 +212,7 @@ const ShinyShowcase = () => {
               className="text-primary-600 dark:text-primary-400 hover:underline ml-1"
             >
               Join our Discord server
-            </a>to add your shinies today!
+            </a> to add your shinies today!
           </p>
         </div>
       </div>
