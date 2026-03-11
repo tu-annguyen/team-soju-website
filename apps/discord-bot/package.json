@@ -18,7 +18,7 @@
   "author": "Tu-An Nguyen",
   "license": "MIT",
   "dependencies": {
-    "@team-soju/utils": "*",
+    "@team-soju/utils": "^1.0.0",
     "axios": "^1.13.2",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
