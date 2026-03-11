@@ -5,6 +5,8 @@
 
 const { Client, GatewayIntentBits } = require('discord.js');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 }
@@ -33,7 +35,7 @@ const {
  */
 const LOGIN_DEADLINE_MS = 60_000;
 const MAX_RESTARTS = 3;
-const ATTEMPT_FILE = path.join(process.cwd(), '.bot-login-attempt');
+const ATTEMPT_FILE = path.join(os.tmpdir(), 'team-soju-bot-login-attempt');
 
 function readAttemptCount() {
   try {
