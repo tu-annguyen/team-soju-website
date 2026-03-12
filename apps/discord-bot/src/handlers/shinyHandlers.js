@@ -371,8 +371,8 @@ async function handleEditShiny(interaction) {
     embed.addFields(
         { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
         { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Catch Date', value: shiny.catch_date, inline: true },
         ...[
+          catchDate ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
           encounterType ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
           isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
           encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
