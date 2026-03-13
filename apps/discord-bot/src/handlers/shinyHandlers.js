@@ -265,8 +265,8 @@ async function handleEditShiny(interaction) {
   const originalTrainer = interaction.options.getString('original_trainer');
   const catchDate = interaction.options.getString('catch_date');
   const encounterType = interaction.options.getString('encounter_type');
-  const isSecret = interaction.options.getBoolean('secret') || false;
-  const isAlpha = interaction.options.getBoolean('alpha') || false;
+  const isSecret = interaction.options.getBoolean('secret');
+  const isAlpha = interaction.options.getBoolean('alpha');
   const totalEncounters = interaction.options.getInteger('total_encounters');
   const speciesEncounters = interaction.options.getInteger('species_encounters');
   const nature = interaction.options.getString('nature');
@@ -314,8 +314,8 @@ async function handleEditShiny(interaction) {
     if (originalTrainer) updates.original_trainer = originalTrainer;
     if (catchDate) updates.catch_date = catchDate;
     if (encounterType) updates.encounter_type = encounterType;
-    if (isSecret) updates.is_secret = isSecret;
-    if (isAlpha) updates.is_alpha = isAlpha;
+    if (isSecret !== null) updates.is_secret = isSecret;
+    if (isAlpha !== null) updates.is_alpha = isAlpha;
     if (totalEncounters !== null) updates.total_encounters = totalEncounters;
     if (speciesEncounters !== null) updates.species_encounters = speciesEncounters;
     if (nature) updates.nature = nature;
