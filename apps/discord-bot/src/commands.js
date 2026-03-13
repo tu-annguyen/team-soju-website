@@ -194,7 +194,7 @@ const COMMANDS = [
     .addBooleanOption(option =>
       option.setName('date_is_mdy')
         .setDescription('Is the date format in MM/DD/YY? (default is DD/MM/YY)')
-        .setRequired(false))
+        .setRequired(true))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
