@@ -58,13 +58,18 @@ router.get('/', async (req, res) => {
   try {
     const filters = {};
     
+    filters.active = true; // Only return shinies from active teams by default
+    if (req.query.active !== undefined) filters.active = req.query.active === 'true';
     if (req.query.trainer_id) filters.trainer_id = req.query.trainer_id;
     if (req.query.pokemon_name) filters.pokemon_name = req.query.pokemon_name;
     if (req.query.encounter_type) filters.encounter_type = req.query.encounter_type;
     if (req.query.is_secret !== undefined) filters.is_secret = req.query.is_secret === 'true';
     if (req.query.is_alpha !== undefined) filters.is_alpha = req.query.is_alpha === 'true';
+    if (req.query.catch_date_before) filters.catch_date_before = req.query.catch_date_before;
+    if (req.query.catch_date_after) filters.catch_date_after = req.query.catch_date_after;
+    if (req.query.sort_by) filters.sort_by = req.query.sort_by;
+    if (req.query.sort_order) filters.sort_order = req.query.sort_order;
     if (req.query.limit) filters.limit = parseInt(req.query.limit);
-    if (req.query.active !== undefined) filters.active = req.query.active === 'true';
 
     const shinies = await TeamShiny.findAll(filters);
     res.json({

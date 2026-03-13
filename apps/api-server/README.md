@@ -93,6 +93,10 @@ A Node.js backend API with PostgreSQL database for managing Team Soju members an
 - `encounter_type` - Filter by encounter type
 - `is_secret` - Filter secret shinies (true/false)
 - `is_alpha` - Filter alpha shinies (true/false)
+- `catch_date_after` - Filter shinies caught after a date (YYYY-MM-DD)
+- `catch_date_before` - Filter shinies caught before a date (YYYY-MM-DD)
+- `sort_by` - Sort by `catch_date` or `total_encounters`
+- `sort_order` - Ascending or descending sort order
 - `limit` - Limit number of results
 
 ## Database Schema

@@ -2,64 +2,68 @@ const pool = require('../config/connection');
 
 class TeamShiny {
   static async findAll(filters = {}) {
+    const where = [];
+    const params = [];
+
+    const addParam = (value) => {
+      params.push(value);
+      return `$${params.length}`;
+    };
+
     let query = `
-      SELECT ts.*, tm.ign as trainer_name, ts.pokemon as pokemon_name
+      SELECT ts.*, tm.ign AS trainer_name, ts.pokemon AS pokemon_name
       FROM team_shinies ts
       JOIN team_members tm ON ts.original_trainer = tm.id
-      WHERE 1=1
     `;
-    const params = [];
-    let paramCount = 0;
 
     if (filters.trainer_id) {
-      paramCount++;
-      query += ` AND ts.original_trainer = $${paramCount}`;
-      params.push(filters.trainer_id);
+      where.push(`ts.original_trainer = ${addParam(filters.trainer_id)}`);
     }
 
     if (filters.pokemon_name) {
-      paramCount++;
-      query += ` AND LOWER(ts.pokemon) LIKE LOWER($${paramCount})`;
-      params.push(`%${filters.pokemon_name}%`);
+      where.push(`LOWER(ts.pokemon) LIKE LOWER(${addParam(`%${filters.pokemon_name}%`)})`);
     }
 
     if (filters.encounter_type) {
-      paramCount++;
-      query += ` AND ts.encounter_type = $${paramCount}`;
-      params.push(filters.encounter_type);
+      where.push(`ts.encounter_type = ${addParam(filters.encounter_type)}`);
     }
 
     if (filters.is_secret !== undefined) {
-      paramCount++;
-      query += ` AND ts.is_secret = $${paramCount}`;
-      params.push(filters.is_secret);
+      where.push(`ts.is_secret = ${addParam(filters.is_secret)}`);
     }
 
-    if(filters.is_alpha !== undefined) {
-      paramCount++;
-      query += ` AND ts.is_alpha = $${paramCount}`;
-      params.push(filters.is_alpha);
+    if (filters.is_alpha !== undefined) {
+      where.push(`ts.is_alpha = ${addParam(filters.is_alpha)}`);
     }
 
-    if (filters.is_safari !== undefined) {
-      paramCount++;
-      query += ` AND ts.encounter_type = 'safari' = $${paramCount}`;
-      params.push(filters.is_safari);
-    }
-
-    // filter by active trainers if requested
     if (filters.active !== undefined) {
-      paramCount++;
-      query += ` AND tm.is_active = $${paramCount}`;
-      params.push(filters.active);
+      where.push(`tm.is_active = ${addParam(filters.active)}`);
     }
 
-    query += ` ORDER BY ts.catch_date DESC NULLS FIRST, ts.created_at ASC`;
+    if (filters.catch_date_after) {
+      where.push(`ts.catch_date >= ${addParam(filters.catch_date_after)}`);
+    }
+
+    if (filters.catch_date_before) {
+      where.push(`ts.catch_date <= ${addParam(filters.catch_date_before)}`);
+    }
+
+    if (where.length > 0) {
+      query += ` WHERE ` + where.join(' AND ');
+    }
+
+    const allowedSortFields = {
+      catch_date: 'ts.catch_date',
+      total_encounters: 'ts.total_encounters',
+    };
+
+    const sortBy = allowedSortFields[filters.sort_by] || 'ts.catch_date';
+    const sortOrder = filters.sort_order === 'asc' ? 'ASC' : 'DESC';
+
+    query += ` ORDER BY ${sortBy} ${sortOrder} NULLS FIRST, ts.created_at DESC`;
 
     if (filters.limit) {
-      paramCount++;
-      query += ` LIMIT $${paramCount}`;
-      params.push(filters.limit);
+      query += ` LIMIT ${addParam(Number(filters.limit))}`;
     }
 
     const result = await pool.query(query, params);
