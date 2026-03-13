@@ -85,7 +85,7 @@ const ShinyShowcase = () => {
         setError(null);
         
         const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${apiBaseUrl}/shinies?active=true&limit=10000`);
+        const response = await fetch(`${apiBaseUrl}/shinies?sort_order=asc&limit=10000`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch shinies: ${response.statusText}`);
