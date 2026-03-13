@@ -60,7 +60,7 @@ class TeamShiny {
     const sortBy = allowedSortFields[filters.sort_by] || 'ts.catch_date';
     const sortOrder = filters.sort_order === 'asc' ? 'ASC' : 'DESC';
 
-    query += ` ORDER BY ${sortBy} ${sortOrder} NULLS FIRST, ts.created_at DESC`;
+    query += ` ORDER BY ${sortBy} ${sortOrder} NULLS FIRST, ts.created_at ASC`;
 
     if (filters.limit) {
       query += ` LIMIT ${addParam(Number(filters.limit))}`;
