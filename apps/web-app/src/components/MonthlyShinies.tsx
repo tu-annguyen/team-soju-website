@@ -27,31 +27,28 @@ interface ShinyFromAPI {
 }
 
 const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trainer[]> => {
-  // Group shinies by trainer
   const trainerMap = new Map<string, ShinyFromAPI[]>();
-  
+
   shinies.forEach(shiny => {
     const existing = trainerMap.get(shiny.trainer_name) || [];
     trainerMap.set(shiny.trainer_name, [...existing, shiny]);
   });
 
-  // Transform to showcase format
   const trainers = await Promise.all(
     Array.from(trainerMap.entries()).map(async ([trainerName, trainerShinies]) => {
-      // Count unique OT shinies
       let otCount = trainerShinies.length;
-      
+
       const shiniesWithUrls = await Promise.all(
         trainerShinies.map(async (shiny) => {
           const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
-          if (isFailed) otCount--; // Don't count failed shinies as OT
+          if (isFailed) otCount--;
           const isSecret = shiny.is_secret;
           const isAlpha = shiny.is_alpha;
           const encounterType = shiny.encounter_type || '';
           const baseUrl = await getSpriteUrl(shiny.pokemon_name.toLowerCase());
 
           return {
-            name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(), // Capitalize first letter
+            name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(),
             imageUrl: baseUrl || '',
             isFailed,
             isSecret,
@@ -60,7 +57,7 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
           };
         })
       );
-      
+
       return {
         name: trainerName,
         numOT: otCount,
@@ -69,7 +66,14 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
     })
   );
 
-  return trainers.sort((a, b) => b.numOT - a.numOT); // Sort by OT count descending
+  return trainers.sort((a, b) => b.numOT - a.numOT);
+};
+
+const formatLocalDate = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 const MonthlyShinies = () => {
@@ -77,20 +81,32 @@ const MonthlyShinies = () => {
   const [shinyData, setShinyData] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [date, setDate] = useState<Date>(new Date());
+  const currentMonth = date.toLocaleString('default', { month: 'long' });
 
   useEffect(() => {
     const fetchShinies = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
+        const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+        const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+        const catchDateAfter = formatLocalDate(firstDayOfMonth);
+        const catchDateBefore = formatLocalDate(lastDayOfMonth);
+
+        console.log(`Fetching shinies caught between ${catchDateAfter} and ${catchDateBefore}`);
+
         const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${apiBaseUrl}/shinies?active=true&limit=10000`);
-        
+        const response = await fetch(
+          `${apiBaseUrl}/shinies?sort_order=asc&catch_date_after=${catchDateAfter}&catch_date_before=${catchDateBefore}&limit=10000`
+        );
+
         if (!response.ok) {
           throw new Error(`Failed to fetch shinies: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
         const shinies = data.data || [];
         const transformedData = await transformAPIDataToShowcase(shinies);
@@ -104,15 +120,23 @@ const MonthlyShinies = () => {
     };
 
     fetchShinies();
-  }, []);
-  
-  const filteredTrainers = shinyData.filter(trainer => 
+  }, [date]);
+
+  const filteredTrainers = shinyData.filter(trainer =>
     trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trainer.shinies.some(shiny => 
+    trainer.shinies.some(shiny =>
       shiny.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
-  
+
+  const handleLastMonth = () => {
+    setDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
   if (loading) {
     return (
       <section className="py-16">
@@ -136,16 +160,16 @@ const MonthlyShinies = () => {
       </section>
     );
   }
-  
+
   return (
     <section className="py-16">
       <div className="container">
         <div className="mb-12">
           <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Search</h2>
           <p className="text-gray-700 dark:text-gray-300 mb-8 max-w-3xl">
-            Search our team's shiny Pokémon collection! Search terms may include trainer or pokemon names.
+            Search this month's collection! Search terms may include trainer or pokemon names.
           </p>
-          
+
           <div className="max-w-md">
             <div className="relative">
               <input
@@ -155,24 +179,16 @@ const MonthlyShinies = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
-              <svg 
-                className="absolute right-3 top-2.5 w-5 h-5 text-gray-400 dark:text-gray-500" 
-                xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
             </div>
           </div>
         </div>
-        
-        <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Showcase</h2>
+
+        <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{currentMonth} Shinies</h2>
+        <div className="flex justify-left mb-8">
+          <a className="mr-4 btn btn-secondary cursor-pointer" onClick={handleLastMonth}>Last Month</a>
+          <a className="mx-4 btn btn-secondary cursor-pointer" onClick={handleNextMonth}>Next Month</a>
+        </div>
+
         {filteredTrainers.length > 0 ? (
           filteredTrainers.map(trainer => (
             <div key={trainer.name} className="mb-12">
@@ -200,14 +216,14 @@ const MonthlyShinies = () => {
           ))
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">No shiny Pokémon found. Try adjusting your search.</p>
+            <p className="text-gray-600 dark:text-gray-400">No shiny Pokémon found this month. Try adjusting your search.</p>
           </div>
         )}
-        
+
         <div className="mt-12 text-center">
           <p className="text-gray-600 dark:text-gray-400 text-sm">
             This showcase is updated using our in house Discord application.
-            <a 
+            <a
               href="./discord"
               className="text-primary-600 dark:text-primary-400 hover:underline ml-1"
             >
