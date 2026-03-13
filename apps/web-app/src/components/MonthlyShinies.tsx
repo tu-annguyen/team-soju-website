@@ -82,7 +82,7 @@ const MonthlyShinies = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
-  const currentMonth = date.toLocaleString('default', { month: 'long' });
+  const currentMonthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
 
   useEffect(() => {
     const fetchShinies = async () => {
@@ -183,7 +183,7 @@ const MonthlyShinies = () => {
           </div>
         </div>
 
-        <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{currentMonth} Shinies</h2>
+        <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{currentMonthYear} Shinies</h2>
         <div className="flex justify-left mb-8">
           <a className="mr-4 btn btn-secondary cursor-pointer" onClick={handleLastMonth}>Last Month</a>
           <a className="mx-4 btn btn-secondary cursor-pointer" onClick={handleNextMonth}>Next Month</a>
