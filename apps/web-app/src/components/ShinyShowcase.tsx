@@ -256,7 +256,7 @@ const ShinyShowcase = ({
           params.set('is_alpha', alphaParam);
         }
 
-        const response = await fetch(`${apiBaseUrl}/shinies?${params.toString()}`);
+        const response = await fetch(`${apiBaseUrl}/shinies?sort_order=asc&${params.toString()}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch shinies: ${response.statusText}`);
