@@ -90,4 +90,30 @@ describe('ShinyCard', () => {
     expect(screen.getByText('Bold')).toBeInTheDocument();
     expect(screen.getByText('11 / 1 / 15 / 31 / 14 / 4')).toBeInTheDocument();
   });
+
+  it('uses a shortened card name and expanded details name for hyphenated pokemon', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ShinyCard
+        pokemonName="Basculin-red-striped"
+        trainerName="Trainer"
+        imageUrl="/basculin.png"
+        isFailed={false}
+        isSecret={false}
+        isAlpha={false}
+        encounterType=""
+        tier="Tier 7"
+        pointValue={1}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /Basculin-red-striped/i })).toBeInTheDocument();
+    expect(screen.getByText('Basculin')).toBeInTheDocument();
+    expect(screen.queryByText('Basculin-red-striped')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Basculin-red-striped/i }));
+
+    expect(screen.getByRole('heading', { name: 'Basculin (red striped)' })).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import ShinyDetails from './ShinyDetails';
+import { formatPokemonCardName } from '../utils/pokemonName';
 
 interface ShinyCardProps {
   pokemonName: string;
@@ -64,6 +65,7 @@ const ShinyCard = ({
   variant = 'default'
 }: ShinyCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
+  const cardPokemonName = formatPokemonCardName(pokemonName);
 
   if (variant === 'compact') {
     return (
@@ -110,7 +112,7 @@ const ShinyCard = ({
 
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {pokemonName}
+            {cardPokemonName}
           </h3>
 
           <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -170,8 +172,8 @@ const ShinyCard = ({
             loading="lazy"
           />
         </div>
-        <div className="p-2 text-center">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{pokemonName}</h3>
+        <div className="p-2 bg-white dark:bg-gray-700 text-center">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{cardPokemonName}</h3>
         </div>
       </motion.button>
 

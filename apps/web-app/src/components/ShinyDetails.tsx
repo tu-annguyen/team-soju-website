@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { formatPokemonDetailsName } from '../utils/pokemonName';
 
 interface ShinyDetailsProps {
   open: boolean;
@@ -74,6 +75,8 @@ const ShinyDetails = ({
   ivSpDefense,
   ivSpeed,
 }: ShinyDetailsProps) => {
+  const detailsPokemonName = formatPokemonDetailsName(pokemonName);
+
   useEffect(() => {
     if (!open) {
       return undefined;
@@ -180,7 +183,7 @@ const ShinyDetails = ({
                     id="shiny-details-title"
                     className="text-2xl font-bold text-gray-900 dark:text-white"
                   >
-                    {pokemonName}
+                    {detailsPokemonName}
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Trainer: {trainerName}
