@@ -9,6 +9,11 @@ interface ShinyCardProps {
   isSecret: boolean;
   isAlpha: boolean;
   encounterType: string;
+
+  totalEncounters?: number | null;
+  catchDate?: string | null;
+
+  variant?: 'default' | 'compact';
 }
 
 const attributeIcons: Record<string, string> = {
@@ -26,7 +31,81 @@ const attributeIcons: Record<string, string> = {
   alpha: '/images/alpha.png',
 };
 
-const ShinyCard = ({ pokemonName, imageUrl, isFailed, isSecret, isAlpha, encounterType}: ShinyCardProps) => {
+const ShinyCard = ({
+  pokemonName,
+  trainerName,
+  imageUrl,
+  isFailed,
+  isSecret,
+  isAlpha,
+  encounterType,
+  totalEncounters,
+  catchDate,
+  variant = 'default'
+}: ShinyCardProps) => {
+  if (variant === 'compact') {
+    return (
+      <motion.div
+        className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3"
+        whileHover={{ y: -3 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      >
+        <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-md p-1">
+          {isSecret && (
+            <img
+              src={attributeIcons['secret']}
+              alt="Secret shiny"
+              className="absolute top-0 left-0 w-4 h-4"
+              draggable={false}
+            />
+          )}
+
+          {isAlpha && (
+            <img
+              src={attributeIcons['alpha']}
+              alt="Alpha shiny"
+              className="absolute bottom-0 right-0 w-4 h-4"
+              draggable={false}
+            />
+          )}
+
+          {encounterType && attributeIcons[encounterType] && (
+            <img
+              src={attributeIcons[encounterType]}
+              alt={`${encounterType} encounter`}
+              className="absolute top-0 right-0 w-4 h-4"
+              draggable={false}
+            />
+          )}
+
+          <img
+            src={imageUrl}
+            alt={`Shiny ${pokemonName}`}
+            className={`w-full h-full object-contain pixelated ${isFailed ? 'grayscale' : ''}`}
+            loading="lazy"
+          />
+        </div>
+
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {pokemonName}
+          </h3>
+
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            {trainerName}
+          </p>
+
+          {(totalEncounters || catchDate) && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {totalEncounters ? `${totalEncounters.toLocaleString()} encounters` : ''}
+              {totalEncounters && catchDate ? ' • ' : ''}
+              {catchDate || ''}
+            </p>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
   return (
     <motion.div 
       className="card"
