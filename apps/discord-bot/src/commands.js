@@ -63,6 +63,7 @@ const COMMAND_PERMISSIONS = {
   'member': [],
   'shiny': [],
   'shinies': [],
+  'myshinies': [],
   'leaderboard': [],
   'stats': [],
   // Soju role and above
@@ -313,6 +314,14 @@ const COMMANDS = [
       option.setName('trainer')
         .setDescription('Filter by trainer IGN')
         .setRequired(false))
+    .addIntegerOption(option =>
+      option.setName('limit')
+        .setDescription('Number of results to show (default: 10)')
+        .setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('myshinies')
+    .setDescription('List your recent shinies with mobile-friendly actions')
     .addIntegerOption(option =>
       option.setName('limit')
         .setDescription('Number of results to show (default: 10)')

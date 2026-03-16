@@ -24,6 +24,7 @@ const {
   checkCommandPermission,
   getCommandRequiredRoles,
 } = require('./utils');
+const { handleShinyEditModal, isShinyEditModal } = require('./handlers/shinyHandlers');
 
 class TeamSojuBot {
   constructor() {
@@ -67,11 +68,18 @@ class TeamSojuBot {
     this.client.on('error', console.error);
 
     this.client.on('interactionCreate', async (interaction) => {
-      if (!interaction.isChatInputCommand()) return;
-
-      console.log(`Command received: ${interaction.commandName} from ${interaction.user.tag}`);
-
       try {
+        if (interaction.isModalSubmit()) {
+          if (isShinyEditModal(interaction.customId)) {
+            await handleShinyEditModal(interaction);
+          }
+          return;
+        }
+
+        if (!interaction.isChatInputCommand()) return;
+
+        console.log(`Command received: ${interaction.commandName} from ${interaction.user.tag}`);
+
         // Check if user has required permissions
         const requiredRoles = getCommandRequiredRoles(interaction.commandName);
         const permissionResult = await checkCommandPermission(interaction, requiredRoles, interaction.commandName);

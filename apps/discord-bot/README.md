@@ -241,9 +241,22 @@ List recent shiny catches with interactive pagination.
 - `trainer` (optional): Filter by trainer IGN
 - `limit` (optional): Page size (default: 10). Use buttons below the response to navigate between pages.
 
+Each page includes a selector for the visible shinies plus `View`, `Edit`, `Fail`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
+
 **Example:**
 ```
 /shinies trainer:tunacore limit:20
+```
+
+#### `/myshinies`
+List shinies for the Discord account linked to your member profile.
+
+**Options:**
+- `limit` (optional): Page size (default: 10)
+
+**Example:**
+```
+/myshinies limit:10
 ```
 
 ### Statistics

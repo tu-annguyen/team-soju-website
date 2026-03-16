@@ -21,8 +21,10 @@ jest.mock('../src/handlers/shinyHandlers', () => ({
   handleAddShinyScreenshot: jest.fn(),
   handleEditShiny: jest.fn(),
   handleDeleteShiny: jest.fn(),
+  handleFailShiny: jest.fn(),
   handleGetShiny: jest.fn(),
-  handleGetShinies: jest.fn()
+  handleGetShinies: jest.fn(),
+  handleGetMyShinies: jest.fn()
 }));
 
 jest.mock('../src/handlers/statsHandlers', () => ({
@@ -108,6 +110,11 @@ describe('Utils', () => {
 
     it('should return handleGetShinies for shinies command', () => {
       const handler = getCommandHandler('shinies');
+      expect(handler).toBeDefined();
+    });
+
+    it('should return handleGetMyShinies for myshinies command', () => {
+      const handler = getCommandHandler('myshinies');
       expect(handler).toBeDefined();
     });
 
