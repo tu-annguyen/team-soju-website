@@ -43,6 +43,10 @@ jest.mock('axios');
 
 // mock the utils package as a whole so we can stub greyscale
 jest.mock('@team-soju/utils', () => ({
+  capitalize: jest.fn((value) => {
+    const normalized = String(value || '').trim();
+    return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
+  }),
   getNationalNumber: jest.fn(),
   getSpriteUrl: jest.fn(),
   greyscale: jest.fn()

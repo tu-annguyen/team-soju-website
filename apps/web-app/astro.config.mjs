@@ -8,7 +8,7 @@ export default defineConfig({
   integrations: [tailwind(), react()],
   vite: {
     ssr: {
-      external: ["@team-soju/utils"],
+      noExternal: ["@team-soju/utils"],
     },
   },
 });

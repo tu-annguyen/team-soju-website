@@ -31,6 +31,11 @@ function normalizePokemonName(pokemon) {
   return String(pokemon || '').trim().toLowerCase();
 }
 
+export function capitalize(value) {
+  const normalized = String(value || '').trim();
+  return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
+}
+
 export function getPokemonTier(pokemon) {
   const normalized = normalizePokemonName(pokemon);
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import ShinyCard from './ShinyCard';
 import { Pokedex } from 'pokeapi-js-wrapper';
+import { capitalize } from '../utils/pokemonName';
 
 const P = new Pokedex();
 
@@ -61,9 +62,7 @@ const transformAPIDataToMonthly = async (
         : '';
 
       return {
-        name:
-          shiny.pokemon_name[0].toUpperCase() +
-          shiny.pokemon_name.slice(1).toLowerCase(),
+        name: capitalize(shiny.pokemon_name),
         trainerName: shiny.trainer_name,
         imageUrl,
         isFailed,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ShinyShowcaseResults from './ShinyShowcaseResults';
 import { Pokedex } from 'pokeapi-js-wrapper';
 import { calculateShinyPoints, getPokemonTier } from '@team-soju/utils';
+import { capitalize } from '../utils/pokemonName';
 const P = new Pokedex();
 
 export interface ShinyPokemon {
@@ -184,7 +185,7 @@ const transformAPIDataToShowcase = async (
 
           return {
             id: shiny.id,
-            name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(), // Capitalize first letter
+            name: capitalize(shiny.pokemon_name),
             imageUrl: baseUrl || '',
             isFailed,
             isSecret,

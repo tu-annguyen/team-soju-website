@@ -1,5 +1,6 @@
-const capitalize = (value: string) =>
-  value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : value;
+import { capitalize } from '@team-soju/utils';
+
+export { capitalize };
 
 export const formatPokemonCardName = (pokemonName: string) => {
   const [baseName] = pokemonName.split('-');

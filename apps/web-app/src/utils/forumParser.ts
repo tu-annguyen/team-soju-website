@@ -5,6 +5,7 @@
  */
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { capitalize } from '@team-soju/utils';
 
 const forumUrl = 'https://forums.pokemmo.com/index.php?/topic/195298-team-soj%C3%BC-shiny-showcase/';
 
@@ -77,7 +78,7 @@ export async function fetchShinyShowcase(): Promise<Trainer[]> {
           }
           // Normalize: take first word before space, period or hyphen, capitalize first letter
           let pokemonName = rawName.split(/[ .-]/)[0];
-          pokemonName = pokemonName.charAt(0).toUpperCase() + pokemonName.slice(1).toLowerCase();
+          pokemonName = capitalize(pokemonName);
 
           // Default attribute
           let attribute = '';

@@ -7,7 +7,7 @@ const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
 const { parseDataFromOcr, validateParsedData, generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { greyscale } = require('@team-soju/utils');
+const { capitalize, greyscale } = require('@team-soju/utils');
 
 // Dynamically import Pokedex client to avoid issues with CommonJS modules in Discord bot environment
 async function getPokedexClient() {
@@ -507,7 +507,7 @@ async function handleDeleteShiny(interaction) {
     const embed = new EmbedBuilder()
       .setColor(0xFF5722)
       .setTitle('Shiny Deleted Successfully')
-      .setDescription(`${shiny.pokemon[0].toUpperCase() + shiny.pokemon.slice(1)} (#${shiny.national_number}) has been removed`)
+      .setDescription(`${capitalize(shiny.pokemon)} (#${shiny.national_number}) has been removed`)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -601,7 +601,7 @@ function buildShiniesEmbed(shinies, page, pageSize, trainerIgn) {
       special = ' (Secret)';
     }
 
-    return `${startIndex + idx + 1}. **${shiny.pokemon_name.charAt(0).toUpperCase() + shiny.pokemon_name.slice(1)}** by ${shiny.trainer_name}${special} - ID: ${shiny.id}`;
+    return `${startIndex + idx + 1}. **${capitalize(shiny.pokemon_name)}** by ${shiny.trainer_name}${special} - ID: ${shiny.id}`;
   }).join('\n');
 
   return new EmbedBuilder()

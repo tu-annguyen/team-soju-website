@@ -44,6 +44,7 @@ exports.fetchShinyShowcase = fetchShinyShowcase;
  */
 var axios_1 = require("axios");
 var cheerio = require("cheerio");
+var utils_1 = require("@team-soju/utils");
 var forumUrl = 'https://forums.pokemmo.com/index.php?/topic/195298-team-soj%C3%BC-shiny-showcase/';
 /**
  * Fetch and parse the shiny showcase forum post
@@ -94,7 +95,7 @@ function fetchShinyShowcase() {
                                 }
                                 // Normalize: take first word before space, period or hyphen, capitalize first letter
                                 var pokemonName = rawName.split(/[ .-]/)[0];
-                                pokemonName = pokemonName.charAt(0).toUpperCase() + pokemonName.slice(1).toLowerCase();
+                                pokemonName = (0, utils_1.capitalize)(pokemonName);
                                 // Default attribute
                                 var attribute = '';
                                 // Check next image for secret/safari indicator

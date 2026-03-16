@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MonthlyShiniesResults from './MonthlyShiniesResults';
 import { Pokedex } from 'pokeapi-js-wrapper';
+import { capitalize } from '../utils/pokemonName';
 const P = new Pokedex();
 
 interface ShinyFromAPI {
@@ -40,7 +41,7 @@ const transformAPIDataToMonthly = async (shinies: ShinyFromAPI[]): Promise<Month
       const baseUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : '';
 
       return {
-        name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(),
+        name: capitalize(shiny.pokemon_name),
         trainerName: shiny.trainer_name,
         imageUrl: baseUrl || '',
         isFailed,

@@ -66,6 +66,11 @@ function normalizePokemonName(pokemon) {
     return String(pokemon || '').trim().toLowerCase();
 }
 
+function capitalize(value) {
+    const normalized = String(value || '').trim();
+    return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
+}
+
 /**
  * Gets the tier of a Pokémon based on its name.
  * @param {string} pokemon - The name of the Pokémon.
@@ -133,6 +138,7 @@ const pokeapi = require('./pokeapi.cjs');
 
 module.exports = {
   greyscale,
+  capitalize,
   getPokemonTier,
   calculateShinyPoints,
   ...pokeapi
