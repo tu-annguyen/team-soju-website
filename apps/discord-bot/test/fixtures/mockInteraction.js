@@ -50,7 +50,8 @@ function createMockInteraction(overrides = {}) {
       getString: jest.fn((name) => optionValues[name] ?? null),
       getUser: jest.fn((name) => optionValues[name] ?? null),
       getInteger: jest.fn((name) => optionValues[name] ?? null),
-      getBoolean: jest.fn((name) => optionValues[name] ?? null)
+      getBoolean: jest.fn((name) => optionValues[name] ?? null),
+      getAttachment: jest.fn((name) => optionValues[name] ?? null)
     }
   };
 

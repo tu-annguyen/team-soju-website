@@ -3,7 +3,7 @@
  * Main application entry point
  */
 
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, MessageFlags } = require('discord.js');
 const path = require('path');
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
@@ -24,6 +24,7 @@ const {
   checkCommandPermission,
   getCommandRequiredRoles,
 } = require('./utils');
+const { handleShinyEditModal, isShinyEditModal } = require('./handlers/shinyHandlers');
 
 class TeamSojuBot {
   constructor() {
@@ -67,11 +68,18 @@ class TeamSojuBot {
     this.client.on('error', console.error);
 
     this.client.on('interactionCreate', async (interaction) => {
-      if (!interaction.isChatInputCommand()) return;
-
-      console.log(`Command received: ${interaction.commandName} from ${interaction.user.tag}`);
-
       try {
+        if (interaction.isModalSubmit()) {
+          if (isShinyEditModal(interaction.customId)) {
+            await handleShinyEditModal(interaction);
+          }
+          return;
+        }
+
+        if (!interaction.isChatInputCommand()) return;
+
+        console.log(`Command received: ${interaction.commandName} from ${interaction.user.tag}`);
+
         // Check if user has required permissions
         const requiredRoles = getCommandRequiredRoles(interaction.commandName);
         const permissionResult = await checkCommandPermission(interaction, requiredRoles, interaction.commandName);
@@ -80,9 +88,9 @@ class TeamSojuBot {
           const errorMessage = `❌ ${permissionResult.reason}`;
           
           if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: errorMessage, ephemeral: true });
+            await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral });
           } else {
-            await interaction.editReply({ content: errorMessage, ephemeral: true });
+            await interaction.editReply({ content: errorMessage });
           }
           return;
         }
@@ -94,9 +102,9 @@ class TeamSojuBot {
         const errorMessage = `Error: ${error.message || 'Command execution failed'}`;
 
         if (interaction.deferred) {
-          await interaction.editReply({ content: errorMessage, ephemeral: true });
+          await interaction.editReply({ content: errorMessage });
         } else if (!interaction.replied) {
-          await interaction.reply({ content: errorMessage, ephemeral: true });
+          await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral });
         }
       }
     });

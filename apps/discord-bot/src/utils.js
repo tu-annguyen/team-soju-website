@@ -57,6 +57,7 @@ function getCommandHandlers(commandName) {
     'failshiny': 'shinyHandlers',
     'shiny': 'shinyHandlers',
     'shinies': 'shinyHandlers',
+    'myshinies': 'shinyHandlers',
     // Stats commands
     'leaderboard': 'statsHandlers',
     'stats': 'statsHandlers',
@@ -91,6 +92,7 @@ function getCommandHandler(commandName) {
     'failshiny': 'handleFailShiny',
     'shiny': 'handleGetShiny',
     'shinies': 'handleGetShinies',
+    'myshinies': 'handleGetMyShinies',
     'leaderboard': 'handleLeaderboard',
     'stats': 'handleStats',
   };
