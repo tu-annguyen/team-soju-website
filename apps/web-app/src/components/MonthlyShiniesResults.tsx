@@ -124,7 +124,7 @@ const MonthlyShiniesResults = ({
           import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
 
         const response = await fetch(
-          `${apiBaseUrl}/shinies?sort_order=asc&catch_date_after=${catchDateAfter}&catch_date_before=${catchDateBefore}&limit=10000`
+          `${apiBaseUrl}/shinies?sort_order=desc&catch_date_after=${catchDateAfter}&catch_date_before=${catchDateBefore}&limit=10000`
         );
 
         if (!response.ok) {
