@@ -17,19 +17,19 @@ class MockEmbedBuilder {
 }
 
 class MockButtonBuilder {
-  setCustomId() { return this; }
-  setLabel() { return this; }
-  setStyle() { return this; }
-  setDisabled() { return this; }
+  setCustomId(value) { this.customId = value; return this; }
+  setLabel(value) { this.label = value; return this; }
+  setStyle(value) { this.style = value; return this; }
+  setDisabled(value) { this.disabled = value; return this; }
 }
 
 class MockStringSelectMenuBuilder {
-  setCustomId() { return this; }
-  setPlaceholder() { return this; }
-  setMinValues() { return this; }
-  setMaxValues() { return this; }
-  setDisabled() { return this; }
-  addOptions() { return this; }
+  setCustomId(value) { this.customId = value; return this; }
+  setPlaceholder(value) { this.placeholder = value; return this; }
+  setMinValues(value) { this.minValues = value; return this; }
+  setMaxValues(value) { this.maxValues = value; return this; }
+  setDisabled(value) { this.disabled = value; return this; }
+  addOptions(value) { this.options = value; return this; }
 }
 
 class MockActionRowBuilder {
@@ -100,11 +100,12 @@ const {
 } = require('../src/handlers/shinyHandlers');
 const { createMockInteraction } = require('./fixtures/mockInteraction');
 
-jest.spyOn(localUtils, 'validateSojuTrainerIGN').mockResolvedValue({ valid: true });
+const validateSojuTrainerIGNSpy = jest.spyOn(localUtils, 'validateSojuTrainerIGN').mockResolvedValue({ valid: true });
 
 describe('shinyHandlers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    validateSojuTrainerIGNSpy.mockResolvedValue({ valid: true });
   });
 
   it('renders shinies with interaction components', async () => {
@@ -132,6 +133,32 @@ describe('shinyHandlers', () => {
         components: expect.any(Array),
       })
     );
+  });
+
+  it('disables edit, fail, and delete buttons for public /shinies users', async () => {
+    const interaction = createMockInteraction({
+      options: { trainer: null, limit: 2 },
+      member: { roles: { cache: [] } },
+    });
+
+    axios.get.mockResolvedValueOnce({
+      data: {
+        data: [
+          { id: '1', pokemon_name: 'A', trainer_name: 'T1', catch_date: '2026-01-03', total_encounters: 1 },
+        ],
+      },
+    });
+
+    await handleGetShinies(interaction);
+
+    const replyPayload = interaction.editReply.mock.calls[0][0];
+    const actionButtons = replyPayload.components[2].components;
+
+    expect(actionButtons).toHaveLength(1);
+    expect(actionButtons.find(button => button.customId === 'shiny_action_view').disabled).toBe(false);
+    expect(actionButtons.find(button => button.customId === 'shiny_action_edit')).toBeUndefined();
+    expect(actionButtons.find(button => button.customId === 'shiny_action_fail')).toBeUndefined();
+    expect(actionButtons.find(button => button.customId === 'shiny_action_delete')).toBeUndefined();
   });
 
   it('renders linked member shinies for myshinies', async () => {
@@ -219,6 +246,7 @@ describe('shinyHandlers', () => {
     const interaction = {
       customId: 'shiny_modal_edit:abc',
       user: { id: 'discord-user', tag: 'User#0001' },
+      member: { roles: { cache: [{ name: 'Elite 4' }] } },
       fields: {
         getTextInputValue: jest.fn((field) => ({
           pokemon: 'pikachu',
@@ -316,6 +344,39 @@ describe('shinyHandlers', () => {
     expect(interaction.reply).toHaveBeenCalledWith(
       expect.objectContaining({
         embeds: expect.any(Array),
+        ephemeral: true,
+      })
+    );
+  });
+
+  it('blocks public users from editing shinies from the modal', async () => {
+    const interaction = {
+      customId: 'shiny_modal_edit:abc',
+      user: { id: 'discord-user', tag: 'User#0001' },
+      member: { roles: { cache: [] } },
+      fields: {
+        getTextInputValue: jest.fn(() => ''),
+      },
+      reply: jest.fn().mockResolvedValue(undefined),
+    };
+
+    axios.get.mockResolvedValueOnce({
+      data: {
+        data: {
+          id: 'abc',
+          national_number: 25,
+          pokemon: 'pikachu',
+          pokemon_name: 'pikachu',
+          trainer_name: 'AnotherTrainer',
+        },
+      },
+    });
+
+    await handleShinyEditModal(interaction);
+
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('You need one of these roles to manage shinies'),
         ephemeral: true,
       })
     );

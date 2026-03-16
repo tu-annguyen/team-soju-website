@@ -242,6 +242,7 @@ List recent shiny catches with interactive pagination.
 - `limit` (optional): Page size (default: 10). Use buttons below the response to navigate between pages.
 
 Each page includes a selector for the visible shinies plus `View`, `Edit`, `Fail`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
+`View` is public. `Edit`, `Fail`, and `Delete` require `Soju`, `Elite 4`, or `Champion`. Only `Elite 4` and `Champion` can mutate shinies that are not their own.
 
 **Example:**
 ```
@@ -250,6 +251,7 @@ Each page includes a selector for the visible shinies plus `View`, `Edit`, `Fail
 
 #### `/myshinies`
 List shinies for the Discord account linked to your member profile.
+This command requires `Soju`, `Elite 4`, or `Champion`.
 
 **Options:**
 - `limit` (optional): Page size (default: 10)

@@ -28,6 +28,8 @@ const SHINY_ACTION_PREFIX = 'shiny_action_';
 const SHINY_EDIT_MODAL_PREFIX = 'shiny_modal_edit:';
 const PAGE_SIZE_FALLBACK = 10;
 const MAX_SHINY_SELECT_OPTIONS = 25;
+const SHINY_MANAGER_ROLES = ['Soju', 'Elite 4', 'Champion'];
+const SHINY_STAFF_ROLES = ['Elite 4', 'Champion'];
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
@@ -36,6 +38,30 @@ function getAuthHeaders() {
 function normalizeEncounterType(value) {
   if (!value) return null;
   return String(value).trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function getMemberRoles(interaction) {
+  return interaction.member?.roles?.cache || [];
+}
+
+function hasAnyRole(interaction, roleNames) {
+  const memberRoles = getMemberRoles(interaction);
+  return roleNames.some(roleName => memberRoles.some(role => role.name === roleName));
+}
+
+async function assertCanManageShiny(interaction, shiny, actionLabel = 'manage') {
+  if (!hasAnyRole(interaction, SHINY_MANAGER_ROLES)) {
+    throw new Error(`You need one of these roles to ${actionLabel} shinies: ${SHINY_MANAGER_ROLES.join(', ')}`);
+  }
+
+  if (hasAnyRole(interaction, SHINY_STAFF_ROLES)) {
+    return;
+  }
+
+  const ignValidation = await validateSojuTrainerIGN(interaction, shiny.trainer_name);
+  if (!ignValidation.valid) {
+    throw new Error(ignValidation.reason);
+  }
 }
 
 function buildIvString(shiny) {
@@ -138,34 +164,40 @@ function buildSelectRow(pageItems, selectedShinyId) {
   return new ActionRowBuilder().addComponents(select);
 }
 
-function buildActionRow(selectedShinyId) {
+function buildActionRow(selectedShinyId, allowMutation) {
   const disabled = !selectedShinyId;
-
-  return new ActionRowBuilder().addComponents(
+  const buttons = [
     new ButtonBuilder()
       .setCustomId(`${SHINY_ACTION_PREFIX}view`)
       .setLabel('View')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId(`${SHINY_ACTION_PREFIX}edit`)
-      .setLabel('Edit')
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId(`${SHINY_ACTION_PREFIX}fail`)
-      .setLabel('Fail')
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId(`${SHINY_ACTION_PREFIX}delete`)
-      .setLabel('Delete')
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(disabled)
-  );
+  ];
+
+  if (allowMutation) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(`${SHINY_ACTION_PREFIX}edit`)
+        .setLabel('Edit')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId(`${SHINY_ACTION_PREFIX}fail`)
+        .setLabel('Fail')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId(`${SHINY_ACTION_PREFIX}delete`)
+        .setLabel('Delete')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(disabled)
+    );
+  }
+
+  return new ActionRowBuilder().addComponents(...buttons);
 }
 
-function buildShiniesComponents(shinies, page, pageSize, selectedShinyId) {
+function buildShiniesComponents(shinies, page, pageSize, selectedShinyId, allowMutation) {
   const totalPages = Math.ceil(shinies.length / pageSize) || 1;
   const startIndex = (page - 1) * pageSize;
   const pageItems = shinies.slice(startIndex, startIndex + pageSize);
@@ -173,7 +205,7 @@ function buildShiniesComponents(shinies, page, pageSize, selectedShinyId) {
   return [
     buildPaginationRow(page, totalPages),
     buildSelectRow(pageItems, selectedShinyId),
-    buildActionRow(selectedShinyId),
+    buildActionRow(selectedShinyId, allowMutation),
   ];
 }
 
@@ -265,11 +297,7 @@ async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply',
 
 async function requireOwnedShiny(interaction, shinyId) {
   const shiny = await fetchShinyById(shinyId);
-  const ignValidation = await validateSojuTrainerIGN(interaction, shiny.trainer_name);
-
-  if (!ignValidation.valid) {
-    throw new Error(ignValidation.reason);
-  }
+  await assertCanManageShiny(interaction, shiny);
 
   return shiny;
 }
@@ -380,6 +408,14 @@ async function deleteShinyRecord(shinyId) {
   return response.data.data;
 }
 
+function buildDeleteSuccessEmbed(shiny) {
+  return new EmbedBuilder()
+    .setColor(0xFF5722)
+    .setTitle('Shiny Deleted Successfully')
+    .setDescription(`${capitalize(shiny.pokemon)} (#${shiny.national_number}) has been removed`)
+    .setTimestamp();
+}
+
 async function failShinyRecord(shinyId) {
   const response = await axios.put(`${apiBaseUrl}/shinies/${shinyId}`, { notes: 'Failed' }, getAuthHeaders());
   return response.data.data;
@@ -400,9 +436,10 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
   const totalPages = Math.ceil(shinies.length / pageSize) || 1;
   let currentPage = 1;
   let selectedShinyId = getSelectedShinyForPage(shinies, currentPage, pageSize);
+  const allowMutation = hasAnyRole(interaction, SHINY_MANAGER_ROLES);
 
   const embed = buildShiniesEmbed(shinies, currentPage, pageSize, title);
-  const components = buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId);
+  const components = buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId, allowMutation);
 
   await interaction.editReply({ embeds: [embed], components });
   const message = await interaction.fetchReply();
@@ -428,7 +465,7 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
 
         await i.update({
           embeds: [buildShiniesEmbed(shinies, currentPage, pageSize, title)],
-          components: buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId),
+          components: buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId, allowMutation),
         });
         return;
       }
@@ -437,7 +474,7 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
         selectedShinyId = i.values[0];
         await i.update({
           embeds: [buildShiniesEmbed(shinies, currentPage, pageSize, title)],
-          components: buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId),
+          components: buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId, allowMutation),
         });
         return;
       }
@@ -474,6 +511,7 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
       if (action === 'delete') {
         await requireOwnedShiny(i, selectedShinyId);
         const shiny = await deleteShinyRecord(selectedShinyId);
+        const deleteEmbed = buildDeleteSuccessEmbed(shiny);
         shinies = shinies.filter(entry => entry.id !== selectedShinyId);
 
         if (shinies.length === 0) {
@@ -483,6 +521,7 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
             embeds: [],
             components: [],
           });
+          await i.followUp({ embeds: [deleteEmbed], ephemeral: true });
           return;
         }
 
@@ -490,10 +529,11 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
         selectedShinyId = getSelectedShinyForPage(shinies, currentPage, pageSize);
 
         await i.update({
-          content: `Deleted ${capitalize(shiny.pokemon)}.`,
+          content: null,
           embeds: [buildShiniesEmbed(shinies, currentPage, pageSize, title)],
-          components: buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId),
+          components: buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId, allowMutation),
         });
+        await i.followUp({ embeds: [deleteEmbed], ephemeral: true });
       }
     } catch (error) {
       const payload = { content: `Error: ${error.message}`, ephemeral: true };
@@ -507,7 +547,7 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
   });
 
   collector.on('end', () => {
-    const disabled = buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId).map(row => {
+    const disabled = buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId, allowMutation).map(row => {
       row.components.forEach(component => component.setDisabled(true));
       return row;
     });
@@ -822,14 +862,7 @@ async function handleDeleteShiny(interaction) {
   try {
     const shiny = await requireOwnedShiny(interaction, shinyId);
     await deleteShinyRecord(shinyId);
-
-    const embed = new EmbedBuilder()
-      .setColor(0xFF5722)
-      .setTitle('Shiny Deleted Successfully')
-      .setDescription(`${capitalize(shiny.pokemon)} (#${shiny.national_number}) has been removed`)
-      .setTimestamp();
-
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [buildDeleteSuccessEmbed(shiny)] });
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
   }
