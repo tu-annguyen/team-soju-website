@@ -26,6 +26,10 @@ interface MonthlyShiny {
   catchDate: string | null;
 }
 
+interface MonthlyShiniesProps {
+  apiBaseUrl?: string;
+}
+
 const transformAPIDataToMonthly = async (shinies: ShinyFromAPI[]): Promise<MonthlyShiny[]> => {
   const transformed = await Promise.all(
     shinies.map(async (shiny) => {
@@ -59,7 +63,9 @@ const formatLocalDate = (d: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const MonthlyShinies = () => {
+const MonthlyShinies = ({
+  apiBaseUrl = 'http://localhost:3001/api',
+}: MonthlyShiniesProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [shinyData, setShinyData] = useState<MonthlyShiny[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +92,6 @@ const MonthlyShinies = () => {
 
         console.log(`Fetching shinies caught between ${catchDateAfter} and ${catchDateBefore}`);
 
-        const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
         const response = await fetch(
           `${apiBaseUrl}/shinies?sort_order=asc&catch_date_after=${catchDateAfter}&catch_date_before=${catchDateBefore}&limit=10000`
         );

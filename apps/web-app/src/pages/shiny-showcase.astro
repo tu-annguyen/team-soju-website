@@ -1,6 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ShinyShowcase from '../components/ShinyShowcase';
+
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
 ---
 
 <Layout 
@@ -24,5 +26,5 @@ import ShinyShowcase from '../components/ShinyShowcase';
     </div>
   </div>
   
-  <ShinyShowcase client:load />
+  <ShinyShowcase client:load apiBaseUrl={apiBaseUrl} />
 </Layout>

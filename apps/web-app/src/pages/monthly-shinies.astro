@@ -1,6 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import MonthlyShinies from '../components/MonthlyShinies';
+
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
 ---
 
 <Layout 
@@ -24,5 +26,5 @@ import MonthlyShinies from '../components/MonthlyShinies';
     </div>
   </div>
   
-  <MonthlyShinies client:load />
+  <MonthlyShinies client:load apiBaseUrl={apiBaseUrl} />
 </Layout>
