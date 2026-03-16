@@ -22,6 +22,10 @@ interface Trainer {
   shinies: ShinyPokemon[];
 }
 
+interface ShinyShowcaseProps {
+  apiBaseUrl?: string;
+}
+
 interface ShinyFromAPI {
   id: string;
   pokemon_name: string;
@@ -80,22 +84,6 @@ const defaultFilters: ShowcaseFilters = {
 const defaultSort: ShowcaseSort = {
   sortBy: 'number_ot',
   sortOrder: 'desc',
-};
-
-const getApiBaseUrl = (): string => {
-  try {
-    return Function('return import.meta.env.PUBLIC_API_BASE_URL')() || 'http://localhost:3001/api';
-  } catch {
-    const env = typeof globalThis !== 'undefined'
-      ? (globalThis as typeof globalThis & {
-          process?: {
-            env?: Record<string, string | undefined>;
-          };
-        }).process?.env
-      : undefined;
-
-    return env?.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
-  }
 };
 
 const boolFilterToParam = (value: BooleanFilter): string | null => {
@@ -221,7 +209,9 @@ const applyTrainerFiltersAndSort = (
   return sortTrainers(filtered, sort.sortBy, sort.sortOrder);
 };
 
-const ShinyShowcase = () => {
+const ShinyShowcase = ({
+  apiBaseUrl = 'http://localhost:3001/api',
+}: ShinyShowcaseProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [allTrainerData, setAllTrainerData] = useState<Trainer[]>([]);
   const [shinyData, setShinyData] = useState<Trainer[]>([]);
@@ -239,7 +229,6 @@ const ShinyShowcase = () => {
         setLoading(true);
         setError(null);
         
-        const apiBaseUrl = getApiBaseUrl();
         const params = new URLSearchParams({
           limit: '10000',
         });
