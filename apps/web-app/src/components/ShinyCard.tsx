@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import ShinyDetails from './ShinyDetails';
 
 interface ShinyCardProps {
   pokemonName: string;
@@ -9,9 +10,18 @@ interface ShinyCardProps {
   isSecret: boolean;
   isAlpha: boolean;
   encounterType: string;
-
+  tier?: string | null;
+  pointValue?: number | null;
   totalEncounters?: number | null;
   catchDate?: string | null;
+  speciesEncounters?: number | null;
+  nature?: string | null;
+  ivHp?: number | null;
+  ivAttack?: number | null;
+  ivDefense?: number | null;
+  ivSpAttack?: number | null;
+  ivSpDefense?: number | null;
+  ivSpeed?: number | null;
 
   variant?: 'default' | 'compact';
 }
@@ -39,10 +49,22 @@ const ShinyCard = ({
   isSecret,
   isAlpha,
   encounterType,
+  tier,
+  pointValue,
   totalEncounters,
   catchDate,
+  speciesEncounters,
+  nature,
+  ivHp,
+  ivAttack,
+  ivDefense,
+  ivSpAttack,
+  ivSpDefense,
+  ivSpeed,
   variant = 'default'
 }: ShinyCardProps) => {
+  const [showDetails, setShowDetails] = useState(false);
+
   if (variant === 'compact') {
     return (
       <motion.div
@@ -106,48 +128,77 @@ const ShinyCard = ({
       </motion.div>
     );
   }
+
   return (
-    <motion.div 
-      className="card"
-      whileHover={{ y: -5 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-    >
-      <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center p-2">
-        {isSecret && (
+    <>
+      <motion.button
+        type="button"
+        className="card block w-full cursor-pointer text-left"
+        whileHover={{ y: -5 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        onClick={() => setShowDetails(true)}
+      >
+        <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center p-2">
+          {isSecret && (
+            <img
+              src={attributeIcons['secret']}
+              alt="Secret shiny"
+              className="absolute top-2 left-2 w-6 h-6 z-10"
+              draggable={false}
+            />
+          )}
+          {isAlpha && (
+            <img
+              src={attributeIcons['alpha']}
+              alt="Alpha shiny"
+              className="absolute bottom-2 right-2 w-6 h-6 z-10"
+              draggable={false}
+            />
+          )}
+          {encounterType && attributeIcons[encounterType] && (
+            <img
+              src={attributeIcons[encounterType]}
+              alt={`${encounterType} encounter`}
+              className="absolute top-2 right-2 w-6 h-6 z-10"
+              draggable={false}
+            />
+          )}
           <img
-            src={attributeIcons['secret']}
-            alt="Secret shiny"
-            className="absolute top-2 left-2 w-6 h-6 z-10"
-            draggable={false}
+            src={imageUrl}
+            alt={`Shiny ${pokemonName}`}
+            className={`w-full h-full object-contain pixelated ${isFailed ? 'grayscale' : ''}`}
+            loading="lazy"
           />
-        )}
-        {isAlpha && (
-          <img
-            src={attributeIcons['alpha']}
-            alt="Alpha shiny"
-            className="absolute bottom-2 right-2 w-6 h-6 z-10"
-            draggable={false}
-          />
-        )}
-        {encounterType && attributeIcons[encounterType] && (
-          <img
-            src={attributeIcons[encounterType]}
-            alt={`${encounterType} encounter`}
-            className="absolute top-2 right-2 w-6 h-6 z-10"
-            draggable={false}
-          />
-        )}
-        <img 
-          src={imageUrl} 
-          alt={`Shiny ${pokemonName}`} 
-          className={`w-full h-full object-contain pixelated ${isFailed ? 'grayscale' : ''}`}
-          loading="lazy"
-        />
-      </div>
-      <div className="p-2 text-center">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{pokemonName}</h3>
-      </div>
-    </motion.div>
+        </div>
+        <div className="p-2 text-center">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{pokemonName}</h3>
+        </div>
+      </motion.button>
+
+      <ShinyDetails
+        open={showDetails}
+        onClose={() => setShowDetails(false)}
+        pokemonName={pokemonName}
+        trainerName={trainerName}
+        imageUrl={imageUrl}
+        isFailed={isFailed}
+        isSecret={isSecret}
+        isAlpha={isAlpha}
+        tier={tier}
+        pointValue={pointValue}
+        catchDate={catchDate}
+        totalEncounters={totalEncounters}
+        speciesEncounters={speciesEncounters}
+        encounterType={encounterType}
+        nature={nature}
+        ivHp={ivHp}
+        ivAttack={ivAttack}
+        ivDefense={ivDefense}
+        ivSpAttack={ivSpAttack}
+        ivSpDefense={ivSpDefense}
+        ivSpeed={ivSpeed}
+      />
+    </>
   );
 };
 

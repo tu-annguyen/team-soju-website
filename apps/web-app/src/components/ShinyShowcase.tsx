@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ShinyShowcaseResults from './ShinyShowcaseResults';
 import { Pokedex } from 'pokeapi-js-wrapper';
-import { calculateShinyPoints } from '@team-soju/utils';
+import { calculateShinyPoints, getPokemonTier } from '@team-soju/utils';
 const P = new Pokedex();
 
 export interface ShinyPokemon {
@@ -12,7 +12,18 @@ export interface ShinyPokemon {
   isSecret: boolean;
   isAlpha: boolean;
   encounterType: string;
+  tier: string;
   pointValue: number;
+  catchDate: string | null;
+  totalEncounters: number | null;
+  speciesEncounters: number | null;
+  nature: string | null;
+  ivHp: number | null;
+  ivAttack: number | null;
+  ivDefense: number | null;
+  ivSpAttack: number | null;
+  ivSpDefense: number | null;
+  ivSpeed: number | null;
 }
 
 interface Trainer {
@@ -34,6 +45,16 @@ interface ShinyFromAPI {
   is_secret: boolean;
   is_alpha: boolean;
   notes: string | null;
+  catch_date: string | null;
+  total_encounters: number | null;
+  species_encounters: number | null;
+  nature: string | null;
+  iv_hp: number | null;
+  iv_attack: number | null;
+  iv_defense: number | null;
+  iv_sp_attack: number | null;
+  iv_sp_defense: number | null;
+  iv_speed: number | null;
 }
 
 type BooleanFilter = 'any' | 'true' | 'false';
@@ -152,6 +173,7 @@ const transformAPIDataToShowcase = async (
           const isSecret = shiny.is_secret;
           const isAlpha = shiny.is_alpha;
           const encounterType = shiny.encounter_type || '';
+          const tier = getPokemonTier(shiny.pokemon_name);
           const pointValue = isFailed
             ? 0
             : await calculateShinyPoints(shiny.id, apiBaseUrl);
@@ -168,7 +190,18 @@ const transformAPIDataToShowcase = async (
             isSecret,
             isAlpha,
             encounterType,
+            tier,
             pointValue,
+            catchDate: shiny.catch_date ?? null,
+            totalEncounters: shiny.total_encounters ?? null,
+            speciesEncounters: shiny.species_encounters ?? null,
+            nature: shiny.nature ?? null,
+            ivHp: shiny.iv_hp ?? null,
+            ivAttack: shiny.iv_attack ?? null,
+            ivDefense: shiny.iv_defense ?? null,
+            ivSpAttack: shiny.iv_sp_attack ?? null,
+            ivSpDefense: shiny.iv_sp_defense ?? null,
+            ivSpeed: shiny.iv_speed ?? null,
           };
         })
       );
