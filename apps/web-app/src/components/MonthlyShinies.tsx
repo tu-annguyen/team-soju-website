@@ -1,22 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ShinyCard from './ShinyCard';
-import { Pokedex } from 'pokeapi-js-wrapper';
-const P = new Pokedex();
-
-export interface ShinyPokemon {
-  name: string;
-  imageUrl: string;
-  isFailed: boolean;
-  isSecret: boolean;
-  isAlpha: boolean;
-  encounterType: string;
-}
-
-interface Trainer {
-  name: string;
-  numOT: number;
-  shinies: ShinyPokemon[];
-}
+import MonthlyShiniesResults from './MonthlyShiniesResults';
 
 interface ShinyFromAPI {
   pokemon_name: string;
@@ -25,54 +8,48 @@ interface ShinyFromAPI {
   is_secret: boolean;
   is_alpha: boolean;
   notes: string | null;
+  total_encounters?: number | null;
+  catch_date?: string | null;
 }
 
-const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trainer[]> => {
-  const trainerMap = new Map<string, ShinyFromAPI[]>();
+interface MonthlyShiny {
+  name: string;
+  trainerName: string;
+  imageUrl: string;
+  isFailed: boolean;
+  isSecret: boolean;
+  isAlpha: boolean;
+  encounterType: string;
+  totalEncounters: number | null;
+  catchDate: string | null;
+}
 
-  shinies.forEach(shiny => {
-    const existing = trainerMap.get(shiny.trainer_name) || [];
-    trainerMap.set(shiny.trainer_name, [...existing, shiny]);
-  });
-
-  const trainers = await Promise.all(
-    Array.from(trainerMap.entries()).map(async ([trainerName, trainerShinies]) => {
-      let otCount = trainerShinies.length;
-
-      const shiniesWithUrls = await Promise.all(
-        trainerShinies.map(async (shiny) => {
-          const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
-          if (isFailed) otCount--;
-          const isSecret = shiny.is_secret;
-          const isAlpha = shiny.is_alpha;
-          const encounterType = shiny.encounter_type || '';
-          const pokemonData = await P.getPokemonByName(shiny.pokemon_name.toLowerCase()).catch(err => {
-            console.error('Error fetching Pokémon data:', err);
-          });
-          const baseUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : '';
-
-          return {
-            name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(),
-            imageUrl: baseUrl || '',
-            isFailed,
-            isSecret,
-            isAlpha,
-            encounterType,
-          };
-        })
-      );
+const transformAPIDataToMonthly = async (shinies: ShinyFromAPI[]): Promise<MonthlyShiny[]> => {
+  const transformed = await Promise.all(
+    shinies.map(async (shiny) => {
+      const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
+      const pokemonData = await P.getPokemonByName(shiny.pokemon_name.toLowerCase()).catch(err => {
+        console.error('Error fetching Pokémon data:', err);
+      });
+      const baseUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : '';
 
       return {
-        name: trainerName,
-        numOT: otCount,
-        shinies: shiniesWithUrls
+        name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(),
+        trainerName: shiny.trainer_name,
+        imageUrl: baseUrl || '',
+        isFailed,
+        isSecret: shiny.is_secret,
+        isAlpha: shiny.is_alpha,
+        encounterType: shiny.encounter_type || '',
+        totalEncounters: shiny.total_encounters ?? null,
+        catchDate: shiny.catch_date ?? null,
       };
     })
   );
 
-  return trainers.sort((a, b) => b.numOT - a.numOT);
+  return transformed;
 };
-
+  
 const formatLocalDate = (d: Date) => {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -82,11 +59,14 @@ const formatLocalDate = (d: Date) => {
 
 const MonthlyShinies = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [shinyData, setShinyData] = useState<Trainer[]>([]);
+  const [shinyData, setShinyData] = useState<MonthlyShiny[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
-  const currentMonthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const currentMonth = date.toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
 
   useEffect(() => {
     const fetchShinies = async () => {
@@ -113,7 +93,7 @@ const MonthlyShinies = () => {
 
         const data = await response.json();
         const shinies = data.data || [];
-        const transformedData = await transformAPIDataToShowcase(shinies);
+        const transformedData = await transformAPIDataToMonthly(shinies);
         setShinyData(transformedData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load shinies');
@@ -126,13 +106,6 @@ const MonthlyShinies = () => {
     fetchShinies();
   }, [date]);
 
-  const filteredTrainers = shinyData.filter(trainer =>
-    trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trainer.shinies.some(shiny =>
-      shiny.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
   const handleLastMonth = () => {
     setDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   };
@@ -141,88 +114,32 @@ const MonthlyShinies = () => {
     setDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
-  if (loading) {
-    return (
-      <section className="py-16">
-        <div className="container">
-          <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">Loading shiny collection...</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className="py-16">
-        <div className="container">
-          <div className="text-center py-12">
-            <p className="text-red-600 dark:text-red-400">Error loading shinies: {error}</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="py-16">
       <div className="container">
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Search</h2>
-          <p className="text-gray-700 dark:text-gray-300 mb-8 max-w-3xl">
-            Search this month's collection! Search terms may include trainer or pokemon names.
-          </p>
-
-          <div className="max-w-md">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search by Pokémon or trainer name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-8">
+          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{currentMonth} Shinies</h2>
+          <div className="flex justify-left mb-8">
+            <a className="mr-4 btn btn-primary cursor-pointer" onClick={handleLastMonth}>Last Month</a>
+            <a className="mx-4 btn btn-primary cursor-pointer" onClick={handleNextMonth}>Next Month</a>
           </div>
         </div>
 
-        <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{currentMonthYear} Shinies</h2>
-        <div className="flex justify-left mb-8">
-          <a className="mr-4 btn btn-secondary cursor-pointer" onClick={handleLastMonth}>Last Month</a>
-          <a className="mx-4 btn btn-secondary cursor-pointer" onClick={handleNextMonth}>Next Month</a>
+        <div className="max-w-md mb-8">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search by Pokémon or trainer name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
         </div>
 
-        {filteredTrainers.length > 0 ? (
-          filteredTrainers.map(trainer => (
-            <div key={trainer.name} className="mb-12">
-              <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                {trainer.name}
-                <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
-                  ({trainer.numOT} OT shinies)
-                </span>
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
-                {trainer.shinies.map((shiny, index) => (
-                  <ShinyCard
-                    key={`${trainer.name}-${shiny.name}-${index}`}
-                    pokemonName={shiny.name}
-                    trainerName={trainer.name}
-                    imageUrl={shiny.imageUrl}
-                    isFailed={shiny.isFailed}
-                    isSecret={shiny.isSecret}
-                    isAlpha={shiny.isAlpha}
-                    encounterType={shiny.encounterType}
-                  />
-                ))}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">No shiny Pokémon found this month. Try adjusting your search.</p>
-          </div>
-        )}
+        <div className="min-h-[500px]">
+          <MonthlyShiniesResults date={date} searchTerm={searchTerm} />
+        </div>
 
         <div className="mt-12 text-center">
           <p className="text-gray-600 dark:text-gray-400 text-sm">
