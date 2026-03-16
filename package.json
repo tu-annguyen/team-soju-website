@@ -22,6 +22,7 @@
     "start:bot": "npm run start --workspace=@team-soju/discord-bot",
     "test:web": "npm run test --workspace=@team-soju/web-app -- --runInBand --coverage",
     "test:api": "npm run test --workspace=@team-soju/api-server -- --runInBand --coverage",
+    "test:bot": "npm run test --workspace=@team-soju/discord-bot -- --runInBand --coverage",
     "test": "concurrently \"npm run test:api\" \"npm run test:web\""
   },
   "keywords": [

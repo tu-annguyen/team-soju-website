@@ -7,7 +7,13 @@ const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
 const { parseDataFromOcr, validateParsedData, generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { getNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
+const { greyscale } = require('@team-soju/utils');
+
+// Dynamically import Pokedex client to avoid issues with CommonJS modules in Discord bot environment
+async function getPokedexClient() {
+  const { default: Pokedex } = await import('pokedex-promise-v2');
+  return new Pokedex();
+}
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;
@@ -36,15 +42,15 @@ async function handleAddShiny(interaction) {
   const ivs = interaction.options.getString('ivs');
   let ivHp, ivAttack, ivDefense, ivSpAttack, ivSpDefense, ivSpeed;
 
+  const P = await getPokedexClient(); 
+  const pokemonData = await P.getPokemonByName(pokemon.toLowerCase()).catch(err => {
+    console.error('Error fetching Pokémon data:', err);
+  });
+
   let nationalNumber;
-  try {
-    nationalNumber = await getNationalNumber(pokemon.toLowerCase());
-    if (!nationalNumber) {
-      await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"`});
-      return;
-    }
-  } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}`});
+  nationalNumber = pokemonData ? pokemonData.id : null;
+  if (!nationalNumber) {
+    await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"`});
     return;
   }
 
@@ -100,7 +106,11 @@ async function handleAddShiny(interaction) {
     const shiny = shinyResponse.data.data;
 
     const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
-    const spriteUrl = await getSpriteUrl(shiny.national_number);
+
+    const spriteUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : null;
+    if (!spriteUrl) {
+      console.error('Error fetching sprite:', spriteError.message);
+    }
 
     const embed = new EmbedBuilder()
       .setColor(isSecret ? 0xFFD700 : 0x4CAF50)
@@ -188,9 +198,14 @@ async function handleAddShinyScreenshot(interaction) {
     return;
   }
 
+  const P = await getPokedexClient(); 
+  const pokemonData = await P.getPokemonByName(data.name.toLowerCase()).catch(err => {
+    console.error('Error fetching Pokémon data:', err);
+  });
+
   let nationalNumber;
   try {
-    nationalNumber = await getNationalNumber(data.name.toLowerCase());
+    nationalNumber = pokemonData ? pokemonData.id : null;
     if (!nationalNumber) {
       await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${data.name}"`});
       return;
@@ -300,12 +315,16 @@ async function handleEditShiny(interaction) {
       return;
     }
 
+    const P = await getPokedexClient(); 
+    const pokemonData = await P.getPokemonByName(existingShiny.pokemon.toLowerCase()).catch(err => {
+      console.error('Error fetching Pokémon data:', err);
+    });
+
     const updates = {};
     if (pokemon) {
       updates.pokemon = pokemon;
-      try {
-        nationalNumber = await getNationalNumber(pokemon.toLowerCase());
-      } catch (error) {
+      nationalNumber = pokemonData ? pokemonData.id : null; 
+      if (!nationalNumber) {
         await interaction.editReply({ content: `Error: Could not find national number for Pokémon "${pokemon}"`});
         return;
       }
@@ -352,10 +371,8 @@ async function handleEditShiny(interaction) {
     });
     const shiny = updateResponse.data.data;
 
-    let spriteUrl = null;
-    try {
-      spriteUrl = await getSpriteUrl(shiny.national_number);
-    } catch (spriteError) {
+    const spriteUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : null;
+    if (!spriteUrl) {
       console.error('Error fetching sprite:', spriteError.message);
     }
 
@@ -418,21 +435,23 @@ async function handleFailShiny(interaction) {
     });
     const shiny = updateResponse.data.data;
 
-    let spriteUrl = null;
+    const P = await getPokedexClient(); 
+    const pokemonData = await P.getPokemonByName(shiny.pokemon.toLowerCase()).catch(err => {
+      console.error('Error fetching Pokémon data:', err);
+    });
+  
     const attachments = [];
-    try {
-      spriteUrl = await getSpriteUrl(shiny.national_number);
-      if (spriteUrl) {
-        try {
-          const greyscaled = await greyscale(spriteUrl);
-          attachments.push({ attachment: greyscaled, name: 'sprite.gif' });
-          spriteUrl = 'attachment://sprite.gif';
-        } catch (gErr) {
-          console.error('Greyscale failed for sprite in failShiny:', gErr.message);
-          // fall back to original spriteUrl
-        }
+    let spriteUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : null;
+    if (spriteUrl) {
+      try {
+        const greyscaled = await greyscale(spriteUrl);
+        attachments.push({ attachment: greyscaled, name: 'sprite.gif' });
+        spriteUrl = 'attachment://sprite.gif';
+      } catch (gErr) {
+        console.error('Greyscale failed for sprite in failShiny:', gErr.message);
+        // fall back to original spriteUrl
       }
-    } catch (spriteError) {
+    } else {
       console.error('Error fetching sprite:', spriteError.message);
     }
 
@@ -488,7 +507,7 @@ async function handleDeleteShiny(interaction) {
     const embed = new EmbedBuilder()
       .setColor(0xFF5722)
       .setTitle('Shiny Deleted Successfully')
-      .setDescription(`${shiny.pokemon} (#${shiny.national_number}) has been removed`)
+      .setDescription(`${shiny.pokemon[0].toUpperCase() + shiny.pokemon.slice(1)} (#${shiny.national_number}) has been removed`)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -508,11 +527,14 @@ async function handleGetShiny(interaction) {
     });
     const shiny = response.data.data;
 
-    let spriteUrl = null;
+    const P = await getPokedexClient(); 
+    const pokemonData = await P.getPokemonByName(shiny.pokemon.toLowerCase()).catch(err => {
+      console.error('Error fetching Pokémon data:', err);
+    });
+
     const attachments = [];
-    try {
-      spriteUrl = await getSpriteUrl(shiny.national_number);
-    } catch (spriteError) {
+    let spriteUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : null;
+    if (!spriteUrl) {
       console.error('Error fetching sprite:', spriteError.message);
     }
 
@@ -571,7 +593,7 @@ function buildShiniesEmbed(shinies, page, pageSize, trainerIgn) {
   const description = pageItems.map((shiny, idx) => {
     let special = '';
     if (shiny.is_alpha) {
-      special = '(Alpha)';
+      special = ' (Alpha)';
       if (shiny.is_secret) {
         special = ' (Secret Alpha)';
       }

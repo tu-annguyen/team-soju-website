@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ShinyCard from './ShinyCard';
-import { getSpriteUrl } from '@team-soju/utils/pokeapi'
+import { Pokedex } from 'pokeapi-js-wrapper';
+const P = new Pokedex();
 
 export interface ShinyPokemon {
   name: string;
@@ -45,7 +46,10 @@ const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trai
           const isSecret = shiny.is_secret;
           const isAlpha = shiny.is_alpha;
           const encounterType = shiny.encounter_type || '';
-          const baseUrl = await getSpriteUrl(shiny.pokemon_name.toLowerCase());
+          const pokemonData = await P.getPokemonByName(shiny.pokemon_name.toLowerCase()).catch(err => {
+            console.error('Error fetching Pokémon data:', err);
+          });
+          const baseUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : '';
 
           return {
             name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(),
