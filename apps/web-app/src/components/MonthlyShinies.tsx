@@ -2,21 +2,6 @@ import React, { useState, useEffect } from 'react';
 import ShinyCard from './ShinyCard';
 import { getSpriteUrl } from '@team-soju/utils/pokeapi'
 
-export interface ShinyPokemon {
-  name: string;
-  imageUrl: string;
-  isFailed: boolean;
-  isSecret: boolean;
-  isAlpha: boolean;
-  encounterType: string;
-}
-
-interface Trainer {
-  name: string;
-  numOT: number;
-  shinies: ShinyPokemon[];
-}
-
 interface ShinyFromAPI {
   pokemon_name: string;
   trainer_name: string;
@@ -24,51 +9,45 @@ interface ShinyFromAPI {
   is_secret: boolean;
   is_alpha: boolean;
   notes: string | null;
+  total_encounters?: number | null;
+  catch_date?: string | null;
 }
 
-const transformAPIDataToShowcase = async (shinies: ShinyFromAPI[]): Promise<Trainer[]> => {
-  const trainerMap = new Map<string, ShinyFromAPI[]>();
+interface MonthlyShiny {
+  name: string;
+  trainerName: string;
+  imageUrl: string;
+  isFailed: boolean;
+  isSecret: boolean;
+  isAlpha: boolean;
+  encounterType: string;
+  totalEncounters: number | null;
+  catchDate: string | null;
+}
 
-  shinies.forEach(shiny => {
-    const existing = trainerMap.get(shiny.trainer_name) || [];
-    trainerMap.set(shiny.trainer_name, [...existing, shiny]);
-  });
-
-  const trainers = await Promise.all(
-    Array.from(trainerMap.entries()).map(async ([trainerName, trainerShinies]) => {
-      let otCount = trainerShinies.length;
-
-      const shiniesWithUrls = await Promise.all(
-        trainerShinies.map(async (shiny) => {
-          const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
-          if (isFailed) otCount--;
-          const isSecret = shiny.is_secret;
-          const isAlpha = shiny.is_alpha;
-          const encounterType = shiny.encounter_type || '';
-          const baseUrl = await getSpriteUrl(shiny.pokemon_name.toLowerCase());
-
-          return {
-            name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(),
-            imageUrl: baseUrl || '',
-            isFailed,
-            isSecret,
-            isAlpha,
-            encounterType,
-          };
-        })
-      );
+const transformAPIDataToMonthly = async (shinies: ShinyFromAPI[]): Promise<MonthlyShiny[]> => {
+  const transformed = await Promise.all(
+    shinies.map(async (shiny) => {
+      const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
+      const baseUrl = await getSpriteUrl(shiny.pokemon_name.toLowerCase());
 
       return {
-        name: trainerName,
-        numOT: otCount,
-        shinies: shiniesWithUrls
+        name: shiny.pokemon_name[0].toUpperCase() + shiny.pokemon_name.slice(1).toLowerCase(),
+        trainerName: shiny.trainer_name,
+        imageUrl: baseUrl || '',
+        isFailed,
+        isSecret: shiny.is_secret,
+        isAlpha: shiny.is_alpha,
+        encounterType: shiny.encounter_type || '',
+        totalEncounters: shiny.total_encounters ?? null,
+        catchDate: shiny.catch_date ?? null,
       };
     })
   );
 
-  return trainers.sort((a, b) => b.numOT - a.numOT);
+  return transformed;
 };
-
+  
 const formatLocalDate = (d: Date) => {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -78,11 +57,14 @@ const formatLocalDate = (d: Date) => {
 
 const MonthlyShinies = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [shinyData, setShinyData] = useState<Trainer[]>([]);
+  const [shinyData, setShinyData] = useState<MonthlyShiny[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
-  const currentMonth = date.toLocaleString('default', { month: 'long' });
+  const currentMonth = date.toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
 
   useEffect(() => {
     const fetchShinies = async () => {
@@ -109,7 +91,7 @@ const MonthlyShinies = () => {
 
         const data = await response.json();
         const shinies = data.data || [];
-        const transformedData = await transformAPIDataToShowcase(shinies);
+        const transformedData = await transformAPIDataToMonthly(shinies);
         setShinyData(transformedData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load shinies');
@@ -122,11 +104,33 @@ const MonthlyShinies = () => {
     fetchShinies();
   }, [date]);
 
-  const filteredTrainers = shinyData.filter(trainer =>
-    trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trainer.shinies.some(shiny =>
-      shiny.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+  const filteredShinies = shinyData.filter(shiny =>
+    shiny.trainerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    shiny.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const summary = {
+    totalShinies: filteredShinies.length,
+    totalTrainers: new Set(filteredShinies.map(shiny => shiny.trainerName)).size,
+    totalEncounters: filteredShinies.reduce(
+      (sum, shiny) => sum + (shiny.totalEncounters ?? 0),
+      0
+    ),
+    secretCount: filteredShinies.filter(shiny => shiny.isSecret).length,
+    alphaCount: filteredShinies.filter(shiny => shiny.isAlpha).length,
+  };
+
+  const SummaryChip = ({
+    label,
+    value,
+  }: {
+    label: string;
+    value: string | number;
+  }) => (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
+      <div className="text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
+      <div className="text-sm text-gray-600 dark:text-gray-400">{label}</div>
+    </div>
   );
 
   const handleLastMonth = () => {
@@ -185,38 +189,50 @@ const MonthlyShinies = () => {
 
         <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{currentMonth} Shinies</h2>
         <div className="flex justify-left mb-8">
-          <a className="mr-4 btn btn-secondary cursor-pointer" onClick={handleLastMonth}>Last Month</a>
-          <a className="mx-4 btn btn-secondary cursor-pointer" onClick={handleNextMonth}>Next Month</a>
+          <a className="mr-4 btn btn-primary cursor-pointer" onClick={handleLastMonth}>Last Month</a>
+          <a className="mx-4 btn btn-primary cursor-pointer" onClick={handleNextMonth}>Next Month</a>
         </div>
 
-        {filteredTrainers.length > 0 ? (
-          filteredTrainers.map(trainer => (
-            <div key={trainer.name} className="mb-12">
-              <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                {trainer.name}
-                <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
-                  ({trainer.numOT} OT shinies)
-                </span>
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
-                {trainer.shinies.map((shiny, index) => (
-                  <ShinyCard
-                    key={`${trainer.name}-${shiny.name}-${index}`}
-                    pokemonName={shiny.name}
-                    trainerName={trainer.name}
-                    imageUrl={shiny.imageUrl}
-                    isFailed={shiny.isFailed}
-                    isSecret={shiny.isSecret}
-                    isAlpha={shiny.isAlpha}
-                    encounterType={shiny.encounterType}
-                  />
-                ))}
-              </div>
-            </div>
-          ))
+        <div className="mb-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <SummaryChip label="Shinies" value={summary.totalShinies} />
+          <SummaryChip label="Trainers" value={summary.totalTrainers} />
+          <SummaryChip
+            label="Total Encounters"
+            value={summary.totalEncounters.toLocaleString()}
+          />
+          <SummaryChip
+            label="Avg Encounters / Shiny"
+            value={
+              summary.totalShinies > 0
+                ? Math.round(summary.totalEncounters / summary.totalShinies).toLocaleString()
+                : 0
+            }
+          />
+        </div>
+
+        {filteredShinies.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            {filteredShinies.map((shiny, index) => (
+              <ShinyCard
+                key={`${shiny.trainerName}-${shiny.name}-${index}`}
+                variant="compact"
+                pokemonName={shiny.name}
+                trainerName={shiny.trainerName}
+                imageUrl={shiny.imageUrl}
+                isFailed={shiny.isFailed}
+                isSecret={shiny.isSecret}
+                isAlpha={shiny.isAlpha}
+                encounterType={shiny.encounterType}
+                totalEncounters={shiny.totalEncounters}
+                catchDate={shiny.catchDate}
+              />
+            ))}
+          </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">No shiny Pokémon found this month. Try adjusting your search.</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              No shiny Pokémon found this month. Try adjusting your search.
+            </p>
           </div>
         )}
 
