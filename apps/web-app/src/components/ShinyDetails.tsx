@@ -6,6 +6,10 @@ interface ShinyDetailsProps {
   onClose: () => void;
   pokemonName: string;
   trainerName: string;
+  imageUrl: string;
+  isFailed: boolean;
+  isSecret: boolean;
+  isAlpha: boolean;
   catchDate?: string | null;
   totalEncounters?: number | null;
   speciesEncounters?: number | null;
@@ -18,6 +22,21 @@ interface ShinyDetailsProps {
   ivSpDefense?: number | null;
   ivSpeed?: number | null;
 }
+
+const attributeIcons: Record<string, string> = {
+  secret: '/images/secret.png',
+  safari: '/images/safari.png',
+  fishing: '/images/fishing.png',
+  egg: '/images/egg.png',
+  mysterious_ball: '/images/mysterious-ball.png',
+  honey_tree: '/images/honey.png',
+  swarm: '/images/swarm.png',
+  fossil: '/images/fossil.png',
+  rock_smash: '/images/rock.png',
+  headbutt: '/images/headbutt.png',
+  gift: '/images/gift.png',
+  alpha: '/images/alpha.png',
+};
 
 const formatLabel = (value: string) =>
   value
@@ -33,6 +52,10 @@ const ShinyDetails = ({
   onClose,
   pokemonName,
   trainerName,
+  imageUrl,
+  isFailed,
+  isSecret,
+  isAlpha,
   catchDate,
   totalEncounters,
   speciesEncounters,
@@ -104,19 +127,54 @@ const ShinyDetails = ({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.24em] text-amber-600 dark:text-amber-400">
-                  Shiny Details
-                </p>
-                <h2
-                  id="shiny-details-title"
-                  className="text-2xl font-bold text-gray-900 dark:text-white"
-                >
-                  {pokemonName}
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Trainer: {trainerName}
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-100 p-2 dark:bg-gray-800">
+                  {isSecret && (
+                    <img
+                      src={attributeIcons.secret}
+                      alt="Secret shiny"
+                      className="absolute left-2 top-2 h-5 w-5"
+                      draggable={false}
+                    />
+                  )}
+                  {isAlpha && (
+                    <img
+                      src={attributeIcons.alpha}
+                      alt="Alpha shiny"
+                      className="absolute bottom-2 right-2 h-5 w-5"
+                      draggable={false}
+                    />
+                  )}
+                  {encounterType && attributeIcons[encounterType] && (
+                    <img
+                      src={attributeIcons[encounterType]}
+                      alt={`${encounterType} encounter`}
+                      className="absolute right-2 top-2 h-5 w-5"
+                      draggable={false}
+                    />
+                  )}
+                  <img
+                    src={imageUrl}
+                    alt={`Shiny ${pokemonName}`}
+                    className={`h-full w-full object-contain pixelated ${isFailed ? 'grayscale' : ''}`}
+                    loading="lazy"
+                  />
+                </div>
+
+                <div>
+                  <p className="text-sm uppercase tracking-[0.24em] text-primary-600 dark:text-primary-400">
+                    Shiny Details
+                  </p>
+                  <h2
+                    id="shiny-details-title"
+                    className="text-2xl font-bold text-gray-900 dark:text-white"
+                  >
+                    {pokemonName}
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Trainer: {trainerName}
+                  </p>
+                </div>
               </div>
 
               <button

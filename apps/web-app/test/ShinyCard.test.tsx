@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ShinyCard from '../src/components/ShinyCard';
 
@@ -68,7 +68,12 @@ describe('ShinyCard', () => {
 
     await user.click(screen.getByRole('button', { name: /Pikachu/i }));
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getAllByAltText(/Shiny Pikachu/i)).toHaveLength(2);
+    expect(within(dialog).getByAltText(/Shiny Pikachu/i)).toBeInTheDocument();
+    expect(within(dialog).getByAltText(/honey_tree encounter/i)).toBeInTheDocument();
     expect(screen.getByText('Trainer: Trainer')).toBeInTheDocument();
     expect(screen.getByText('2026-01-15')).toBeInTheDocument();
     expect(screen.getByText('20,374')).toBeInTheDocument();

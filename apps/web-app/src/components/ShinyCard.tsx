@@ -176,6 +176,10 @@ const ShinyCard = ({
         onClose={() => setShowDetails(false)}
         pokemonName={pokemonName}
         trainerName={trainerName}
+        imageUrl={imageUrl}
+        isFailed={isFailed}
+        isSecret={isSecret}
+        isAlpha={isAlpha}
         catchDate={catchDate}
         totalEncounters={totalEncounters}
         speciesEncounters={speciesEncounters}
