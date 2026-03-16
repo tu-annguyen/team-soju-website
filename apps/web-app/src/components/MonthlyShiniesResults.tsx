@@ -174,7 +174,12 @@ const MonthlyShiniesResults = ({
     const totalTrainers = new Set(
       filteredShinies.map((shiny) => shiny.trainerName)
     ).size;
-    const totalEncounters = filteredShinies.reduce(
+
+    const shiniesWithEncounters = filteredShinies.filter(
+      (shiny) => shiny.totalEncounters !== null && shiny.totalEncounters !== undefined && shiny.totalEncounters > 0
+    );
+
+    const totalEncounters = shiniesWithEncounters.reduce(
       (sum, shiny) => sum + (shiny.totalEncounters ?? 0),
       0
     );
@@ -183,8 +188,11 @@ const MonthlyShiniesResults = ({
       totalShinies,
       totalTrainers,
       totalEncounters,
+      encounterCountedShinies: shiniesWithEncounters.length,
       avgEncounters:
-        totalShinies > 0 ? Math.round(totalEncounters / totalShinies) : 0,
+        shiniesWithEncounters.length > 0
+          ? Math.round(totalEncounters / shiniesWithEncounters.length)
+          : 0,
     };
   }, [filteredShinies]);
 
