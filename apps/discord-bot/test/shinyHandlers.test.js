@@ -45,12 +45,16 @@ class MockActionRowBuilder {
 class MockModalBuilder {
   setCustomId() { return this; }
   setTitle() { return this; }
-  addComponents() { return this; }
+  addLabelComponents() { return this; }
+}
+
+class MockLabelBuilder {
+  setLabel(value) { this.label = value; return this; }
+  setTextInputComponent(value) { this.component = value; return this; }
 }
 
 class MockTextInputBuilder {
   setCustomId() { return this; }
-  setLabel() { return this; }
   setStyle() { return this; }
   setRequired() { return this; }
   setValue() { return this; }
@@ -66,15 +70,21 @@ const TextInputStyle = {
   Short: 'SHORT',
 };
 
+const MessageFlags = {
+  Ephemeral: 1 << 6,
+};
+
 jest.mock('discord.js', () => ({
   EmbedBuilder: MockEmbedBuilder,
   ButtonBuilder: MockButtonBuilder,
   StringSelectMenuBuilder: MockStringSelectMenuBuilder,
   ActionRowBuilder: MockActionRowBuilder,
   ModalBuilder: MockModalBuilder,
+  LabelBuilder: MockLabelBuilder,
   TextInputBuilder: MockTextInputBuilder,
   ButtonStyle,
   TextInputStyle,
+  MessageFlags,
   codeBlock: jest.fn(s => s),
 }));
 
@@ -177,7 +187,7 @@ describe('shinyHandlers', () => {
 
     await handleGetMyShinies(interaction);
 
-    expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+    expect(interaction.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
     expect(axios.get).toHaveBeenNthCalledWith(
       1,
       'http://localhost:3001/api/members/discord/discord-user',
@@ -344,7 +354,7 @@ describe('shinyHandlers', () => {
     expect(interaction.reply).toHaveBeenCalledWith(
       expect.objectContaining({
         embeds: expect.any(Array),
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       })
     );
   });
@@ -377,7 +387,7 @@ describe('shinyHandlers', () => {
     expect(interaction.reply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining('You need one of these roles to manage shinies'),
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       })
     );
   });

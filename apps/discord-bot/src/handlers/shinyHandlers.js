@@ -10,8 +10,10 @@ const {
   ButtonStyle,
   StringSelectMenuBuilder,
   ModalBuilder,
+  LabelBuilder,
   TextInputBuilder,
   TextInputStyle,
+  MessageFlags,
 } = require('discord.js');
 const axios = require('axios');
 const Tesseract = require('tesseract.js');
@@ -350,35 +352,30 @@ async function buildEditModal(shinyId) {
 
   const pokemonInput = new TextInputBuilder()
     .setCustomId('pokemon')
-    .setLabel('Pokemon')
     .setStyle(TextInputStyle.Short)
     .setRequired(false)
     .setValue(shiny.pokemon || '');
 
   const catchDateInput = new TextInputBuilder()
     .setCustomId('catch_date')
-    .setLabel('Catch date (YYYY-MM-DD)')
     .setStyle(TextInputStyle.Short)
     .setRequired(false)
     .setValue(shiny.catch_date || '');
 
   const encounterTypeInput = new TextInputBuilder()
     .setCustomId('encounter_type')
-    .setLabel('Encounter type')
     .setStyle(TextInputStyle.Short)
     .setRequired(false)
     .setValue(shiny.encounter_type || '');
 
   const encountersInput = new TextInputBuilder()
     .setCustomId('encounters')
-    .setLabel('Encounters (total,species)')
     .setStyle(TextInputStyle.Short)
     .setRequired(false)
     .setValue(`${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`);
 
   const ivsInput = new TextInputBuilder()
     .setCustomId('ivs')
-    .setLabel('IVs (hp,atk,def,spa,spd,spe)')
     .setStyle(TextInputStyle.Short)
     .setRequired(false)
     .setValue(buildIvString(shiny));
@@ -387,12 +384,12 @@ async function buildEditModal(shinyId) {
     .setCustomId(`${SHINY_EDIT_MODAL_PREFIX}${shinyId}`)
     .setTitle(`Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
 
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(pokemonInput),
-    new ActionRowBuilder().addComponents(catchDateInput),
-    new ActionRowBuilder().addComponents(encounterTypeInput),
-    new ActionRowBuilder().addComponents(encountersInput),
-    new ActionRowBuilder().addComponents(ivsInput)
+  modal.addLabelComponents(
+    new LabelBuilder().setLabel('Pokemon').setTextInputComponent(pokemonInput),
+    new LabelBuilder().setLabel('Catch date (YYYY-MM-DD)').setTextInputComponent(catchDateInput),
+    new LabelBuilder().setLabel('Encounter type').setTextInputComponent(encounterTypeInput),
+    new LabelBuilder().setLabel('Encounters (total,species)').setTextInputComponent(encountersInput),
+    new LabelBuilder().setLabel('IVs (hp,atk,def,spa,spd,spe)').setTextInputComponent(ivsInput)
   );
 
   return modal;
@@ -481,12 +478,12 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
 
       const action = i.customId.slice(SHINY_ACTION_PREFIX.length);
       if (!selectedShinyId) {
-        await i.reply({ content: 'Select a shiny first.', ephemeral: true });
+        await i.reply({ content: 'Select a shiny first.', flags: MessageFlags.Ephemeral });
         return;
       }
 
       if (action === 'view') {
-        await sendShinyDetails(i, selectedShinyId, 'reply', { ephemeral: true });
+        await sendShinyDetails(i, selectedShinyId, 'reply', { flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -504,7 +501,7 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
         if (payload.embeds[0]?.setTitle) {
           payload.embeds[0].setTitle('Shiny Marked as Failed');
         }
-        await i.reply({ ...payload, ephemeral: true });
+        await i.reply({ ...payload, flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -521,7 +518,7 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
             embeds: [],
             components: [],
           });
-          await i.followUp({ embeds: [deleteEmbed], ephemeral: true });
+          await i.followUp({ embeds: [deleteEmbed], flags: MessageFlags.Ephemeral });
           return;
         }
 
@@ -533,10 +530,10 @@ async function renderInteractiveShiniesList(interaction, { shinies, pageSize, ti
           embeds: [buildShiniesEmbed(shinies, currentPage, pageSize, title)],
           components: buildShiniesComponents(shinies, currentPage, pageSize, selectedShinyId, allowMutation),
         });
-        await i.followUp({ embeds: [deleteEmbed], ephemeral: true });
+        await i.followUp({ embeds: [deleteEmbed], flags: MessageFlags.Ephemeral });
       }
     } catch (error) {
-      const payload = { content: `Error: ${error.message}`, ephemeral: true };
+      const payload = { content: `Error: ${error.message}`, flags: MessageFlags.Ephemeral };
 
       if (i.deferred || i.replied) {
         await i.followUp(payload).catch(() => {});
@@ -910,7 +907,7 @@ async function handleGetShinies(interaction) {
 }
 
 async function handleGetMyShinies(interaction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pageSize = interaction.options.getInteger('limit') || PAGE_SIZE_FALLBACK;
 
@@ -954,7 +951,7 @@ async function handleShinyEditModal(interaction) {
       updates.pokemon = pokemon;
       const nationalNumber = await getNationalNumber(pokemon);
       if (!nationalNumber) {
-        await interaction.reply({ content: `Error: Could not find national number for Pokemon "${pokemon}"`, ephemeral: true });
+        await interaction.reply({ content: `Error: Could not find national number for Pokemon "${pokemon}"`, flags: MessageFlags.Ephemeral });
         return;
       }
       updates.national_number = nationalNumber;
@@ -966,7 +963,7 @@ async function handleShinyEditModal(interaction) {
     if (ivs) Object.assign(updates, parseIvInput(ivs));
 
     if (Object.keys(updates).length === 0) {
-      await interaction.reply({ content: 'No updates provided.', ephemeral: true });
+      await interaction.reply({ content: 'No updates provided.', flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -975,9 +972,9 @@ async function handleShinyEditModal(interaction) {
     if (payload.embeds[0]?.setTitle) {
       payload.embeds[0].setTitle('Shiny Updated Successfully');
     }
-    await interaction.reply({ ...payload, ephemeral: true });
+    await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
   } catch (error) {
-    await interaction.reply({ content: `Error: ${error.message}`, ephemeral: true });
+    await interaction.reply({ content: `Error: ${error.message}`, flags: MessageFlags.Ephemeral });
   }
 }
 

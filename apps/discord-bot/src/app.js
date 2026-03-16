@@ -3,7 +3,7 @@
  * Main application entry point
  */
 
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, MessageFlags } = require('discord.js');
 const path = require('path');
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
@@ -88,9 +88,9 @@ class TeamSojuBot {
           const errorMessage = `❌ ${permissionResult.reason}`;
           
           if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: errorMessage, ephemeral: true });
+            await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral });
           } else {
-            await interaction.editReply({ content: errorMessage, ephemeral: true });
+            await interaction.editReply({ content: errorMessage });
           }
           return;
         }
@@ -102,9 +102,9 @@ class TeamSojuBot {
         const errorMessage = `Error: ${error.message || 'Command execution failed'}`;
 
         if (interaction.deferred) {
-          await interaction.editReply({ content: errorMessage, ephemeral: true });
+          await interaction.editReply({ content: errorMessage });
         } else if (!interaction.replied) {
-          await interaction.reply({ content: errorMessage, ephemeral: true });
+          await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral });
         }
       }
     });
