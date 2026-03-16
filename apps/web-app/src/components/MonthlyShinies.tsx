@@ -64,11 +64,13 @@ const MonthlyShinies = () => {
   const [shinyData, setShinyData] = useState<MonthlyShiny[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [date, setDate] = useState<Date>(new Date());
-  const currentMonth = date.toLocaleString('default', {
-    month: 'long',
-    year: 'numeric',
-  });
+  const selectedMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+  const today = new Date();
+  const currentRealMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+  const isNextDisabled = nextMonth > currentRealMonth;
 
   useEffect(() => {
     const fetchShinies = async () => {
@@ -113,17 +115,32 @@ const MonthlyShinies = () => {
   };
 
   const handleNextMonth = () => {
-    setDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    if (isNextDisabled) return;
+
+    setDate(nextMonth);
   };
 
   return (
     <section className="py-16">
       <div className="container">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-8">
-          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{currentMonth} Shinies</h2>
+          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{selectedMonth.toLocaleString('default', { month: 'long', year: 'numeric' })} Shinies</h2>
           <div className="flex justify-left mb-8">
-            <a className="mr-4 btn btn-primary cursor-pointer" onClick={handleLastMonth}>Last Month</a>
-            <a className="mx-4 btn btn-primary cursor-pointer" onClick={handleNextMonth}>Next Month</a>
+            <button className="mr-4 btn btn-primary cursor-pointer" onClick={handleLastMonth}>
+              Last Month
+            </button>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              disabled={isNextDisabled}
+              className={`mx-4 btn cursor-pointer ${
+                isNextDisabled
+                  ? 'bg-gray-300 dark:bg-gray-700 hover:bg-gray-500 cursor-not-allowed opacity-60'
+                  : 'btn-primary'
+              }`}
+            >
+              Next Month
+            </button>
           </div>
         </div>
 
