@@ -18,6 +18,7 @@ const {
 const axios = require('axios');
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
+const { ENCOUNTER_TYPE_CHOICES } = require('../commands');
 const { parseDataFromOcr, validateParsedData, generateEncountersString, validateSojuTrainerIGN } = require('../utils');
 const { capitalize, greyscale, getSpriteUrl, getNationalNumber } = require('@team-soju/utils');
 
@@ -362,11 +363,18 @@ async function buildEditModal(shinyId) {
     .setRequired(false)
     .setValue(shiny.catch_date || '');
 
-  const encounterTypeInput = new TextInputBuilder()
+  const encounterTypeSelect = new StringSelectMenuBuilder()
     .setCustomId('encounter_type')
-    .setStyle(TextInputStyle.Short)
-    .setRequired(false)
-    .setValue(shiny.encounter_type || '');
+    .setPlaceholder('Select encounter type')
+    .setMinValues(1)
+    .setMaxValues(1)
+    .addOptions(
+      ENCOUNTER_TYPE_CHOICES.map(choice => ({
+        label: choice.name,
+        value: choice.value,
+        default: choice.value === shiny.encounter_type,
+      }))
+    );
 
   const encountersInput = new TextInputBuilder()
     .setCustomId('encounters')
@@ -387,7 +395,7 @@ async function buildEditModal(shinyId) {
   modal.addLabelComponents(
     new LabelBuilder().setLabel('Pokemon').setTextInputComponent(pokemonInput),
     new LabelBuilder().setLabel('Catch date (YYYY-MM-DD)').setTextInputComponent(catchDateInput),
-    new LabelBuilder().setLabel('Encounter type').setTextInputComponent(encounterTypeInput),
+    new LabelBuilder().setLabel('Encounter type').setStringSelectMenuComponent(encounterTypeSelect),
     new LabelBuilder().setLabel('Encounters (total,species)').setTextInputComponent(encountersInput),
     new LabelBuilder().setLabel('IVs (hp,atk,def,spa,spd,spe)').setTextInputComponent(ivsInput)
   );
@@ -941,7 +949,8 @@ async function handleShinyEditModal(interaction) {
 
     const pokemon = interaction.fields.getTextInputValue('pokemon')?.trim();
     const catchDate = interaction.fields.getTextInputValue('catch_date')?.trim();
-    const encounterType = normalizeEncounterType(interaction.fields.getTextInputValue('encounter_type')?.trim());
+    const encounterTypeSelection = interaction.fields.getStringSelectValues('encounter_type');
+    const encounterType = normalizeEncounterType(encounterTypeSelection?.[0]);
     const encounters = interaction.fields.getTextInputValue('encounters')?.trim();
     const ivs = interaction.fields.getTextInputValue('ivs')?.trim();
 

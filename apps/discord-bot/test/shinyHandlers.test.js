@@ -23,6 +23,23 @@ class MockButtonBuilder {
   setDisabled(value) { this.disabled = value; return this; }
 }
 
+class MockSlashCommandOptionBuilder {
+  setName() { return this; }
+  setDescription() { return this; }
+  setRequired() { return this; }
+  addChoices() { return this; }
+}
+
+class MockSlashCommandBuilder {
+  setName() { return this; }
+  setDescription() { return this; }
+  addStringOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
+  addUserOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
+  addBooleanOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
+  addIntegerOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
+  addAttachmentOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
+}
+
 class MockStringSelectMenuBuilder {
   setCustomId(value) { this.customId = value; return this; }
   setPlaceholder(value) { this.placeholder = value; return this; }
@@ -51,6 +68,7 @@ class MockModalBuilder {
 class MockLabelBuilder {
   setLabel(value) { this.label = value; return this; }
   setTextInputComponent(value) { this.component = value; return this; }
+  setStringSelectMenuComponent(value) { this.component = value; return this; }
 }
 
 class MockTextInputBuilder {
@@ -76,6 +94,7 @@ const MessageFlags = {
 
 jest.mock('discord.js', () => ({
   EmbedBuilder: MockEmbedBuilder,
+  SlashCommandBuilder: MockSlashCommandBuilder,
   ButtonBuilder: MockButtonBuilder,
   StringSelectMenuBuilder: MockStringSelectMenuBuilder,
   ActionRowBuilder: MockActionRowBuilder,
@@ -261,10 +280,10 @@ describe('shinyHandlers', () => {
         getTextInputValue: jest.fn((field) => ({
           pokemon: 'pikachu',
           catch_date: '2026-02-01',
-          encounter_type: 'horde',
           encounters: '100,20',
           ivs: '1,2,3,4,5,6',
         }[field] || '')),
+        getStringSelectValues: jest.fn((field) => field === 'encounter_type' ? ['horde'] : []),
       },
       reply: jest.fn().mockResolvedValue(undefined),
     };
@@ -366,6 +385,7 @@ describe('shinyHandlers', () => {
       member: { roles: { cache: [] } },
       fields: {
         getTextInputValue: jest.fn(() => ''),
+        getStringSelectValues: jest.fn(() => []),
       },
       reply: jest.fn().mockResolvedValue(undefined),
     };
