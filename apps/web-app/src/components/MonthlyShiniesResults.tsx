@@ -188,22 +188,38 @@ const MonthlyShiniesResults = ({
     };
   }, [filteredShinies]);
 
+  const SummaryChipSkeleton = () => (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 animate-pulse">
+      <div className="h-8 w-16 rounded bg-gray-200 dark:bg-gray-700 mb-2" />
+      <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" />
+    </div>
+  );
+
+  const CompactShinyCardSkeleton = () => (
+    <div className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 animate-pulse">
+      <div className="w-16 h-16 rounded-md bg-gray-200 dark:bg-gray-700 shrink-0" />
+
+      <div className="min-w-0 flex-1">
+        <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700 mb-2" />
+        <div className="h-3 w-20 rounded bg-gray-200 dark:bg-gray-700 mb-2" />
+        <div className="h-3 w-32 rounded bg-gray-200 dark:bg-gray-700" />
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="space-y-6 min-h-[500px]">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="h-24 rounded-2xl border animate-pulse bg-gray-100 dark:bg-gray-800" />
-          <div className="h-24 rounded-2xl border animate-pulse bg-gray-100 dark:bg-gray-800" />
-          <div className="h-24 rounded-2xl border animate-pulse bg-gray-100 dark:bg-gray-800" />
-          <div className="h-24 rounded-2xl border animate-pulse bg-gray-100 dark:bg-gray-800" />
+          <SummaryChipSkeleton />
+          <SummaryChipSkeleton />
+          <SummaryChipSkeleton />
+          <SummaryChipSkeleton />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-24 rounded-xl border animate-pulse bg-gray-100 dark:bg-gray-800"
-            />
+            <CompactShinyCardSkeleton key={i} />
           ))}
         </div>
       </div>
