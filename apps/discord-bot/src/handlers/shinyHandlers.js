@@ -554,7 +554,7 @@ async function handleGetShiny(interaction) {
 
     const embed = new EmbedBuilder()
       .setColor(shiny.is_secret || shiny.is_alpha ? 0xFFD700 : 0x4CAF50)
-      .setTitle(`${shiny.pokemon} (#${shiny.national_number})`);
+      .setTitle(`${capitalize(shiny.pokemon_name)} (#${shiny.national_number})`);
     if (spriteUrl) embed.setThumbnail(spriteUrl);
     if (shiny.screenshot_url) embed.setImage(shiny.screenshot_url);
     embed.addFields(
