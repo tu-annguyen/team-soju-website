@@ -332,8 +332,9 @@ const ShinyShowcase = () => {
                 placeholder="Search by Pokémon or trainer name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-nowrap overflow-hidden overflow-ellipsis"
+              >
+              </input>
               <svg 
                 className="absolute right-3 top-2.5 w-5 h-5 text-gray-400 dark:text-gray-500" 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -348,39 +349,41 @@ const ShinyShowcase = () => {
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
             </div>
-            <button
-              type="button"
-              aria-label="Open filters"
-              aria-expanded={openPanel === 'filter'}
-              onClick={openFilterPanel}
-              className="relative bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg"
-            >
-              <svg className="w-5 h-5 inline-block" fill="currentColor" stroke="none" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg">
-                <path d="M96 128C83.1 128 71.4 135.8 66.4 147.8C61.4 159.8 64.2 173.5 73.4 182.6L256 365.3L256 480C256 488.5 259.4 496.6 265.4 502.6L329.4 566.6C338.6 575.8 352.3 578.5 364.3 573.5C376.3 568.5 384 556.9 384 544L384 365.3L566.6 182.7C575.8 173.5 578.5 159.8 573.5 147.8C568.5 135.8 556.9 128 544 128L96 128z"/>
-              </svg>
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 rounded-full bg-white text-primary-700 text-xs font-bold px-1 flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              aria-label="Open sorting"
-              aria-expanded={openPanel === 'sort'}
-              onClick={openSortPanel}
-              className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg"
-            >
-              <svg className="w-5 h-5 inline-block" fill="currentColor" stroke="none" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg">
-                <path d="M130.4 268.2C135.4 280.2 147 288 160 288L480 288C492.9 288 504.6 280.2 509.6 268.2C514.6 256.2 511.8 242.5 502.7 233.3L342.7 73.3C330.2 60.8 309.9 60.8 297.4 73.3L137.4 233.3C128.2 242.5 125.5 256.2 130.5 268.2zM130.4 371.7C125.4 383.7 128.2 397.4 137.3 406.6L297.3 566.6C309.8 579.1 330.1 579.1 342.6 566.6L502.6 406.6C511.8 397.4 514.5 383.7 509.5 371.7C504.5 359.7 492.9 352 480 352L160 352C147.1 352 135.4 359.8 130.4 371.8z"/>
-              </svg>
-            </button>
+            <div className="relative flex gap-4">
+              <button
+                type="button"
+                aria-label="Open filters"
+                aria-expanded={openPanel === 'filter'}
+                onClick={openFilterPanel}
+                className="relative bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg"
+              >
+                <svg className="w-5 h-5 inline-block" fill="currentColor" stroke="none" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M96 128C83.1 128 71.4 135.8 66.4 147.8C61.4 159.8 64.2 173.5 73.4 182.6L256 365.3L256 480C256 488.5 259.4 496.6 265.4 502.6L329.4 566.6C338.6 575.8 352.3 578.5 364.3 573.5C376.3 568.5 384 556.9 384 544L384 365.3L566.6 182.7C575.8 173.5 578.5 159.8 573.5 147.8C568.5 135.8 556.9 128 544 128L96 128z"/>
+                </svg>
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 rounded-full bg-white text-primary-700 text-xs font-bold px-1 flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                aria-label="Open sorting"
+                aria-expanded={openPanel === 'sort'}
+                onClick={openSortPanel}
+                className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg"
+              >
+                <svg className="w-5 h-5 inline-block" fill="currentColor" stroke="none" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M130.4 268.2C135.4 280.2 147 288 160 288L480 288C492.9 288 504.6 280.2 509.6 268.2C514.6 256.2 511.8 242.5 502.7 233.3L342.7 73.3C330.2 60.8 309.9 60.8 297.4 73.3L137.4 233.3C128.2 242.5 125.5 256.2 130.5 268.2zM130.4 371.7C125.4 383.7 128.2 397.4 137.3 406.6L297.3 566.6C309.8 579.1 330.1 579.1 342.6 566.6L502.6 406.6C511.8 397.4 514.5 383.7 509.5 371.7C504.5 359.7 492.9 352 480 352L160 352C147.1 352 135.4 359.8 130.4 371.8z"/>
+                </svg>
+              </button>
+            </div>
 
             {openPanel === 'filter' && (
               <div
                 role="dialog"
                 aria-label="Filter shinies"
-                className="absolute top-full right-14 z-20 mt-2 w-full max-w-xl rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-5"
+                className="absolute top-full left-1/2 -translate-x-1/2 z-20 mt-2 w-[min(92vw,42rem)] rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-5 md:left-auto md:right-14 md:translate-x-0 md:w-full md:max-w-xl"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <label className="text-sm text-gray-700 dark:text-gray-300">
@@ -499,7 +502,7 @@ const ShinyShowcase = () => {
               <div
                 role="dialog"
                 aria-label="Sort shinies"
-                className="absolute top-full right-0 z-20 mt-2 w-full max-w-sm rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-5"
+                className="absolute top-full left-1/2 -translate-x-1/2 z-20 mt-2 w-[min(92vw,24rem)] rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-5 md:left-auto md:right-0 md:translate-x-0 md:w-full md:max-w-sm"
               >
                 <div className="grid grid-cols-1 gap-4">
                   <label className="text-sm text-gray-700 dark:text-gray-300">
