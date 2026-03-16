@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MonthlyShiniesResults from './MonthlyShiniesResults';
+import { Pokedex } from 'pokeapi-js-wrapper';
+const P = new Pokedex();
 
 interface ShinyFromAPI {
   pokemon_name: string;
