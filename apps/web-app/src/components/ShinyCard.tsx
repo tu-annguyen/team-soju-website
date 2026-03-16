@@ -10,6 +10,8 @@ interface ShinyCardProps {
   isSecret: boolean;
   isAlpha: boolean;
   encounterType: string;
+  tier?: string | null;
+  pointValue?: number | null;
   totalEncounters?: number | null;
   catchDate?: string | null;
   speciesEncounters?: number | null;
@@ -47,6 +49,8 @@ const ShinyCard = ({
   isSecret,
   isAlpha,
   encounterType,
+  tier,
+  pointValue,
   totalEncounters,
   catchDate,
   speciesEncounters,
@@ -180,6 +184,8 @@ const ShinyCard = ({
         isFailed={isFailed}
         isSecret={isSecret}
         isAlpha={isAlpha}
+        tier={tier}
+        pointValue={pointValue}
         catchDate={catchDate}
         totalEncounters={totalEncounters}
         speciesEncounters={speciesEncounters}

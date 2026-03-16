@@ -10,6 +10,8 @@ interface ShinyDetailsProps {
   isFailed: boolean;
   isSecret: boolean;
   isAlpha: boolean;
+  tier?: string | null;
+  pointValue?: number | null;
   catchDate?: string | null;
   totalEncounters?: number | null;
   speciesEncounters?: number | null;
@@ -47,6 +49,8 @@ const formatLabel = (value: string) =>
 const formatNumber = (value?: number | null) =>
   value === null || value === undefined ? null : value.toLocaleString();
 
+const hasDisplayValue = (value: string | null) => value !== null && value !== '0';
+
 const ShinyDetails = ({
   open,
   onClose,
@@ -56,6 +60,8 @@ const ShinyDetails = ({
   isFailed,
   isSecret,
   isAlpha,
+  tier,
+  pointValue,
   catchDate,
   totalEncounters,
   speciesEncounters,
@@ -89,7 +95,12 @@ const ShinyDetails = ({
   );
 
   const details = [
-    { label: 'Catch Date', value: catchDate || null },
+    { label: 'Tier', value: tier || null },
+    {
+      label: 'Point Value',
+      value: pointValue === null || pointValue === undefined ? null : pointValue.toLocaleString(),
+    },
+    { label: isFailed ? 'Encounter Date' : 'Catch Date', value: catchDate || null },
     { label: 'Total Encounters', value: formatNumber(totalEncounters) },
     { label: 'Species Encounters', value: formatNumber(speciesEncounters) },
     {
@@ -103,7 +114,7 @@ const ShinyDetails = ({
         ? [ivHp, ivAttack, ivDefense, ivSpAttack, ivSpDefense, ivSpeed].join(' / ')
         : null,
     },
-  ].filter((detail) => detail.value);
+  ].filter((detail) => hasDisplayValue(detail.value));
 
   return (
     <AnimatePresence>

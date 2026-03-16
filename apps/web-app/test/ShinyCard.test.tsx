@@ -14,6 +14,8 @@ describe('ShinyCard', () => {
         isSecret={true}
         isAlpha={false}
         encounterType=""
+        tier="Tier 7"
+        pointValue={1}
       />
     );
 
@@ -35,6 +37,8 @@ describe('ShinyCard', () => {
         isSecret={false}
         isAlpha={false}
         encounterType=""
+        tier="Tier 7"
+        pointValue={1}
       />
     );
 
@@ -53,6 +57,8 @@ describe('ShinyCard', () => {
         isSecret={false}
         isAlpha={false}
         encounterType="honey_tree"
+        tier="Tier 7"
+        pointValue={1}
         catchDate="2026-01-15"
         totalEncounters={20374}
         speciesEncounters={3332}
@@ -75,6 +81,8 @@ describe('ShinyCard', () => {
     expect(within(dialog).getByAltText(/Shiny Pikachu/i)).toBeInTheDocument();
     expect(within(dialog).getByAltText(/honey_tree encounter/i)).toBeInTheDocument();
     expect(screen.getByText('Trainer: Trainer')).toBeInTheDocument();
+    expect(screen.getByText('Tier 7')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('2026-01-15')).toBeInTheDocument();
     expect(screen.getByText('20,374')).toBeInTheDocument();
     expect(screen.getByText('3,332')).toBeInTheDocument();

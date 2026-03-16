@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ShinyShowcaseResults from './ShinyShowcaseResults';
 import { Pokedex } from 'pokeapi-js-wrapper';
-import { calculateShinyPoints } from '@team-soju/utils';
+import { calculateShinyPoints, getPokemonTier } from '@team-soju/utils';
 const P = new Pokedex();
 
 export interface ShinyPokemon {
@@ -12,6 +12,7 @@ export interface ShinyPokemon {
   isSecret: boolean;
   isAlpha: boolean;
   encounterType: string;
+  tier: string;
   pointValue: number;
   catchDate: string | null;
   totalEncounters: number | null;
@@ -172,6 +173,7 @@ const transformAPIDataToShowcase = async (
           const isSecret = shiny.is_secret;
           const isAlpha = shiny.is_alpha;
           const encounterType = shiny.encounter_type || '';
+          const tier = getPokemonTier(shiny.pokemon_name);
           const pointValue = isFailed
             ? 0
             : await calculateShinyPoints(shiny.id, apiBaseUrl);
@@ -188,6 +190,7 @@ const transformAPIDataToShowcase = async (
             isSecret,
             isAlpha,
             encounterType,
+            tier,
             pointValue,
             catchDate: shiny.catch_date ?? null,
             totalEncounters: shiny.total_encounters ?? null,

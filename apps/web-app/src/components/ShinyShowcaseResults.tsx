@@ -15,6 +15,8 @@ export interface ShinyPokemon {
   isSecret: boolean;
   isAlpha: boolean;
   encounterType: string;
+  tier: string;
+  pointValue: number;
   catchDate: string | null;
   totalEncounters: number | null;
   speciesEncounters: number | null;
@@ -94,6 +96,8 @@ const ShinyShowcaseResults = ({
                     isSecret={shiny.isSecret}
                     isAlpha={shiny.isAlpha}
                     encounterType={shiny.encounterType}
+                    tier={shiny.tier}
+                    pointValue={shiny.pointValue}
                     catchDate={shiny.catchDate}
                     totalEncounters={shiny.totalEncounters}
                     speciesEncounters={shiny.speciesEncounters}
