@@ -15,6 +15,16 @@ export interface ShinyPokemon {
   isSecret: boolean;
   isAlpha: boolean;
   encounterType: string;
+  catchDate: string | null;
+  totalEncounters: number | null;
+  speciesEncounters: number | null;
+  nature: string | null;
+  ivHp: number | null;
+  ivAttack: number | null;
+  ivDefense: number | null;
+  ivSpAttack: number | null;
+  ivSpDefense: number | null;
+  ivSpeed: number | null;
 }
 
 interface Trainer {
@@ -84,6 +94,16 @@ const ShinyShowcaseResults = ({
                     isSecret={shiny.isSecret}
                     isAlpha={shiny.isAlpha}
                     encounterType={shiny.encounterType}
+                    catchDate={shiny.catchDate}
+                    totalEncounters={shiny.totalEncounters}
+                    speciesEncounters={shiny.speciesEncounters}
+                    nature={shiny.nature}
+                    ivHp={shiny.ivHp}
+                    ivAttack={shiny.ivAttack}
+                    ivDefense={shiny.ivDefense}
+                    ivSpAttack={shiny.ivSpAttack}
+                    ivSpDefense={shiny.ivSpDefense}
+                    ivSpeed={shiny.ivSpeed}
                   />
                 ))}
               </div>

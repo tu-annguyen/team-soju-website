@@ -13,6 +13,16 @@ export interface ShinyPokemon {
   isAlpha: boolean;
   encounterType: string;
   pointValue: number;
+  catchDate: string | null;
+  totalEncounters: number | null;
+  speciesEncounters: number | null;
+  nature: string | null;
+  ivHp: number | null;
+  ivAttack: number | null;
+  ivDefense: number | null;
+  ivSpAttack: number | null;
+  ivSpDefense: number | null;
+  ivSpeed: number | null;
 }
 
 interface Trainer {
@@ -34,6 +44,16 @@ interface ShinyFromAPI {
   is_secret: boolean;
   is_alpha: boolean;
   notes: string | null;
+  catch_date: string | null;
+  total_encounters: number | null;
+  species_encounters: number | null;
+  nature: string | null;
+  iv_hp: number | null;
+  iv_attack: number | null;
+  iv_defense: number | null;
+  iv_sp_attack: number | null;
+  iv_sp_defense: number | null;
+  iv_speed: number | null;
 }
 
 type BooleanFilter = 'any' | 'true' | 'false';
@@ -169,6 +189,16 @@ const transformAPIDataToShowcase = async (
             isAlpha,
             encounterType,
             pointValue,
+            catchDate: shiny.catch_date ?? null,
+            totalEncounters: shiny.total_encounters ?? null,
+            speciesEncounters: shiny.species_encounters ?? null,
+            nature: shiny.nature ?? null,
+            ivHp: shiny.iv_hp ?? null,
+            ivAttack: shiny.iv_attack ?? null,
+            ivDefense: shiny.iv_defense ?? null,
+            ivSpAttack: shiny.iv_sp_attack ?? null,
+            ivSpDefense: shiny.iv_sp_defense ?? null,
+            ivSpeed: shiny.iv_speed ?? null,
           };
         })
       );
