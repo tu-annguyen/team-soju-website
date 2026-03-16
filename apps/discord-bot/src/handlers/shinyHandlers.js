@@ -80,7 +80,7 @@ function buildIvString(shiny) {
 }
 
 function formatShinySummary(shiny) {
-  const pieces = [capitalize(shiny.pokemon_name || shiny.pokemon)];
+  const pieces = [shiny.trainer_name];
 
   if (shiny.catch_date) {
     pieces.push(shiny.catch_date);
@@ -108,7 +108,7 @@ function buildShiniesEmbed(shinies, page, pageSize, title) {
 
   const description = pageItems.map((shiny, idx) => {
     const number = startIndex + idx + 1;
-    return `${number}. **${capitalize(shiny.pokemon_name || shiny.pokemon)}** by ${shiny.trainer_name} - ${formatShinySummary(shiny)}`;
+    return `${number}. **${capitalize(shiny.pokemon_name || shiny.pokemon)}** - ${formatShinySummary(shiny)}`;
   }).join('\n');
 
   return new EmbedBuilder()
