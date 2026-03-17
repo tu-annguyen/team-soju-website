@@ -7,6 +7,8 @@
     "start": "node src/devServer.js",
     "dev": "node --watch src/devServer.js",
     "register": "node -e \"require('./src/worker').registerCommandsIfNeeded({ ...process.env, REGISTER_COMMANDS_ON_START: 'true' })\"",
+    "deploy:cf": "npx wrangler deploy --config wrangler.jsonc",
+    "deploy:cf:preview": "npx wrangler versions upload --config wrangler.jsonc",
     "test": "jest --runInBand --coverage"
   },
   "keywords": [
