@@ -14,6 +14,17 @@ const bingoData: BingoSquare[] = bingo["squares"].map((square: any) => ({
 }));
 const teamBuddha = bingo["Team Buddha"];
 const teamAisu = bingo["Team Aisu"];
+const contentVideos = [
+  {
+    id: 'z5TYBg62SG0',
+    title: 'SOJU Bingo 2025 Draft',
+  },
+  {
+    id: '4EQ8mvhWSQ4',
+    title: 'SOJU Bingo 2025 Recap',
+  },
+];
+
 const Bingo = () => {
   const buddhaTilesCompleted = bingoData.reduce(
     (count, square) =>
@@ -42,6 +53,25 @@ const Bingo = () => {
               forum post
             </a>. 
           </p>
+        </div>
+        <div className="mb-12">
+          <h3 className="text-center text-2xl font-bold mb-6 text-gray-900 dark:text-white">Content</h3>
+          <div className="grid gap-6 md:grid-cols-2">
+            {contentVideos.map((video) => (
+              <div key={video.id} className="overflow-hidden rounded-xl bg-black shadow-lg">
+                <div className="aspect-video">
+                  <iframe
+                    className="h-full w-full"
+                    src={`https://www.youtube.com/embed/${video.id}`}
+                    title={video.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         <h3 className="text-center text-2xl font-bold mb-4 text-gray-900 dark:text-white">Bingo Board</h3>
         <div className="grid grid-cols-5 gap-1 max-w-3xl mx-auto mb-12">

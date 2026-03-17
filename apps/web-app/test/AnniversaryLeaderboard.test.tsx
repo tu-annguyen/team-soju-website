@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import AnniversaryLeaderboard from '../src/components/AnniversaryLeaderboard';
+import AnniversaryLeaderboard from '../src/components/Leaderboard';
 
 describe('AnniversaryLeaderboard', () => {
   it('renders leaderboard table with at least one team row', () => {

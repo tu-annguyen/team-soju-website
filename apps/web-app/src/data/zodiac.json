@@ -1,0 +1,117 @@
+{
+    "teams": [
+        {
+            "name": "Virizion's Vanguard",
+            "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
+            "score": 0
+        },
+        {
+            "name": "Cobalion's Commanders",
+            "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
+            "score": 0
+        },
+        {
+            "name": "Terrakion's Titans",
+            "logo": "/images/2025/anniversary/reef-squad.png",
+            "score": 0
+        }
+    ],
+    "eventShinies": [
+        {
+            "icon": "/images/2025/anniversary/shiny1.png",
+            "name": "Shiny Magikarp",
+            "OT": "Megu - OnlyHeffs",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny2.png",
+            "name": "Shiny Lunatone",
+            "OT": "belley - Cub Skouts",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny3.png",
+            "name": "Shiny Cottonee",
+            "OT": "Zofina - Reef Squad",
+            "shinyScore": 3
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny4.png",
+            "name": "Shiny Ditto",
+            "OT": "Swifty - Reef Squad",
+            "shinyScore": 2.5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny5.png",
+            "name": "Shiny Ralts",
+            "OT": "Misc - OnlyHeffs",
+            "shinyScore": 5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny6.png",
+            "name": "Shiny Cryogonal",
+            "OT": "YangXiaoLong - OnlyHeffs",
+            "shinyScore": 5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny7.png",
+            "name": "Shiny Bonsly",
+            "OT": "Misc - OnlyHeffs",
+            "shinyScore": 12.5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny8.png",
+            "name": "Shiny Cubchoo",
+            "OT": "belley - Cub Skouts",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny9.png",
+            "name": "Shiny Bibarel",
+            "OT": "StrawberryPeel - TTT",
+            "shinyScore": 2
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny10.png",
+            "name": "Shiny Sunkern",
+            "OT": "belley - Cub Skouts",
+            "shinyScore": 3
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny11.png",
+            "name": "Shiny Lanturn",
+            "OT": "YangXiaoLong - OnlyHeffs",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny12.png",
+            "name": "Shiny Absol",
+            "OT": "spook - TTT",
+            "shinyScore": 12.5
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny13.png",
+            "name": "Shiny Magikarp",
+            "OT": "MumenRider - Reef Squad",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny14.png",
+            "name": "Shiny Venipede",
+            "OT": "TXMPXp - TTT",
+            "shinyScore": 4
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny15.png",
+            "name": "Shiny Slowpoke",
+            "OT": "ReefBarrierGreat - Reef Squad",
+            "shinyScore": 1
+        },
+        {
+            "icon": "/images/2025/anniversary/shiny16.png",
+            "name": "Shiny Cryogonal",
+            "OT": "Electra - Cub Skouts",
+            "shinyScore": 6
+        }
+    ]
+}
