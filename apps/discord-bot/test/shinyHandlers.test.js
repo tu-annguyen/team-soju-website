@@ -10,11 +10,8 @@ jest.mock('@team-soju/utils', () => ({
     const normalized = String(value || '').trim();
     return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
   }),
-  getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
-}));
-
-jest.mock('../src/pokedex', () => ({
   getPokemonNationalNumber: jest.fn().mockResolvedValue(1),
+  getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
 }));
 
 const fetchClient = require('../src/fetchClient');

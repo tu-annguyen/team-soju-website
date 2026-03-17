@@ -15,10 +15,9 @@ const {
   MessageFlags,
 } = require('../discord/api');
 const fetchClient = require('../fetchClient');
-const { getPokemonNationalNumber } = require('../pokedex');
 const { ENCOUNTER_TYPE_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { capitalize, getSpriteUrl } = require('@team-soju/utils');
+const { capitalize, getPokemonNationalNumber, getSpriteUrl } = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;

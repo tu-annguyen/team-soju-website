@@ -3,7 +3,7 @@
 
 import tiers from './pokemon-tiers.json' with { type: 'json' };
 
-export { getSpriteUrl, getNationalNumber } from './pokeapi.mjs';
+export { getSpriteUrl, getNationalNumber, getPokemonNationalNumber } from './pokeapi.mjs';
 
 const TIER_POINTS = {
   'Tier 0': 30,

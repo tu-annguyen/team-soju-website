@@ -1,8 +1,8 @@
 const express = require('express');
 const Joi = require('joi');
+const { getPokemonNationalNumber } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
-const { getPokemonNationalNumber } = require('../utils/pokedex');
 const router = express.Router();
 const { authenticateBot } = require('../middleware/auth');
 
