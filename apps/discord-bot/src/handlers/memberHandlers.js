@@ -2,8 +2,8 @@
  * Member command handlers
  */
 
-const { EmbedBuilder } = require('discord.js');
-const axios = require('axios');
+const { EmbedBuilder } = require('../discord/api');
+const fetchClient = require('../fetchClient');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;
@@ -16,7 +16,7 @@ async function handleAddMember(interaction) {
   const rank = interaction.options.getString('rank') || 'Trainer';
 
   try {
-    const response = await axios.post(`${apiBaseUrl}/members`, {
+    const response = await fetchClient.post(`${apiBaseUrl}/members`, {
       ign,
       discord_id: discordUser?.id,
       rank
@@ -53,7 +53,7 @@ async function handleEditMember(interaction) {
   const rank = interaction.options.getString('rank');
 
   try {
-    const memberResponse = await axios.get(`${apiBaseUrl}/members/ign/${ign}`, {
+    const memberResponse = await fetchClient.get(`${apiBaseUrl}/members/ign/${ign}`, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const member = memberResponse.data.data;
@@ -68,7 +68,7 @@ async function handleEditMember(interaction) {
       return;
     }
 
-    const updateResponse = await axios.put(`${apiBaseUrl}/members/${member.id}`, updates, {
+    const updateResponse = await fetchClient.put(`${apiBaseUrl}/members/${member.id}`, updates, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const updatedMember = updateResponse.data.data;
@@ -95,12 +95,12 @@ async function handleDeleteMember(interaction) {
   const ign = interaction.options.getString('ign');
 
   try {
-    const memberResponse = await axios.get(`${apiBaseUrl}/members/ign/${ign}`, {
+    const memberResponse = await fetchClient.get(`${apiBaseUrl}/members/ign/${ign}`, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const member = memberResponse.data.data;
 
-    await axios.delete(`${apiBaseUrl}/members/${member.id}`, {
+    await fetchClient.delete(`${apiBaseUrl}/members/${member.id}`, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
 
@@ -122,12 +122,12 @@ async function handleReactivateMember(interaction) {
   const ign = interaction.options.getString('ign');
 
   try {
-    const memberResponse = await axios.get(`${apiBaseUrl}/members/ign/inactive/${ign}`, {
+    const memberResponse = await fetchClient.get(`${apiBaseUrl}/members/ign/inactive/${ign}`, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const member = memberResponse.data.data;
 
-    await axios.put(`${apiBaseUrl}/members/reactivate/${member.id}`, {}, {
+    await fetchClient.put(`${apiBaseUrl}/members/reactivate/${member.id}`, {}, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
 
@@ -155,7 +155,7 @@ async function handleGetMember(interaction) {
   const ign = interaction.options.getString('ign');
 
   try {
-    const response = await axios.get(`${apiBaseUrl}/members/ign/${ign}`, {
+    const response = await fetchClient.get(`${apiBaseUrl}/members/ign/${ign}`, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const member = response.data.data;

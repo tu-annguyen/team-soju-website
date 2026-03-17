@@ -2,10 +2,11 @@
   "name": "@team-soju/discord-bot",
   "version": "1.0.0",
   "description": "Discord bot for Team Soju - manages team members and shiny Pokemon",
-  "main": "src/app.js",
+  "main": "src/worker.js",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "node --watch src/app.js",
+    "start": "node src/devServer.js",
+    "dev": "node --watch src/devServer.js",
+    "register": "node -e \"require('./src/worker').registerCommandsIfNeeded({ ...process.env, REGISTER_COMMANDS_ON_START: 'true' })\"",
     "test": "jest --runInBand --coverage"
   },
   "keywords": [
