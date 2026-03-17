@@ -2,17 +2,17 @@
     "teams": [
         {
             "name": "Virizion's Vanguard",
-            "logo": "/images/2025/anniversary/onlyheffs_light-mode.png",
+            "logo": "https://archives.bulbagarden.net/media/upload/thumb/b/bf/0640Virizion.png/1024px-0640Virizion.png",
             "score": 0
         },
         {
             "name": "Cobalion's Commanders",
-            "logo": "/images/2025/anniversary/terrific-team-tunacore.png",
+            "logo": "https://archives.bulbagarden.net/media/upload/thumb/9/9e/0638Cobalion.png/1024px-0638Cobalion.png",
             "score": 0
         },
         {
             "name": "Terrakion's Titans",
-            "logo": "/images/2025/anniversary/reef-squad.png",
+            "logo": "https://archives.bulbagarden.net/media/upload/thumb/6/6b/0639Terrakion.png/1024px-0639Terrakion.png",
             "score": 0
         }
     ],
