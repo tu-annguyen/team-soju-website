@@ -2,6 +2,7 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "team-soju-discord-bot",
   "main": "src/worker.mjs",
+  "keep_vars": true,
   "compatibility_date": "2026-03-17",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
