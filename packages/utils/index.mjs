@@ -16,17 +16,6 @@ const TIER_POINTS = {
   'Tier 7': 1,
 };
 
-const LEGENDARY_OR_MYTHICAL = new Set([
-  'articuno', 'zapdos', 'moltres', 'mewtwo', 'mew',
-  'raikou', 'entei', 'suicune', 'lugia', 'ho-oh', 'celebi',
-  'regirock', 'regice', 'registeel', 'latias', 'latios', 'kyogre', 'groudon',
-  'rayquaza', 'jirachi', 'deoxys', 'uxie', 'mesprit', 'azelf', 'dialga', 'palkia',
-  'heatran', 'regigigas', 'giratina', 'cresselia', 'phione', 'manaphy', 'darkrai',
-  'shaymin', 'arceus', 'victini', 'cobalion', 'terrakion', 'virizion', 'tornadus',
-  'thundurus', 'reshiram', 'zekrom', 'landorus', 'kyurem', 'keldeo', 'meloetta',
-  'genesect'
-]);
-
 function normalizePokemonName(pokemon) {
   return String(pokemon || '').trim().toLowerCase();
 }
@@ -38,6 +27,9 @@ export function capitalize(value) {
 
 export function getPokemonTier(pokemon) {
   const normalized = normalizePokemonName(pokemon);
+  if (pokemon === 'jellicent-male' || pokemon === 'basculin-red-striped' || pokemon === 'wormadam-trash') {
+    console.log('Determining tier for:', normalized);
+  }
 
   for (const [tier, pokemonList] of Object.entries(tiers)) {
     if (pokemonList.includes(normalized)) {
@@ -71,7 +63,7 @@ export async function calculateShinyPoints(shinyId, apiBaseUrl) {
     basePoints = Math.max(basePoints, 50);
   }
 
-  if (LEGENDARY_OR_MYTHICAL.has(pokemonName)) {
+  if (tier == "Legendary/Mythical") {
     basePoints = Math.max(basePoints, 100);
   }
 
