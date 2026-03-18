@@ -9,6 +9,8 @@
     "register": "node -e \"require('./src/worker').registerCommandsIfNeeded({ ...process.env, REGISTER_COMMANDS_ON_START: 'true' })\"",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc",
     "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",
+    "deploy:cf:staging": "wrangler deploy --config wrangler.jsonc --env staging",
+    "deploy:cf:staging:preview": "wrangler versions upload --config wrangler.jsonc --env staging",
     "test": "jest --runInBand --coverage"
   },
   "keywords": [

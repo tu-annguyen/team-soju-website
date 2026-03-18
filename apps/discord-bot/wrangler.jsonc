@@ -19,5 +19,10 @@
       "persist": true,
       "head_sampling_rate": 1
     }
+  },
+  "env": {
+    "staging": {
+      "name": "team-soju-discord-bot-staging",
+    }
   }
 }
