@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ShinyShowcaseResults from './ShinyShowcaseResults';
-import { Pokedex } from 'pokeapi-js-wrapper';
 import { calculateShinyPoints, getPokemonTier } from '@team-soju/utils';
 import { capitalize } from '../utils/pokemonName';
-const P = new Pokedex();
+import { getShinySpriteUrl } from '../utils/pokemonSprite';
 
 export interface ShinyPokemon {
   id: string;
@@ -178,15 +177,11 @@ const transformAPIDataToShowcase = async (
           const pointValue = isFailed
             ? 0
             : await calculateShinyPoints(shiny.id, apiBaseUrl);
-          const pokemonData = await P.getPokemonByName(shiny.pokemon_name.toLowerCase()).catch(err => {
-            console.error('Error fetching Pokémon data:', err);
-          });
-          const baseUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : '';
 
           return {
             id: shiny.id,
             name: capitalize(shiny.pokemon_name),
-            imageUrl: baseUrl || '',
+            imageUrl: getShinySpriteUrl(shiny.pokemon_name),
             isFailed,
             isSecret,
             isAlpha,

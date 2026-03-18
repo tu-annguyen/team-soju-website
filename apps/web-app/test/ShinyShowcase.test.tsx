@@ -4,39 +4,47 @@ import ShinyShowcase from '../src/components/ShinyShowcase';
 import { calculateShinyPoints } from '@team-soju/utils';
 
 jest.mock('framer-motion', () => ({
+  AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   motion: {
     div: ({
       children,
       whileHover: _whileHover,
+      initial: _initial,
+      animate: _animate,
+      exit: _exit,
       transition: _transition,
       ...props
     }: React.HTMLAttributes<HTMLDivElement> & {
       whileHover?: unknown;
+      initial?: unknown;
+      animate?: unknown;
+      exit?: unknown;
       transition?: unknown;
     }) => <div {...props}>{children}</div>,
+    button: ({
+      children,
+      whileHover: _whileHover,
+      initial: _initial,
+      animate: _animate,
+      exit: _exit,
+      transition: _transition,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+      whileHover?: unknown;
+      initial?: unknown;
+      animate?: unknown;
+      exit?: unknown;
+      transition?: unknown;
+    }) => <button {...props}>{children}</button>,
   },
-}));
-
-jest.mock('pokeapi-js-wrapper', () => ({
-  Pokedex: jest.fn().mockImplementation(() => ({
-    getPokemonByName: jest.fn().mockResolvedValue({
-      sprites: {
-        versions: {
-          'generation-v': {
-            'black-white': {
-              animated: {
-                front_shiny: '/sprite.gif',
-              },
-            },
-          },
-        },
-      },
-    }),
-  })),
 }));
 
 jest.mock('@team-soju/utils', () => ({
   calculateShinyPoints: jest.fn(),
+  getPokemonTier: jest.fn().mockReturnValue('A'),
+  capitalize: jest.fn((value: string) =>
+    value ? value.charAt(0).toUpperCase() + value.slice(1) : value
+  ),
 }));
 
 const mockFetch = jest.fn();

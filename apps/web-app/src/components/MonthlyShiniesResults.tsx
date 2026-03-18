@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import ShinyCard from './ShinyCard';
-import { Pokedex } from 'pokeapi-js-wrapper';
 import { capitalize } from '../utils/pokemonName';
-
-const P = new Pokedex();
+import { getShinySpriteUrl } from '../utils/pokemonSprite';
 
 interface MonthlyShiniesResultsProps {
   date: Date;
   searchTerm: string;
+  apiBaseUrl?: string;
 }
 
 interface ShinyFromAPI {
@@ -49,22 +48,10 @@ const transformAPIDataToMonthly = async (
         shiny.notes && shiny.notes.toLowerCase().includes('failed')
       );
 
-      const pokemonData = await P.getPokemonByName(
-        shiny.pokemon_name.toLowerCase()
-      ).catch((err) => {
-        console.error('Error fetching Pokémon data:', err);
-        return null;
-      });
-
-      const imageUrl = pokemonData
-        ? pokemonData.sprites.versions['generation-v']['black-white'].animated
-            .front_shiny || ''
-        : '';
-
       return {
         name: capitalize(shiny.pokemon_name),
         trainerName: shiny.trainer_name,
-        imageUrl,
+        imageUrl: getShinySpriteUrl(shiny.pokemon_name),
         isFailed,
         isSecret: shiny.is_secret,
         isAlpha: shiny.is_alpha,
@@ -96,6 +83,7 @@ const SummaryChip = ({
 const MonthlyShiniesResults = ({
   date,
   searchTerm,
+  apiBaseUrl = 'http://localhost:3001/api',
 }: MonthlyShiniesResultsProps) => {
   const [shinyData, setShinyData] = useState<MonthlyShiny[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,9 +106,6 @@ const MonthlyShiniesResults = ({
 
         const catchDateAfter = formatLocalDate(firstDayOfMonth);
         const catchDateBefore = formatLocalDate(lastDayOfMonth);
-
-        const apiBaseUrl =
-          import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
 
         const response = await fetch(
           `${apiBaseUrl}/shinies?sort_order=desc&catch_date_after=${catchDateAfter}&catch_date_before=${catchDateBefore}&limit=10000`
@@ -156,7 +141,7 @@ const MonthlyShiniesResults = ({
     return () => {
       isCancelled = true;
     };
-  }, [date]);
+  }, [apiBaseUrl, date]);
 
   const filteredShinies = useMemo(() => {
     const term = searchTerm.toLowerCase();

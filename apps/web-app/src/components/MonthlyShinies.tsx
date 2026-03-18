@@ -1,120 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import MonthlyShiniesResults from './MonthlyShiniesResults';
-import { Pokedex } from 'pokeapi-js-wrapper';
-import { capitalize } from '../utils/pokemonName';
-const P = new Pokedex();
-
-interface ShinyFromAPI {
-  pokemon_name: string;
-  trainer_name: string;
-  encounter_type: string | null;
-  is_secret: boolean;
-  is_alpha: boolean;
-  notes: string | null;
-  total_encounters?: number | null;
-  catch_date?: string | null;
-}
-
-interface MonthlyShiny {
-  name: string;
-  trainerName: string;
-  imageUrl: string;
-  isFailed: boolean;
-  isSecret: boolean;
-  isAlpha: boolean;
-  encounterType: string;
-  totalEncounters: number | null;
-  catchDate: string | null;
-}
 
 interface MonthlyShiniesProps {
   apiBaseUrl?: string;
 }
 
-const transformAPIDataToMonthly = async (shinies: ShinyFromAPI[]): Promise<MonthlyShiny[]> => {
-  const transformed = await Promise.all(
-    shinies.map(async (shiny) => {
-      const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
-      const pokemonData = await P.getPokemonByName(shiny.pokemon_name.toLowerCase()).catch(err => {
-        console.error('Error fetching Pokémon data:', err);
-      });
-      const baseUrl = pokemonData ? pokemonData.sprites.versions["generation-v"]["black-white"].animated.front_shiny : '';
-
-      return {
-        name: capitalize(shiny.pokemon_name),
-        trainerName: shiny.trainer_name,
-        imageUrl: baseUrl || '',
-        isFailed,
-        isSecret: shiny.is_secret,
-        isAlpha: shiny.is_alpha,
-        encounterType: shiny.encounter_type || '',
-        totalEncounters: shiny.total_encounters ?? null,
-        catchDate: shiny.catch_date ?? null,
-      };
-    })
-  );
-
-  return transformed;
-};
-  
-const formatLocalDate = (d: Date) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
 const MonthlyShinies = ({
   apiBaseUrl = 'http://localhost:3001/api',
 }: MonthlyShiniesProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [shinyData, setShinyData] = useState<MonthlyShiny[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [date, setDate] = useState<Date>(new Date());
   const selectedMonth = new Date(date.getFullYear(), date.getMonth(), 1);
   const today = new Date();
   const currentRealMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
   const isNextDisabled = nextMonth > currentRealMonth;
-
-  useEffect(() => {
-    const fetchShinies = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-        const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-
-        const catchDateAfter = formatLocalDate(firstDayOfMonth);
-        const catchDateBefore = formatLocalDate(lastDayOfMonth);
-
-        console.log(`Fetching shinies caught between ${catchDateAfter} and ${catchDateBefore}`);
-
-        const response = await fetch(
-          `${apiBaseUrl}/shinies?sort_order=asc&catch_date_after=${catchDateAfter}&catch_date_before=${catchDateBefore}&limit=10000`
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch shinies: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        const shinies = data.data || [];
-        const transformedData = await transformAPIDataToMonthly(shinies);
-        setShinyData(transformedData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load shinies');
-        console.error('Error fetching shinies:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchShinies();
-  }, [date]);
 
   const handleLastMonth = () => {
     setDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -176,7 +76,11 @@ const MonthlyShinies = ({
         </div>
 
         <div className="min-h-[500px]">
-          <MonthlyShiniesResults date={date} searchTerm={searchTerm} />
+          <MonthlyShiniesResults
+            date={date}
+            searchTerm={searchTerm}
+            apiBaseUrl={apiBaseUrl}
+          />
         </div>
 
         <div className="mt-12 text-center">
