@@ -1,6 +1,8 @@
 const express = require('express');
 const Joi = require('joi');
+const { getPokemonNationalNumber } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
+const TeamMember = require('../models/TeamMember');
 const router = express.Router();
 const { authenticateBot } = require('../middleware/auth');
 
@@ -52,6 +54,90 @@ const updateShinySchema = Joi.object({
   screenshot_url: Joi.string().uri().optional(),
   notes: Joi.string().optional()
 });
+
+const screenshotSchema = Joi.object({
+  screenshot_url: Joi.string().uri().required(),
+  date_is_mdy: Joi.boolean().default(false),
+  encounter_type: Joi.string().valid(
+    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'headbutt', 'gift'
+  ).required(),
+  is_secret: Joi.boolean().default(false),
+  is_alpha: Joi.boolean().default(false),
+  discord_user_id: Joi.string().required(),
+  member_roles: Joi.array().items(Joi.string()).default([]),
+});
+
+function parseDataFromOcr(text, isMDY = false) {
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const date = (() => {
+    const match = /(\d{1,2})\/(\d{1,2})\/(\d{1,2})/.exec(text);
+    if (!match) return null;
+    let day = parseInt(match[1], 10);
+    let monthIndex = parseInt(match[2], 10) - 1;
+    if (isMDY) {
+      [monthIndex, day] = [parseInt(match[1], 10) - 1, parseInt(match[2], 10)];
+    }
+    const year = 2000 + parseInt(match[3], 10);
+    return new Date(year, monthIndex, day).toISOString().split('T')[0];
+  })();
+
+  const name = (() => {
+    const match = /Shiny\s+([A-Za-z]+)/i.exec(text);
+    if (match?.[1]) return match[1].trim();
+    return lines[0] || null;
+  })();
+
+  const trainer = (() => {
+    const match = /caught by\s+([A-Za-z0-9_]+)/i.exec(text);
+    return match?.[1]?.trim() || null;
+  })();
+
+  const ivMatch = /((?:[0-9]|[12][0-9]|3[01])\/){5}(?:[0-9]|[12][0-9]|3[01])/.exec(text);
+  const ivs = ivMatch ? ivMatch[0].split('/').map(value => parseInt(value, 10)) : [];
+
+  const nature = (() => {
+    const match = /N?atu?r?e?:\s+([A-Za-z]+)/i.exec(text);
+    return match?.[1]?.trim() || null;
+  })();
+
+  const totalEncounters = (() => {
+    const match = /Total Encounters:\s+(\d+)/i.exec(text);
+    return match?.[1] ? parseInt(match[1], 10) : null;
+  })();
+
+  const speciesEncounters = (() => {
+    if (!name) return null;
+    const match = new RegExp(`${name} Encounters:\\s+(\\d+)`, 'i').exec(text);
+    return match?.[1] ? parseInt(match[1], 10) : null;
+  })();
+
+  return {
+    date,
+    name,
+    trainer,
+    hp: ivs[0] ?? null,
+    atk: ivs[1] ?? null,
+    def: ivs[2] ?? null,
+    spa: ivs[3] ?? null,
+    spd: ivs[4] ?? null,
+    spe: ivs[5] ?? null,
+    nature,
+    totalEncounters,
+    speciesEncounters,
+  };
+}
+
+function validateParsedData(data) {
+  if (!data.name) {
+    return { isValid: false, error: 'Pokemon name is missing or invalid.' };
+  }
+
+  if (!data.date || !/^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
+    return { isValid: false, error: 'Date is missing or invalid.' };
+  }
+
+  return { isValid: true, error: null };
+}
 
 // GET /api/shinies - Get all team shinies with optional filters
 router.get('/', async (req, res) => {
@@ -117,6 +203,124 @@ router.get('/leaderboard', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch leaderboard'
+    });
+  }
+});
+
+router.post('/from-screenshot', authenticateBot, async (req, res) => {
+  try {
+    const { error, value } = screenshotSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: error.details,
+      });
+    }
+
+    const sharp = require('sharp');
+    const Tesseract = require('tesseract.js');
+    const imageResponse = await fetch(value.screenshot_url);
+    if (!imageResponse.ok) {
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to download screenshot.',
+      });
+    }
+
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const processedBuffer = await sharp(imageBuffer)
+      .greyscale()
+      .normalise()
+      .threshold(128)
+      .sharpen({ sigma: 1 })
+      .toBuffer();
+
+    const ocrResult = await Tesseract.recognize(processedBuffer, 'eng', {
+      tessedit_pageseg_mode: '6',
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/°: -_—',
+    });
+
+    const ocrText = ocrResult?.data?.text || '';
+    const parsed = parseDataFromOcr(ocrText, value.date_is_mdy);
+    const validation = validateParsedData(parsed);
+
+    if (!validation.isValid) {
+      return res.status(422).json({
+        success: false,
+        message: `OCR validation failed: ${validation.error}`,
+        details: { ocr_text: ocrText },
+      });
+    }
+
+    const member = await TeamMember.findByDiscordId(value.discord_user_id);
+    const hasSojuRole = value.member_roles.includes('Soju');
+    const hasStaffRole = value.member_roles.includes('Elite 4') || value.member_roles.includes('Champion');
+
+    if (hasSojuRole && !hasStaffRole) {
+      if (!member) {
+        return res.status(403).json({
+          success: false,
+          message: 'Your Discord account is not registered in the member database.',
+        });
+      }
+
+      if (member.ign.toLowerCase() !== String(parsed.trainer || '').toLowerCase()) {
+        return res.status(403).json({
+          success: false,
+          message: `You can only manage shinies for your registered IGN: ${member.ign}`,
+        });
+      }
+    }
+
+    const trainer = await TeamMember.findByIgn(parsed.trainer);
+    if (!trainer) {
+      return res.status(404).json({
+        success: false,
+        message: `Could not find trainer with IGN "${parsed.trainer}"`,
+        details: { ocr_text: ocrText },
+      });
+    }
+
+    const nationalNumber = await getPokemonNationalNumber(parsed.name);
+    if (!nationalNumber) {
+      return res.status(404).json({
+        success: false,
+        message: `Could not find national number for Pokemon "${parsed.name}"`,
+        details: { ocr_text: ocrText },
+      });
+    }
+
+    const shiny = await TeamShiny.create({
+      national_number: nationalNumber,
+      pokemon: parsed.name,
+      original_trainer: trainer.id,
+      catch_date: parsed.date,
+      encounter_type: value.encounter_type,
+      is_secret: value.is_secret,
+      is_alpha: value.is_alpha,
+      screenshot_url: value.screenshot_url,
+      total_encounters: Number.isInteger(parsed.totalEncounters) ? parsed.totalEncounters : 0,
+      species_encounters: Number.isInteger(parsed.speciesEncounters) ? parsed.speciesEncounters : 0,
+      ...(parsed.nature ? { nature: parsed.nature } : {}),
+      ...(Number.isInteger(parsed.hp) ? { iv_hp: parsed.hp } : {}),
+      ...(Number.isInteger(parsed.atk) ? { iv_attack: parsed.atk } : {}),
+      ...(Number.isInteger(parsed.def) ? { iv_defense: parsed.def } : {}),
+      ...(Number.isInteger(parsed.spa) ? { iv_sp_attack: parsed.spa } : {}),
+      ...(Number.isInteger(parsed.spd) ? { iv_sp_defense: parsed.spd } : {}),
+      ...(Number.isInteger(parsed.spe) ? { iv_speed: parsed.spe } : {}),
+    });
+
+    res.status(201).json({
+      success: true,
+      data: shiny,
+      message: 'Shiny entry created successfully from screenshot',
+    });
+  } catch (routeError) {
+    console.error('Error creating shiny from screenshot:', routeError);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create shiny entry from screenshot',
     });
   }
 });

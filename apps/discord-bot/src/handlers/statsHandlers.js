@@ -2,8 +2,8 @@
  * Stats command handlers
  */
 
-const { EmbedBuilder } = require('discord.js');
-const axios = require('axios');
+const { EmbedBuilder } = require('../discord/api');
+const fetchClient = require('../fetchClient');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;
@@ -14,7 +14,7 @@ async function handleLeaderboard(interaction) {
   const limit = interaction.options.getInteger('limit') || 10;
 
   try {
-    const response = await axios.get(`${apiBaseUrl}/shinies/leaderboard?limit=${limit}`, {
+    const response = await fetchClient.get(`${apiBaseUrl}/shinies/leaderboard?limit=${limit}`, {
       headers: { Authorization: `Bearer ${botToken}` }
     });
     const leaderboard = response.data.data;
@@ -46,10 +46,10 @@ async function handleStats(interaction) {
 
   try {
     const [statsResponse, membersResponse] = await Promise.all([
-      axios.get(`${apiBaseUrl}/shinies/stats`, {
+      fetchClient.get(`${apiBaseUrl}/shinies/stats`, {
         headers: { Authorization: `Bearer ${botToken}` }
       }),
-      axios.get(`${apiBaseUrl}/members`, {
+      fetchClient.get(`${apiBaseUrl}/members`, {
         headers: { Authorization: `Bearer ${botToken}` }
       })
     ]);

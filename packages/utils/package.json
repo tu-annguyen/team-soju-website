@@ -15,6 +15,7 @@
     }
   },
   "dependencies": {
-    "gifwrap": "^0.10.1"
+    "gifwrap": "^0.10.1",
+    "pokedex-promise-v2": "^4.2.1"
   }
 }

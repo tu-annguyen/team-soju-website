@@ -5,7 +5,7 @@
 const {
   getCommandHandlers,
   getCommandHandler
-} = require('../src/utils');
+} = require('../src/commandRouter');
 
 // Mock the handler modules
 jest.mock('../src/handlers/memberHandlers', () => ({
@@ -139,6 +139,7 @@ describe('Utils', () => {
     it('should export pokeapi helpers', () => {
       const utils = require('@team-soju/utils');
       expect(typeof utils.getNationalNumber).toBe('function');
+      expect(typeof utils.getPokemonNationalNumber).toBe('function');
       expect(typeof utils.getSpriteUrl).toBe('function');
     });
   });

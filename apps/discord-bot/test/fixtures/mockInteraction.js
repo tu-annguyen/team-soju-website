@@ -43,16 +43,29 @@ function createMockInteraction(overrides = {}) {
       createMessageComponentCollector: () => ({ on: jest.fn() })
     }),
     followUp: jest.fn().mockResolvedValue(undefined),
+    update: jest.fn().mockResolvedValue(undefined),
+    showModal: jest.fn().mockResolvedValue(undefined),
     isChatInputCommand: jest.fn().mockReturnValue(true),
+    isMessageComponent: jest.fn().mockReturnValue(false),
+    isModalSubmit: jest.fn().mockReturnValue(false),
     deferred: false,
     replied: false,
+    values: overrides.values || [],
     options: {
       getString: jest.fn((name) => optionValues[name] ?? null),
       getUser: jest.fn((name) => optionValues[name] ?? null),
       getInteger: jest.fn((name) => optionValues[name] ?? null),
       getBoolean: jest.fn((name) => optionValues[name] ?? null),
       getAttachment: jest.fn((name) => optionValues[name] ?? null)
-    }
+    },
+    fields: {
+      getTextInputValue: jest.fn(() => ''),
+    },
+    member: overrides.member || {
+      roles: {
+        cache: [],
+      },
+    },
   };
 
   // Merge non-options properties

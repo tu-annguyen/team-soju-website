@@ -1,3 +1,15 @@
+import PokedexModule from 'pokedex-promise-v2';
+
+const Pokedex = PokedexModule.default || PokedexModule;
+let pokedex;
+
+function getPokedex() {
+  if (!pokedex) {
+    pokedex = new Pokedex();
+  }
+  return pokedex;
+}
+
 /** Fetches the national number for a given Pokémon name
  * @param {string} pokemon - Pokémon name
  * @returns {number|null} National number or null if not found
@@ -14,6 +26,16 @@ export async function getNationalNumber(pokemon) {
     return data.id;
   } catch (err) {
     console.error(`Error fetching data for Pokémon "${pokemon}":`, err.message || err);
+  }
+}
+
+export async function getPokemonNationalNumber(pokemon) {
+  try {
+    const species = await getPokedex().getPokemonSpeciesByName(String(pokemon).trim().toLowerCase());
+    return species?.id ?? null;
+  } catch (err) {
+    console.error(`Error fetching species data for Pokémon "${pokemon}":`, err.message || err);
+    return null;
   }
 }
 

@@ -3,7 +3,7 @@
  * Slash commands for managing team members and shiny Pokemon
  */
 
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('./discord/api');
 
 const RANK_CHOICES = [
   { name: 'Trainer', value: 'Trainer' },

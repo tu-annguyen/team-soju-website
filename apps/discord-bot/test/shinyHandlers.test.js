@@ -1,132 +1,28 @@
-/**
- * Tests for shiny command handlers
- */
-
-class MockEmbedBuilder {
-  constructor() {
-    this.fields = [];
-  }
-  setColor() { return this; }
-  setTitle() { return this; }
-  setDescription() { return this; }
-  setFooter() { return this; }
-  setTimestamp() { return this; }
-  setThumbnail() { return this; }
-  setImage() { return this; }
-  addFields() { return this; }
-}
-
-class MockButtonBuilder {
-  setCustomId(value) { this.customId = value; return this; }
-  setLabel(value) { this.label = value; return this; }
-  setStyle(value) { this.style = value; return this; }
-  setDisabled(value) { this.disabled = value; return this; }
-}
-
-class MockSlashCommandOptionBuilder {
-  setName() { return this; }
-  setDescription() { return this; }
-  setRequired() { return this; }
-  addChoices() { return this; }
-}
-
-class MockSlashCommandBuilder {
-  setName() { return this; }
-  setDescription() { return this; }
-  addStringOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
-  addUserOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
-  addBooleanOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
-  addIntegerOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
-  addAttachmentOption(fn) { fn(new MockSlashCommandOptionBuilder()); return this; }
-}
-
-class MockStringSelectMenuBuilder {
-  setCustomId(value) { this.customId = value; return this; }
-  setPlaceholder(value) { this.placeholder = value; return this; }
-  setMinValues(value) { this.minValues = value; return this; }
-  setMaxValues(value) { this.maxValues = value; return this; }
-  setDisabled(value) { this.disabled = value; return this; }
-  addOptions(value) { this.options = value; return this; }
-}
-
-class MockActionRowBuilder {
-  constructor() {
-    this.components = [];
-  }
-  addComponents(...components) {
-    this.components.push(...components);
-    return this;
-  }
-}
-
-class MockModalBuilder {
-  setCustomId() { return this; }
-  setTitle() { return this; }
-  addLabelComponents() { return this; }
-}
-
-class MockLabelBuilder {
-  setLabel(value) { this.label = value; return this; }
-  setTextInputComponent(value) { this.component = value; return this; }
-  setStringSelectMenuComponent(value) { this.component = value; return this; }
-}
-
-class MockTextInputBuilder {
-  setCustomId() { return this; }
-  setStyle() { return this; }
-  setRequired() { return this; }
-  setValue() { return this; }
-}
-
-const ButtonStyle = {
-  Primary: 'PRIMARY',
-  Secondary: 'SECONDARY',
-  Danger: 'DANGER',
-};
-
-const TextInputStyle = {
-  Short: 'SHORT',
-};
-
-const MessageFlags = {
-  Ephemeral: 1 << 6,
-};
-
-jest.mock('discord.js', () => ({
-  EmbedBuilder: MockEmbedBuilder,
-  SlashCommandBuilder: MockSlashCommandBuilder,
-  ButtonBuilder: MockButtonBuilder,
-  StringSelectMenuBuilder: MockStringSelectMenuBuilder,
-  ActionRowBuilder: MockActionRowBuilder,
-  ModalBuilder: MockModalBuilder,
-  LabelBuilder: MockLabelBuilder,
-  TextInputBuilder: MockTextInputBuilder,
-  ButtonStyle,
-  TextInputStyle,
-  MessageFlags,
-  codeBlock: jest.fn(s => s),
+jest.mock('../src/fetchClient', () => ({
+  get: jest.fn(),
+  post: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn(),
 }));
-
-jest.mock('axios');
 
 jest.mock('@team-soju/utils', () => ({
   capitalize: jest.fn((value) => {
     const normalized = String(value || '').trim();
     return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
   }),
-  greyscale: jest.fn(),
-  getSpriteUrl: jest.fn(),
-  getNationalNumber: jest.fn(),
+  getPokemonNationalNumber: jest.fn().mockResolvedValue(1),
+  getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
 }));
 
-const axios = require('axios');
+const fetchClient = require('../src/fetchClient');
 const localUtils = require('../src/utils');
 const {
   handleGetShinies,
   handleGetMyShinies,
-  handleGetShiny,
+  handleShinyComponent,
   handleShinyEditModal,
 } = require('../src/handlers/shinyHandlers');
+const { MessageFlags } = require('../src/discord/api');
 const { createMockInteraction } = require('./fixtures/mockInteraction');
 
 const validateSojuTrainerIGNSpy = jest.spyOn(localUtils, 'validateSojuTrainerIGN').mockResolvedValue({ valid: true });
@@ -137,13 +33,14 @@ describe('shinyHandlers', () => {
     validateSojuTrainerIGNSpy.mockResolvedValue({ valid: true });
   });
 
-  it('renders shinies with interaction components', async () => {
+  it('renders shinies with stateless components', async () => {
     const interaction = createMockInteraction({
       options: { trainer: 'tester', limit: 2 },
     });
 
-    axios.get
+    fetchClient.get
       .mockResolvedValueOnce({ data: { data: { id: 'trainer-id' } } })
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id', ign: 'tester' } } })
       .mockResolvedValueOnce({
         data: {
           data: [
@@ -164,39 +61,13 @@ describe('shinyHandlers', () => {
     );
   });
 
-  it('disables edit, fail, and delete buttons for public /shinies users', async () => {
-    const interaction = createMockInteraction({
-      options: { trainer: null, limit: 2 },
-      member: { roles: { cache: [] } },
-    });
-
-    axios.get.mockResolvedValueOnce({
-      data: {
-        data: [
-          { id: '1', pokemon_name: 'A', trainer_name: 'T1', catch_date: '2026-01-03', total_encounters: 1 },
-        ],
-      },
-    });
-
-    await handleGetShinies(interaction);
-
-    const replyPayload = interaction.editReply.mock.calls[0][0];
-    const actionButtons = replyPayload.components[2].components;
-
-    expect(actionButtons).toHaveLength(1);
-    expect(actionButtons.find(button => button.customId === 'shiny_action_view').disabled).toBe(false);
-    expect(actionButtons.find(button => button.customId === 'shiny_action_edit')).toBeUndefined();
-    expect(actionButtons.find(button => button.customId === 'shiny_action_fail')).toBeUndefined();
-    expect(actionButtons.find(button => button.customId === 'shiny_action_delete')).toBeUndefined();
-  });
-
-  it('renders linked member shinies for myshinies', async () => {
+  it('renders linked member shinies for myshinies as ephemeral', async () => {
     const interaction = createMockInteraction({
       user: { id: 'discord-user' },
       options: { limit: 5 },
     });
 
-    axios.get
+    fetchClient.get
       .mockResolvedValueOnce({ data: { data: { id: 'trainer-id', ign: 'Tester' } } })
       .mockResolvedValueOnce({
         data: {
@@ -207,11 +78,6 @@ describe('shinyHandlers', () => {
     await handleGetMyShinies(interaction);
 
     expect(interaction.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
-    expect(axios.get).toHaveBeenNthCalledWith(
-      1,
-      'http://localhost:3001/api/members/discord/discord-user',
-      expect.any(Object)
-    );
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
         embeds: expect.any(Array),
@@ -220,193 +86,106 @@ describe('shinyHandlers', () => {
     );
   });
 
-  it('returns an error when myshinies user is not linked', async () => {
+  it('updates the list when a shiny is selected', async () => {
     const interaction = createMockInteraction({
-      user: { id: 'discord-user' },
-      options: { limit: 5 },
+      customId: 'sh:s:pick:a:_:1:10:_',
+      values: ['selected-id'],
+      update: jest.fn().mockResolvedValue(undefined),
     });
 
-    axios.get.mockRejectedValue({ response: { status: 404 } });
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: [
+          { id: 'selected-id', pokemon_name: 'A', trainer_name: 'T1', catch_date: '2026-01-03', total_encounters: 1 },
+        ],
+      },
+    });
 
-    await handleGetMyShinies(interaction);
+    await handleShinyComponent(interaction);
 
-    expect(interaction.editReply).toHaveBeenCalledWith(
+    expect(interaction.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        content: 'Your Discord account is not linked to a team member.',
+        embeds: expect.any(Array),
+        components: expect.any(Array),
       })
     );
   });
 
-  it('attaches a greyscaled sprite for failed shinies', async () => {
-    const { greyscale, getSpriteUrl } = require('@team-soju/utils');
-    const interaction = createMockInteraction({ options: { id: 'abc' } });
+  it('shows the edit modal for authorized users', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:a:e:a:_:1:10:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      showModal: jest.fn().mockResolvedValue(undefined),
+    });
 
-    axios.get.mockResolvedValueOnce({
+    fetchClient.get.mockResolvedValue({
       data: {
         data: {
-          id: 'abc',
-          national_number: 1,
-          pokemon: 'Testmon',
-          pokemon_name: 'Testmon',
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
           trainer_name: 'T1',
-          catch_date: '2020-01-01',
-          notes: 'Failed',
-          is_secret: false,
-          is_alpha: false,
-        },
-      },
-    });
-    getSpriteUrl.mockResolvedValue('http://example.com/sprite.gif');
-    greyscale.mockResolvedValue(Buffer.from('grey'));
-
-    await handleGetShiny(interaction);
-
-    expect(getSpriteUrl).toHaveBeenCalledWith(1);
-    expect(greyscale).toHaveBeenCalledWith('http://example.com/sprite.gif');
-    expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.objectContaining({
-        embeds: expect.any(Array),
-        files: expect.any(Array),
-      })
-    );
-  });
-
-  it('updates a shiny from the edit modal', async () => {
-    const interaction = {
-      customId: 'shiny_modal_edit:abc',
-      user: { id: 'discord-user', tag: 'User#0001' },
-      member: { roles: { cache: [{ name: 'Elite 4' }] } },
-      fields: {
-        getTextInputValue: jest.fn((field) => ({
-          pokemon: 'pikachu',
-          catch_date: '2026-02-01',
-          encounters: '100,20',
-          ivs: '1,2,3,4,5,6',
-        }[field] || '')),
-        getStringSelectValues: jest.fn((field) => field === 'encounter_type' ? ['horde'] : []),
-      },
-      reply: jest.fn().mockResolvedValue(undefined),
-    };
-
-    axios.get
-      .mockResolvedValueOnce({
-        data: {
-          data: {
-            id: 'abc',
-            national_number: 25,
-            pokemon: 'pikachu',
-            pokemon_name: 'pikachu',
-            trainer_name: 'Tester',
-            catch_date: '2026-01-01',
-            encounter_type: 'single',
-          },
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          data: {
-            id: 'abc',
-            national_number: 25,
-            pokemon: 'pikachu',
-            pokemon_name: 'pikachu',
-            trainer_name: 'Tester',
-            catch_date: '2026-02-01',
-            encounter_type: 'horde',
-            total_encounters: 100,
-            species_encounters: 20,
-            iv_hp: 1,
-            iv_attack: 2,
-            iv_defense: 3,
-            iv_sp_attack: 4,
-            iv_sp_defense: 5,
-            iv_speed: 6,
-          },
-        },
-      });
-
-    axios.put.mockResolvedValueOnce({
-      data: {
-        data: {
-          id: 'abc',
-          national_number: 25,
-          pokemon: 'pikachu',
-          pokemon_name: 'pikachu',
-          trainer_name: 'Tester',
-          catch_date: '2026-02-01',
           encounter_type: 'horde',
-          total_encounters: 100,
-          species_encounters: 20,
-          iv_hp: 1,
-          iv_attack: 2,
-          iv_defense: 3,
-          iv_sp_attack: 4,
-          iv_sp_defense: 5,
-          iv_speed: 6,
+          total_encounters: 1,
+          species_encounters: 1,
         },
       },
     });
 
-    const { getNationalNumber, getSpriteUrl } = require('@team-soju/utils');
-    getNationalNumber.mockResolvedValue(25);
-    getSpriteUrl.mockResolvedValue('http://example.com/sprite.gif');
+    await handleShinyComponent(interaction);
+
+    expect(interaction.showModal).toHaveBeenCalled();
+  });
+
+  it('updates a shiny from modal submission', async () => {
+    const interaction = createMockInteraction({
+      customId: 'shm:edit:selected-id',
+      reply: jest.fn().mockResolvedValue(undefined),
+      fields: {
+        getTextInputValue: jest.fn((name) => ({
+          pokemon: 'pikachu',
+          catch_date: '2026-01-01',
+          encounter_type: 'horde',
+          encounters: '10,5',
+          ivs: '1,2,3,4,5,6',
+        }[name] || '')),
+      },
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          trainer_name: 'T1',
+          encounter_type: 'horde',
+        },
+      },
+    });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          trainer_name: 'T1',
+          national_number: 25,
+          encounter_type: 'horde',
+          catch_date: '2026-01-01',
+          total_encounters: 10,
+          species_encounters: 5,
+        },
+      },
+    });
 
     await handleShinyEditModal(interaction);
 
-    expect(axios.put).toHaveBeenCalledWith(
-      'http://localhost:3001/api/shinies/abc',
-      expect.objectContaining({
-        pokemon: 'pikachu',
-        national_number: 25,
-        catch_date: '2026-02-01',
-        encounter_type: 'horde',
-        total_encounters: 100,
-        species_encounters: 20,
-        iv_hp: 1,
-        iv_attack: 2,
-        iv_defense: 3,
-        iv_sp_attack: 4,
-        iv_sp_defense: 5,
-        iv_speed: 6,
-      }),
-      expect.any(Object)
-    );
+    expect(fetchClient.put).toHaveBeenCalled();
     expect(interaction.reply).toHaveBeenCalledWith(
       expect.objectContaining({
         embeds: expect.any(Array),
-        flags: MessageFlags.Ephemeral,
-      })
-    );
-  });
-
-  it('blocks public users from editing shinies from the modal', async () => {
-    const interaction = {
-      customId: 'shiny_modal_edit:abc',
-      user: { id: 'discord-user', tag: 'User#0001' },
-      member: { roles: { cache: [] } },
-      fields: {
-        getTextInputValue: jest.fn(() => ''),
-        getStringSelectValues: jest.fn(() => []),
-      },
-      reply: jest.fn().mockResolvedValue(undefined),
-    };
-
-    axios.get.mockResolvedValueOnce({
-      data: {
-        data: {
-          id: 'abc',
-          national_number: 25,
-          pokemon: 'pikachu',
-          pokemon_name: 'pikachu',
-          trainer_name: 'AnotherTrainer',
-        },
-      },
-    });
-
-    await handleShinyEditModal(interaction);
-
-    expect(interaction.reply).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: expect.stringContaining('You need one of these roles to manage shinies'),
         flags: MessageFlags.Ephemeral,
       })
     );

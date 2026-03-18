@@ -2,8 +2,7 @@
  * Utility functions and constants for Discord Bot
  */
 
-const { REST, Routes } = require('discord.js');
-const { parse } = require('dotenv');
+const fetchClient = require('./fetchClient');
 
 const API_ENDPOINT = 'https://discord.com/api/v10';
 
@@ -18,15 +17,16 @@ async function registerSlashCommands(commands, clientId, token, guildId) {
   try {
     console.log(`🔄 Registering ${commands.length} slash commands...`);
 
-    const rest = new REST({ version: '10' }).setToken(token);
-
-    const route = guildId
-      ? Routes.applicationGuildCommands(clientId, guildId)
-      : Routes.applicationCommands(clientId);
-
     const commandData = commands.map(cmd => cmd.toJSON());
+    const route = guildId
+      ? `${API_ENDPOINT}/applications/${clientId}/guilds/${guildId}/commands`
+      : `${API_ENDPOINT}/applications/${clientId}/commands`;
 
-    await rest.put(route, { body: commandData });
+    await fetchClient.put(route, commandData, {
+      headers: {
+        Authorization: `Bot ${token}`,
+      },
+    });
 
     const scope = guildId ? 'Guild' : 'Global';
     console.log(`✅ ${scope} slash commands registered successfully!`);
@@ -34,75 +34,6 @@ async function registerSlashCommands(commands, clientId, token, guildId) {
     console.error('❌ Error registering slash commands:', error);
     throw error;
   }
-}
-
-/**
- * Gets a handler module based on command name
- * @param {string} commandName - Name of the command
- * @returns {object} Handler functions from the appropriate module
- */
-function getCommandHandlers(commandName) {
-  const handlerMap = {
-    // Member commands
-    'addmember': 'memberHandlers',
-    'editmember': 'memberHandlers',
-    'deletemember': 'memberHandlers',
-    'reactivatemember': 'memberHandlers',
-    'member': 'memberHandlers',
-    // Shiny commands
-    'addshiny': 'shinyHandlers',
-    'addshinyscreenshot': 'shinyHandlers',
-    'editshiny': 'shinyHandlers',
-    'deleteshiny': 'shinyHandlers',
-    'failshiny': 'shinyHandlers',
-    'shiny': 'shinyHandlers',
-    'shinies': 'shinyHandlers',
-    'myshinies': 'shinyHandlers',
-    // Stats commands
-    'leaderboard': 'statsHandlers',
-    'stats': 'statsHandlers',
-  };
-
-  const handlerModule = handlerMap[commandName];
-  if (!handlerModule) {
-    throw new Error(`No handler found for command: ${commandName}`);
-  }
-
-  return require(`./handlers/${handlerModule}`);
-}
-
-/**
- * Gets the correct handler function for a command
- * @param {string} commandName - Name of the command
- * @returns {function} Handler function
- */
-function getCommandHandler(commandName) {
-  const handlers = getCommandHandlers(commandName);
-
-  const handlerNameMap = {
-    'addmember': 'handleAddMember',
-    'editmember': 'handleEditMember',
-    'deletemember': 'handleDeleteMember',
-    'reactivatemember': 'handleReactivateMember',
-    'member': 'handleGetMember',
-    'addshiny': 'handleAddShiny',
-    'addshinyscreenshot': 'handleAddShinyScreenshot',
-    'editshiny': 'handleEditShiny',
-    'deleteshiny': 'handleDeleteShiny',
-    'failshiny': 'handleFailShiny',
-    'shiny': 'handleGetShiny',
-    'shinies': 'handleGetShinies',
-    'myshinies': 'handleGetMyShinies',
-    'leaderboard': 'handleLeaderboard',
-    'stats': 'handleStats',
-  };
-
-  const handlerName = handlerNameMap[commandName];
-  if (!handlers[handlerName]) {
-    throw new Error(`No handler function found for command: ${commandName}`);
-  }
-
-  return handlers[handlerName];
 }
 
 /**
@@ -298,11 +229,10 @@ function generateEncountersString(total, species, pokemon) {
  * @returns {Promise<object|null>} Member object or null if not found
  */
 async function getMemberByDiscordId(discordId) {
-  const axios = require('axios');
   const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
   
   try {
-    const response = await axios.get(`${apiBaseUrl}/members`, {
+    const response = await fetchClient.get(`${apiBaseUrl}/members`, {
       headers: { Authorization: `Bearer ${process.env.BOT_API_TOKEN}` }
     });
     
@@ -331,6 +261,18 @@ async function checkCommandPermission(interaction, requiredRoles, commandName) {
   const memberRoles = interaction.member?.roles?.cache;
   if (!memberRoles) {
     return { allowed: false, reason: 'Could not retrieve your roles' };
+  }
+
+  const roleNamesUnavailable = memberRoles.length > 0 && memberRoles.every(role => {
+    const name = String(role.name || '');
+    return /^\d{16,20}$/.test(name);
+  });
+
+  if (roleNamesUnavailable) {
+    return {
+      allowed: false,
+      reason: 'Discord role names could not be resolved. Set DISCORD_TOKEN in the bot runtime so HTTP interactions can hydrate guild roles.',
+    };
   }
 
   // Check if member has any of the required roles
@@ -408,8 +350,6 @@ async function validateSojuTrainerIGN(interaction, trainerIGN) {
 module.exports = {
   API_ENDPOINT,
   registerSlashCommands,
-  getCommandHandlers,
-  getCommandHandler,
   validateEnvironment,
   parseDataFromOcr,
   validateParsedData,

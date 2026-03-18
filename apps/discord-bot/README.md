@@ -1,6 +1,6 @@
 # Team Soju Discord Bot
 
-A Discord bot application for managing Team Soju members and tracking shiny Pokemon catches. This bot provides slash commands for member and shiny management, with direct database integration for reliability and performance.
+A Discord bot application for managing Team Soju members and tracking shiny Pokemon catches. It now runs on Discord HTTP interactions so it can be deployed as a Cloudflare Worker instead of a long-lived Gateway process.
 
 ## Features
 
@@ -14,8 +14,11 @@ This app uses the following structure:
 
 ```
 src/
-├── app.js              # Main entry point and bot client
+├── app.js              # Local dev server entry point
+├── worker.js           # HTTP interaction handler
+├── worker.mjs          # Cloudflare Worker module entry
 ├── commands.js         # Slash command definitions
+├── discord/            # Discord API builders + interaction adapter
 ├── utils.js            # Utility functions and helpers
 └── handlers/
     ├── memberHandlers.js   # Member command logic
@@ -47,8 +50,9 @@ src/
 
    Add your Discord credentials:
    ```env
-   DISCORD_TOKEN=your-bot-token
    DISCORD_CLIENT_ID=your-client-id
+   DISCORD_PUBLIC_KEY=your-discord-public-key
+   DISCORD_TOKEN=your-bot-token # required at runtime for command registration and role-based permission checks
    DISCORD_GUILD_ID=your-guild-id  # Optional: for faster command updates
    ```
 
@@ -73,21 +77,37 @@ src/
 
 ### Running the Bot
 
-**Development** (with auto-reload):
+**Development** (local HTTP endpoint with auto-reload):
 ```bash
 npm run dev
 ```
 
-**Production**:
+By default the local interaction server listens on `8787`. Override it with `DISCORD_BOT_PORT`.
+
+**Register slash commands**:
+```bash
+npm run register
+```
+
+**Local server**:
 ```bash
 npm start
 ```
 
 You should see:
 ```
-🤖 Discord bot logged in as BotName#1234!
-✅ Guild slash commands registered successfully!
+Discord interaction dev server listening on http://0.0.0.0:8787
 ```
+
+Point your Discord Interactions Endpoint URL at the deployed Worker URL.
+
+## Cloudflare Worker Notes
+
+- The Worker verifies `x-signature-ed25519` using `DISCORD_PUBLIC_KEY`.
+- `DISCORD_TOKEN` is required in production because HTTP interactions only include role IDs; the bot uses the token to resolve guild role names before permission checks.
+- Slash commands are executed through stateless HTTP interactions; no Gateway connection or shard lifecycle is used.
+- Interactive shiny lists now encode paging and selection in component `custom_id`s so they work without in-memory collectors.
+- Screenshot OCR is delegated to the API server via `POST /api/shinies/from-screenshot`, keeping `sharp` and `tesseract.js` out of the Worker runtime.
 
 ## Commands
 
