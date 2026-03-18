@@ -235,9 +235,66 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   return { embeds: [embed] };
 }
 
+function buildStandaloneActionRow(shinyId, {
+  includeView = false,
+  includeEdit = false,
+  includeFail = false,
+  includeDelete = false,
+} = {}) {
+  const state = { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId };
+  const buttons = [];
+
+  if (includeView) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(buildCustomId('a', 'v', state))
+        .setLabel('View')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  }
+
+  if (includeEdit) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(buildCustomId('a', 'e', state))
+        .setLabel('Edit')
+        .setStyle(ButtonStyle.Primary)
+    );
+  }
+
+  if (includeFail) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(buildCustomId('a', 'f', state))
+        .setLabel('Fail')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  }
+
+  if (includeDelete) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(buildCustomId('a', 'd', state))
+        .setLabel('Delete')
+        .setStyle(ButtonStyle.Danger)
+    );
+  }
+
+  return buttons.length > 0
+    ? [new ActionRowBuilder().addComponents(...buttons)]
+    : [];
+}
+
 async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply', titleOverride) {
   const shiny = await fetchShinyById(shinyId);
   const payload = await buildShinyDisplayPayload(shiny, titleOverride);
+  if (hasAnyRole(interaction, SHINY_MANAGER_ROLES)) {
+    payload.components = buildStandaloneActionRow(shinyId, {
+      includeEdit: true,
+      includeFail: true,
+      includeDelete: true,
+    });
+  }
   await interaction[replyMethod](payload);
 }
 
@@ -693,7 +750,15 @@ async function handleAddShiny(interaction) {
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    const payload = { embeds: [embed] };
+    payload.components = buildStandaloneActionRow(shiny.id, {
+      includeView: true,
+      includeEdit: true,
+      includeFail: true,
+      includeDelete: true,
+    });
+
+    await interaction.editReply(payload);
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
   }
@@ -728,7 +793,15 @@ async function handleAddShinyScreenshot(interaction) {
       .setFooter({ text: `Shiny ID: ${shiny.id}` })
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    const payload = { embeds: [embed] };
+    payload.components = buildStandaloneActionRow(shiny.id, {
+      includeView: true,
+      includeEdit: true,
+      includeFail: true,
+      includeDelete: true,
+    });
+
+    await interaction.editReply(payload);
   } catch (error) {
     const details = error.response?.data?.details?.ocr_text
       ? `\nOCR result:\n${codeBlock(error.response.data.details.ocr_text)}`
@@ -956,10 +1029,9 @@ async function handleShinyComponent(interaction) {
     }
 
     if (state.action === 'd') {
-      await requireOwnedShiny(interaction, state.shinyId);
+      const shiny = await requireOwnedShiny(interaction, state.shinyId);
       await deleteShinyRecord(state.shinyId);
-      state.shinyId = null;
-      await interaction.update(await buildListPayload(interaction, state, 'Shiny deleted.'));
+      await interaction.update({ embeds: [buildDeleteSuccessEmbed(shiny)], components: [] });
     }
   } catch (error) {
     const payload = { content: `Error: ${error.message}`, flags: MessageFlags.Ephemeral };

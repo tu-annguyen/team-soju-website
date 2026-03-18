@@ -17,6 +17,9 @@ jest.mock('@team-soju/utils', () => ({
 const fetchClient = require('../src/fetchClient');
 const localUtils = require('../src/utils');
 const {
+  handleAddShiny,
+  handleAddShinyScreenshot,
+  handleGetShiny,
   handleGetShinies,
   handleGetMyShinies,
   handleShinyComponent,
@@ -329,6 +332,182 @@ describe('shinyHandlers', () => {
       expect.objectContaining({
         embeds: expect.any(Array),
         flags: MessageFlags.Ephemeral,
+      })
+    );
+  });
+
+  it('adds action buttons to the addshiny confirmation', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'addshiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: {
+        trainer: 'testtrainer',
+        pokemon: 'dratini',
+        encounter_type: 'Horde',
+        catch_date: '2026-01-15',
+        secret: false,
+        alpha: false,
+        total_encounters: 1000,
+        species_encounters: 100,
+        nature: 'Bold',
+        ivs: '31,31,31,31,31,31',
+      },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: { data: { id: 'trainer-id', ign: 'testtrainer' } },
+    });
+    fetchClient.post.mockResolvedValue({
+      data: {
+        data: {
+          id: 'created-shiny-id',
+          pokemon: 'dratini',
+          national_number: 147,
+          trainer_name: 'testtrainer',
+          catch_date: '2026-01-15',
+          encounter_type: 'horde',
+          total_encounters: 1000,
+          species_encounters: 100,
+          nature: 'Bold',
+          iv_hp: 31,
+          iv_attack: 31,
+          iv_defense: 31,
+          iv_sp_attack: 31,
+          iv_sp_defense: 31,
+          iv_speed: 31,
+        },
+      },
+    });
+
+    await handleAddShiny(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: expect.any(Array),
+        components: [
+          expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: 'sh:a:v:a:_:1:10:created-shiny-id' }),
+              expect.objectContaining({ custom_id: 'sh:a:e:a:_:1:10:created-shiny-id' }),
+              expect.objectContaining({ custom_id: 'sh:a:f:a:_:1:10:created-shiny-id' }),
+              expect.objectContaining({ custom_id: 'sh:a:d:a:_:1:10:created-shiny-id' }),
+            ]),
+          }),
+        ],
+      })
+    );
+  });
+
+  it('adds action buttons to the addshinyscreenshot confirmation', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'addshinyscreenshot',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: {
+        screenshot: { url: 'https://example.com/image.png' },
+        encounter_type: 'Horde',
+        date_is_mdy: false,
+        secret: false,
+        alpha: false,
+      },
+    });
+
+    fetchClient.post.mockResolvedValue({
+      data: {
+        data: {
+          id: 'screenshot-shiny-id',
+          pokemon: 'dratini',
+          national_number: 147,
+          trainer_name: 'testtrainer',
+          encounter_type: 'horde',
+          total_encounters: 1000,
+          screenshot_url: 'https://example.com/image.png',
+          is_secret: false,
+        },
+      },
+    });
+
+    await handleAddShinyScreenshot(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: expect.any(Array),
+        components: [
+          expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: 'sh:a:v:a:_:1:10:screenshot-shiny-id' }),
+              expect.objectContaining({ custom_id: 'sh:a:e:a:_:1:10:screenshot-shiny-id' }),
+              expect.objectContaining({ custom_id: 'sh:a:f:a:_:1:10:screenshot-shiny-id' }),
+              expect.objectContaining({ custom_id: 'sh:a:d:a:_:1:10:screenshot-shiny-id' }),
+            ]),
+          }),
+        ],
+      })
+    );
+  });
+
+  it('adds mutation buttons to the shiny command response for managers', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'shiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { id: 'selected-id' },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          trainer_name: 'T1',
+          national_number: 25,
+        },
+      },
+    });
+
+    await handleGetShiny(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: expect.any(Array),
+        components: [
+          expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: 'sh:a:e:a:_:1:10:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:a:f:a:_:1:10:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:a:d:a:_:1:10:selected-id' }),
+            ]),
+          }),
+        ],
+      })
+    );
+  });
+
+  it('shows the delete success embed for delete interaction', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:a:d:a:_:1:10:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          national_number: 25,
+          trainer_name: 'T1',
+        },
+      },
+    });
+    fetchClient.delete.mockResolvedValue({ data: { data: {} } });
+
+    await handleShinyComponent(interaction);
+
+    expect(interaction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: [expect.objectContaining({ data: expect.objectContaining({ title: 'Shiny Deleted Successfully' }) })],
+        components: [],
       })
     );
   });
