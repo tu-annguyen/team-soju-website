@@ -4,9 +4,9 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const { COMMANDS } = require('./commands');
+const { getCommandHandler } = require('./commandRouter');
 const {
   registerSlashCommands,
-  getCommandHandler,
   validateEnvironment,
   checkCommandPermission,
   getCommandRequiredRoles,

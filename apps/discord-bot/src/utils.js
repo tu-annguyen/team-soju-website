@@ -37,75 +37,6 @@ async function registerSlashCommands(commands, clientId, token, guildId) {
 }
 
 /**
- * Gets a handler module based on command name
- * @param {string} commandName - Name of the command
- * @returns {object} Handler functions from the appropriate module
- */
-function getCommandHandlers(commandName) {
-  const handlerMap = {
-    // Member commands
-    'addmember': 'memberHandlers',
-    'editmember': 'memberHandlers',
-    'deletemember': 'memberHandlers',
-    'reactivatemember': 'memberHandlers',
-    'member': 'memberHandlers',
-    // Shiny commands
-    'addshiny': 'shinyHandlers',
-    'addshinyscreenshot': 'shinyHandlers',
-    'editshiny': 'shinyHandlers',
-    'deleteshiny': 'shinyHandlers',
-    'failshiny': 'shinyHandlers',
-    'shiny': 'shinyHandlers',
-    'shinies': 'shinyHandlers',
-    'myshinies': 'shinyHandlers',
-    // Stats commands
-    'leaderboard': 'statsHandlers',
-    'stats': 'statsHandlers',
-  };
-
-  const handlerModule = handlerMap[commandName];
-  if (!handlerModule) {
-    throw new Error(`No handler found for command: ${commandName}`);
-  }
-
-  return require(`./handlers/${handlerModule}`);
-}
-
-/**
- * Gets the correct handler function for a command
- * @param {string} commandName - Name of the command
- * @returns {function} Handler function
- */
-function getCommandHandler(commandName) {
-  const handlers = getCommandHandlers(commandName);
-
-  const handlerNameMap = {
-    'addmember': 'handleAddMember',
-    'editmember': 'handleEditMember',
-    'deletemember': 'handleDeleteMember',
-    'reactivatemember': 'handleReactivateMember',
-    'member': 'handleGetMember',
-    'addshiny': 'handleAddShiny',
-    'addshinyscreenshot': 'handleAddShinyScreenshot',
-    'editshiny': 'handleEditShiny',
-    'deleteshiny': 'handleDeleteShiny',
-    'failshiny': 'handleFailShiny',
-    'shiny': 'handleGetShiny',
-    'shinies': 'handleGetShinies',
-    'myshinies': 'handleGetMyShinies',
-    'leaderboard': 'handleLeaderboard',
-    'stats': 'handleStats',
-  };
-
-  const handlerName = handlerNameMap[commandName];
-  if (!handlers[handlerName]) {
-    throw new Error(`No handler function found for command: ${commandName}`);
-  }
-
-  return handlers[handlerName];
-}
-
-/**
  * Validates required environment variables
  * @param {Array<string>} required - Array of required env var names
  * @throws {Error} If any required env var is missing
@@ -419,8 +350,6 @@ async function validateSojuTrainerIGN(interaction, trainerIGN) {
 module.exports = {
   API_ENDPOINT,
   registerSlashCommands,
-  getCommandHandlers,
-  getCommandHandler,
   validateEnvironment,
   parseDataFromOcr,
   validateParsedData,

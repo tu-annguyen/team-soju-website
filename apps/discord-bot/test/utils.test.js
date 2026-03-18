@@ -5,7 +5,7 @@
 const {
   getCommandHandlers,
   getCommandHandler
-} = require('../src/utils');
+} = require('../src/commandRouter');
 
 // Mock the handler modules
 jest.mock('../src/handlers/memberHandlers', () => ({
