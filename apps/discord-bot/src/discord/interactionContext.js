@@ -61,7 +61,7 @@ function buildFieldsAccessor(data) {
 
   rows.forEach(row => {
     (row.components || []).forEach(component => {
-      values.set(component.custom_id, component.value || '');
+      values.set(component.custom_id, component.value || component.values?.[0] || '');
     });
   });
 

@@ -15,7 +15,7 @@ const {
   MessageFlags,
 } = require('../discord/api');
 const fetchClient = require('../fetchClient');
-const { ENCOUNTER_TYPE_CHOICES } = require('../commands');
+const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
 const { capitalize, getPokemonNationalNumber, getSpriteUrl } = require('@team-soju/utils');
 
@@ -28,6 +28,10 @@ const PAGE_SIZE_FALLBACK = 10;
 const MAX_SHINY_SELECT_OPTIONS = 25;
 const COMPONENT_PREFIX = 'sh';
 const MODAL_PREFIX = 'shm';
+const BOOLEAN_CHOICES = [
+  { name: 'Yes', value: 'true' },
+  { name: 'No', value: 'false' },
+];
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
@@ -286,49 +290,121 @@ function parseEncounterInput(input) {
   return updates;
 }
 
+function buildChoiceOptions(choices, currentValue) {
+  return choices.map(choice => ({
+    label: choice.name,
+    value: choice.value,
+    default: choice.value === currentValue,
+  }));
+}
+
+function parseBooleanSelection(value) {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return undefined;
+}
+
 function buildEditModal(shiny) {
   const modal = new ModalBuilder()
     .setCustomId([MODAL_PREFIX, 'edit', shiny.id].join(':'))
     .setTitle(`Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
 
-  const fields = [
-    new TextInputBuilder()
-      .setCustomId('pokemon')
-      .setLabel('Pokemon')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(false)
-      .setValue(shiny.pokemon || ''),
-    new TextInputBuilder()
-      .setCustomId('catch_date')
-      .setLabel('Catch date (YYYY-MM-DD)')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(false)
-      .setValue(shiny.catch_date || ''),
-    new TextInputBuilder()
-      .setCustomId('encounter_type')
-      .setLabel('Encounter type')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(false)
-      .setValue(shiny.encounter_type || ''),
-    new TextInputBuilder()
-      .setCustomId('encounters')
-      .setLabel('Encounters (total,species)')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(false)
-      .setValue(`${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`),
-    new TextInputBuilder()
-      .setCustomId('ivs')
-      .setLabel('IVs (hp,atk,def,spa,spd,spe)')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(false)
-      .setValue(buildIvString(shiny)),
+  const rows = [
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('pokemon')
+        .setLabel('Pokemon')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setValue(shiny.pokemon || '')
+    ),
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('catch_date')
+        .setLabel('Catch date (YYYY-MM-DD)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setValue(shiny.catch_date || '')
+    ),
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('encounters')
+        .setLabel('Encounters (total,species)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setValue(`${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`)
+    ),
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('ivs')
+        .setLabel('IVs (hp,atk,def,spa,spd,spe)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setValue(buildIvString(shiny))
+    ),
   ];
 
-  fields.forEach(field => {
-    modal.addComponents(new ActionRowBuilder().addComponents(field));
-  });
+  modal.addComponents(...rows);
 
   return modal;
+}
+
+async function buildEditControlsPayload(interaction, state, content = null) {
+  const shiny = await fetchShinyById(state.shinyId);
+  const payload = await buildShinyDisplayPayload(shiny, `Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
+  payload.content = content || [
+    'Dropdowns:',
+    '1. Encounter Type',
+    '2. Nature',
+    '3. Secret Shiny',
+    '4. Alpha Shiny',
+    'Use "Edit Text Fields" for pokemon, catch date, encounters, and IVs.',
+  ].join('\n');
+  payload.components = [
+    new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(buildCustomId('e', 't', state))
+        .setPlaceholder('Encounter Type')
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(buildChoiceOptions(ENCOUNTER_TYPE_CHOICES, shiny.encounter_type))
+    ),
+    new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(buildCustomId('e', 'n', state))
+        .setPlaceholder('Nature')
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(buildChoiceOptions(NATURE_CHOICES, shiny.nature))
+    ),
+    new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(buildCustomId('e', 's', state))
+        .setPlaceholder('Secret Shiny')
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(buildChoiceOptions(BOOLEAN_CHOICES, String(Boolean(shiny.is_secret))))
+    ),
+    new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(buildCustomId('e', 'a', state))
+        .setPlaceholder('Alpha Shiny')
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(buildChoiceOptions(BOOLEAN_CHOICES, String(Boolean(shiny.is_alpha))))
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(buildCustomId('m', 'o', state))
+        .setLabel('Edit Text Fields')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(buildCustomId('d', 'b', state))
+        .setLabel('Back')
+        .setStyle(ButtonStyle.Secondary)
+    ),
+  ];
+  return payload;
 }
 
 async function updateShinyRecord(shinyId, updates) {
@@ -830,6 +906,32 @@ async function handleShinyComponent(interaction) {
       return;
     }
 
+    if (state.kind === 'e') {
+      await requireOwnedShiny(interaction, state.shinyId);
+
+      const selectedValue = interaction.values[0];
+      const updates = {};
+
+      if (state.action === 't') updates.encounter_type = normalizeEncounterType(selectedValue);
+      if (state.action === 'n') updates.nature = selectedValue;
+      if (state.action === 's') updates.is_secret = parseBooleanSelection(selectedValue);
+      if (state.action === 'a') updates.is_alpha = parseBooleanSelection(selectedValue);
+
+      if (Object.keys(updates).length === 0) {
+        throw new Error('Unknown edit selection.');
+      }
+
+      await updateShinyRecord(state.shinyId, updates);
+      await interaction.update(await buildEditControlsPayload(interaction, state, 'Shiny updated.'));
+      return;
+    }
+
+    if (state.kind === 'm' && state.action === 'o') {
+      const shiny = await requireOwnedShiny(interaction, state.shinyId);
+      await interaction.showModal(buildEditModal(shiny));
+      return;
+    }
+
     if (!state.shinyId) {
       await interaction.reply({ content: 'Select a shiny first.', flags: MessageFlags.Ephemeral });
       return;
@@ -841,8 +943,8 @@ async function handleShinyComponent(interaction) {
     }
 
     if (state.action === 'e') {
-      const shiny = await requireOwnedShiny(interaction, state.shinyId);
-      await interaction.showModal(buildEditModal(shiny));
+      await requireOwnedShiny(interaction, state.shinyId);
+      await interaction.update(await buildEditControlsPayload(interaction, state));
       return;
     }
 
@@ -884,7 +986,6 @@ async function handleShinyEditModal(interaction) {
 
     const pokemon = interaction.fields.getTextInputValue('pokemon')?.trim();
     const catchDate = interaction.fields.getTextInputValue('catch_date')?.trim();
-    const encounterType = normalizeEncounterType(interaction.fields.getTextInputValue('encounter_type')?.trim());
     const encounters = interaction.fields.getTextInputValue('encounters')?.trim();
     const ivs = interaction.fields.getTextInputValue('ivs')?.trim();
 
@@ -901,7 +1002,6 @@ async function handleShinyEditModal(interaction) {
     }
 
     if (catchDate) updates.catch_date = catchDate;
-    if (encounterType) updates.encounter_type = encounterType;
     if (encounters) Object.assign(updates, parseEncounterInput(encounters));
     if (ivs) Object.assign(updates, parseIvInput(ivs));
 
