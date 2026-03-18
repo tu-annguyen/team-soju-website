@@ -1,6 +1,6 @@
 const express = require('express');
 const Joi = require('joi');
-const { getPokemonNationalNumber } = require('@team-soju/utils');
+const { getPokemonNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
 const router = express.Router();
@@ -207,6 +207,7 @@ router.get('/leaderboard', async (req, res) => {
   }
 });
 
+// POST /api/shinies/from-screenshot - Create shiny entry from screenshot with OCR
 router.post('/from-screenshot', authenticateBot, async (req, res) => {
   try {
     const { error, value } = screenshotSchema.validate(req.body);
@@ -321,6 +322,38 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to create shiny entry from screenshot',
+    });
+  }
+});
+
+// GET /api/shinies/sprites/:nationalNumber/greyscale - Get greyscale sprite for Pokemon
+router.get('/sprites/:nationalNumber/greyscale', async (req, res) => {
+  try {
+    const nationalNumber = parseInt(req.params.nationalNumber, 10);
+    if (!Number.isInteger(nationalNumber) || nationalNumber < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid national number',
+      });
+    }
+
+    const spriteUrl = await getSpriteUrl(nationalNumber);
+    if (!spriteUrl) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sprite not found',
+      });
+    }
+
+    const spriteBuffer = await greyscale(spriteUrl);
+    res.setHeader('Content-Type', 'image/gif');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(spriteBuffer);
+  } catch (error) {
+    console.error('Error generating greyscale sprite:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate greyscale sprite',
     });
   }
 });

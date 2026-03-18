@@ -20,6 +20,7 @@ const { generateEncountersString, validateSojuTrainerIGN } = require('../utils')
 const { capitalize, getPokemonNationalNumber, getSpriteUrl } = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
+const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL || apiBaseUrl;
 const botToken = process.env.BOT_API_TOKEN;
 
 const SHINY_MANAGER_ROLES = ['Soju', 'Elite 4', 'Champion'];
@@ -35,6 +36,18 @@ const BOOLEAN_CHOICES = [
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
+}
+
+function isFailedShiny(shiny) {
+  return String(shiny?.notes || '').trim().toLowerCase() === 'failed';
+}
+
+function getGreyscaleSpriteUrl(nationalNumber) {
+  if (!nationalNumber || !publicApiBaseUrl.startsWith('http')) return null;
+  if (!process.env.PUBLIC_API_BASE_URL && /:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(publicApiBaseUrl)) {
+    return null;
+  }
+  return `${publicApiBaseUrl}/shinies/sprites/${nationalNumber}/greyscale`;
 }
 
 function normalizeEncounterType(value) {
@@ -202,7 +215,9 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
 
   if (shiny.national_number) {
     try {
-      spriteUrl = await getSpriteUrl(shiny.national_number);
+      spriteUrl = isFailedShiny(shiny)
+        ? getGreyscaleSpriteUrl(shiny.national_number)
+        : await getSpriteUrl(shiny.national_number);
     } catch (error) {
       console.error('Error fetching sprite URL:', error.message);
     }
@@ -210,7 +225,7 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
 
   const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
   const embed = new EmbedBuilder()
-    .setColor(shiny.is_secret || shiny.is_alpha ? 0xFFD700 : 0x4CAF50)
+    .setColor(isFailedShiny(shiny) ? 0x757575 : (shiny.is_secret || shiny.is_alpha ? 0xFFD700 : 0x4CAF50))
     .setTitle(titleOverride || `${capitalize(shiny.pokemon_name || shiny.pokemon)} (#${shiny.national_number})`);
 
   if (spriteUrl) embed.setThumbnail(spriteUrl);
@@ -231,6 +246,28 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   )
     .setFooter({ text: `Shiny ID: ${shiny.id}` })
     .setTimestamp();
+
+  return { embeds: [embed] };
+}
+
+async function buildFailedShinyPayload(shiny) {
+  const embed = new EmbedBuilder()
+    .setColor(0x757575)
+    .setTitle('Shiny Marked as Failed')
+    .setDescription(`${capitalize(shiny.pokemon_name || shiny.pokemon)} (#${shiny.national_number}) has been marked as failed`)
+    .setFooter({ text: `Shiny ID: ${shiny.id}` })
+    .setTimestamp();
+
+  const spriteUrl = getGreyscaleSpriteUrl(shiny.national_number);
+  if (spriteUrl) {
+    embed.setThumbnail(spriteUrl);
+  }
+
+  embed.addFields([
+    { name: 'Trainer', value: shiny.trainer_name, inline: true },
+    shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
+    shiny.encounter_type ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
+  ].filter(Boolean));
 
   return { embeds: [embed] };
 }
@@ -879,7 +916,7 @@ async function handleFailShiny(interaction) {
   try {
     await requireOwnedShiny(interaction, shinyId);
     const shiny = await failShinyRecord(shinyId);
-    const payload = await buildShinyDisplayPayload(shiny, 'Shiny Successfully Marked as Failed');
+    const payload = await buildFailedShinyPayload(shiny);
     await interaction.editReply(payload);
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
@@ -1023,8 +1060,8 @@ async function handleShinyComponent(interaction) {
 
     if (state.action === 'f') {
       await requireOwnedShiny(interaction, state.shinyId);
-      await failShinyRecord(state.shinyId);
-      await interaction.update(await buildListPayload(interaction, state, 'Shiny marked as failed.'));
+      const shiny = await failShinyRecord(state.shinyId);
+      await interaction.update(await buildFailedShinyPayload(shiny));
       return;
     }
 

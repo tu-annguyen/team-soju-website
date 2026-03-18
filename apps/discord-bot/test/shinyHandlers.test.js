@@ -19,6 +19,7 @@ const localUtils = require('../src/utils');
 const {
   handleAddShiny,
   handleAddShinyScreenshot,
+  handleFailShiny,
   handleGetShiny,
   handleGetShinies,
   handleGetMyShinies,
@@ -508,6 +509,94 @@ describe('shinyHandlers', () => {
       expect.objectContaining({
         embeds: [expect.objectContaining({ data: expect.objectContaining({ title: 'Shiny Deleted Successfully' }) })],
         components: [],
+      })
+    );
+  });
+
+  it('shows a failed confirmation embed with greyscaled sprite', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'failshiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { shiny_id: 'selected-id' },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          national_number: 25,
+          trainer_name: 'T1',
+          catch_date: '2026-01-01',
+          encounter_type: 'horde',
+        },
+      },
+    });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          national_number: 25,
+          trainer_name: 'T1',
+          catch_date: '2026-01-01',
+          encounter_type: 'horde',
+          notes: 'Failed',
+        },
+      },
+    });
+
+    await handleFailShiny(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: [
+          expect.objectContaining({
+            data: expect.objectContaining({
+              title: 'Shiny Marked as Failed',
+              color: 0x757575,
+              thumbnail: { url: 'http://localhost:3001/api/shinies/sprites/25/greyscale' },
+            }),
+          }),
+        ],
+      })
+    );
+  });
+
+  it('uses a greyscaled sprite when viewing a failed shiny', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'shiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { id: 'selected-id' },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          trainer_name: 'T1',
+          national_number: 25,
+          notes: 'Failed',
+        },
+      },
+    });
+
+    await handleGetShiny(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: [
+          expect.objectContaining({
+            data: expect.objectContaining({
+              thumbnail: { url: 'http://localhost:3001/api/shinies/sprites/25/greyscale' },
+              color: 0x757575,
+            }),
+          }),
+        ],
       })
     );
   });
