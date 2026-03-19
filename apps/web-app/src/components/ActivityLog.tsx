@@ -3,12 +3,14 @@ import { capitalize } from '../utils/pokemonName';
 import { getShinySpriteUrl } from '../utils/pokemonSprite';
 import { formatLocalDate, calculateShinyPoints } from '@team-soju/utils';
 import ShinyCard from './ShinyCard';
+import { applyTeamSpeciesDuplicatePenalty } from '../utils/teamDuplicatePenalty';
 
 type EligiblePokemon = Record<string, string[]>;
 
 interface ActivityLogProps {
   eligiblePokemon: EligiblePokemon;
   apiBaseUrl?: string;
+  teamMembers?: Record<string, string[]>;
   onEligibleShiniesLoaded?: (shinies: EventShiny[]) => void;
 }
 
@@ -39,6 +41,7 @@ export interface EventShiny {
   catchDate: string | null;
   createdAt: string | null;
   points: number;
+  isDuplicate?: boolean;
 }
 
 const buildEligiblePokemonSet = (eligiblePokemon: EligiblePokemon) =>
@@ -78,6 +81,7 @@ const transformAPIDataToEvent = async (
               is_secret: shiny.is_secret,
               is_alpha: shiny.is_alpha,
             }),
+        isDuplicate: false,
       };
     });
 };
@@ -85,6 +89,7 @@ const transformAPIDataToEvent = async (
 const ActivityLog = ({
   eligiblePokemon,
   apiBaseUrl = defaultApiBaseUrl,
+  teamMembers,
   onEligibleShiniesLoaded,
 }: ActivityLogProps) => {
   const [shinyData, setShinyData] = useState<EventShiny[]>([]);
@@ -145,10 +150,13 @@ const ActivityLog = ({
 
   const eligibleShinies = useMemo(
     () =>
-      shinyData.filter((shiny) =>
-        eligiblePokemonSet.has(shiny.pokemonName.trim().toLowerCase())
+      applyTeamSpeciesDuplicatePenalty(
+        shinyData.filter((shiny) =>
+          eligiblePokemonSet.has(shiny.pokemonName.trim().toLowerCase())
+        ),
+        teamMembers
       ),
-    [eligiblePokemonSet, shinyData]
+    [eligiblePokemonSet, shinyData, teamMembers]
   );
 
   useEffect(() => {
@@ -192,6 +200,7 @@ const ActivityLog = ({
                 isAlpha={shiny.isAlpha}
                 encounterType={shiny.encounterType}
                 points={shiny.points}
+                isDuplicate={shiny.isDuplicate}
                 totalEncounters={shiny.totalEncounters}
                 catchDate={shiny.catchDate}
               />

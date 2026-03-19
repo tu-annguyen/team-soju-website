@@ -109,6 +109,7 @@ const Zodiac = () => {
 
       <ActivityLog
         eligiblePokemon={typedZodiacData.eligiblePokemon}
+        teamMembers={typedZodiacData.teamMembers}
         onEligibleShiniesLoaded={setEligibleShinies}
       />
 

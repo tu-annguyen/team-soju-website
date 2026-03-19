@@ -12,6 +12,7 @@ interface ShinyCardProps {
   isAlpha: boolean;
   encounterType: string;
   points?: number | null;
+  isDuplicate?: boolean;
   tier?: string | null;
   pointValue?: number | null;
   totalEncounters?: number | null;
@@ -52,6 +53,7 @@ const ShinyCard = ({
   isAlpha,
   encounterType,
   points,
+  isDuplicate = false,
   tier,
   pointValue,
   totalEncounters,
@@ -121,6 +123,12 @@ const ShinyCard = ({
           <p className="text-xs text-gray-600 dark:text-gray-400">
             {trainerName}
           </p>
+
+          {isDuplicate && !isFailed && (
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              Duplicate
+            </p>
+          )}
 
           {resolvedPoints !== null && resolvedPoints !== undefined && (
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
