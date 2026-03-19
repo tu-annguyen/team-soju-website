@@ -1,117 +1,204 @@
 {
-    "teams": [
-        {
-            "name": "Virizion's Vanguard",
-            "logo": "https://archives.bulbagarden.net/media/upload/thumb/b/bf/0640Virizion.png/1024px-0640Virizion.png",
-            "score": 0
-        },
-        {
-            "name": "Cobalion's Commanders",
-            "logo": "https://archives.bulbagarden.net/media/upload/thumb/9/9e/0638Cobalion.png/1024px-0638Cobalion.png",
-            "score": 0
-        },
-        {
-            "name": "Terrakion's Titans",
-            "logo": "https://archives.bulbagarden.net/media/upload/thumb/6/6b/0639Terrakion.png/1024px-0639Terrakion.png",
-            "score": 0
-        }
+  "teams": [
+    {
+      "name": "Virizion's Vanguard",
+      "logo": "https://archives.bulbagarden.net/media/upload/thumb/b/bf/0640Virizion.png/1024px-0640Virizion.png",
+      "score": 0
+    },
+    {
+      "name": "Cobalion's Commanders",
+      "logo": "https://archives.bulbagarden.net/media/upload/thumb/9/9e/0638Cobalion.png/1024px-0638Cobalion.png",
+      "score": 0
+    },
+    {
+      "name": "Terrakion's Titans",
+      "logo": "https://archives.bulbagarden.net/media/upload/thumb/6/6b/0639Terrakion.png/1024px-0639Terrakion.png",
+      "score": 0
+    }
+  ],
+  "eligiblePokemon": {
+    "rat": [
+      "ratata",
+      "raticate",
+      "pichu",
+      "pikachu",
+      "raichu",
+      "azurill",
+      "marill",
+      "azumarill",
+      "pachirisu",
+      "minccino",
+      "cinccino",
+      "patrat",
+      "watchog",
+      "drilbur",
+      "excadrill"
     ],
-    "eventShinies": [
-        {
-            "icon": "/images/2025/anniversary/shiny1.png",
-            "name": "Shiny Magikarp",
-            "OT": "Megu - OnlyHeffs",
-            "shinyScore": 1
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny2.png",
-            "name": "Shiny Lunatone",
-            "OT": "belley - Cub Skouts",
-            "shinyScore": 1
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny3.png",
-            "name": "Shiny Cottonee",
-            "OT": "Zofina - Reef Squad",
-            "shinyScore": 3
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny4.png",
-            "name": "Shiny Ditto",
-            "OT": "Swifty - Reef Squad",
-            "shinyScore": 2.5
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny5.png",
-            "name": "Shiny Ralts",
-            "OT": "Misc - OnlyHeffs",
-            "shinyScore": 5
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny6.png",
-            "name": "Shiny Cryogonal",
-            "OT": "YangXiaoLong - OnlyHeffs",
-            "shinyScore": 5
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny7.png",
-            "name": "Shiny Bonsly",
-            "OT": "Misc - OnlyHeffs",
-            "shinyScore": 12.5
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny8.png",
-            "name": "Shiny Cubchoo",
-            "OT": "belley - Cub Skouts",
-            "shinyScore": 1
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny9.png",
-            "name": "Shiny Bibarel",
-            "OT": "StrawberryPeel - TTT",
-            "shinyScore": 2
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny10.png",
-            "name": "Shiny Sunkern",
-            "OT": "belley - Cub Skouts",
-            "shinyScore": 3
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny11.png",
-            "name": "Shiny Lanturn",
-            "OT": "YangXiaoLong - OnlyHeffs",
-            "shinyScore": 1
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny12.png",
-            "name": "Shiny Absol",
-            "OT": "spook - TTT",
-            "shinyScore": 12.5
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny13.png",
-            "name": "Shiny Magikarp",
-            "OT": "MumenRider - Reef Squad",
-            "shinyScore": 1
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny14.png",
-            "name": "Shiny Venipede",
-            "OT": "TXMPXp - TTT",
-            "shinyScore": 4
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny15.png",
-            "name": "Shiny Slowpoke",
-            "OT": "ReefBarrierGreat - Reef Squad",
-            "shinyScore": 1
-        },
-        {
-            "icon": "/images/2025/anniversary/shiny16.png",
-            "name": "Shiny Cryogonal",
-            "OT": "Electra - Cub Skouts",
-            "shinyScore": 6
-        }
+    "ox": ["tauros", "miltank", "bouffalant", "numel", "camerupt"],
+    "tiger": [
+      "glameow",
+      "purugly",
+      "shinx",
+      "luxio",
+      "luxray",
+      "meowth",
+      "persian",
+      "purrloin",
+      "liepard",
+      "zangoose",
+      "elekid",
+      "electabuzz",
+      "electivire",
+      "skitty",
+      "delcatty",
+      "absol"
+    ],
+    "rabbit": [
+      "buneary",
+      "lopunny",
+      "spinda",
+      "igglybuff",
+      "jigglypuff",
+      "wigglytuff",
+      "whismur",
+      "loudred",
+      "exploud",
+      "nidoran-m",
+      "nidoran-f",
+      "nidorina",
+      "nidorino",
+      "nidoking",
+      "nidoqueen"
+    ],
+    "dragon": [
+      "magikarp",
+      "gyrados",
+      "gible",
+      "gabite",
+      "garchomp",
+      "deino",
+      "zweilous",
+      "hydreigon",
+      "axew",
+      "fraxure",
+      "haxorus",
+      "charmander",
+      "charmeleon",
+      "charizard",
+      "trapinch",
+      "vibrava",
+      "flygon",
+      "druddigon"
+    ],
+    "snake": [
+      "dunsparce",
+      "ekans",
+      "arbok",
+      "seviper",
+      "dratini",
+      "dragonair",
+      "dragonite",
+      "snivy",
+      "servine",
+      "serperior",
+      "tynamo",
+      "eelektrik",
+      "eelektross",
+      "feebas",
+      "milotic"
+    ],
+    "horse": [
+      "ponyta",
+      "rapidash",
+      "horsea",
+      "seadra",
+      "kingdra",
+      "blitzle",
+      "zebstrika"
+    ],
+    "goat": ["mareep", "flaffy", "ampharos"],
+    "monkey": [
+      "mankey",
+      "primeape",
+      "darumaka",
+      "darmanitan",
+      "meditite",
+      "medicham",
+      "chimchar",
+      "monferno",
+      "infernape",
+      "aipom",
+      "ambipom",
+      "pansage",
+      "simisage",
+      "panpour",
+      "simipour",
+      "pansear",
+      "simisear"
+    ],
+    "rooster": [
+      "pidgey",
+      "pidgeotto",
+      "pidgeot",
+      "spearow",
+      "fearow",
+      "taillow",
+      "swellow",
+      "swablu",
+      "altaria",
+      "rufflet",
+      "braviary",
+      "vullaby",
+      "mandibuzz",
+      "pidove",
+      "tranquill",
+      "unfezant",
+      "murkrow",
+      "honchkrow",
+      "torchic",
+      "combusken",
+      "blaziken"
+    ],
+    "dog": [
+      "lillipup",
+      "herdier",
+      "stoutland",
+      "smeargle",
+      "growlithe",
+      "arcanine",
+      "houndour",
+      "houndoom",
+      "electrike",
+      "manectric",
+      "snubbull",
+      "granbull",
+      "riolu",
+      "lucario",
+      "poochyena",
+      "mightyena",
+      "vulpix",
+      "ninetales",
+      "buizel",
+      "floatzel",
+      "zigzagoon",
+      "linoone"
+    ],
+    "pig": [
+      "spoink",
+      "grumpig",
+      "swinub",
+      "piloswine",
+      "mamoswine",
+      "woobat",
+      "swoobat",
+      "tepig",
+      "pignite",
+      "emboar"
     ]
+  },
+  "teamMembers": {
+    "virizion": [],
+    "cobalion": [],
+    "terrakion": []
+  }
 }

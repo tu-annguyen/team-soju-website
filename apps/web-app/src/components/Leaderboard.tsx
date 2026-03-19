@@ -11,7 +11,7 @@ interface LeaderboardTeam {
 }
 
 const Leaderboard = ({ teams }: LeaderboardProps) => {
-  teams = teams.sort((a, b) => b.score - a.score); // Sort teams by score in descending order
+  const sortedTeams = [...teams].sort((a, b) => b.score - a.score);
 
   return (
     <section className="py-8">
@@ -28,7 +28,7 @@ const Leaderboard = ({ teams }: LeaderboardProps) => {
             </tr>
           </thead>
           <tbody>
-            {teams.map((team) => (
+            {sortedTeams.map((team) => (
               <tr key={team.name} className="border-t dark:border-gray-700">
                 <td className="px-6 py-6 w-min whitespace-nowrap text-centerx-3 p">
                   {team.name === "OnlyHeffs" ? (
