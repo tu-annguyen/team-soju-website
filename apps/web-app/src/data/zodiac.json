@@ -197,8 +197,8 @@
     ]
   },
   "teamMembers": {
-    "virizion": [],
-    "cobalion": [],
-    "terrakion": []
+    "virizion": ["pikachutiyaL", "TXMPXp", "HogXD", "BeepBeepAuto", "DatBoiWinds", "ElMrJhonson", "Axelokara", "Ssjbluecrill", "Uwazii", "StrPi", "Llensjo"],
+    "cobalion": ["tunacore", "BlossomsDream", "IOSLOUD", "SpriggyMew", "MPLA", "Jiany", "Shwfityz", "Shayatin", "Zofina", "catcoded", "Aisukohi"],
+    "terrakion": ["Pokio", "Buddhalicious", "Brutal", "Misc", "TMAvatar", "Scotty", "Megu", "burritoking", "Ubela", "DingusDestiny", "CrunchyMike"]
   }
 }
