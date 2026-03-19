@@ -51,14 +51,14 @@ const mockFetch = jest.fn();
 const mockCalculateShinyPoints = calculateShinyPoints as jest.MockedFunction<typeof calculateShinyPoints>;
 
 beforeEach(() => {
-  mockCalculateShinyPoints.mockImplementation(async (shinyId: string) => {
-    const pointsById: Record<string, number> = {
-      'shiny-1': 12,
-      'shiny-2': 20,
-      'shiny-3': 30,
+  mockCalculateShinyPoints.mockImplementation((pokemonName: string) => {
+    const pointsByPokemon: Record<string, number> = {
+      pikachu: 12,
+      charmander: 20,
+      bulbasaur: 30,
     };
 
-    return pointsById[shinyId] ?? 0;
+    return pointsByPokemon[pokemonName] ?? 0;
   });
 
   mockFetch.mockResolvedValue({

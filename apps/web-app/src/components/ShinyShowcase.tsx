@@ -149,8 +149,7 @@ const sortTrainers = (
 };
 
 const transformAPIDataToShowcase = async (
-  shinies: ShinyFromAPI[],
-  apiBaseUrl: string
+  shinies: ShinyFromAPI[]
 ): Promise<Trainer[]> => {
   // Group shinies by trainer
   const trainerMap = new Map<string, ShinyFromAPI[]>();
@@ -176,7 +175,11 @@ const transformAPIDataToShowcase = async (
           const tier = getPokemonTier(shiny.pokemon_name);
           const pointValue = isFailed
             ? 0
-            : await calculateShinyPoints(shiny.id, apiBaseUrl);
+            : calculateShinyPoints(shiny.pokemon_name, {
+                encounter_type: shiny.encounter_type,
+                is_secret: shiny.is_secret,
+                is_alpha: shiny.is_alpha,
+              });
 
           return {
             id: shiny.id,
@@ -293,7 +296,7 @@ const ShinyShowcase = ({
         
         const data = await response.json();
         const shinies = data.data || [];
-        const transformedData = await transformAPIDataToShowcase(shinies, apiBaseUrl);
+        const transformedData = await transformAPIDataToShowcase(shinies);
         setAllTrainerData(transformedData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load shinies');

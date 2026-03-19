@@ -38,42 +38,43 @@ export function getPokemonTier(pokemon) {
   return 'Unknown';
 }
 
-export async function calculateShinyPoints(shinyId, apiBaseUrl) {
-  const response = await fetch(`${apiBaseUrl}/shinies/${shinyId}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch shiny ${shinyId}: ${response.statusText}`);
-  }
-
-  const payload = await response.json();
-  const shiny = payload.data;
-  const pokemonName = normalizePokemonName(shiny.pokemon_name || shiny.pokemon);
+export function calculateShinyPoints(pokemonName, options = {}) {
+  const encounterType = options.encounter_type || options.encounterType || null;
+  const isAlpha = Boolean(options.is_alpha ?? options.isAlpha);
+  const isSecret = Boolean(options.is_secret ?? options.isSecret);
   const tier = getPokemonTier(pokemonName);
   const tierPoints = TIER_POINTS[tier] || 0;
 
   let basePoints = tierPoints;
 
-  if (shiny.encounter_type === 'egg') {
+  if (encounterType === 'egg') {
     basePoints = Math.max(basePoints, 20);
   }
 
-  if (shiny.is_alpha) {
+  if (isAlpha) {
     basePoints = Math.max(basePoints, 50);
   }
 
-  if (tier == "Legendary/Mythical") {
+  if (tier === 'Legendary/Mythical') {
     basePoints = Math.max(basePoints, 100);
   }
 
   let bonusPoints = 0;
 
-  if (shiny.is_secret) {
+  if (isSecret) {
     bonusPoints += 10;
   }
 
-  if (shiny.encounter_type === 'safari') {
+  if (encounterType === 'safari') {
     bonusPoints += 5;
   }
 
   return basePoints + bonusPoints;
 }
+
+export function formatLocalDate(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
