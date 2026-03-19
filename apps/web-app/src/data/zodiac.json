@@ -2,17 +2,17 @@
   "teams": [
     {
       "name": "Virizion's Vanguard",
-      "logo": "https://archives.bulbagarden.net/media/upload/thumb/b/bf/0640Virizion.png/1024px-0640Virizion.png",
+      "logo": "/images/2026/zodiac/virizions-vanguard.png",
       "score": 0
     },
     {
       "name": "Cobalion's Commanders",
-      "logo": "https://archives.bulbagarden.net/media/upload/thumb/9/9e/0638Cobalion.png/1024px-0638Cobalion.png",
+      "logo": "/images/2026/zodiac/cobalions-commanders.png",
       "score": 0
     },
     {
       "name": "Terrakion's Titans",
-      "logo": "https://archives.bulbagarden.net/media/upload/thumb/6/6b/0639Terrakion.png/1024px-0639Terrakion.png",
+      "logo": "/images/2026/zodiac/terrakions-titans.png",
       "score": 0
     }
   ],

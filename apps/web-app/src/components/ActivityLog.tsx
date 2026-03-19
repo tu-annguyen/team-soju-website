@@ -46,6 +46,8 @@ const buildEligiblePokemonSet = (eligiblePokemon: EligiblePokemon) =>
       .map((pokemonName) => pokemonName.trim().toLowerCase())
   );
 
+const defaultApiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+
 const transformAPIDataToEvent = async (
   shinies: ShinyFromAPI[]
 ): Promise<EventShiny[]> => {
@@ -79,7 +81,7 @@ const transformAPIDataToEvent = async (
 
 const ActivityLog = ({
   eligiblePokemon,
-  apiBaseUrl = 'http://localhost:3001/api',
+  apiBaseUrl = defaultApiBaseUrl,
   onEligibleShiniesLoaded,
 }: ActivityLogProps) => {
   const [shinyData, setShinyData] = useState<EventShiny[]>([]);
