@@ -11,6 +11,7 @@ interface ShinyCardProps {
   isSecret: boolean;
   isAlpha: boolean;
   encounterType: string;
+  points?: number | null;
   tier?: string | null;
   pointValue?: number | null;
   totalEncounters?: number | null;
@@ -50,6 +51,7 @@ const ShinyCard = ({
   isSecret,
   isAlpha,
   encounterType,
+  points,
   tier,
   pointValue,
   totalEncounters,
@@ -66,6 +68,7 @@ const ShinyCard = ({
 }: ShinyCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
   const cardPokemonName = formatPokemonCardName(pokemonName);
+  const resolvedPoints = points ?? pointValue;
 
   if (variant === 'compact') {
     return (
@@ -118,6 +121,12 @@ const ShinyCard = ({
           <p className="text-xs text-gray-600 dark:text-gray-400">
             {trainerName}
           </p>
+
+          {resolvedPoints !== null && resolvedPoints !== undefined && (
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              {resolvedPoints} pts
+            </p>
+          )}
 
           {(totalEncounters || catchDate) && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -187,7 +196,7 @@ const ShinyCard = ({
         isSecret={isSecret}
         isAlpha={isAlpha}
         tier={tier}
-        pointValue={pointValue}
+        pointValue={resolvedPoints}
         catchDate={catchDate}
         totalEncounters={totalEncounters}
         speciesEncounters={speciesEncounters}

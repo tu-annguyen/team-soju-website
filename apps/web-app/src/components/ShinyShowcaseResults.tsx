@@ -96,6 +96,7 @@ const ShinyShowcaseResults = ({
                     isSecret={shiny.isSecret}
                     isAlpha={shiny.isAlpha}
                     encounterType={shiny.encounterType}
+                    points={shiny.pointValue}
                     tier={shiny.tier}
                     pointValue={shiny.pointValue}
                     catchDate={shiny.catchDate}
