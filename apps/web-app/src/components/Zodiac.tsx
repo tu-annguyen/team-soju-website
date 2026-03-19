@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import Leaderboard from './Leaderboard';
 import ActivityLog, { type EventShiny } from './ActivityLog';
 import zodiacData from '../data/zodiac.json';
+import { calculateZodiacScores } from '../utils/zodiacScoring';
 
 interface LeaderboardTeam {
   name: string;
@@ -19,11 +20,6 @@ const typedZodiacData = zodiacData as ZodiacData;
 
 const teamSections = [
   {
-    teamKey: 'virizion',
-    teamName: "Virizion's Vanguard",
-    headingClassName: 'text-primary-500',
-  },
-  {
     teamKey: 'cobalion',
     teamName: "Cobalion's Commanders",
     headingClassName: 'text-secondary-500',
@@ -33,57 +29,60 @@ const teamSections = [
     teamName: "Terrakion's Titans",
     headingClassName: 'text-accent-500',
   },
+  {
+    teamKey: 'virizion',
+    teamName: "Virizion's Vanguard",
+    headingClassName: 'text-primary-500',
+  },
 ] as const;
 
 const Zodiac = () => {
   const [eligibleShinies, setEligibleShinies] = useState<EventShiny[]>([]);
-
-  const trainerToTeam = useMemo(() => {
-    const trainerMap = new Map<string, string>();
-
-    teamSections.forEach(({ teamKey, teamName }) => {
-      (typedZodiacData.teamMembers[teamKey] ?? []).forEach((member) => {
-        trainerMap.set(member.trim().toLowerCase(), teamName);
-      });
-    });
-
-    return trainerMap;
-  }, []);
-
-  const trainerPoints = useMemo(
+  const scoring = useMemo(
     () =>
-      eligibleShinies.reduce<Record<string, number>>((pointsByTrainer, shiny) => {
-        const trainerName = shiny.trainerName.trim();
-
-        pointsByTrainer[trainerName] =
-          (pointsByTrainer[trainerName] ?? 0) + shiny.points;
-
-        return pointsByTrainer;
-      }, {}),
+      calculateZodiacScores({
+        eligiblePokemon: typedZodiacData.eligiblePokemon,
+        shinies: eligibleShinies,
+        teamDefinitions: teamSections.map(({ teamKey, teamName }) => ({
+          key: teamKey,
+          name: teamName,
+        })),
+        teamMembers: typedZodiacData.teamMembers,
+      }),
     [eligibleShinies]
   );
 
   const teamsWithScores = useMemo(() => {
-    const teamScores = eligibleShinies.reduce<Record<string, number>>(
-      (scores, shiny) => {
-        const teamName = trainerToTeam.get(
-          shiny.trainerName.trim().toLowerCase()
-        );
-
-        if (teamName) {
-          scores[teamName] = (scores[teamName] ?? 0) + shiny.points;
-        }
-
-        return scores;
-      },
-      {}
-    );
-
     return typedZodiacData.teams.map((team) => ({
       ...team,
-      score: teamScores[team.name] ?? team.score,
+      score: scoring.teams[team.name]?.score ?? team.score,
     }));
-  }, [eligibleShinies, trainerToTeam]);
+  }, [scoring]);
+
+  const sortedTeamMembers = useMemo(
+    () =>
+      Object.fromEntries(
+        teamSections.map(({ teamKey, teamName }) => {
+          const members = [...(typedZodiacData.teamMembers[teamKey] ?? [])].sort(
+            (leftMember, rightMember) => {
+              const leftScore =
+                scoring.teams[teamName]?.trainerPoints[leftMember] ?? 0;
+              const rightScore =
+                scoring.teams[teamName]?.trainerPoints[rightMember] ?? 0;
+
+              if (rightScore !== leftScore) {
+                return rightScore - leftScore;
+              }
+
+              return leftMember.localeCompare(rightMember);
+            }
+          );
+
+          return [teamKey, members];
+        })
+      ),
+    [scoring]
+  );
 
   return (
     <section className="py-16">
@@ -121,25 +120,46 @@ const Zodiac = () => {
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {teamSections.map(({ teamKey, teamName, headingClassName }) => (
-              <div
-                key={teamKey}
-                className="rounded-lg bg-white p-6 shadow dark:bg-gray-800"
-              >
-                <h3
-                  className={`text-center text-xl font-bold mb-4 ${headingClassName}`}
-                >
+              <div key={teamKey} className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+                <h3 className={`text-center text-xl font-bold mb-4 ${headingClassName}`}>
                   {teamName}
                 </h3>
 
+                <div className="mb-6 rounded-lg bg-gray-50 p-4 text-sm text-gray-700 dark:bg-gray-900/50 dark:text-gray-300">
+                  <p className="flex items-center justify-between gap-4">
+                    <span>Total Points</span>
+                    <span className="font-semibold">
+                      {scoring.teams[teamName]?.score ?? 0} pts
+                    </span>
+                  </p>
+                  <p className="mt-2 flex items-center justify-between gap-4">
+                    <span>Catch Points</span>
+                    <span>{scoring.teams[teamName]?.catchPoints ?? 0} pts</span>
+                  </p>
+                  <p className="mt-2 flex items-center justify-between gap-4">
+                    <span>Bonus Points</span>
+                    <span>{scoring.teams[teamName]?.bonusPoints ?? 0} pts</span>
+                  </p>
+                  <p className="mt-2 flex items-center justify-between gap-4">
+                    <span>Unique Evolution Lines</span>
+                    <span>{scoring.teams[teamName]?.uniqueEvolutionLines ?? 0}</span>
+                  </p>
+                  {(scoring.teams[teamName]?.claimedBonuses.length ?? 0) > 0 ? (
+                    <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                      Claimed: {scoring.teams[teamName]?.claimedBonuses.join(', ')}
+                    </p>
+                  ) : null}
+                </div>
+
                 <div className="space-y-2">
-                  {(typedZodiacData.teamMembers[teamKey] ?? []).map((member) => (
+                  {(sortedTeamMembers[teamKey] ?? []).map((member) => (
                     <p
                       key={member}
                       className="flex items-center justify-between gap-4 text-gray-700 dark:text-gray-300"
                     >
                       <span>{member}</span>
                       <span className="font-semibold">
-                        {trainerPoints[member] ?? 0} pts
+                        {scoring.teams[teamName]?.trainerPoints[member] ?? 0} pts
                       </span>
                     </p>
                   ))}

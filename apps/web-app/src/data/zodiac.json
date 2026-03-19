@@ -18,7 +18,7 @@
   ],
   "eligiblePokemon": {
     "rat": [
-      "ratata",
+      "rattata",
       "raticate",
       "pichu",
       "pikachu",
@@ -72,7 +72,7 @@
     ],
     "dragon": [
       "magikarp",
-      "gyrados",
+      "gyarados",
       "gible",
       "gabite",
       "garchomp",
@@ -116,7 +116,7 @@
       "blitzle",
       "zebstrika"
     ],
-    "goat": ["mareep", "flaffy", "ampharos"],
+    "goat": ["mareep", "flaaffy", "ampharos"],
     "monkey": [
       "mankey",
       "primeape",
@@ -197,8 +197,8 @@
     ]
   },
   "teamMembers": {
-    "virizion": ["pikachutiyaL", "TXMPXp", "HogXD", "BeepBeepAuto", "DatBoiWinds", "ElMrJhonson", "Axelokara", "Ssjbluecrill", "Uwazii", "StrPi", "Llensjo"],
     "cobalion": ["tunacore", "BlossomsDream", "IOSLOUD", "SpriggyMew", "MPLA", "Jiany", "Shwfityz", "Shayatin", "Zofina", "catcoded", "Aisukohi"],
-    "terrakion": ["Pokio", "Buddhalicious", "Brutal", "Misc", "TMAvatar", "Scotty", "Megu", "burritoking", "Ubela", "DingusDestiny", "CrunchyMike"]
+    "terrakion": ["Pokio", "Buddhalicious", "Brutal", "Misc", "TMAvatar", "Scotty", "Megu", "burritoking", "Ubela", "DingusDestiny", "CrunchyMike"],
+    "virizion": ["pikachutiyaL", "TXMPXp", "HogXD", "BeepBeepAuto", "DatBoiWinds", "ElMrJhonson", "Axelokara", "Ssjbluecrill", "Uwazii", "StrPi", "Llensjo"]
   }
 }

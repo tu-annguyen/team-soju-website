@@ -22,6 +22,7 @@ interface ShinyFromAPI {
   notes: string | null;
   total_encounters?: number | null;
   catch_date?: string | null;
+  created_at?: string | null;
 }
 
 export interface EventShiny {
@@ -36,6 +37,7 @@ export interface EventShiny {
   encounterType: string;
   totalEncounters: number | null;
   catchDate: string | null;
+  createdAt: string | null;
   points: number;
 }
 
@@ -68,6 +70,7 @@ const transformAPIDataToEvent = async (
         encounterType: shiny.encounter_type || '',
         totalEncounters: shiny.total_encounters ?? null,
         catchDate: shiny.catch_date ?? null,
+        createdAt: shiny.created_at ?? null,
         points: isFailed
           ? 0
           : calculateShinyPoints(shiny.pokemon_name, {
