@@ -17,6 +17,7 @@
     "@team-soju/utils": "*",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
+    "@vercel/analytics": "^2.0.1",
     "astro": "^5.2.5",
     "axios": "^1.9.0",
     "cheerio": "^1.0.0",
