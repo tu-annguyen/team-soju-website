@@ -79,12 +79,20 @@ const ShinyShowcaseResults = ({
         {filteredTrainers.length > 0 ? (
           filteredTrainers.map(trainer => (
             <div key={trainer.name} className="mb-12">
-              <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                {trainer.name}
-                <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
-                  ({trainer.numOT} OT shinies • {trainer.totalPoints} pts)
-                </span>
-              </h3>
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <h3 className="min-w-0 break-words text-2xl font-bold text-gray-900 dark:text-white">
+                  {trainer.name}
+                </h3>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-gray-600 dark:text-gray-400 sm:justify-end sm:text-lg sm:font-normal">
+                  <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+                    {trainer.numOT} OT shinies
+                  </span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+                    {trainer.totalPoints} pts
+                  </span>
+                </p>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
                 {trainer.shinies.map((shiny, index) => (
                   <ShinyCard

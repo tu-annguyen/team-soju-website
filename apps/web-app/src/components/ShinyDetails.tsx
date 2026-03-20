@@ -123,7 +123,7 @@ const ShinyDetails = ({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 sm:items-center sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -133,15 +133,15 @@ const ShinyDetails = ({
             role="dialog"
             aria-modal="true"
             aria-labelledby="shiny-details-title"
-            className="w-full max-w-lg rounded-2xl border border-white/10 bg-white p-6 shadow-2xl dark:bg-gray-900"
+            className="my-4 flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-white p-4 shadow-2xl dark:bg-gray-900 sm:p-6"
             initial={{ opacity: 0, scale: 0.96, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div className="flex items-start gap-4">
+            <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex flex-col gap-3 bg-white px-4 pt-4 pb-3 dark:bg-gray-900 sm:-mx-6 sm:-mt-6 sm:mb-6 sm:flex-row sm:items-start sm:justify-between sm:px-6 sm:pt-6">
+              <div className="flex min-w-0 items-start gap-4">
                 <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-100 p-2 dark:bg-gray-800">
                   {isSecret && (
                     <img
@@ -175,13 +175,13 @@ const ShinyDetails = ({
                   />
                 </div>
 
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm uppercase tracking-[0.24em] text-primary-600 dark:text-primary-400">
                     Shiny Details
                   </p>
                   <h2
                     id="shiny-details-title"
-                    className="text-2xl font-bold text-gray-900 dark:text-white"
+                    className="break-words text-2xl font-bold text-gray-900 dark:text-white"
                   >
                     {detailsPokemonName}
                   </h2>
@@ -194,27 +194,29 @@ const ShinyDetails = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                className="w-full shrink-0 rounded-full border border-gray-200 px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 sm:w-auto sm:px-3 sm:py-1"
                 aria-label="Close shiny details"
               >
                 Close
               </button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {details.map((detail) => (
-                <div
-                  key={detail.label}
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-950/70"
-                >
-                  <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                    {detail.label}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {detail.value}
-                  </p>
-                </div>
-              ))}
+            <div className="overflow-y-auto pr-1">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {details.map((detail) => (
+                  <div
+                    key={detail.label}
+                    className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-950/70"
+                  >
+                    <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                      {detail.label}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {detail.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </motion.div>
         </motion.div>
