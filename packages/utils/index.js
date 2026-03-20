@@ -48,19 +48,7 @@ const TIER_POINTS = {
     'Tier 4': 6,
     'Tier 5': 3,
     'Tier 6': 2,
-    'Tier 7': 1,
 };
-
-const LEGENDARY_OR_MYTHICAL = new Set([
-    'articuno', 'zapdos', 'moltres', 'mewtwo', 'mew',
-    'raikou', 'entei', 'suicune', 'lugia', 'ho-oh', 'celebi',
-    'regirock', 'regice', 'registeel', 'latias', 'latios', 'kyogre', 'groudon',
-    'rayquaza', 'jirachi', 'deoxys', 'uxie', 'mesprit', 'azelf', 'dialga', 'palkia',
-    'heatran', 'regigigas', 'giratina', 'cresselia', 'phione', 'manaphy', 'darkrai',
-    'shaymin', 'arceus', 'victini', 'cobalion', 'terrakion', 'virizion', 'tornadus',
-    'thundurus', 'reshiram', 'zekrom', 'landorus', 'kyurem', 'keldeo', 'meloetta',
-    'genesect'
-]);
 
 function normalizePokemonName(pokemon) {
     return String(pokemon || '').trim().toLowerCase();
@@ -111,7 +99,7 @@ function calculateShinyPoints(pokemonName, options = {}) {
         basePoints = Math.max(basePoints, 50);
     }
 
-    if (LEGENDARY_OR_MYTHICAL.has(normalizedPokemonName)) {
+    if (tier === 'Legendary/Mythical') {
         basePoints = Math.max(basePoints, 100);
     }
 

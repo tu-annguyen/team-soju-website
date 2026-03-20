@@ -11,7 +11,6 @@ const TIER_POINTS = {
   'Tier 4': 6,
   'Tier 5': 3,
   'Tier 6': 2,
-  'Tier 7': 1,
 };
 
 function normalizePokemonName(pokemon) {
