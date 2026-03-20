@@ -35,6 +35,38 @@ describe('TeamShiny model', () => {
     expect(result).toEqual(rows);
   });
 
+  it('findAll supports secondary sort field and order', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    await TeamShiny.findAll({
+      sort_by: 'catch_date',
+      sort_order: 'desc',
+      secondary_sort_by: 'total_encounters',
+      secondary_sort_order: 'asc',
+    });
+
+    const [sql] = mockQuery.mock.calls[0];
+
+    expect(sql).toContain(
+      'ORDER BY ts.catch_date DESC NULLS FIRST, ts.total_encounters ASC NULLS FIRST, ts.created_at DESC'
+    );
+  });
+
+  it('findAll defaults secondary sort to created_at desc', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    await TeamShiny.findAll({
+      sort_by: 'catch_date',
+      sort_order: 'desc',
+    });
+
+    const [sql] = mockQuery.mock.calls[0];
+
+    expect(sql).toContain(
+      'ORDER BY ts.catch_date DESC NULLS FIRST, ts.created_at DESC NULLS FIRST'
+    );
+  });
+
   it('findById queries by id and returns row', async () => {
     const row = { id: 1, pokemon_name: 'pikachu' };
     mockQuery.mockResolvedValue({ rows: [row] });

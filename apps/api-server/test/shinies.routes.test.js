@@ -38,6 +38,23 @@ describe('Shinies routes', () => {
       expect(res.body.data).toEqual(shinies);
     });
 
+    it('passes secondary sort query parameters correctly', async () => {
+      TeamShiny.findAll.mockResolvedValue([]);
+
+      const res = await request(app).get(
+        '/api/shinies?sort_by=catch_date&sort_order=desc&secondary_sort_by=total_encounters&secondary_sort_order=asc'
+      );
+
+      expect(res.status).toBe(200);
+      expect(TeamShiny.findAll).toHaveBeenCalledWith({
+        active: true,
+        sort_by: 'catch_date',
+        sort_order: 'desc',
+        secondary_sort_by: 'total_encounters',
+        secondary_sort_order: 'asc',
+      });
+    });
+
     it('handles errors with 500', async () => {
       TeamShiny.findAll.mockRejectedValue(new Error('db error'));
 

@@ -57,10 +57,32 @@ class TeamShiny {
       total_encounters: 'ts.total_encounters',
     };
 
-    const sortBy = allowedSortFields[filters.sort_by] || 'ts.catch_date';
-    const sortOrder = filters.sort_order === 'asc' ? 'ASC' : 'DESC';
+    const resolveSortField = (sortField, fallbackField) =>
+      allowedSortFields[sortField] || fallbackField;
+    const resolveSortOrder = (sortOrder, fallbackOrder = 'DESC') =>
+      sortOrder === 'asc' ? 'ASC' : fallbackOrder;
 
-    query += ` ORDER BY ${sortBy} ${sortOrder} NULLS FIRST, ts.created_at ASC`;
+    const primarySortBy = resolveSortField(filters.sort_by, 'ts.catch_date');
+    const primarySortOrder = resolveSortOrder(filters.sort_order);
+    const secondarySortBy = resolveSortField(
+      filters.secondary_sort_by,
+      'ts.created_at'
+    );
+    const secondarySortOrder = resolveSortOrder(
+      filters.secondary_sort_order,
+      'DESC'
+    );
+    const orderByClauses = [`${primarySortBy} ${primarySortOrder} NULLS FIRST`];
+
+    if (secondarySortBy !== primarySortBy) {
+      orderByClauses.push(`${secondarySortBy} ${secondarySortOrder} NULLS FIRST`);
+    }
+
+    if (secondarySortBy !== 'ts.created_at') {
+      orderByClauses.push('ts.created_at DESC');
+    }
+
+    query += ` ORDER BY ${orderByClauses.join(', ')}`;
 
     if (filters.limit) {
       query += ` LIMIT ${addParam(Number(filters.limit))}`;

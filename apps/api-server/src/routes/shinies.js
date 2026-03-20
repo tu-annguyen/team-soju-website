@@ -155,6 +155,8 @@ router.get('/', async (req, res) => {
     if (req.query.catch_date_after) filters.catch_date_after = req.query.catch_date_after;
     if (req.query.sort_by) filters.sort_by = req.query.sort_by;
     if (req.query.sort_order) filters.sort_order = req.query.sort_order;
+    if (req.query.secondary_sort_by) filters.secondary_sort_by = req.query.secondary_sort_by;
+    if (req.query.secondary_sort_order) filters.secondary_sort_order = req.query.secondary_sort_order;
     if (req.query.limit) filters.limit = parseInt(req.query.limit);
 
     const shinies = await TeamShiny.findAll(filters);
