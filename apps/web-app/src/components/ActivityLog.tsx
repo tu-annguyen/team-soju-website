@@ -166,7 +166,9 @@ const ActivityLog = ({
   if (loading) {
     return (
       <section className="py-8">
-        <div className="container">Loading activity log...</div>
+        <div className="container text-center">
+          <p className="text-gray-600 dark:text-gray-400">Loading activity log...</p>
+        </div>
       </section>
     );
   }
@@ -174,7 +176,9 @@ const ActivityLog = ({
   if (error) {
     return (
       <section className="py-8">
-        <div className="container text-red-500">{error}</div>
+        <div className="container text-center">
+          <p className="text-red-600 dark:text-red-400">Error loading shinies: {error}</p>
+        </div>
       </section>
     );
   }
