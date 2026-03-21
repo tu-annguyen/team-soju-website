@@ -6,6 +6,20 @@ const TeamMember = require('../models/TeamMember');
 const router = express.Router();
 const { authenticateBot } = require('../middleware/auth');
 
+function loadOcrDependencies() {
+  try {
+    return {
+      sharp: require('sharp'),
+      Tesseract: require('tesseract.js'),
+    };
+  } catch (error) {
+    if (error.code === 'MODULE_NOT_FOUND') {
+      error.message = `OCR dependency missing: ${error.message}`;
+    }
+    throw error;
+  }
+}
+
 // Validation schema
 const shinySchema = Joi.object({
   national_number: Joi.number().integer().min(1).max(1010).required(),
@@ -221,8 +235,7 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       });
     }
 
-    const sharp = require('sharp');
-    const Tesseract = require('tesseract.js');
+    const { sharp, Tesseract } = loadOcrDependencies();
     const imageResponse = await fetch(value.screenshot_url);
     if (!imageResponse.ok) {
       return res.status(400).json({
@@ -321,6 +334,13 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
     });
   } catch (routeError) {
     console.error('Error creating shiny from screenshot:', routeError);
+    if (routeError.code === 'MODULE_NOT_FOUND') {
+      return res.status(500).json({
+        success: false,
+        message: 'Screenshot OCR is not available on this server. Missing runtime dependency.',
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Failed to create shiny entry from screenshot',
