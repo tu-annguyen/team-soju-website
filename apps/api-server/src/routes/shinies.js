@@ -106,7 +106,7 @@ function parseDataFromOcr(text, isMDY = false) {
     return match?.[1]?.trim() || null;
   })();
 
-  const ivMatch = /((?:[0-9]|[12][0-9]|3[01])\/){5}(?:[0-9]|[12][0-9]|3[01])/.exec(text);
+  const ivMatch = /\b(?:3[01]|[12][0-9]|[0-9])(?:\/(?:3[01]|[12][0-9]|[0-9])){5}\b/.exec(text);
   const ivs = ivMatch ? ivMatch[0].split('/').map(value => parseInt(value, 10)) : [];
 
   const nature = (() => {
