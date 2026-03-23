@@ -7,6 +7,14 @@ const { parseMobileStatsPanel } = require('../utils/mobileStatsParser');
 const router = express.Router();
 const { authenticateBot } = require('../middleware/auth');
 
+const NATURE_CHOICES = [
+  'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
+  'Bold', 'Docile', 'Relaxed', 'Impish', 'Lax',
+  'Timid', 'Hasty', 'Serious', 'Jolly', 'Naive',
+  'Modest', 'Mild', 'Quiet', 'Bashful', 'Rash',
+  'Calm', 'Gentle', 'Sassy', 'Careful', 'Quirky',
+];
+
 function loadOcrDependencies() {
   try {
     return {
@@ -112,7 +120,7 @@ function parseDataFromOcr(text, isMDY = false) {
 
   const nature = (() => {
     const match = /N?atu?r?e?:\s+([A-Za-z]+)/i.exec(text);
-    return match?.[1]?.trim() || null;
+    return normalizeNatureCandidate(match?.[1]) || null;
   })();
 
   const totalEncounters = (() => {
@@ -140,6 +148,47 @@ function parseDataFromOcr(text, isMDY = false) {
     totalEncounters,
     speciesEncounters,
   };
+}
+
+function levenshtein(leftValue, rightValue) {
+  const left = String(leftValue || '').toLowerCase();
+  const right = String(rightValue || '').toLowerCase();
+  const rows = Array.from({ length: left.length + 1 }, () => new Array(right.length + 1).fill(0));
+
+  for (let i = 0; i <= left.length; i += 1) rows[i][0] = i;
+  for (let j = 0; j <= right.length; j += 1) rows[0][j] = j;
+
+  for (let i = 1; i <= left.length; i += 1) {
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      rows[i][j] = Math.min(
+        rows[i - 1][j] + 1,
+        rows[i][j - 1] + 1,
+        rows[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return rows[left.length][right.length];
+}
+
+function normalizeNatureCandidate(value) {
+  const token = String(value || '').replace(/[^A-Za-z]/g, '');
+  if (!token) return null;
+
+  let bestNature = null;
+  let bestConfidence = 0;
+
+  for (const nature of NATURE_CHOICES) {
+    const maxLength = Math.max(token.length, nature.length);
+    const confidence = maxLength === 0 ? 0 : Math.max(0, 1 - (levenshtein(token, nature) / maxLength));
+    if (confidence > bestConfidence) {
+      bestNature = nature;
+      bestConfidence = confidence;
+    }
+  }
+
+  return bestConfidence >= 0.55 ? bestNature : null;
 }
 
 function normalizeIgnForComparison(value) {
@@ -310,6 +359,8 @@ function validateParsedData(data) {
 function mergeParsedStats(parsed, stats) {
   if (!stats) return parsed;
 
+  const mobileNatureConfidence = stats.meta?.recognizers?.nature?.confidence || 0;
+
   return {
     ...parsed,
     hp: Number.isInteger(stats.hp) ? stats.hp : parsed.hp,
@@ -318,7 +369,7 @@ function mergeParsedStats(parsed, stats) {
     spa: Number.isInteger(stats.spa) ? stats.spa : parsed.spa,
     spd: Number.isInteger(stats.spd) ? stats.spd : parsed.spd,
     spe: Number.isInteger(stats.spe) ? stats.spe : parsed.spe,
-    nature: stats.nature || parsed.nature,
+    nature: mobileNatureConfidence >= 0.8 ? (stats.nature || parsed.nature) : parsed.nature,
     totalEncounters: Number.isInteger(stats.totalEncounters) ? stats.totalEncounters : parsed.totalEncounters,
     speciesEncounters: Number.isInteger(stats.speciesEncounters) ? stats.speciesEncounters : parsed.speciesEncounters,
   };

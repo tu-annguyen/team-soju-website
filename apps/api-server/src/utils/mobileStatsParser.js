@@ -601,31 +601,38 @@ function parseIvCandidate(text) {
 }
 
 function parseNatureCandidate(text) {
-  const letters = text.replace(/[^A-Za-z]/g, '');
-  if (!letters) return null;
+  const tokens = text
+    .split(/[^A-Za-z]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
 
-  let bestNature = null;
-  let bestDistance = Number.POSITIVE_INFINITY;
+  if (tokens.length === 0) return null;
 
-  for (const nature of NATURES) {
-    const distance = levenshtein(letters, nature);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestNature = nature;
+  let bestMatch = null;
+
+  for (const token of tokens) {
+    for (const nature of NATURES) {
+      const distance = levenshtein(token, nature);
+      const maxLength = Math.max(token.length, nature.length);
+      const confidence = maxLength === 0 ? 0 : Math.max(0, 1 - (distance / maxLength));
+
+      if (!bestMatch || confidence > bestMatch.confidence) {
+        bestMatch = {
+          value: nature,
+          confidence,
+          raw: token,
+        };
+      }
     }
   }
 
-  if (!bestNature) return null;
-
-  const maxLength = Math.max(letters.length, bestNature.length);
-  const confidence = maxLength === 0 ? 0 : Math.max(0, 1 - (bestDistance / maxLength));
-  if (confidence < 0.45) return null;
+  if (!bestMatch || bestMatch.confidence < 0.45) return null;
 
   return {
-    value: bestNature,
-    confidence,
+    value: bestMatch.value,
+    confidence: bestMatch.confidence,
     strategy: 'anchor-ocr-dictionary',
-    raw: text,
+    raw: bestMatch.raw,
   };
 }
 
@@ -691,25 +698,8 @@ function parseCountFromRecognized(recognized) {
   if (digits.length === 0) return null;
 
   const sorted = [...digits].sort((a, b) => a.start - b.start);
-
-  let bestRun = [];
-  let currentRun = [];
-
-  for (const digit of sorted) {
-    const previous = currentRun.at(-1);
-    if (!previous || (digit.start - previous.end) <= 24) {
-      currentRun.push(digit);
-    } else {
-      if (currentRun.length >= bestRun.length) bestRun = currentRun;
-      currentRun = [digit];
-    }
-  }
-
-  if (currentRun.length >= bestRun.length) bestRun = currentRun;
-  if (bestRun.length === 0) return null;
-
   const runs = [];
-  currentRun = [];
+  let currentRun = [];
   for (const digit of sorted) {
     const previous = currentRun.at(-1);
     if (!previous || (digit.start - previous.end) <= 24) {
@@ -721,22 +711,43 @@ function parseCountFromRecognized(recognized) {
   }
   if (currentRun.length > 0) runs.push(currentRun);
 
-  bestRun = runs
-    .sort((a, b) => {
-      const aEnd = a.at(-1).end;
-      const bEnd = b.at(-1).end;
-      if (bEnd !== aEnd) return bEnd - aEnd;
-      return b.length - a.length;
-    })[0];
+  if (runs.length === 0) return null;
+
+  const maxEnd = Math.max(...runs.map((run) => run.at(-1).end));
+  const scoreRun = (run) => {
+    const rightEdgeRatio = maxEnd === 0 ? 0 : run.at(-1).end / maxEnd;
+    const minScore = Math.min(...run.map((item) => item.score));
+    const gaps = run.slice(1).map((item, index) => item.start - run[index].end);
+    const averageGap = gaps.length > 0 ? gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length : 0;
+    const gapVariance = gaps.length > 1
+      ? gaps.reduce((sum, gap) => sum + Math.abs(gap - averageGap), 0) / gaps.length
+      : 0;
+    const gapConsistency = gaps.length === 0 ? 1 : Math.max(0, 1 - (gapVariance / 12));
+    const lengthBonus = Math.min(1, run.length / 4);
+
+    return (
+      (rightEdgeRatio * 0.45) +
+      (minScore * 0.30) +
+      (gapConsistency * 0.15) +
+      (lengthBonus * 0.10)
+    );
+  };
+
+  const bestRun = runs
+    .map((run) => ({ run, runScore: scoreRun(run) }))
+    .sort((a, b) => b.runScore - a.runScore)[0]?.run;
+
+  if (!bestRun || bestRun.length === 0) return null;
 
   const text = bestRun.map((item) => item.char).join('');
   if (!/^\d{3,7}$/.test(text)) return null;
   const minScore = Math.min(...bestRun.map((item) => item.score));
-  if (text.length === 3 && minScore < 0.75) return null;
+  const runScore = scoreRun(bestRun);
+  if (runScore < 0.62) return null;
 
   return {
     value: parseInt(text, 10),
-    confidence: minScore,
+    confidence: Math.min(0.99, (minScore * 0.6) + (runScore * 0.4)),
     raw: text,
   };
 }
