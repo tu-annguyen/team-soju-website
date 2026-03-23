@@ -141,6 +141,72 @@ function parseDataFromOcr(text, isMDY = false) {
   };
 }
 
+function normalizeIgnForComparison(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[|!1il]/g, 'l');
+}
+
+async function findTrainerFromOcr(parsedTrainer) {
+  if (!parsedTrainer) return null;
+
+  const exactMatch = await TeamMember.findByIgn(parsedTrainer);
+  if (exactMatch) return exactMatch;
+
+  const normalizedTrainer = normalizeIgnForComparison(parsedTrainer);
+  if (!normalizedTrainer) return null;
+
+  const members = await TeamMember.findAll();
+  const candidates = members.filter((member) => (
+    normalizeIgnForComparison(member.ign) === normalizedTrainer
+  ));
+
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+async function buildOcrBuffers(imageBuffer, sharp) {
+  const image = sharp(imageBuffer);
+  const metadata = await image.metadata();
+  const width = metadata.width;
+  const height = metadata.height;
+
+  if (!width || !height) {
+    throw new Error('Unable to read screenshot dimensions for OCR preprocessing.');
+  }
+
+  const statsHeight = Math.max(1, Math.floor(height * 0.26));
+  const statsTop = Math.max(0, height - statsHeight);
+
+  const mainBufferPromise = image
+    .clone()
+    .greyscale()
+    .negate()
+    .normalize()
+    .threshold(180)
+    .resize({ width: Math.max(width, 1500) })
+    .sharpen({ sigma: 1 })
+    .toBuffer();
+
+  const statsBufferPromise = image
+    .clone()
+    .extract({
+      left: 0,
+      top: statsTop,
+      width,
+      height: height - statsTop,
+    })
+    .greyscale()
+    .negate()
+    .normalize()
+    .resize({ width: Math.max(width * 3, 1800) })
+    .sharpen({ sigma: 1.2 })
+    .toBuffer();
+
+  const [mainBuffer, statsBuffer] = await Promise.all([mainBufferPromise, statsBufferPromise]);
+  return { mainBuffer, statsBuffer };
+}
+
 function validateParsedData(data) {
   if (!data.name) {
     return { isValid: false, error: 'Pokemon name is missing or invalid.' };
@@ -245,19 +311,25 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
     }
 
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-    const processedBuffer = await sharp(imageBuffer)
-      .greyscale()
-      .normalise()
-      .threshold(128)
-      .sharpen({ sigma: 1 })
-      .toBuffer();
+    const { mainBuffer, statsBuffer } = await buildOcrBuffers(imageBuffer, sharp);
+    const [mainOcrResult, statsOcrResult] = await Promise.all([
+      Tesseract.recognize(mainBuffer, 'eng', {
+        tessedit_pageseg_mode: '11',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,.! ',
+      }),
+      Tesseract.recognize(statsBuffer, 'eng', {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+      }),
+    ]);
 
-    const ocrResult = await Tesseract.recognize(processedBuffer, 'eng', {
-      tessedit_pageseg_mode: '6',
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/°: -_—',
-    });
-
-    const ocrText = ocrResult?.data?.text || '';
+    const ocrText = [
+      mainOcrResult?.data?.text || '',
+      statsOcrResult?.data?.text || '',
+    ].filter(Boolean).join('\n');
+    console.log('OCR Result: ', ocrText);
     const parsed = parseDataFromOcr(ocrText, value.date_is_mdy);
     const validation = validateParsedData(parsed);
 
@@ -281,7 +353,7 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
         });
       }
 
-      if (member.ign.toLowerCase() !== String(parsed.trainer || '').toLowerCase()) {
+      if (normalizeIgnForComparison(member.ign) !== normalizeIgnForComparison(parsed.trainer)) {
         return res.status(403).json({
           success: false,
           message: `You can only manage shinies for your registered IGN: ${member.ign}`,
@@ -289,7 +361,7 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       }
     }
 
-    const trainer = await TeamMember.findByIgn(parsed.trainer);
+    const trainer = await findTrainerFromOcr(parsed.trainer);
     if (!trainer) {
       return res.status(404).json({
         success: false,
