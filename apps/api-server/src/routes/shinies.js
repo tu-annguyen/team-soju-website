@@ -3,6 +3,7 @@ const Joi = require('joi');
 const { getPokemonNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
+const { parseMobileStatsPanel } = require('../utils/mobileStatsParser');
 const router = express.Router();
 const { authenticateBot } = require('../middleware/auth');
 
@@ -165,7 +166,19 @@ async function findTrainerFromOcr(parsedTrainer) {
   return candidates.length === 1 ? candidates[0] : null;
 }
 
-async function buildOcrBuffers(imageBuffer, sharp) {
+function detectScreenshotLayout(width, height) {
+  return width / height >= 1.6 ? 'mobile' : 'desktop';
+}
+
+function createOcrJob(name, pipeline, options) {
+  return {
+    name,
+    bufferPromise: pipeline.toBuffer(),
+    options,
+  };
+}
+
+async function buildOcrJobs(imageBuffer, sharp) {
   const image = sharp(imageBuffer);
   const metadata = await image.metadata();
   const width = metadata.width;
@@ -175,36 +188,111 @@ async function buildOcrBuffers(imageBuffer, sharp) {
     throw new Error('Unable to read screenshot dimensions for OCR preprocessing.');
   }
 
-  const statsHeight = Math.max(1, Math.floor(height * 0.26));
-  const statsTop = Math.max(0, height - statsHeight);
+  const layout = detectScreenshotLayout(width, height);
+  const jobs = [];
 
-  const mainBufferPromise = image
-    .clone()
-    .greyscale()
-    .negate()
-    .normalize()
-    .threshold(180)
-    .resize({ width: Math.max(width, 1500) })
-    .sharpen({ sigma: 1 })
-    .toBuffer();
+  if (layout === 'mobile') {
+    const headerHeight = Math.max(1, Math.floor(height * 0.12));
+    const statsTop = Math.max(0, Math.floor(height * 0.78));
+    const statsWidth = Math.max(1, Math.floor(width * 0.9));
+    const statsHeight = Math.max(1, height - statsTop);
 
-  const statsBufferPromise = image
-    .clone()
-    .extract({
-      left: 0,
-      top: statsTop,
-      width,
-      height: height - statsTop,
-    })
-    .greyscale()
-    .negate()
-    .normalize()
-    .resize({ width: Math.max(width * 3, 1800) })
-    .sharpen({ sigma: 1.2 })
-    .toBuffer();
+    jobs.push(createOcrJob(
+      'mobile-header',
+      image
+        .clone()
+        .extract({ left: 0, top: 0, width, height: headerHeight })
+        .greyscale()
+        .normalize()
+        .threshold(175)
+        .resize({ width: Math.max(width * 2, 2400) })
+        .sharpen({ sigma: 1 }),
+      {
+        tessedit_pageseg_mode: '7',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/,:! ',
+      }
+    ));
 
-  const [mainBuffer, statsBuffer] = await Promise.all([mainBufferPromise, statsBufferPromise]);
-  return { mainBuffer, statsBuffer };
+    jobs.push(createOcrJob(
+      'mobile-stats-threshold',
+      image
+        .clone()
+        .extract({ left: 0, top: statsTop, width: statsWidth, height: statsHeight })
+        .greyscale()
+        .negate()
+        .normalize()
+        .threshold(145)
+        .resize({ width: Math.max(statsWidth * 3, 2600) })
+        .sharpen({ sigma: 1.3 }),
+      {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+      }
+    ));
+
+    jobs.push(createOcrJob(
+      'mobile-stats-color-safe',
+      image
+        .clone()
+        .extract({ left: 0, top: statsTop, width: statsWidth, height: statsHeight })
+        .greyscale()
+        .negate()
+        .normalize()
+        .resize({ width: Math.max(statsWidth * 3, 2600) })
+        .sharpen({ sigma: 1.3 }),
+      {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+      }
+    ));
+  } else {
+    const statsHeight = Math.max(1, Math.floor(height * 0.26));
+    const statsTop = Math.max(0, height - statsHeight);
+
+    jobs.push(createOcrJob(
+      'desktop-main',
+      image
+        .clone()
+        .greyscale()
+        .negate()
+        .normalize()
+        .threshold(180)
+        .resize({ width: Math.max(width, 1500) })
+        .sharpen({ sigma: 1 }),
+      {
+        tessedit_pageseg_mode: '11',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,! ',
+      }
+    ));
+
+    jobs.push(createOcrJob(
+      'desktop-stats',
+      image
+        .clone()
+        .extract({
+          left: 0,
+          top: statsTop,
+          width,
+          height: height - statsTop,
+        })
+        .greyscale()
+        .negate()
+        .normalize()
+        .resize({ width: Math.max(width * 3, 1800) })
+        .sharpen({ sigma: 1.2 }),
+      {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+      }
+    ));
+  }
+
+  return { layout, jobs };
 }
 
 function validateParsedData(data) {
@@ -217,6 +305,23 @@ function validateParsedData(data) {
   }
 
   return { isValid: true, error: null };
+}
+
+function mergeParsedStats(parsed, stats) {
+  if (!stats) return parsed;
+
+  return {
+    ...parsed,
+    hp: Number.isInteger(stats.hp) ? stats.hp : parsed.hp,
+    atk: Number.isInteger(stats.atk) ? stats.atk : parsed.atk,
+    def: Number.isInteger(stats.def) ? stats.def : parsed.def,
+    spa: Number.isInteger(stats.spa) ? stats.spa : parsed.spa,
+    spd: Number.isInteger(stats.spd) ? stats.spd : parsed.spd,
+    spe: Number.isInteger(stats.spe) ? stats.spe : parsed.spe,
+    nature: stats.nature || parsed.nature,
+    totalEncounters: Number.isInteger(stats.totalEncounters) ? stats.totalEncounters : parsed.totalEncounters,
+    speciesEncounters: Number.isInteger(stats.speciesEncounters) ? stats.speciesEncounters : parsed.speciesEncounters,
+  };
 }
 
 // GET /api/shinies - Get all team shinies with optional filters
@@ -311,27 +416,40 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
     }
 
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-    const { mainBuffer, statsBuffer } = await buildOcrBuffers(imageBuffer, sharp);
-    const [mainOcrResult, statsOcrResult] = await Promise.all([
-      Tesseract.recognize(mainBuffer, 'eng', {
-        tessedit_pageseg_mode: '11',
-        preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,.! ',
-      }),
-      Tesseract.recognize(statsBuffer, 'eng', {
-        tessedit_pageseg_mode: '6',
-        preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
-      }),
-    ]);
+    const { layout, jobs } = await buildOcrJobs(imageBuffer, sharp);
+    const ocrResults = await Promise.all(jobs.map(async (job) => {
+      const buffer = await job.bufferPromise;
+      const result = await Tesseract.recognize(buffer, 'eng', job.options);
+      return {
+        name: job.name,
+        text: result?.data?.text || '',
+      };
+    }));
 
-    const ocrText = [
-      mainOcrResult?.data?.text || '',
-      statsOcrResult?.data?.text || '',
-    ].filter(Boolean).join('\n');
+    const ocrText = ocrResults
+      .map((result) => result.text)
+      .filter(Boolean)
+      .join('\n');
+    console.log('OCR Layout: ', layout);
     console.log('OCR Result: ', ocrText);
     const parsed = parseDataFromOcr(ocrText, value.date_is_mdy);
-    const validation = validateParsedData(parsed);
+    let mobileStats = null;
+
+    if (layout === 'mobile') {
+      mobileStats = await parseMobileStatsPanel({
+        imageBuffer,
+        sharp,
+        Tesseract,
+        pokemonName: parsed.name,
+      });
+      console.log('Mobile Stats Parser: ', JSON.stringify({
+        confidence: mobileStats.confidence,
+        recognizers: mobileStats.meta?.recognizers,
+      }));
+    }
+
+    const mergedParsed = mergeParsedStats(parsed, mobileStats);
+    const validation = validateParsedData(mergedParsed);
 
     if (!validation.isValid) {
       return res.status(422).json({
@@ -353,7 +471,7 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
         });
       }
 
-      if (normalizeIgnForComparison(member.ign) !== normalizeIgnForComparison(parsed.trainer)) {
+      if (normalizeIgnForComparison(member.ign) !== normalizeIgnForComparison(mergedParsed.trainer)) {
         return res.status(403).json({
           success: false,
           message: `You can only manage shinies for your registered IGN: ${member.ign}`,
@@ -361,42 +479,42 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       }
     }
 
-    const trainer = await findTrainerFromOcr(parsed.trainer);
+    const trainer = await findTrainerFromOcr(mergedParsed.trainer);
     if (!trainer) {
       return res.status(404).json({
         success: false,
-        message: `Could not find trainer with IGN "${parsed.trainer}"`,
+        message: `Could not find trainer with IGN "${mergedParsed.trainer}"`,
         details: { ocr_text: ocrText },
       });
     }
 
-    const nationalNumber = await getPokemonNationalNumber(parsed.name);
+    const nationalNumber = await getPokemonNationalNumber(mergedParsed.name);
     if (!nationalNumber) {
       return res.status(404).json({
         success: false,
-        message: `Could not find national number for Pokemon "${parsed.name}"`,
+        message: `Could not find national number for Pokemon "${mergedParsed.name}"`,
         details: { ocr_text: ocrText },
       });
     }
 
     const shiny = await TeamShiny.create({
       national_number: nationalNumber,
-      pokemon: parsed.name,
+      pokemon: mergedParsed.name,
       original_trainer: trainer.id,
-      catch_date: parsed.date,
+      catch_date: mergedParsed.date,
       encounter_type: value.encounter_type,
       is_secret: value.is_secret,
       is_alpha: value.is_alpha,
       screenshot_url: value.screenshot_url,
-      total_encounters: Number.isInteger(parsed.totalEncounters) ? parsed.totalEncounters : 0,
-      species_encounters: Number.isInteger(parsed.speciesEncounters) ? parsed.speciesEncounters : 0,
-      ...(parsed.nature ? { nature: parsed.nature } : {}),
-      ...(Number.isInteger(parsed.hp) ? { iv_hp: parsed.hp } : {}),
-      ...(Number.isInteger(parsed.atk) ? { iv_attack: parsed.atk } : {}),
-      ...(Number.isInteger(parsed.def) ? { iv_defense: parsed.def } : {}),
-      ...(Number.isInteger(parsed.spa) ? { iv_sp_attack: parsed.spa } : {}),
-      ...(Number.isInteger(parsed.spd) ? { iv_sp_defense: parsed.spd } : {}),
-      ...(Number.isInteger(parsed.spe) ? { iv_speed: parsed.spe } : {}),
+      total_encounters: Number.isInteger(mergedParsed.totalEncounters) ? mergedParsed.totalEncounters : 0,
+      species_encounters: Number.isInteger(mergedParsed.speciesEncounters) ? mergedParsed.speciesEncounters : 0,
+      ...(mergedParsed.nature ? { nature: mergedParsed.nature } : {}),
+      ...(Number.isInteger(mergedParsed.hp) ? { iv_hp: mergedParsed.hp } : {}),
+      ...(Number.isInteger(mergedParsed.atk) ? { iv_attack: mergedParsed.atk } : {}),
+      ...(Number.isInteger(mergedParsed.def) ? { iv_defense: mergedParsed.def } : {}),
+      ...(Number.isInteger(mergedParsed.spa) ? { iv_sp_attack: mergedParsed.spa } : {}),
+      ...(Number.isInteger(mergedParsed.spd) ? { iv_sp_defense: mergedParsed.spd } : {}),
+      ...(Number.isInteger(mergedParsed.spe) ? { iv_speed: mergedParsed.spe } : {}),
     });
 
     res.status(201).json({
