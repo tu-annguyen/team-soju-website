@@ -17,23 +17,36 @@ function expectEncounterDigitMatch(actual, expected) {
 describe('mobile stats screenshot fixtures', () => {
   const { sharp, Tesseract } = shiniesRouter._test.loadOcrDependencies();
   const fixturesDir = path.join(__dirname, 'fixtures');
+  let ocrWorker;
+
+  beforeAll(async () => {
+    ocrWorker = await shiniesRouter._test.createOcrWorker(Tesseract);
+  }, 30000);
+
+  afterAll(async () => {
+    if (ocrWorker) {
+      await ocrWorker.terminate();
+    }
+  });
 
   async function parseFixtureScreenshot({ fixture, expected, isMDY }) {
     const imageBuffer = fs.readFileSync(path.join(fixturesDir, fixture));
     const { jobs } = await shiniesRouter._test.buildOcrJobs(imageBuffer, sharp);
+    const ocrResults = [];
 
-    const ocrResults = await Promise.all(jobs.map(async (job) => {
+    for (const job of jobs) {
       const buffer = await job.bufferPromise;
-      const result = await Tesseract.recognize(buffer, 'eng', job.options);
-      return result?.data?.text || '';
-    }));
+      const result = await ocrWorker.recognize(buffer, job.options);
+      ocrResults.push(result?.data?.text || '');
+    }
 
     const ocrText = ocrResults.filter(Boolean).join('\n');
     const parsed = shiniesRouter._test.parseDataFromOcr(ocrText, isMDY);
     const mobileStats = await parseMobileStatsPanel({
       imageBuffer,
       sharp,
-      Tesseract,
+      Tesseract: ocrWorker,
+      existingNature: parsed.nature,
       pokemonName: expected.pokemon,
     });
 

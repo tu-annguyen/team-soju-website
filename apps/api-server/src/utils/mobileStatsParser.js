@@ -573,12 +573,15 @@ async function recognizeTextVariants(Tesseract, variants, whitelist, normalizeTe
   const results = [];
 
   for (const variant of variants) {
-    const result = await Tesseract.recognize(variant.buffer, 'eng', {
+    const recognizeOptions = {
       tessedit_pageseg_mode: psm,
       preserve_interword_spaces: '1',
       tessedit_char_whitelist: whitelist,
       user_defined_dpi: '300',
-    });
+    };
+    const result = typeof Tesseract?.createWorker === 'function'
+      ? await Tesseract.recognize(variant.buffer, 'eng', recognizeOptions)
+      : await Tesseract.recognize(variant.buffer, recognizeOptions);
 
     results.push({
       name: variant.name,
@@ -921,6 +924,39 @@ function chooseBestCountCandidate(candidates) {
   return scored[0].candidate;
 }
 
+function chooseTemplateConsensusCandidate(candidates) {
+  const grouped = new Map();
+
+  for (const candidate of candidates) {
+    if (!Number.isInteger(candidate?.value) || candidate.value < 0) continue;
+
+    const key = String(candidate.value);
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    grouped.get(key).push(candidate);
+  }
+
+  const bestGroup = [...grouped.values()]
+    .filter((group) => group.length >= 2)
+    .map((group) => ({
+      candidates: group,
+      representative: chooseBestCountCandidate(group),
+    }))
+    .sort((left, right) => {
+      if (right.candidates.length !== left.candidates.length) {
+        return right.candidates.length - left.candidates.length;
+      }
+      return (right.representative.confidence || 0) - (left.representative.confidence || 0);
+    })[0];
+
+  if (!bestGroup || (bestGroup.representative.confidence || 0) < 0.82) {
+    return null;
+  }
+
+  return bestGroup.representative;
+}
+
 function isolateRightmostGlyphRun(mask) {
   const groups = findGlyphGroups(mask).filter((group) => (group.end - group.start + 1) >= 2);
   if (groups.length === 0) return null;
@@ -989,6 +1025,30 @@ async function recognizeCountBlock({ sharp, Tesseract, imageBuffer, rect, fallba
     variant: 'battle-template',
     ...recognizeCountFromMask(candidate.mask, 0.5),
   }));
+  const templateConsensus = chooseTemplateConsensusCandidate(templateCandidates);
+
+  if (templateConsensus) {
+    return {
+      rect,
+      value: templateConsensus.value,
+      confidence: templateConsensus.confidence,
+      strategy: templateConsensus.strategy || 'anchor-template',
+      raw: templateConsensus.raw,
+      variant: templateConsensus.variant || 'battle-template',
+      variants: templateConsensus.variants,
+      debugCandidates: templateCandidates.map((candidate) => ({
+        source: candidate.source,
+        crop: candidate.crop,
+        strategy: candidate.strategy,
+        variant: candidate.variant,
+        value: candidate.value,
+        confidence: candidate.confidence,
+        raw: candidate.raw,
+        glyphs: candidate.variants,
+      })),
+    };
+  }
+
   const ocrCandidate = await recognizeEncounterRowBlock({
     sharp,
     Tesseract,
@@ -1068,7 +1128,7 @@ async function detectAnchors(sharp, imageBuffer) {
   };
 }
 
-async function parseMobileStatsPanel({ imageBuffer, sharp, Tesseract, pokemonName }) {
+async function parseMobileStatsPanel({ imageBuffer, sharp, Tesseract, pokemonName, existingNature = null }) {
   const anchors = await detectAnchors(sharp, imageBuffer);
   const { data, info } = await getRawImage(sharp, imageBuffer);
 
@@ -1093,29 +1153,36 @@ async function parseMobileStatsPanel({ imageBuffer, sharp, Tesseract, pokemonNam
   }
 
   const valueRects = deriveValueRects(anchors.blocks, data, info);
-
-  const [ivs, nature, totalEncounters, speciesEncounters] = await Promise.all([
-    recognizeIvBlock({ sharp, Tesseract, imageBuffer, rect: valueRects.ivs }),
-    recognizeNatureBlock({ sharp, Tesseract, imageBuffer, rect: valueRects.nature }),
-    recognizeCountBlock({
-      sharp,
-      Tesseract,
-      imageBuffer,
-      rect: valueRects.totalEncountersBlock,
-      fallbackRect: valueRects.totalEncountersValue,
-      kind: 'total',
-      pokemonName,
-    }),
-    recognizeCountBlock({
-      sharp,
-      Tesseract,
-      imageBuffer,
-      rect: valueRects.speciesEncountersBlock,
-      fallbackRect: valueRects.speciesEncountersValue,
-      kind: 'species',
-      pokemonName,
-    }),
-  ]);
+  const ivs = await recognizeIvBlock({ sharp, Tesseract, imageBuffer, rect: valueRects.ivs });
+  const nature = existingNature
+    ? {
+      rect: valueRects.nature,
+      value: existingNature,
+      confidence: 1,
+      strategy: 'existing-ocr',
+      raw: existingNature,
+      variant: 'existing-ocr',
+      variants: [],
+    }
+    : await recognizeNatureBlock({ sharp, Tesseract, imageBuffer, rect: valueRects.nature });
+  const totalEncounters = await recognizeCountBlock({
+    sharp,
+    Tesseract,
+    imageBuffer,
+    rect: valueRects.totalEncountersBlock,
+    fallbackRect: valueRects.totalEncountersValue,
+    kind: 'total',
+    pokemonName,
+  });
+  const speciesEncounters = await recognizeCountBlock({
+    sharp,
+    Tesseract,
+    imageBuffer,
+    rect: valueRects.speciesEncountersBlock,
+    fallbackRect: valueRects.speciesEncountersValue,
+    kind: 'species',
+    pokemonName,
+  });
 
   const ivValues = Array.isArray(ivs.value) ? ivs.value : [];
   const confidence = Math.max(

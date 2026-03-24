@@ -1,5 +1,6 @@
 const express = require('express');
 const Joi = require('joi');
+const path = require('path');
 const { getPokemonNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
@@ -27,6 +28,17 @@ function loadOcrDependencies() {
     }
     throw error;
   }
+}
+
+async function createOcrWorker(Tesseract) {
+  if (typeof Tesseract?.createWorker !== 'function') {
+    return null;
+  }
+
+  return Tesseract.createWorker('eng', 1, {
+    gzip: false,
+    langPath: path.resolve(__dirname, '../..'),
+  });
 }
 
 function formatMobileStatsLog(mobileStats) {
@@ -624,6 +636,8 @@ router.get('/leaderboard', async (req, res) => {
 
 // POST /api/shinies/from-screenshot - Create shiny entry from screenshot with OCR
 router.post('/from-screenshot', authenticateBot, async (req, res) => {
+  let ocrWorker = null;
+
   try {
     const { error, value } = screenshotSchema.validate(req.body);
     if (error) {
@@ -635,6 +649,8 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
     }
 
     const { sharp, Tesseract } = loadOcrDependencies();
+    ocrWorker = await createOcrWorker(Tesseract);
+    const ocrClient = ocrWorker || Tesseract;
     const imageResponse = await fetch(value.screenshot_url);
     if (!imageResponse.ok) {
       return res.status(400).json({
@@ -645,14 +661,19 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
 
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
     const { layout, jobs } = await buildOcrJobs(imageBuffer, sharp);
-    const ocrResults = await Promise.all(jobs.map(async (job) => {
+    const ocrResults = [];
+
+    for (const job of jobs) {
       const buffer = await job.bufferPromise;
-      const result = await Tesseract.recognize(buffer, 'eng', job.options);
-      return {
+      const result = ocrWorker
+        ? await ocrClient.recognize(buffer, job.options)
+        : await ocrClient.recognize(buffer, 'eng', job.options);
+
+      ocrResults.push({
         name: job.name,
         text: result?.data?.text || '',
-      };
-    }));
+      });
+    }
 
     const ocrText = ocrResults
       .map((result) => result.text)
@@ -667,7 +688,8 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       mobileStats = await parseMobileStatsPanel({
         imageBuffer,
         sharp,
-        Tesseract,
+        Tesseract: ocrClient,
+        existingNature: parsed.nature,
         pokemonName: parsed.name,
       });
       console.log(formatMobileStatsLog(mobileStats));
@@ -784,6 +806,12 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       success: false,
       message: 'Failed to create shiny entry from screenshot',
     });
+  } finally {
+    if (ocrWorker) {
+      await ocrWorker.terminate().catch((terminateError) => {
+        console.error('Failed to terminate OCR worker:', terminateError);
+      });
+    }
   }
 });
 
@@ -936,6 +964,7 @@ router.delete('/:id', authenticateBot, async (req, res) => {
 
 router._test = {
   buildOcrJobs,
+  createOcrWorker,
   getOcrEncounterCandidates,
   loadOcrDependencies,
   mergeParsedStats,
