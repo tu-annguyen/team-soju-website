@@ -84,6 +84,10 @@ npm run dev
 
 By default the local interaction server listens on `8787`. Override it with `DISCORD_BOT_PORT`.
 
+From the repo root, `npm run dev:bot` now starts the bot dev server and `ngrok http 8787` together so Discord can reach your local interactions endpoint. `npm run bot` is an alias for the same workflow.
+
+This assumes the `ngrok` CLI is already installed and authenticated on your machine.
+
 **Register slash commands**:
 ```bash
 npm run register
@@ -93,6 +97,8 @@ npm run register
 ```bash
 npm start
 ```
+
+From the repo root, `npm run start:bot` starts the local interaction server and `ngrok http 8787` together.
 
 You should see:
 ```
