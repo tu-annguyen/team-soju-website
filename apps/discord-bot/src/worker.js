@@ -205,6 +205,77 @@ function hexToUint8Array(value) {
   return bytes;
 }
 
+async function createInternalCallbackSignature(secret, timestamp, body) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+
+  return {
+    key,
+    payload: new TextEncoder().encode(`${timestamp}.${body}`),
+  };
+}
+
+async function verifyInternalCallbackSignature({ body, signature, timestamp, secret }) {
+  if (!signature || !timestamp || !secret) return false;
+
+  const timestampMs = Number(timestamp);
+  if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) {
+    return false;
+  }
+
+  const { key, payload } = await createInternalCallbackSignature(secret, timestamp, body);
+  return crypto.subtle.verify('HMAC', key, hexToUint8Array(signature), payload);
+}
+
+async function patchDiscordInteractionOriginal({ applicationId, interactionToken, payload }) {
+  const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Discord webhook update failed (${response.status}): ${body}`);
+  }
+}
+
+async function handleScreenshotResultCallback(request, env = process.env) {
+  if (request.method !== 'PATCH') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  const body = await request.text();
+  const signature = request.headers.get('x-soju-signature');
+  const timestamp = request.headers.get('x-soju-timestamp');
+  const verified = await verifyInternalCallbackSignature({
+    body,
+    signature,
+    timestamp,
+    secret: env.SCREENSHOT_RESULT_CALLBACK_SECRET,
+  });
+
+  if (!verified) {
+    return new Response('Invalid callback signature', { status: 401 });
+  }
+
+  const payload = JSON.parse(body);
+  await patchDiscordInteractionOriginal({
+    applicationId: payload.application_id,
+    interactionToken: payload.interaction_token,
+    payload: payload.payload,
+  });
+
+  return jsonResponse({ success: true });
+}
+
 async function verifyDiscordSignature({ body, signature, timestamp, publicKey }) {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -304,6 +375,12 @@ async function dispatchInteraction(interaction) {
 }
 
 async function handleInteractionRequest(request, env = process.env, executionContext) {
+  const requestUrl = new URL(request.url);
+
+  if (requestUrl.pathname === '/internal/screenshot-result') {
+    return handleScreenshotResultCallback(request, env);
+  }
+
   if (request.method === 'GET') {
     return jsonResponse({
       success: true,

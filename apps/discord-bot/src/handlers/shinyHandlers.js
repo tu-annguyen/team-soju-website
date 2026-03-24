@@ -22,6 +22,7 @@ const { capitalize, getPokemonNationalNumber, getSpriteUrl } = require('@team-so
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL || apiBaseUrl;
 const botToken = process.env.BOT_API_TOKEN;
+const screenshotResultCallbackUrl = process.env.SCREENSHOT_RESULT_CALLBACK_URL;
 
 const SHINY_MANAGER_ROLES = ['Soju', 'Elite 4', 'Champion'];
 const SHINY_STAFF_ROLES = ['Elite 4', 'Champion'];
@@ -803,6 +804,10 @@ async function handleAddShiny(interaction) {
 
 async function handleAddShinyScreenshot(interaction) {
   try {
+    if (!screenshotResultCallbackUrl) {
+      throw new Error('SCREENSHOT_RESULT_CALLBACK_URL is not configured.');
+    }
+
     const screenshot = interaction.options.getAttachment('screenshot');
     const response = await fetchClient.post(`${apiBaseUrl}/shinies/from-screenshot/async`, {
       screenshot_url: screenshot.url,
@@ -814,6 +819,7 @@ async function handleAddShinyScreenshot(interaction) {
       member_roles: getMemberRoles(interaction).map(role => role.name),
       discord_application_id: interaction.applicationId,
       discord_interaction_token: interaction.token,
+      callback_url: screenshotResultCallbackUrl,
     }, getAuthHeaders());
     const jobId = response.data?.data?.job_id;
 

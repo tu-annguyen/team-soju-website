@@ -12,5 +12,6 @@ jest.mock('dotenv', () => ({
 process.env.API_BASE_URL = 'http://localhost:3001/api';
 process.env.PUBLIC_API_BASE_URL = 'http://localhost:3001/api';
 process.env.BOT_API_TOKEN = 'test-bot-token';
+process.env.SCREENSHOT_RESULT_CALLBACK_URL = 'https://example.com/internal/screenshot-result';
 process.env.DISCORD_TOKEN = 'test-discord-token';
 process.env.DISCORD_CLIENT_ID = 'test-client-id';

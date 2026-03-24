@@ -156,18 +156,40 @@ function buildAsyncScreenshotErrorPayload(error) {
   };
 }
 
-async function updateDiscordInteractionOriginal({ applicationId, interactionToken, payload }) {
-  const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`, {
+async function signScreenshotCallbackPayload(secret, timestamp, body) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${body}`));
+  return Buffer.from(signature).toString('hex');
+}
+
+async function notifyScreenshotCallback(callbackUrl, payload) {
+  const secret = process.env.SCREENSHOT_RESULT_CALLBACK_SECRET;
+  if (!secret) {
+    throw new Error('SCREENSHOT_RESULT_CALLBACK_SECRET is required to deliver async screenshot results.');
+  }
+
+  const timestamp = String(Date.now());
+  const body = JSON.stringify(payload);
+  const signature = await signScreenshotCallbackPayload(secret, timestamp, body);
+  const response = await fetch(callbackUrl, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
+      'x-soju-timestamp': timestamp,
+      'x-soju-signature': signature,
     },
-    body: JSON.stringify(payload),
+    body,
   });
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Discord webhook update failed (${response.status}): ${body}`);
+    throw new Error(`Screenshot callback failed (${response.status}): ${body}`);
   }
 }
 
@@ -235,6 +257,7 @@ const screenshotSchema = Joi.object({
 const asyncScreenshotSchema = screenshotSchema.keys({
   discord_application_id: Joi.string().required(),
   discord_interaction_token: Joi.string().required(),
+  callback_url: Joi.string().uri().required(),
 });
 
 function normalizeEncounterDigits(value) {
@@ -827,9 +850,9 @@ async function processAsyncScreenshotQueue() {
 
       try {
         const { shiny } = await createShinyFromScreenshotValue(job.payload);
-        await updateDiscordInteractionOriginal({
-          applicationId: job.payload.discord_application_id,
-          interactionToken: job.payload.discord_interaction_token,
+        await notifyScreenshotCallback(job.payload.callback_url, {
+          application_id: job.payload.discord_application_id,
+          interaction_token: job.payload.discord_interaction_token,
           payload: buildAsyncScreenshotSuccessPayload(shiny),
         });
 
@@ -850,9 +873,9 @@ async function processAsyncScreenshotQueue() {
         });
 
         try {
-          await updateDiscordInteractionOriginal({
-            applicationId: job.payload.discord_application_id,
-            interactionToken: job.payload.discord_interaction_token,
+          await notifyScreenshotCallback(job.payload.callback_url, {
+            application_id: job.payload.discord_application_id,
+            interaction_token: job.payload.discord_interaction_token,
             payload: buildAsyncScreenshotErrorPayload(job.error),
           });
         } catch (webhookError) {

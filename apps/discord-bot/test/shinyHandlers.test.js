@@ -429,6 +429,7 @@ describe('shinyHandlers', () => {
         screenshot_url: 'https://example.com/image.png',
         discord_application_id: 'app-123',
         discord_interaction_token: 'interaction-token',
+        callback_url: 'https://example.com/internal/screenshot-result',
       }),
       expect.any(Object)
     );
