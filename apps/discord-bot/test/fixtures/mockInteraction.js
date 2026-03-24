@@ -32,6 +32,8 @@ function createMockInteraction(overrides = {}) {
 
   const interaction = {
     commandName: overrides.commandName || 'test',
+    applicationId: overrides.applicationId || 'app-123',
+    token: overrides.token || 'interaction-token',
     user: {
       id: overrides.user?.id || '123456789',
       tag: overrides.user?.tag || 'TestUser#0001'

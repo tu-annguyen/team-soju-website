@@ -399,7 +399,7 @@ describe('shinyHandlers', () => {
     );
   });
 
-  it('adds action buttons to the addshinyscreenshot confirmation', async () => {
+  it('queues addshinyscreenshot work and replies with a processing message', async () => {
     const interaction = createMockInteraction({
       commandName: 'addshinyscreenshot',
       member: { roles: { cache: [{ name: 'Champion' }] } },
@@ -415,38 +415,31 @@ describe('shinyHandlers', () => {
     fetchClient.post.mockResolvedValue({
       data: {
         data: {
-          id: 'screenshot-shiny-id',
-          pokemon: 'dratini',
-          national_number: 147,
-          trainer_name: 'testtrainer',
-          encounter_type: 'horde',
-          total_encounters: 1000,
-          screenshot_url: 'https://example.com/image.png',
-          is_secret: false,
+          job_id: 'ss-123',
+          status: 'queued',
         },
       },
     });
 
     await handleAddShinyScreenshot(interaction);
 
-    expect(interaction.editReply).toHaveBeenCalledWith(
+    expect(fetchClient.post).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/from-screenshot/async'),
       expect.objectContaining({
-        embeds: expect.any(Array),
-        components: [
-          expect.objectContaining({
-            components: expect.arrayContaining([
-              expect.objectContaining({ custom_id: 'sh:a:v:a:_:1:10:screenshot-shiny-id' }),
-              expect.objectContaining({ custom_id: 'sh:a:e:a:_:1:10:screenshot-shiny-id' }),
-              expect.objectContaining({ custom_id: 'sh:a:f:a:_:1:10:screenshot-shiny-id' }),
-              expect.objectContaining({ custom_id: 'sh:a:d:a:_:1:10:screenshot-shiny-id' }),
-            ]),
-          }),
-        ],
+        screenshot_url: 'https://example.com/image.png',
+        discord_application_id: 'app-123',
+        discord_interaction_token: 'interaction-token',
+      }),
+      expect.any(Object)
+    );
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('ss-123'),
       })
     );
   });
 
-  it('renders screenshot parsed mobile stats fields in the addshinyscreenshot confirmation', async () => {
+  it('tells the user the original message will be updated after screenshot OCR finishes', async () => {
     const interaction = createMockInteraction({
       commandName: 'addshinyscreenshot',
       member: { roles: { cache: [{ name: 'Champion' }] } },
@@ -462,39 +455,19 @@ describe('shinyHandlers', () => {
     fetchClient.post.mockResolvedValue({
       data: {
         data: {
-          id: 'sneasel-screenshot-id',
-          pokemon: 'Sneasel',
-          national_number: 215,
-          trainer_name: 'Llensjo',
-          catch_date: '2026-03-16',
-          encounter_type: 'horde',
-          nature: 'Naughty',
-          total_encounters: 12633,
-          species_encounters: 1149,
-          iv_hp: 29,
-          iv_attack: 10,
-          iv_defense: 19,
-          iv_sp_attack: 22,
-          iv_sp_defense: 16,
-          iv_speed: 31,
-          screenshot_url: 'https://example.com/sneasel-mobile.png',
-          is_secret: false,
+          job_id: 'ss-456',
+          status: 'queued',
         },
       },
     });
 
     await handleAddShinyScreenshot(interaction);
 
-    const payload = interaction.editReply.mock.calls.at(-1)[0];
-    const embed = payload.embeds[0].data;
-    const fields = Object.fromEntries(embed.fields.map(field => [field.name, field.value]));
-
-    expect(embed.title).toBe('Shiny Added!');
-    expect(fields.Trainer).toBe('Llensjo');
-    expect(fields.Pokemon).toBe('Sneasel (#215)');
-    expect(fields['Encounter Type']).toBe('horde');
-    expect(fields.Encounters).toBe('12633');
-    expect(payload.components).toHaveLength(1);
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('will update when OCR finishes'),
+      })
+    );
   });
 
   it('adds mutation buttons to the shiny command response for managers', async () => {

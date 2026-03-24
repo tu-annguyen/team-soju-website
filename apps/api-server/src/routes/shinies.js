@@ -1,7 +1,7 @@
 const express = require('express');
 const Joi = require('joi');
 const path = require('path');
-const { getPokemonNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
+const { capitalize, getPokemonNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
 const { parseMobileStatsPanel } = require('../utils/mobileStatsParser');
@@ -92,6 +92,78 @@ function formatMobileStatsLog(mobileStats) {
   return `Mobile Stats Parser\n${JSON.stringify(summary, null, 2)}`;
 }
 
+const SCREENSHOT_JOB_STATUS = {
+  queued: 'queued',
+  processing: 'processing',
+  completed: 'completed',
+  failed: 'failed',
+};
+
+const screenshotJobs = [];
+let screenshotQueueActive = false;
+let screenshotJobCounter = 0;
+
+function createScreenshotJobId() {
+  screenshotJobCounter += 1;
+  return `ss-${Date.now()}-${screenshotJobCounter}`;
+}
+
+function buildShinyActionComponents(shinyId) {
+  if (!shinyId) return [];
+
+  return [{
+    type: 1,
+    components: [
+      { type: 2, custom_id: `sh:a:v:a:_:1:10:${shinyId}`, label: 'View', style: 2 },
+      { type: 2, custom_id: `sh:a:e:a:_:1:10:${shinyId}`, label: 'Edit', style: 1 },
+      { type: 2, custom_id: `sh:a:f:a:_:1:10:${shinyId}`, label: 'Fail', style: 2 },
+      { type: 2, custom_id: `sh:a:d:a:_:1:10:${shinyId}`, label: 'Delete', style: 4 },
+    ],
+  }];
+}
+
+function buildAsyncScreenshotSuccessPayload(shiny) {
+  return {
+    embeds: [{
+      color: shiny.is_secret ? 0xFFD700 : 0x4CAF50,
+      title: `${shiny.is_secret ? 'Secret ' : ''}Shiny Added!`,
+      image: shiny.screenshot_url ? { url: shiny.screenshot_url } : undefined,
+      fields: [
+        { name: 'Trainer', value: shiny.trainer_name, inline: true },
+        { name: 'Pokemon', value: `${capitalize(shiny.pokemon)} (#${shiny.national_number})`, inline: true },
+        { name: 'Encounter Type', value: shiny.encounter_type, inline: true },
+        { name: 'Encounters', value: String(shiny.total_encounters || 0), inline: true },
+      ],
+      footer: { text: `Shiny ID: ${shiny.id}` },
+      timestamp: new Date().toISOString(),
+    }],
+    components: buildShinyActionComponents(shiny.id),
+  };
+}
+
+function buildAsyncScreenshotErrorPayload(error) {
+  const ocrText = error?.details?.ocr_text;
+  const details = ocrText ? `\nOCR result:\n\`\`\`\n${ocrText}\n\`\`\`` : '';
+  return {
+    content: `Error: ${error?.message || 'Failed to create shiny entry from screenshot'}${details}`,
+  };
+}
+
+async function updateDiscordInteractionOriginal({ applicationId, interactionToken, payload }) {
+  const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Discord webhook update failed (${response.status}): ${body}`);
+  }
+}
+
 // Validation schema
 const shinySchema = Joi.object({
   national_number: Joi.number().integer().min(1).max(1010).required(),
@@ -151,6 +223,11 @@ const screenshotSchema = Joi.object({
   is_alpha: Joi.boolean().default(false),
   discord_user_id: Joi.string().required(),
   member_roles: Joi.array().items(Joi.string()).default([]),
+});
+
+const asyncScreenshotSchema = screenshotSchema.keys({
+  discord_application_id: Joi.string().required(),
+  discord_interaction_token: Joi.string().required(),
 });
 
 function normalizeEncounterDigits(value) {
@@ -564,6 +641,223 @@ function mergeParsedStats(parsed, stats) {
   };
 }
 
+async function createShinyFromScreenshotValue(value) {
+  let ocrWorker = null;
+
+  try {
+    const { sharp, Tesseract } = loadOcrDependencies();
+    ocrWorker = await createOcrWorker(Tesseract);
+    const ocrClient = ocrWorker || Tesseract;
+    const imageResponse = await fetch(value.screenshot_url);
+    if (!imageResponse.ok) {
+      const error = new Error('Failed to download screenshot.');
+      error.status = 400;
+      throw error;
+    }
+
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const { layout, jobs } = await buildOcrJobs(imageBuffer, sharp);
+    const ocrResults = [];
+
+    for (const job of jobs) {
+      const buffer = await job.bufferPromise;
+      const result = ocrWorker
+        ? await ocrClient.recognize(buffer, job.options)
+        : await ocrClient.recognize(buffer, 'eng', job.options);
+
+      ocrResults.push({
+        name: job.name,
+        text: result?.data?.text || '',
+      });
+    }
+
+    const ocrText = ocrResults
+      .map((result) => result.text)
+      .filter(Boolean)
+      .join('\n');
+    console.log('OCR Layout: ', layout);
+    console.log('OCR Result: ', ocrText);
+
+    const parsed = parseDataFromOcr(ocrText, value.date_is_mdy);
+    let mobileStats = null;
+
+    if (layout === 'mobile') {
+      mobileStats = await parseMobileStatsPanel({
+        imageBuffer,
+        sharp,
+        Tesseract: ocrClient,
+        existingNature: parsed.nature,
+        pokemonName: parsed.name,
+      });
+      console.log(formatMobileStatsLog(mobileStats));
+    }
+
+    const mergedParsed = mergeParsedStats(parsed, mobileStats);
+    const validation = validateParsedData(mergedParsed);
+
+    if (!validation.isValid) {
+      const error = new Error(`OCR validation failed: ${validation.error}`);
+      error.status = 422;
+      error.details = { ocr_text: ocrText };
+      throw error;
+    }
+
+    const member = await TeamMember.findByDiscordId(value.discord_user_id);
+    const hasSojuRole = value.member_roles.includes('Soju');
+    const hasStaffRole = value.member_roles.includes('Elite 4') || value.member_roles.includes('Champion');
+
+    if (hasSojuRole && !hasStaffRole) {
+      if (!member) {
+        const error = new Error('Your Discord account is not registered in the member database.');
+        error.status = 403;
+        throw error;
+      }
+
+      if (normalizeIgnForComparison(member.ign) !== normalizeIgnForComparison(mergedParsed.trainer)) {
+        const error = new Error(`You can only manage shinies for your registered IGN: ${member.ign}`);
+        error.status = 403;
+        throw error;
+      }
+    }
+
+    const trainer = await findTrainerFromOcr(mergedParsed.trainer);
+    if (!trainer) {
+      const error = new Error(`Could not find trainer with IGN "${mergedParsed.trainer}"`);
+      error.status = 404;
+      error.details = { ocr_text: ocrText };
+      throw error;
+    }
+
+    const nationalNumber = await getPokemonNationalNumber(mergedParsed.name);
+    if (!nationalNumber) {
+      const error = new Error(`Could not find national number for Pokemon "${mergedParsed.name}"`);
+      error.status = 404;
+      error.details = { ocr_text: ocrText };
+      throw error;
+    }
+
+    const shiny = await TeamShiny.create({
+      national_number: nationalNumber,
+      pokemon: mergedParsed.name,
+      original_trainer: trainer.id,
+      catch_date: mergedParsed.date,
+      encounter_type: value.encounter_type,
+      is_secret: value.is_secret,
+      is_alpha: value.is_alpha,
+      screenshot_url: value.screenshot_url,
+      total_encounters: Number.isInteger(mergedParsed.totalEncounters) ? mergedParsed.totalEncounters : 0,
+      species_encounters: Number.isInteger(mergedParsed.speciesEncounters) ? mergedParsed.speciesEncounters : 0,
+      ...(mergedParsed.nature ? { nature: mergedParsed.nature } : {}),
+      ...(Number.isInteger(mergedParsed.hp) ? { iv_hp: mergedParsed.hp } : {}),
+      ...(Number.isInteger(mergedParsed.atk) ? { iv_attack: mergedParsed.atk } : {}),
+      ...(Number.isInteger(mergedParsed.def) ? { iv_defense: mergedParsed.def } : {}),
+      ...(Number.isInteger(mergedParsed.spa) ? { iv_sp_attack: mergedParsed.spa } : {}),
+      ...(Number.isInteger(mergedParsed.spd) ? { iv_sp_defense: mergedParsed.spd } : {}),
+      ...(Number.isInteger(mergedParsed.spe) ? { iv_speed: mergedParsed.spe } : {}),
+    });
+
+    console.log('Saved Shiny Encounters', {
+      parsed: {
+        totalEncounters: parsed.totalEncounters,
+        speciesEncounters: parsed.speciesEncounters,
+        totalEncountersConfidence: parsed.totalEncountersConfidence,
+        speciesEncountersConfidence: parsed.speciesEncountersConfidence,
+      },
+      mobile: {
+        totalEncounters: mobileStats?.totalEncounters ?? null,
+        speciesEncounters: mobileStats?.speciesEncounters ?? null,
+        totalConfidence: mobileStats?.meta?.recognizers?.totalEncounters?.confidence ?? 0,
+        speciesConfidence: mobileStats?.meta?.recognizers?.speciesEncounters?.confidence ?? 0,
+      },
+      merged: {
+        totalEncounters: mergedParsed.totalEncounters,
+        speciesEncounters: mergedParsed.speciesEncounters,
+      },
+      saved: {
+        id: shiny.id,
+        totalEncounters: shiny.total_encounters,
+        speciesEncounters: shiny.species_encounters,
+      },
+    });
+
+    return { shiny, ocrText };
+  } finally {
+    if (ocrWorker) {
+      await ocrWorker.terminate().catch((terminateError) => {
+        console.error('Failed to terminate OCR worker:', terminateError);
+      });
+    }
+  }
+}
+
+function enqueueAsyncScreenshotJob(payload) {
+  const job = {
+    id: createScreenshotJobId(),
+    status: SCREENSHOT_JOB_STATUS.queued,
+    payload,
+    createdAt: new Date().toISOString(),
+    startedAt: null,
+    finishedAt: null,
+    error: null,
+  };
+
+  screenshotJobs.push(job);
+  void processAsyncScreenshotQueue();
+  return job;
+}
+
+async function processAsyncScreenshotQueue() {
+  if (screenshotQueueActive) return;
+  screenshotQueueActive = true;
+
+  try {
+    while (screenshotJobs.length > 0) {
+      const job = screenshotJobs.shift();
+      if (!job) continue;
+
+      job.status = SCREENSHOT_JOB_STATUS.processing;
+      job.startedAt = new Date().toISOString();
+
+      try {
+        const { shiny } = await createShinyFromScreenshotValue(job.payload);
+        await updateDiscordInteractionOriginal({
+          applicationId: job.payload.discord_application_id,
+          interactionToken: job.payload.discord_interaction_token,
+          payload: buildAsyncScreenshotSuccessPayload(shiny),
+        });
+
+        job.status = SCREENSHOT_JOB_STATUS.completed;
+        job.finishedAt = new Date().toISOString();
+      } catch (error) {
+        job.status = SCREENSHOT_JOB_STATUS.failed;
+        job.finishedAt = new Date().toISOString();
+        job.error = {
+          message: error.message,
+          status: error.status || 500,
+          details: error.details || null,
+        };
+
+        console.error('Async screenshot job failed:', {
+          jobId: job.id,
+          error: job.error,
+        });
+
+        try {
+          await updateDiscordInteractionOriginal({
+            applicationId: job.payload.discord_application_id,
+            interactionToken: job.payload.discord_interaction_token,
+            payload: buildAsyncScreenshotErrorPayload(job.error),
+          });
+        } catch (webhookError) {
+          console.error('Failed to deliver async screenshot job error to Discord:', webhookError);
+        }
+      }
+    }
+  } finally {
+    screenshotQueueActive = false;
+  }
+}
+
 // GET /api/shinies - Get all team shinies with optional filters
 router.get('/', async (req, res) => {
   try {
@@ -636,8 +930,6 @@ router.get('/leaderboard', async (req, res) => {
 
 // POST /api/shinies/from-screenshot - Create shiny entry from screenshot with OCR
 router.post('/from-screenshot', authenticateBot, async (req, res) => {
-  let ocrWorker = null;
-
   try {
     const { error, value } = screenshotSchema.validate(req.body);
     if (error) {
@@ -648,145 +940,7 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       });
     }
 
-    const { sharp, Tesseract } = loadOcrDependencies();
-    ocrWorker = await createOcrWorker(Tesseract);
-    const ocrClient = ocrWorker || Tesseract;
-    const imageResponse = await fetch(value.screenshot_url);
-    if (!imageResponse.ok) {
-      return res.status(400).json({
-        success: false,
-        message: 'Failed to download screenshot.',
-      });
-    }
-
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-    const { layout, jobs } = await buildOcrJobs(imageBuffer, sharp);
-    const ocrResults = [];
-
-    for (const job of jobs) {
-      const buffer = await job.bufferPromise;
-      const result = ocrWorker
-        ? await ocrClient.recognize(buffer, job.options)
-        : await ocrClient.recognize(buffer, 'eng', job.options);
-
-      ocrResults.push({
-        name: job.name,
-        text: result?.data?.text || '',
-      });
-    }
-
-    const ocrText = ocrResults
-      .map((result) => result.text)
-      .filter(Boolean)
-      .join('\n');
-    console.log('OCR Layout: ', layout);
-    console.log('OCR Result: ', ocrText);
-    const parsed = parseDataFromOcr(ocrText, value.date_is_mdy);
-    let mobileStats = null;
-
-    if (layout === 'mobile') {
-      mobileStats = await parseMobileStatsPanel({
-        imageBuffer,
-        sharp,
-        Tesseract: ocrClient,
-        existingNature: parsed.nature,
-        pokemonName: parsed.name,
-      });
-      console.log(formatMobileStatsLog(mobileStats));
-    }
-
-    const mergedParsed = mergeParsedStats(parsed, mobileStats);
-    const validation = validateParsedData(mergedParsed);
-
-    if (!validation.isValid) {
-      return res.status(422).json({
-        success: false,
-        message: `OCR validation failed: ${validation.error}`,
-        details: { ocr_text: ocrText },
-      });
-    }
-
-    const member = await TeamMember.findByDiscordId(value.discord_user_id);
-    const hasSojuRole = value.member_roles.includes('Soju');
-    const hasStaffRole = value.member_roles.includes('Elite 4') || value.member_roles.includes('Champion');
-
-    if (hasSojuRole && !hasStaffRole) {
-      if (!member) {
-        return res.status(403).json({
-          success: false,
-          message: 'Your Discord account is not registered in the member database.',
-        });
-      }
-
-      if (normalizeIgnForComparison(member.ign) !== normalizeIgnForComparison(mergedParsed.trainer)) {
-        return res.status(403).json({
-          success: false,
-          message: `You can only manage shinies for your registered IGN: ${member.ign}`,
-        });
-      }
-    }
-
-    const trainer = await findTrainerFromOcr(mergedParsed.trainer);
-    if (!trainer) {
-      return res.status(404).json({
-        success: false,
-        message: `Could not find trainer with IGN "${mergedParsed.trainer}"`,
-        details: { ocr_text: ocrText },
-      });
-    }
-
-    const nationalNumber = await getPokemonNationalNumber(mergedParsed.name);
-    if (!nationalNumber) {
-      return res.status(404).json({
-        success: false,
-        message: `Could not find national number for Pokemon "${mergedParsed.name}"`,
-        details: { ocr_text: ocrText },
-      });
-    }
-
-    const shiny = await TeamShiny.create({
-      national_number: nationalNumber,
-      pokemon: mergedParsed.name,
-      original_trainer: trainer.id,
-      catch_date: mergedParsed.date,
-      encounter_type: value.encounter_type,
-      is_secret: value.is_secret,
-      is_alpha: value.is_alpha,
-      screenshot_url: value.screenshot_url,
-      total_encounters: Number.isInteger(mergedParsed.totalEncounters) ? mergedParsed.totalEncounters : 0,
-      species_encounters: Number.isInteger(mergedParsed.speciesEncounters) ? mergedParsed.speciesEncounters : 0,
-      ...(mergedParsed.nature ? { nature: mergedParsed.nature } : {}),
-      ...(Number.isInteger(mergedParsed.hp) ? { iv_hp: mergedParsed.hp } : {}),
-      ...(Number.isInteger(mergedParsed.atk) ? { iv_attack: mergedParsed.atk } : {}),
-      ...(Number.isInteger(mergedParsed.def) ? { iv_defense: mergedParsed.def } : {}),
-      ...(Number.isInteger(mergedParsed.spa) ? { iv_sp_attack: mergedParsed.spa } : {}),
-      ...(Number.isInteger(mergedParsed.spd) ? { iv_sp_defense: mergedParsed.spd } : {}),
-      ...(Number.isInteger(mergedParsed.spe) ? { iv_speed: mergedParsed.spe } : {}),
-    });
-
-    console.log('Saved Shiny Encounters', {
-      parsed: {
-        totalEncounters: parsed.totalEncounters,
-        speciesEncounters: parsed.speciesEncounters,
-        totalEncountersConfidence: parsed.totalEncountersConfidence,
-        speciesEncountersConfidence: parsed.speciesEncountersConfidence,
-      },
-      mobile: {
-        totalEncounters: mobileStats?.totalEncounters ?? null,
-        speciesEncounters: mobileStats?.speciesEncounters ?? null,
-        totalConfidence: mobileStats?.meta?.recognizers?.totalEncounters?.confidence ?? 0,
-        speciesConfidence: mobileStats?.meta?.recognizers?.speciesEncounters?.confidence ?? 0,
-      },
-      merged: {
-        totalEncounters: mergedParsed.totalEncounters,
-        speciesEncounters: mergedParsed.speciesEncounters,
-      },
-      saved: {
-        id: shiny.id,
-        totalEncounters: shiny.total_encounters,
-        speciesEncounters: shiny.species_encounters,
-      },
-    });
+    const { shiny } = await createShinyFromScreenshotValue(value);
 
     res.status(201).json({
       success: true,
@@ -802,16 +956,40 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       });
     }
 
-    res.status(500).json({
+    res.status(routeError.status || 500).json({
       success: false,
-      message: 'Failed to create shiny entry from screenshot',
+      message: routeError.message || 'Failed to create shiny entry from screenshot',
+      ...(routeError.details ? { details: routeError.details } : {}),
     });
-  } finally {
-    if (ocrWorker) {
-      await ocrWorker.terminate().catch((terminateError) => {
-        console.error('Failed to terminate OCR worker:', terminateError);
+  }
+});
+
+router.post('/from-screenshot/async', authenticateBot, async (req, res) => {
+  try {
+    const { error, value } = asyncScreenshotSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: error.details,
       });
     }
+
+    const job = enqueueAsyncScreenshotJob(value);
+    return res.status(202).json({
+      success: true,
+      data: {
+        job_id: job.id,
+        status: job.status,
+      },
+      message: 'Screenshot job queued successfully',
+    });
+  } catch (routeError) {
+    console.error('Error queueing shiny from screenshot:', routeError);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to queue shiny entry from screenshot',
+    });
   }
 });
 

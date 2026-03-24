@@ -802,11 +802,9 @@ async function handleAddShiny(interaction) {
 }
 
 async function handleAddShinyScreenshot(interaction) {
-  await interaction.deferReply();
-
   try {
     const screenshot = interaction.options.getAttachment('screenshot');
-    const response = await fetchClient.post(`${apiBaseUrl}/shinies/from-screenshot`, {
+    const response = await fetchClient.post(`${apiBaseUrl}/shinies/from-screenshot/async`, {
       screenshot_url: screenshot.url,
       date_is_mdy: interaction.options.getBoolean('date_is_mdy') || false,
       encounter_type: normalizeEncounterType(interaction.options.getString('encounter_type')),
@@ -814,36 +812,21 @@ async function handleAddShinyScreenshot(interaction) {
       is_alpha: interaction.options.getBoolean('alpha') || false,
       discord_user_id: interaction.user.id,
       member_roles: getMemberRoles(interaction).map(role => role.name),
+      discord_application_id: interaction.applicationId,
+      discord_interaction_token: interaction.token,
     }, getAuthHeaders());
+    const jobId = response.data?.data?.job_id;
 
-    const shiny = response.data.data;
-    const embed = new EmbedBuilder()
-      .setColor(shiny.is_secret ? 0xFFD700 : 0x4CAF50)
-      .setTitle(`${shiny.is_secret ? 'Secret ' : ''}Shiny Added!`)
-      .setImage(shiny.screenshot_url)
-      .addFields(
-        { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
-        { name: 'Encounter Type', value: shiny.encounter_type, inline: true },
-        { name: 'Encounters', value: String(shiny.total_encounters || 0), inline: true },
-      )
-      .setFooter({ text: `Shiny ID: ${shiny.id}` })
-      .setTimestamp();
-
-    const payload = { embeds: [embed] };
-    payload.components = buildStandaloneActionRow(shiny.id, {
-      includeView: true,
-      includeEdit: true,
-      includeFail: true,
-      includeDelete: true,
+    await interaction.reply({
+      content: jobId
+        ? `Screenshot received. Processing job \`${jobId}\` now. This message will update when OCR finishes.`
+        : 'Screenshot received. Processing now. This message will update when OCR finishes.',
     });
-
-    await interaction.editReply(payload);
   } catch (error) {
     const details = error.response?.data?.details?.ocr_text
       ? `\nOCR result:\n${codeBlock(error.response.data.details.ocr_text)}`
       : '';
-    await interaction.editReply({ content: `Error: ${error.response?.data?.message || error.message}${details}` });
+    await interaction.reply({ content: `Error: ${error.response?.data?.message || error.message}${details}` });
   }
 }
 
