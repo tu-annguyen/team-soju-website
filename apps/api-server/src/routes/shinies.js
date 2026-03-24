@@ -935,7 +935,9 @@ router.delete('/:id', authenticateBot, async (req, res) => {
 });
 
 router._test = {
+  buildOcrJobs,
   getOcrEncounterCandidates,
+  loadOcrDependencies,
   mergeParsedStats,
   parseDataFromOcr,
   pickEncounterCandidate,
