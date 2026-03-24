@@ -3,8 +3,17 @@ const Joi = require('joi');
 const { getPokemonNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
+const { parseMobileStatsPanel } = require('../utils/mobileStatsParser');
 const router = express.Router();
 const { authenticateBot } = require('../middleware/auth');
+
+const NATURE_CHOICES = [
+  'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
+  'Bold', 'Docile', 'Relaxed', 'Impish', 'Lax',
+  'Timid', 'Hasty', 'Serious', 'Jolly', 'Naive',
+  'Modest', 'Mild', 'Quiet', 'Bashful', 'Rash',
+  'Calm', 'Gentle', 'Sassy', 'Careful', 'Quirky',
+];
 
 function loadOcrDependencies() {
   try {
@@ -18,6 +27,57 @@ function loadOcrDependencies() {
     }
     throw error;
   }
+}
+
+function formatMobileStatsLog(mobileStats) {
+  if (!mobileStats) {
+    return 'Mobile Stats Parser\n  No parser output';
+  }
+
+  const recognizers = mobileStats.meta?.recognizers;
+  const summary = {
+    confidence: mobileStats.confidence,
+    values: {
+      ivs: [mobileStats.hp, mobileStats.atk, mobileStats.def, mobileStats.spa, mobileStats.spd, mobileStats.spe],
+      nature: mobileStats.nature,
+      totalEncounters: mobileStats.totalEncounters,
+      speciesEncounters: mobileStats.speciesEncounters,
+    },
+    recognizers: recognizers ? {
+      ivs: {
+        value: recognizers.ivs?.value,
+        confidence: recognizers.ivs?.confidence,
+        strategy: recognizers.ivs?.strategy,
+        raw: recognizers.ivs?.raw,
+        variant: recognizers.ivs?.variant,
+      },
+      nature: {
+        value: recognizers.nature?.value,
+        confidence: recognizers.nature?.confidence,
+        strategy: recognizers.nature?.strategy,
+        raw: recognizers.nature?.raw,
+        variant: recognizers.nature?.variant,
+      },
+      totalEncounters: {
+        value: recognizers.totalEncounters?.value,
+        confidence: recognizers.totalEncounters?.confidence,
+        strategy: recognizers.totalEncounters?.strategy,
+        raw: recognizers.totalEncounters?.raw,
+        variant: recognizers.totalEncounters?.variant,
+        candidates: recognizers.totalEncounters?.debugCandidates,
+      },
+      speciesEncounters: {
+        value: recognizers.speciesEncounters?.value,
+        confidence: recognizers.speciesEncounters?.confidence,
+        strategy: recognizers.speciesEncounters?.strategy,
+        raw: recognizers.speciesEncounters?.raw,
+        variant: recognizers.speciesEncounters?.variant,
+        candidates: recognizers.speciesEncounters?.debugCandidates,
+      },
+    } : null,
+  };
+
+  return `Mobile Stats Parser\n${JSON.stringify(summary, null, 2)}`;
 }
 
 // Validation schema
@@ -81,6 +141,123 @@ const screenshotSchema = Joi.object({
   member_roles: Joi.array().items(Joi.string()).default([]),
 });
 
+function normalizeEncounterDigits(value) {
+  const token = String(value || '')
+    .replace(/[Oo]/g, '0')
+    .replace(/[Il]/g, '1')
+    .replace(/[Zz]/g, '2')
+    .replace(/[Ss]/g, '5')
+    .replace(/[Bb]/g, '8')
+    .replace(/[£]/g, '2')
+    .replace(/[°•]/g, '0')
+    .replace(/[-_.]/g, '')
+    .replace(/[^0-9]/g, '');
+
+  if (!/^\d{3,7}$/.test(token)) return null;
+  const parsed = parseInt(token, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function normalizeEncounterLabel(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, '');
+}
+
+function extractEncounterValueFromLine(line) {
+  const afterLabel = /encounters?[^:]*:\s*([^\s|]+)/i.exec(line);
+  if (afterLabel) {
+    return normalizeEncounterDigits(afterLabel[1]);
+  }
+
+  if (/encounters?/i.test(line)) {
+    return null;
+  }
+
+  const tokens = String(line || '').match(/[A-Za-z0-9£]{3,7}/g) || [];
+  for (let index = tokens.length - 1; index >= 0; index -= 1) {
+    const parsed = normalizeEncounterDigits(tokens[index]);
+    if (parsed !== null) return parsed;
+  }
+
+  return null;
+}
+
+function getOcrEncounterCandidates(lines, pokemonName) {
+  const normalizedPokemon = normalizeEncounterLabel(pokemonName);
+
+  return lines
+    .map((line) => {
+      const normalizedLine = normalizeEncounterLabel(line);
+      const value = extractEncounterValueFromLine(line);
+      if (value === null) return null;
+
+      const mentionsEncounters = normalizedLine.includes('encounter');
+      if (!mentionsEncounters) return null;
+
+      const totalLabelConfidence = (() => {
+        if (normalizedLine.includes('totalencounter')) return 0.9;
+        if (normalizedLine.includes('talencounter') || normalizedLine.includes('bencounter')) return 0.76;
+        return 0;
+      })();
+
+      const speciesNameConfidence = (() => {
+        if (!normalizedPokemon) return 0;
+        const compactLine = normalizedLine.replace(/encounters?$/, '');
+        const distance = levenshtein(normalizedPokemon, compactLine);
+        const similarity = 1 - (distance / Math.max(normalizedPokemon.length, compactLine.length, 1));
+        if (similarity >= 0.72) return 0.86;
+        if (similarity >= 0.5) return 0.72;
+        if (compactLine.includes(normalizedPokemon.slice(Math.max(0, normalizedPokemon.length - 4)))) return 0.74;
+        if (compactLine.includes(normalizedPokemon.slice(1))) return 0.78;
+        return 0;
+      })();
+
+      return {
+        line,
+        value,
+        totalConfidence: totalLabelConfidence,
+        speciesConfidence: speciesNameConfidence,
+      };
+    })
+    .filter(Boolean);
+}
+
+function pickEncounterCandidate(candidates, kind) {
+  const scored = candidates
+    .map((candidate) => {
+      const baseConfidence = kind === 'total' ? candidate.totalConfidence : candidate.speciesConfidence;
+      const conflictingValues = candidates.filter((other) => (
+        other !== candidate &&
+        ((kind === 'total' ? other.totalConfidence : other.speciesConfidence) > 0) &&
+        other.value !== candidate.value
+      ));
+
+      const confidence = conflictingValues.length > 0
+        ? Math.max(0, baseConfidence - 0.08)
+        : baseConfidence;
+
+      return {
+        ...candidate,
+        confidence,
+      };
+    })
+    .filter((candidate) => candidate.confidence > 0)
+    .sort((left, right) => right.confidence - left.confidence);
+
+  return scored[0] || null;
+}
+
+function chooseEncounterValue({ parsedValue, parsedConfidence, mobileValue, mobileConfidence }) {
+  const hasParsed = Number.isInteger(parsedValue);
+  const hasMobile = Number.isInteger(mobileValue);
+
+  if (!hasParsed) return hasMobile ? mobileValue : null;
+  if (!hasMobile) return parsedValue;
+
+  return (mobileConfidence || 0) >= (parsedConfidence || 0) ? mobileValue : parsedValue;
+}
+
 function parseDataFromOcr(text, isMDY = false) {
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const date = (() => {
@@ -111,19 +288,12 @@ function parseDataFromOcr(text, isMDY = false) {
 
   const nature = (() => {
     const match = /N?atu?r?e?:\s+([A-Za-z]+)/i.exec(text);
-    return match?.[1]?.trim() || null;
+    return normalizeNatureCandidate(match?.[1]) || null;
   })();
 
-  const totalEncounters = (() => {
-    const match = /Total Encounters:\s+(\d+)/i.exec(text);
-    return match?.[1] ? parseInt(match[1], 10) : null;
-  })();
-
-  const speciesEncounters = (() => {
-    if (!name) return null;
-    const match = new RegExp(`${name} Encounters:\\s+(\\d+)`, 'i').exec(text);
-    return match?.[1] ? parseInt(match[1], 10) : null;
-  })();
+  const encounterCandidates = getOcrEncounterCandidates(lines, name);
+  const totalEncounterCandidate = pickEncounterCandidate(encounterCandidates, 'total');
+  const speciesEncounterCandidate = pickEncounterCandidate(encounterCandidates, 'species');
 
   return {
     date,
@@ -136,9 +306,205 @@ function parseDataFromOcr(text, isMDY = false) {
     spd: ivs[4] ?? null,
     spe: ivs[5] ?? null,
     nature,
-    totalEncounters,
-    speciesEncounters,
+    totalEncounters: totalEncounterCandidate?.value ?? null,
+    totalEncountersConfidence: totalEncounterCandidate?.confidence ?? 0,
+    speciesEncounters: speciesEncounterCandidate?.value ?? null,
+    speciesEncountersConfidence: speciesEncounterCandidate?.confidence ?? 0,
   };
+}
+
+function levenshtein(leftValue, rightValue) {
+  const left = String(leftValue || '').toLowerCase();
+  const right = String(rightValue || '').toLowerCase();
+  const rows = Array.from({ length: left.length + 1 }, () => new Array(right.length + 1).fill(0));
+
+  for (let i = 0; i <= left.length; i += 1) rows[i][0] = i;
+  for (let j = 0; j <= right.length; j += 1) rows[0][j] = j;
+
+  for (let i = 1; i <= left.length; i += 1) {
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      rows[i][j] = Math.min(
+        rows[i - 1][j] + 1,
+        rows[i][j - 1] + 1,
+        rows[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return rows[left.length][right.length];
+}
+
+function normalizeNatureCandidate(value) {
+  const token = String(value || '').replace(/[^A-Za-z]/g, '');
+  if (!token) return null;
+
+  let bestNature = null;
+  let bestConfidence = 0;
+
+  for (const nature of NATURE_CHOICES) {
+    const maxLength = Math.max(token.length, nature.length);
+    const confidence = maxLength === 0 ? 0 : Math.max(0, 1 - (levenshtein(token, nature) / maxLength));
+    if (confidence > bestConfidence) {
+      bestNature = nature;
+      bestConfidence = confidence;
+    }
+  }
+
+  return bestConfidence >= 0.55 ? bestNature : null;
+}
+
+function normalizeIgnForComparison(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[|!1il]/g, 'l');
+}
+
+async function findTrainerFromOcr(parsedTrainer) {
+  if (!parsedTrainer) return null;
+
+  const exactMatch = await TeamMember.findByIgn(parsedTrainer);
+  if (exactMatch) return exactMatch;
+
+  const normalizedTrainer = normalizeIgnForComparison(parsedTrainer);
+  if (!normalizedTrainer) return null;
+
+  const members = await TeamMember.findAll();
+  const candidates = members.filter((member) => (
+    normalizeIgnForComparison(member.ign) === normalizedTrainer
+  ));
+
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+function detectScreenshotLayout(width, height) {
+  return width / height >= 1.6 ? 'mobile' : 'desktop';
+}
+
+function createOcrJob(name, pipeline, options) {
+  return {
+    name,
+    bufferPromise: pipeline.toBuffer(),
+    options,
+  };
+}
+
+async function buildOcrJobs(imageBuffer, sharp) {
+  const image = sharp(imageBuffer);
+  const metadata = await image.metadata();
+  const width = metadata.width;
+  const height = metadata.height;
+
+  if (!width || !height) {
+    throw new Error('Unable to read screenshot dimensions for OCR preprocessing.');
+  }
+
+  const layout = detectScreenshotLayout(width, height);
+  const jobs = [];
+
+  if (layout === 'mobile') {
+    const headerHeight = Math.max(1, Math.floor(height * 0.12));
+    const statsTop = Math.max(0, Math.floor(height * 0.78));
+    const statsWidth = Math.max(1, Math.floor(width * 0.9));
+    const statsHeight = Math.max(1, height - statsTop);
+
+    jobs.push(createOcrJob(
+      'mobile-header',
+      image
+        .clone()
+        .extract({ left: 0, top: 0, width, height: headerHeight })
+        .greyscale()
+        .normalize()
+        .threshold(175)
+        .resize({ width: Math.max(width * 2, 2400) })
+        .sharpen({ sigma: 1 }),
+      {
+        tessedit_pageseg_mode: '7',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/,:! ',
+      }
+    ));
+
+    jobs.push(createOcrJob(
+      'mobile-stats-threshold',
+      image
+        .clone()
+        .extract({ left: 0, top: statsTop, width: statsWidth, height: statsHeight })
+        .greyscale()
+        .negate()
+        .normalize()
+        .threshold(145)
+        .resize({ width: Math.max(statsWidth * 3, 2600) })
+        .sharpen({ sigma: 1.3 }),
+      {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+      }
+    ));
+
+    jobs.push(createOcrJob(
+      'mobile-stats-color-safe',
+      image
+        .clone()
+        .extract({ left: 0, top: statsTop, width: statsWidth, height: statsHeight })
+        .greyscale()
+        .negate()
+        .normalize()
+        .resize({ width: Math.max(statsWidth * 3, 2600) })
+        .sharpen({ sigma: 1.3 }),
+      {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+      }
+    ));
+  } else {
+    const statsHeight = Math.max(1, Math.floor(height * 0.26));
+    const statsTop = Math.max(0, height - statsHeight);
+
+    jobs.push(createOcrJob(
+      'desktop-main',
+      image
+        .clone()
+        .greyscale()
+        .negate()
+        .normalize()
+        .threshold(180)
+        .resize({ width: Math.max(width, 1500) })
+        .sharpen({ sigma: 1 }),
+      {
+        tessedit_pageseg_mode: '11',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,! ',
+      }
+    ));
+
+    jobs.push(createOcrJob(
+      'desktop-stats',
+      image
+        .clone()
+        .extract({
+          left: 0,
+          top: statsTop,
+          width,
+          height: height - statsTop,
+        })
+        .greyscale()
+        .negate()
+        .normalize()
+        .resize({ width: Math.max(width * 3, 1800) })
+        .sharpen({ sigma: 1.2 }),
+      {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+      }
+    ));
+  }
+
+  return { layout, jobs };
 }
 
 function validateParsedData(data) {
@@ -151,6 +517,39 @@ function validateParsedData(data) {
   }
 
   return { isValid: true, error: null };
+}
+
+function mergeParsedStats(parsed, stats) {
+  if (!stats) return parsed;
+
+  const mobileNatureConfidence = stats.meta?.recognizers?.nature?.confidence || 0;
+  const mobileTotalConfidence = stats.meta?.recognizers?.totalEncounters?.confidence || 0;
+  const mobileSpeciesConfidence = stats.meta?.recognizers?.speciesEncounters?.confidence || 0;
+  const ocrTotalConfidence = parsed.totalEncountersConfidence || 0;
+  const ocrSpeciesConfidence = parsed.speciesEncountersConfidence || 0;
+
+  return {
+    ...parsed,
+    hp: Number.isInteger(stats.hp) ? stats.hp : parsed.hp,
+    atk: Number.isInteger(stats.atk) ? stats.atk : parsed.atk,
+    def: Number.isInteger(stats.def) ? stats.def : parsed.def,
+    spa: Number.isInteger(stats.spa) ? stats.spa : parsed.spa,
+    spd: Number.isInteger(stats.spd) ? stats.spd : parsed.spd,
+    spe: Number.isInteger(stats.spe) ? stats.spe : parsed.spe,
+    nature: mobileNatureConfidence >= 0.8 ? (stats.nature || parsed.nature) : parsed.nature,
+    totalEncounters: chooseEncounterValue({
+      parsedValue: parsed.totalEncounters,
+      parsedConfidence: ocrTotalConfidence,
+      mobileValue: stats.totalEncounters,
+      mobileConfidence: mobileTotalConfidence,
+    }),
+    speciesEncounters: chooseEncounterValue({
+      parsedValue: parsed.speciesEncounters,
+      parsedConfidence: ocrSpeciesConfidence,
+      mobileValue: stats.speciesEncounters,
+      mobileConfidence: mobileSpeciesConfidence,
+    }),
+  };
 }
 
 // GET /api/shinies - Get all team shinies with optional filters
@@ -245,21 +644,37 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
     }
 
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-    const processedBuffer = await sharp(imageBuffer)
-      .greyscale()
-      .normalise()
-      .threshold(128)
-      .sharpen({ sigma: 1 })
-      .toBuffer();
+    const { layout, jobs } = await buildOcrJobs(imageBuffer, sharp);
+    const ocrResults = await Promise.all(jobs.map(async (job) => {
+      const buffer = await job.bufferPromise;
+      const result = await Tesseract.recognize(buffer, 'eng', job.options);
+      return {
+        name: job.name,
+        text: result?.data?.text || '',
+      };
+    }));
 
-    const ocrResult = await Tesseract.recognize(processedBuffer, 'eng', {
-      tessedit_pageseg_mode: '6',
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/°: -_—',
-    });
-
-    const ocrText = ocrResult?.data?.text || '';
+    const ocrText = ocrResults
+      .map((result) => result.text)
+      .filter(Boolean)
+      .join('\n');
+    console.log('OCR Layout: ', layout);
+    console.log('OCR Result: ', ocrText);
     const parsed = parseDataFromOcr(ocrText, value.date_is_mdy);
-    const validation = validateParsedData(parsed);
+    let mobileStats = null;
+
+    if (layout === 'mobile') {
+      mobileStats = await parseMobileStatsPanel({
+        imageBuffer,
+        sharp,
+        Tesseract,
+        pokemonName: parsed.name,
+      });
+      console.log(formatMobileStatsLog(mobileStats));
+    }
+
+    const mergedParsed = mergeParsedStats(parsed, mobileStats);
+    const validation = validateParsedData(mergedParsed);
 
     if (!validation.isValid) {
       return res.status(422).json({
@@ -281,7 +696,7 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
         });
       }
 
-      if (member.ign.toLowerCase() !== String(parsed.trainer || '').toLowerCase()) {
+      if (normalizeIgnForComparison(member.ign) !== normalizeIgnForComparison(mergedParsed.trainer)) {
         return res.status(403).json({
           success: false,
           message: `You can only manage shinies for your registered IGN: ${member.ign}`,
@@ -289,42 +704,66 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       }
     }
 
-    const trainer = await TeamMember.findByIgn(parsed.trainer);
+    const trainer = await findTrainerFromOcr(mergedParsed.trainer);
     if (!trainer) {
       return res.status(404).json({
         success: false,
-        message: `Could not find trainer with IGN "${parsed.trainer}"`,
+        message: `Could not find trainer with IGN "${mergedParsed.trainer}"`,
         details: { ocr_text: ocrText },
       });
     }
 
-    const nationalNumber = await getPokemonNationalNumber(parsed.name);
+    const nationalNumber = await getPokemonNationalNumber(mergedParsed.name);
     if (!nationalNumber) {
       return res.status(404).json({
         success: false,
-        message: `Could not find national number for Pokemon "${parsed.name}"`,
+        message: `Could not find national number for Pokemon "${mergedParsed.name}"`,
         details: { ocr_text: ocrText },
       });
     }
 
     const shiny = await TeamShiny.create({
       national_number: nationalNumber,
-      pokemon: parsed.name,
+      pokemon: mergedParsed.name,
       original_trainer: trainer.id,
-      catch_date: parsed.date,
+      catch_date: mergedParsed.date,
       encounter_type: value.encounter_type,
       is_secret: value.is_secret,
       is_alpha: value.is_alpha,
       screenshot_url: value.screenshot_url,
-      total_encounters: Number.isInteger(parsed.totalEncounters) ? parsed.totalEncounters : 0,
-      species_encounters: Number.isInteger(parsed.speciesEncounters) ? parsed.speciesEncounters : 0,
-      ...(parsed.nature ? { nature: parsed.nature } : {}),
-      ...(Number.isInteger(parsed.hp) ? { iv_hp: parsed.hp } : {}),
-      ...(Number.isInteger(parsed.atk) ? { iv_attack: parsed.atk } : {}),
-      ...(Number.isInteger(parsed.def) ? { iv_defense: parsed.def } : {}),
-      ...(Number.isInteger(parsed.spa) ? { iv_sp_attack: parsed.spa } : {}),
-      ...(Number.isInteger(parsed.spd) ? { iv_sp_defense: parsed.spd } : {}),
-      ...(Number.isInteger(parsed.spe) ? { iv_speed: parsed.spe } : {}),
+      total_encounters: Number.isInteger(mergedParsed.totalEncounters) ? mergedParsed.totalEncounters : 0,
+      species_encounters: Number.isInteger(mergedParsed.speciesEncounters) ? mergedParsed.speciesEncounters : 0,
+      ...(mergedParsed.nature ? { nature: mergedParsed.nature } : {}),
+      ...(Number.isInteger(mergedParsed.hp) ? { iv_hp: mergedParsed.hp } : {}),
+      ...(Number.isInteger(mergedParsed.atk) ? { iv_attack: mergedParsed.atk } : {}),
+      ...(Number.isInteger(mergedParsed.def) ? { iv_defense: mergedParsed.def } : {}),
+      ...(Number.isInteger(mergedParsed.spa) ? { iv_sp_attack: mergedParsed.spa } : {}),
+      ...(Number.isInteger(mergedParsed.spd) ? { iv_sp_defense: mergedParsed.spd } : {}),
+      ...(Number.isInteger(mergedParsed.spe) ? { iv_speed: mergedParsed.spe } : {}),
+    });
+
+    console.log('Saved Shiny Encounters', {
+      parsed: {
+        totalEncounters: parsed.totalEncounters,
+        speciesEncounters: parsed.speciesEncounters,
+        totalEncountersConfidence: parsed.totalEncountersConfidence,
+        speciesEncountersConfidence: parsed.speciesEncountersConfidence,
+      },
+      mobile: {
+        totalEncounters: mobileStats?.totalEncounters ?? null,
+        speciesEncounters: mobileStats?.speciesEncounters ?? null,
+        totalConfidence: mobileStats?.meta?.recognizers?.totalEncounters?.confidence ?? 0,
+        speciesConfidence: mobileStats?.meta?.recognizers?.speciesEncounters?.confidence ?? 0,
+      },
+      merged: {
+        totalEncounters: mergedParsed.totalEncounters,
+        speciesEncounters: mergedParsed.speciesEncounters,
+      },
+      saved: {
+        id: shiny.id,
+        totalEncounters: shiny.total_encounters,
+        speciesEncounters: shiny.species_encounters,
+      },
     });
 
     res.status(201).json({
@@ -494,5 +933,15 @@ router.delete('/:id', authenticateBot, async (req, res) => {
     });
   }
 });
+
+router._test = {
+  buildOcrJobs,
+  getOcrEncounterCandidates,
+  loadOcrDependencies,
+  mergeParsedStats,
+  parseDataFromOcr,
+  pickEncounterCandidate,
+  chooseEncounterValue,
+};
 
 module.exports = router;
