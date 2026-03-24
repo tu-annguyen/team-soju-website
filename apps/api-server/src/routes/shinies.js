@@ -1,4 +1,5 @@
 const express = require('express');
+const fs = require('fs');
 const Joi = require('joi');
 const path = require('path');
 const { capitalize, getPokemonNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
@@ -35,10 +36,16 @@ async function createOcrWorker(Tesseract) {
     return null;
   }
 
-  return Tesseract.createWorker('eng', 1, {
-    gzip: false,
-    langPath: path.resolve(__dirname, '../..'),
-  });
+  const localOcrDataRoot = path.resolve(__dirname, '../..');
+  const localEnglishData = path.join(localOcrDataRoot, 'eng.traineddata');
+  const workerOptions = fs.existsSync(localEnglishData)
+    ? {
+      gzip: false,
+      langPath: localOcrDataRoot,
+    }
+    : {};
+
+  return Tesseract.createWorker('eng', 1, workerOptions);
 }
 
 function formatMobileStatsLog(mobileStats) {
