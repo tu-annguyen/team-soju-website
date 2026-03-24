@@ -45,6 +45,14 @@ function normalizeAlphaOcrValue(text) {
     .trim();
 }
 
+function normalizeEncounterOcrValue(text) {
+  return String(text || '')
+    .replace(/[|]/g, 'l')
+    .replace(/[;]/g, ':')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function levenshtein(a, b) {
   const left = a.toLowerCase();
   const right = b.toLowerCase();
@@ -509,8 +517,8 @@ function deriveValueRects(blocks, data, info) {
 
   const totalMask = buildTextMaskForRect(data, info, blocks.totalEncounters);
   const speciesMask = buildTextMaskForRect(data, info, blocks.speciesEncounters);
-  const totalFallback = buildTrailingFractionRect(blocks.totalEncounters, info.width, info.height, 0.52);
-  const speciesFallback = buildTrailingFractionRect(blocks.speciesEncounters, info.width, info.height, 0.46);
+  const totalFallback = buildTrailingFractionRect(blocks.totalEncounters, info.width, info.height, 0.72);
+  const speciesFallback = buildTrailingFractionRect(blocks.speciesEncounters, info.width, info.height, 0.64);
 
   return {
     ivs,
@@ -659,6 +667,97 @@ function chooseBest(results, parser) {
   };
 }
 
+function normalizeLabelToken(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, '');
+}
+
+function buildEncounterLabelPatterns(kind, pokemonName) {
+  if (kind === 'total') {
+    return [
+      /total\s+encounters?\s*:?\s*([a-z0-9]{3,7})/i,
+      /total\s*[a-z]*\s*encounters?\s*:?\s*([a-z0-9]{3,7})/i,
+      /encounters?\s*:?\s*([a-z0-9]{3,7})/i,
+    ];
+  }
+
+  const normalizedPokemon = normalizeLabelToken(pokemonName);
+  const escapedPokemon = normalizedPokemon ? normalizedPokemon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : null;
+
+  return [
+    ...(escapedPokemon ? [
+      new RegExp(`${escapedPokemon}\\s*encounters?\\s*:?(?:\\s*)([a-z0-9]{3,7})`, 'i'),
+      new RegExp(`${escapedPokemon}[a-z]*\\s*encounters?\\s*:?(?:\\s*)([a-z0-9]{3,7})`, 'i'),
+    ] : []),
+    /encounters?\s*:?\s*([a-z0-9]{3,7})/i,
+  ];
+}
+
+function parseEncounterCountCandidate(text, kind, pokemonName) {
+  const compact = normalizeEncounterOcrValue(text);
+  if (!compact) return null;
+
+  const alphaNormalized = compact
+    .toLowerCase()
+    .replace(/[^a-z0-9: ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const compactNormalized = alphaNormalized.replace(/\s+/g, '');
+
+  const parseRawCountToken = (value) => {
+    const rawToken = String(value || '');
+    const normalizedDigits = rawToken
+      .replace(/[Oo]/g, '0')
+      .replace(/[Il]/g, '1')
+      .replace(/[Zz]/g, '2')
+      .replace(/[Ss]/g, '5')
+      .replace(/[Bb]/g, '8')
+      .replace(/[^0-9]/g, '');
+
+    if (!/^\d{3,7}$/.test(normalizedDigits)) return null;
+    const parsedValue = parseInt(normalizedDigits, 10);
+    if (Number.isNaN(parsedValue)) return null;
+
+    const originalLength = rawToken.replace(/\s+/g, '').length;
+    const normalizedLength = normalizedDigits.length;
+    const discardedCount = Math.max(0, originalLength - normalizedLength);
+    const ambiguousCount = (rawToken.match(/[A-Za-z]/g) || []).length;
+    const qualityPenalty = (discardedCount * 0.14) + (ambiguousCount * 0.08);
+
+    return {
+      value: parsedValue,
+      normalizedLength,
+      discardedCount,
+      ambiguousCount,
+      qualityPenalty,
+    };
+  };
+
+  for (const pattern of buildEncounterLabelPatterns(kind, pokemonName)) {
+    const match = pattern.exec(alphaNormalized) || pattern.exec(compactNormalized);
+    if (!match?.[1]) continue;
+
+    const parsedToken = parseRawCountToken(match[1]);
+    if (!parsedToken || !Number.isInteger(parsedToken.value) || parsedToken.value < 0) continue;
+
+    const hasStrongLabel = kind === 'total'
+      ? /total/.test(alphaNormalized)
+      : new RegExp(normalizeLabelToken(pokemonName || ''), 'i').test(compactNormalized);
+    const baseConfidence = hasStrongLabel ? 0.9 : 0.72;
+    const confidence = Math.max(0.35, baseConfidence - parsedToken.qualityPenalty);
+
+    return {
+      value: parsedToken.value,
+      confidence,
+      strategy: 'anchor-ocr-labeled',
+      raw: compact,
+    };
+  }
+
+  return null;
+}
+
 async function recognizeIvBlock({ sharp, Tesseract, imageBuffer, rect }) {
   const { data, info } = await getRawImage(sharp, imageBuffer);
   const mask = buildTextMaskForRect(data, info, rect);
@@ -690,6 +789,30 @@ async function recognizeNatureBlock({ sharp, Tesseract, imageBuffer, rect }) {
     rect: payload.rect,
     ...chooseBest(results, parseNatureCandidate),
     variants: results,
+  };
+}
+
+async function recognizeEncounterRowBlock({ sharp, Tesseract, imageBuffer, rect, kind, pokemonName }) {
+  const payload = await buildRegionVariantBuffers({ sharp, imageBuffer, rect, mode: 'alpha' });
+  const results = await recognizeTextVariants(
+    Tesseract,
+    payload.variants,
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789: ',
+    normalizeEncounterOcrValue,
+    '7'
+  );
+
+  const best = chooseBest(results, (text) => parseEncounterCountCandidate(text, kind, pokemonName));
+  return {
+    rect: payload.rect,
+    ...best,
+    variants: results,
+    debugCandidates: results.map((result) => ({
+      source: 'ocr-row',
+      variant: result.name,
+      text: result.text,
+      parsed: parseEncounterCountCandidate(result.text, kind, pokemonName),
+    })),
   };
 }
 
@@ -752,6 +875,52 @@ function parseCountFromRecognized(recognized) {
   };
 }
 
+function recognizeCountFromMask(mask, minimumScore = 0.5) {
+  if (!mask?.length || !mask[0]?.length) {
+    return {
+      value: null,
+      confidence: 0,
+      raw: '',
+      variants: [],
+    };
+  }
+
+  const recognized = recognizeNumericSequence(mask, ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], minimumScore);
+  const parsed = parseCountFromRecognized(recognized);
+
+  return {
+    value: parsed?.value || null,
+    confidence: parsed?.confidence || 0,
+    raw: parsed?.raw || recognized.map((item) => item.char).join(''),
+    variants: recognized,
+  };
+}
+
+function chooseBestCountCandidate(candidates) {
+  const valid = candidates.filter((candidate) => Number.isInteger(candidate?.value) && candidate.value >= 0);
+  if (valid.length === 0) {
+    return candidates[0] || {
+      value: null,
+      confidence: 0,
+      raw: '',
+      variants: [],
+    };
+  }
+
+  const scored = valid
+    .map((candidate) => {
+      const rawLength = String(candidate.raw || '').replace(/\D/g, '').length;
+      const strategyBonus = candidate.strategy === 'anchor-ocr-labeled' ? 0.18 : 0;
+      return {
+        candidate,
+        score: candidate.confidence + (Math.min(rawLength, 7) * 0.04) + strategyBonus,
+      };
+    })
+    .sort((left, right) => right.score - left.score);
+
+  return scored[0].candidate;
+}
+
 function isolateRightmostGlyphRun(mask) {
   const groups = findGlyphGroups(mask).filter((group) => (group.end - group.start + 1) >= 2);
   if (groups.length === 0) return null;
@@ -792,23 +961,68 @@ function cropTrailingMask(mask, fraction = 0.42) {
   });
 }
 
-async function recognizeCountBlock({ sharp, imageBuffer, rect, fallbackRect }) {
+async function recognizeCountBlock({ sharp, Tesseract, imageBuffer, rect, fallbackRect, kind, pokemonName }) {
   const { data, info } = await getRawImage(sharp, imageBuffer);
   const fullMask = buildTextMaskForRect(data, info, rect);
-  const trailingMask = cropTrailingMask(fullMask, 0.42);
-  const isolatedMask = isolateRightmostGlyphRun(trailingMask)
-    || buildTextMaskForRect(data, info, fallbackRect || rect);
-  const recognized = recognizeNumericSequence(isolatedMask, ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], 0.5);
-  const parsed = parseCountFromRecognized(recognized);
+  const valueMask = buildTextMaskForRect(data, info, fallbackRect || rect);
+  const expandedRowRect = expandRect({
+    left: Math.max(0, rect.left - Math.floor(rect.width * 0.30)),
+    top: rect.top,
+    width: Math.min(info.width - Math.max(0, rect.left - Math.floor(rect.width * 0.30)), Math.floor(rect.width * 1.30)),
+    height: rect.height,
+  }, info.width, info.height, 8, 4);
+  const candidateMasks = [
+    { name: 'value-isolated', mask: isolateRightmostGlyphRun(valueMask) },
+    { name: 'value-full', mask: valueMask },
+    { name: 'value-trailing-85', mask: cropTrailingMask(valueMask, 0.85) },
+    { name: 'value-trailing-70', mask: cropTrailingMask(valueMask, 0.70) },
+    { name: 'block-full', mask: fullMask },
+    { name: 'block-trailing-75', mask: cropTrailingMask(fullMask, 0.75) },
+    { name: 'block-trailing-60', mask: cropTrailingMask(fullMask, 0.60) },
+    { name: 'block-trailing-55-isolated', mask: isolateRightmostGlyphRun(cropTrailingMask(fullMask, 0.55)) },
+    { name: 'block-trailing-42-isolated', mask: isolateRightmostGlyphRun(cropTrailingMask(fullMask, 0.42)) },
+  ].filter((candidate) => candidate.mask);
+  const templateCandidates = candidateMasks.map((candidate) => ({
+    crop: candidate.name,
+    source: 'template-mask',
+    strategy: 'anchor-template',
+    variant: 'battle-template',
+    ...recognizeCountFromMask(candidate.mask, 0.5),
+  }));
+  const ocrCandidate = await recognizeEncounterRowBlock({
+    sharp,
+    Tesseract,
+    imageBuffer,
+    rect: expandedRowRect,
+    kind,
+    pokemonName,
+  });
+  const best = chooseBestCountCandidate([
+    ...templateCandidates,
+    ocrCandidate,
+  ]);
 
   return {
     rect,
-    value: parsed?.value || null,
-    confidence: parsed?.confidence || 0,
-    strategy: 'anchor-template',
-    raw: parsed?.raw || recognized.map((item) => item.char).join(''),
-    variant: 'battle-template',
-    variants: recognized,
+    value: best.value,
+    confidence: best.confidence,
+    strategy: best.strategy || 'anchor-template',
+    raw: best.raw,
+    variant: best.variant || 'battle-template',
+    variants: best.variants,
+    debugCandidates: [
+      ...templateCandidates.map((candidate) => ({
+        source: candidate.source,
+        crop: candidate.crop,
+        strategy: candidate.strategy,
+        variant: candidate.variant,
+        value: candidate.value,
+        confidence: candidate.confidence,
+        raw: candidate.raw,
+        glyphs: candidate.variants,
+      })),
+      ...(ocrCandidate.debugCandidates || []),
+    ],
   };
 }
 
@@ -885,15 +1099,21 @@ async function parseMobileStatsPanel({ imageBuffer, sharp, Tesseract, pokemonNam
     recognizeNatureBlock({ sharp, Tesseract, imageBuffer, rect: valueRects.nature }),
     recognizeCountBlock({
       sharp,
+      Tesseract,
       imageBuffer,
       rect: valueRects.totalEncountersBlock,
       fallbackRect: valueRects.totalEncountersValue,
+      kind: 'total',
+      pokemonName,
     }),
     recognizeCountBlock({
       sharp,
+      Tesseract,
       imageBuffer,
       rect: valueRects.speciesEncountersBlock,
       fallbackRect: valueRects.speciesEncountersValue,
+      kind: 'species',
+      pokemonName,
     }),
   ]);
 
@@ -932,4 +1152,11 @@ async function parseMobileStatsPanel({ imageBuffer, sharp, Tesseract, pokemonNam
 
 module.exports = {
   parseMobileStatsPanel,
+  _test: {
+    buildEncounterLabelPatterns,
+    chooseBestCountCandidate,
+    NUMERIC_TEMPLATES,
+    parseEncounterCountCandidate,
+    recognizeCountFromMask,
+  },
 };

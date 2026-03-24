@@ -29,6 +29,57 @@ function loadOcrDependencies() {
   }
 }
 
+function formatMobileStatsLog(mobileStats) {
+  if (!mobileStats) {
+    return 'Mobile Stats Parser\n  No parser output';
+  }
+
+  const recognizers = mobileStats.meta?.recognizers;
+  const summary = {
+    confidence: mobileStats.confidence,
+    values: {
+      ivs: [mobileStats.hp, mobileStats.atk, mobileStats.def, mobileStats.spa, mobileStats.spd, mobileStats.spe],
+      nature: mobileStats.nature,
+      totalEncounters: mobileStats.totalEncounters,
+      speciesEncounters: mobileStats.speciesEncounters,
+    },
+    recognizers: recognizers ? {
+      ivs: {
+        value: recognizers.ivs?.value,
+        confidence: recognizers.ivs?.confidence,
+        strategy: recognizers.ivs?.strategy,
+        raw: recognizers.ivs?.raw,
+        variant: recognizers.ivs?.variant,
+      },
+      nature: {
+        value: recognizers.nature?.value,
+        confidence: recognizers.nature?.confidence,
+        strategy: recognizers.nature?.strategy,
+        raw: recognizers.nature?.raw,
+        variant: recognizers.nature?.variant,
+      },
+      totalEncounters: {
+        value: recognizers.totalEncounters?.value,
+        confidence: recognizers.totalEncounters?.confidence,
+        strategy: recognizers.totalEncounters?.strategy,
+        raw: recognizers.totalEncounters?.raw,
+        variant: recognizers.totalEncounters?.variant,
+        candidates: recognizers.totalEncounters?.debugCandidates,
+      },
+      speciesEncounters: {
+        value: recognizers.speciesEncounters?.value,
+        confidence: recognizers.speciesEncounters?.confidence,
+        strategy: recognizers.speciesEncounters?.strategy,
+        raw: recognizers.speciesEncounters?.raw,
+        variant: recognizers.speciesEncounters?.variant,
+        candidates: recognizers.speciesEncounters?.debugCandidates,
+      },
+    } : null,
+  };
+
+  return `Mobile Stats Parser\n${JSON.stringify(summary, null, 2)}`;
+}
+
 // Validation schema
 const shinySchema = Joi.object({
   national_number: Joi.number().integer().min(1).max(1010).required(),
@@ -90,6 +141,123 @@ const screenshotSchema = Joi.object({
   member_roles: Joi.array().items(Joi.string()).default([]),
 });
 
+function normalizeEncounterDigits(value) {
+  const token = String(value || '')
+    .replace(/[Oo]/g, '0')
+    .replace(/[Il]/g, '1')
+    .replace(/[Zz]/g, '2')
+    .replace(/[Ss]/g, '5')
+    .replace(/[Bb]/g, '8')
+    .replace(/[£]/g, '2')
+    .replace(/[°•]/g, '0')
+    .replace(/[-_.]/g, '')
+    .replace(/[^0-9]/g, '');
+
+  if (!/^\d{3,7}$/.test(token)) return null;
+  const parsed = parseInt(token, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function normalizeEncounterLabel(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, '');
+}
+
+function extractEncounterValueFromLine(line) {
+  const afterLabel = /encounters?[^:]*:\s*([^\s|]+)/i.exec(line);
+  if (afterLabel) {
+    return normalizeEncounterDigits(afterLabel[1]);
+  }
+
+  if (/encounters?/i.test(line)) {
+    return null;
+  }
+
+  const tokens = String(line || '').match(/[A-Za-z0-9£]{3,7}/g) || [];
+  for (let index = tokens.length - 1; index >= 0; index -= 1) {
+    const parsed = normalizeEncounterDigits(tokens[index]);
+    if (parsed !== null) return parsed;
+  }
+
+  return null;
+}
+
+function getOcrEncounterCandidates(lines, pokemonName) {
+  const normalizedPokemon = normalizeEncounterLabel(pokemonName);
+
+  return lines
+    .map((line) => {
+      const normalizedLine = normalizeEncounterLabel(line);
+      const value = extractEncounterValueFromLine(line);
+      if (value === null) return null;
+
+      const mentionsEncounters = normalizedLine.includes('encounter');
+      if (!mentionsEncounters) return null;
+
+      const totalLabelConfidence = (() => {
+        if (normalizedLine.includes('totalencounter')) return 0.9;
+        if (normalizedLine.includes('talencounter') || normalizedLine.includes('bencounter')) return 0.76;
+        return 0;
+      })();
+
+      const speciesNameConfidence = (() => {
+        if (!normalizedPokemon) return 0;
+        const compactLine = normalizedLine.replace(/encounters?$/, '');
+        const distance = levenshtein(normalizedPokemon, compactLine);
+        const similarity = 1 - (distance / Math.max(normalizedPokemon.length, compactLine.length, 1));
+        if (similarity >= 0.72) return 0.86;
+        if (similarity >= 0.5) return 0.72;
+        if (compactLine.includes(normalizedPokemon.slice(Math.max(0, normalizedPokemon.length - 4)))) return 0.74;
+        if (compactLine.includes(normalizedPokemon.slice(1))) return 0.78;
+        return 0;
+      })();
+
+      return {
+        line,
+        value,
+        totalConfidence: totalLabelConfidence,
+        speciesConfidence: speciesNameConfidence,
+      };
+    })
+    .filter(Boolean);
+}
+
+function pickEncounterCandidate(candidates, kind) {
+  const scored = candidates
+    .map((candidate) => {
+      const baseConfidence = kind === 'total' ? candidate.totalConfidence : candidate.speciesConfidence;
+      const conflictingValues = candidates.filter((other) => (
+        other !== candidate &&
+        ((kind === 'total' ? other.totalConfidence : other.speciesConfidence) > 0) &&
+        other.value !== candidate.value
+      ));
+
+      const confidence = conflictingValues.length > 0
+        ? Math.max(0, baseConfidence - 0.08)
+        : baseConfidence;
+
+      return {
+        ...candidate,
+        confidence,
+      };
+    })
+    .filter((candidate) => candidate.confidence > 0)
+    .sort((left, right) => right.confidence - left.confidence);
+
+  return scored[0] || null;
+}
+
+function chooseEncounterValue({ parsedValue, parsedConfidence, mobileValue, mobileConfidence }) {
+  const hasParsed = Number.isInteger(parsedValue);
+  const hasMobile = Number.isInteger(mobileValue);
+
+  if (!hasParsed) return hasMobile ? mobileValue : null;
+  if (!hasMobile) return parsedValue;
+
+  return (mobileConfidence || 0) >= (parsedConfidence || 0) ? mobileValue : parsedValue;
+}
+
 function parseDataFromOcr(text, isMDY = false) {
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const date = (() => {
@@ -123,16 +291,9 @@ function parseDataFromOcr(text, isMDY = false) {
     return normalizeNatureCandidate(match?.[1]) || null;
   })();
 
-  const totalEncounters = (() => {
-    const match = /Total Encounters:\s+(\d+)/i.exec(text);
-    return match?.[1] ? parseInt(match[1], 10) : null;
-  })();
-
-  const speciesEncounters = (() => {
-    if (!name) return null;
-    const match = new RegExp(`${name} Encounters:\\s+(\\d+)`, 'i').exec(text);
-    return match?.[1] ? parseInt(match[1], 10) : null;
-  })();
+  const encounterCandidates = getOcrEncounterCandidates(lines, name);
+  const totalEncounterCandidate = pickEncounterCandidate(encounterCandidates, 'total');
+  const speciesEncounterCandidate = pickEncounterCandidate(encounterCandidates, 'species');
 
   return {
     date,
@@ -145,8 +306,10 @@ function parseDataFromOcr(text, isMDY = false) {
     spd: ivs[4] ?? null,
     spe: ivs[5] ?? null,
     nature,
-    totalEncounters,
-    speciesEncounters,
+    totalEncounters: totalEncounterCandidate?.value ?? null,
+    totalEncountersConfidence: totalEncounterCandidate?.confidence ?? 0,
+    speciesEncounters: speciesEncounterCandidate?.value ?? null,
+    speciesEncountersConfidence: speciesEncounterCandidate?.confidence ?? 0,
   };
 }
 
@@ -360,6 +523,10 @@ function mergeParsedStats(parsed, stats) {
   if (!stats) return parsed;
 
   const mobileNatureConfidence = stats.meta?.recognizers?.nature?.confidence || 0;
+  const mobileTotalConfidence = stats.meta?.recognizers?.totalEncounters?.confidence || 0;
+  const mobileSpeciesConfidence = stats.meta?.recognizers?.speciesEncounters?.confidence || 0;
+  const ocrTotalConfidence = parsed.totalEncountersConfidence || 0;
+  const ocrSpeciesConfidence = parsed.speciesEncountersConfidence || 0;
 
   return {
     ...parsed,
@@ -370,8 +537,18 @@ function mergeParsedStats(parsed, stats) {
     spd: Number.isInteger(stats.spd) ? stats.spd : parsed.spd,
     spe: Number.isInteger(stats.spe) ? stats.spe : parsed.spe,
     nature: mobileNatureConfidence >= 0.8 ? (stats.nature || parsed.nature) : parsed.nature,
-    totalEncounters: Number.isInteger(stats.totalEncounters) ? stats.totalEncounters : parsed.totalEncounters,
-    speciesEncounters: Number.isInteger(stats.speciesEncounters) ? stats.speciesEncounters : parsed.speciesEncounters,
+    totalEncounters: chooseEncounterValue({
+      parsedValue: parsed.totalEncounters,
+      parsedConfidence: ocrTotalConfidence,
+      mobileValue: stats.totalEncounters,
+      mobileConfidence: mobileTotalConfidence,
+    }),
+    speciesEncounters: chooseEncounterValue({
+      parsedValue: parsed.speciesEncounters,
+      parsedConfidence: ocrSpeciesConfidence,
+      mobileValue: stats.speciesEncounters,
+      mobileConfidence: mobileSpeciesConfidence,
+    }),
   };
 }
 
@@ -493,10 +670,7 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
         Tesseract,
         pokemonName: parsed.name,
       });
-      console.log('Mobile Stats Parser: ', JSON.stringify({
-        confidence: mobileStats.confidence,
-        recognizers: mobileStats.meta?.recognizers,
-      }));
+      console.log(formatMobileStatsLog(mobileStats));
     }
 
     const mergedParsed = mergeParsedStats(parsed, mobileStats);
@@ -566,6 +740,30 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       ...(Number.isInteger(mergedParsed.spa) ? { iv_sp_attack: mergedParsed.spa } : {}),
       ...(Number.isInteger(mergedParsed.spd) ? { iv_sp_defense: mergedParsed.spd } : {}),
       ...(Number.isInteger(mergedParsed.spe) ? { iv_speed: mergedParsed.spe } : {}),
+    });
+
+    console.log('Saved Shiny Encounters', {
+      parsed: {
+        totalEncounters: parsed.totalEncounters,
+        speciesEncounters: parsed.speciesEncounters,
+        totalEncountersConfidence: parsed.totalEncountersConfidence,
+        speciesEncountersConfidence: parsed.speciesEncountersConfidence,
+      },
+      mobile: {
+        totalEncounters: mobileStats?.totalEncounters ?? null,
+        speciesEncounters: mobileStats?.speciesEncounters ?? null,
+        totalConfidence: mobileStats?.meta?.recognizers?.totalEncounters?.confidence ?? 0,
+        speciesConfidence: mobileStats?.meta?.recognizers?.speciesEncounters?.confidence ?? 0,
+      },
+      merged: {
+        totalEncounters: mergedParsed.totalEncounters,
+        speciesEncounters: mergedParsed.speciesEncounters,
+      },
+      saved: {
+        id: shiny.id,
+        totalEncounters: shiny.total_encounters,
+        speciesEncounters: shiny.species_encounters,
+      },
     });
 
     res.status(201).json({
@@ -735,5 +933,13 @@ router.delete('/:id', authenticateBot, async (req, res) => {
     });
   }
 });
+
+router._test = {
+  getOcrEncounterCandidates,
+  mergeParsedStats,
+  parseDataFromOcr,
+  pickEncounterCandidate,
+  chooseEncounterValue,
+};
 
 module.exports = router;
