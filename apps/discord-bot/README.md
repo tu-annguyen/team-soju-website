@@ -93,6 +93,8 @@ This assumes the `ngrok` CLI is already installed and authenticated on your mach
 npm run register
 ```
 
+`npm run deploy:cf` now performs both steps for production: it deploys the Worker to the top-level Wrangler environment with `--env=""` and then re-registers the Discord slash commands so new commands become available.
+
 **Local server**:
 ```bash
 npm start
