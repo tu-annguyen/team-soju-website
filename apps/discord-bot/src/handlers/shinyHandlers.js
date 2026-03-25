@@ -809,8 +809,9 @@ async function handleAddShinyScreenshot(interaction) {
     }
 
     const screenshot = interaction.options.getAttachment('screenshot');
+    const screenshotUrl = screenshot.proxyURL || screenshot.url;
     const response = await fetchClient.post(`${apiBaseUrl}/shinies/from-screenshot/async`, {
-      screenshot_url: screenshot.url,
+      screenshot_url: screenshotUrl,
       date_is_mdy: interaction.options.getBoolean('date_is_mdy') || false,
       encounter_type: normalizeEncounterType(interaction.options.getString('encounter_type')),
       is_secret: interaction.options.getBoolean('secret') || false,
