@@ -60,6 +60,7 @@ const NATURE_CHOICES = [
 // Define required roles for commands
 const COMMAND_PERMISSIONS = {
   // Public commands (all members)
+  'help': [],
   'member': [],
   'shiny': [],
   'shinies': [],
@@ -338,6 +339,10 @@ const COMMANDS = [
   new SlashCommandBuilder()
     .setName('stats')
     .setDescription('Show team statistics'),
+
+  new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('List useful commands'),
 ];
 
 module.exports = { COMMANDS, RANK_CHOICES, ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, COMMAND_PERMISSIONS };

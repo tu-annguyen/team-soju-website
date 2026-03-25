@@ -1,6 +1,7 @@
 const memberHandlers = require('./handlers/memberHandlers');
 const shinyHandlers = require('./handlers/shinyHandlers');
 const statsHandlers = require('./handlers/statsHandlers');
+const otherHandlers = require('./handlers/otherHandlers');
 
 function getCommandHandlers(commandName) {
   const handlerMap = {
@@ -19,6 +20,7 @@ function getCommandHandlers(commandName) {
     'myshinies': shinyHandlers,
     'leaderboard': statsHandlers,
     'stats': statsHandlers,
+    'help': otherHandlers,
   };
 
   const handlers = handlerMap[commandName];
@@ -48,6 +50,7 @@ function getCommandHandler(commandName) {
     'myshinies': 'handleGetMyShinies',
     'leaderboard': 'handleLeaderboard',
     'stats': 'handleStats',
+    'help': 'handleHelp',
   };
 
   const handlerName = handlerNameMap[commandName];
