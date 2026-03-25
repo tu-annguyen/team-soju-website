@@ -580,11 +580,49 @@ async function buildOcrJobs(imageBuffer, sharp) {
       }
     ));
   } else {
+    const headerTop = Math.max(0, Math.floor(height * 0.08));
+    const headerHeight = Math.max(1, Math.floor(height * 0.24));
     const statsHeight = Math.max(1, Math.floor(height * 0.26));
     const statsTop = Math.max(0, height - statsHeight);
 
     jobs.push(createOcrJob(
-      'desktop-main',
+      'desktop-header',
+      image
+        .clone()
+        .extract({
+          left: 0,
+          top: headerTop,
+          width,
+          height: Math.min(headerHeight, height - headerTop),
+        })
+        .greyscale()
+        .normalize()
+        .resize({ width: Math.max(width * 3, 1800) })
+        .sharpen({ sigma: 1.2 }),
+      {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,! ',
+      }
+    ));
+
+    jobs.push(createOcrJob(
+      'desktop-main-color-safe',
+      image
+        .clone()
+        .greyscale()
+        .normalize()
+        .resize({ width: Math.max(width * 2, 1800) })
+        .sharpen({ sigma: 1.1 }),
+      {
+        tessedit_pageseg_mode: '11',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,! ',
+      }
+    ));
+
+    jobs.push(createOcrJob(
+      'desktop-main-threshold',
       image
         .clone()
         .greyscale()
@@ -597,6 +635,29 @@ async function buildOcrJobs(imageBuffer, sharp) {
         tessedit_pageseg_mode: '11',
         preserve_interword_spaces: '1',
         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,! ',
+      }
+    ));
+
+    jobs.push(createOcrJob(
+      'desktop-stats-threshold',
+      image
+        .clone()
+        .extract({
+          left: 0,
+          top: statsTop,
+          width,
+          height: height - statsTop,
+        })
+        .greyscale()
+        .negate()
+        .normalize()
+        .threshold(155)
+        .resize({ width: Math.max(width * 3, 1800) })
+        .sharpen({ sigma: 1.2 }),
+      {
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
       }
     ));
 
