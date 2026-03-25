@@ -2,7 +2,7 @@
  * Misc command handlers
  */
 
-const { EmbedBuilder } = require('../discord/api');
+const { EmbedBuilder, MessageFlags } = require('../discord/api');
 const fetchClient = require('../fetchClient');
 
 const DISCORD_API_BASE_URL = 'https://discord.com/api/v10';
@@ -67,7 +67,7 @@ async function buildUsefulCommandsField(interaction) {
 }
 
 async function handleHelp(interaction) {
-  await interaction.deferReply();
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const usefulCommandsValue = await buildUsefulCommandsField(interaction);
