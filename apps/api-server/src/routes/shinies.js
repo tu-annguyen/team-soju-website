@@ -17,6 +17,23 @@ const NATURE_CHOICES = [
   'Calm', 'Gentle', 'Sassy', 'Careful', 'Quirky',
 ];
 
+const ENCOUNTER_TYPE_CHOICES = [
+  'single',
+  'x5_horde',
+  'x3_horde',
+  'horde',
+  'safari',
+  'fishing',
+  'egg',
+  'mysterious_ball',
+  'honey_tree',
+  'rock_smash',
+  'swarm',
+  'fossil',
+  'headbutt',
+  'gift',
+];
+
 function loadOcrDependencies() {
   try {
     return {
@@ -115,6 +132,17 @@ function createScreenshotJobId() {
   return `ss-${Date.now()}-${screenshotJobCounter}`;
 }
 
+function formatEncounterType(encounterType) {
+  return ({
+    x5_horde: '5x Horde',
+    x3_horde: '3x Horde',
+    horde: 'Horde',
+    mysterious_ball: 'Mysterious Ball',
+    honey_tree: 'Honey Tree',
+    rock_smash: 'Rock Smash',
+  }[encounterType] || capitalize(String(encounterType || '').replace(/_/g, ' ')));
+}
+
 function buildShinyActionComponents(shinyId) {
   if (!shinyId) return [];
 
@@ -141,7 +169,7 @@ function buildAsyncScreenshotSuccessPayload(shiny, notes = []) {
       fields: [
         { name: 'Trainer', value: shiny.trainer_name, inline: true },
         { name: 'Pokemon', value: `${capitalize(shiny.pokemon)} (#${shiny.national_number})`, inline: true },
-        { name: 'Encounter Type', value: shiny.encounter_type, inline: true },
+        { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true },
         { name: 'Encounters', value: String(shiny.total_encounters || 0), inline: true },
       ],
       footer: { text: `Shiny ID: ${shiny.id}` },
@@ -204,9 +232,7 @@ const shinySchema = Joi.object({
   catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   total_encounters: Joi.number().integer().min(0).default(0),
   species_encounters: Joi.number().integer().min(0).default(0),
-  encounter_type: Joi.string().valid(
-    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'headbutt', 'gift'
-  ).required(),
+  encounter_type: Joi.string().valid(...ENCOUNTER_TYPE_CHOICES).required(),
   location: Joi.string().max(100).optional(),
   nature: Joi.string().max(20).optional(),
   iv_hp: Joi.number().integer().min(0).max(31).optional(),
@@ -228,9 +254,7 @@ const updateShinySchema = Joi.object({
   catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
   total_encounters: Joi.number().integer().min(0).optional(),
   species_encounters: Joi.number().integer().min(0).optional(),
-  encounter_type: Joi.string().valid(
-    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'headbutt', 'gift'
-  ).optional(),
+  encounter_type: Joi.string().valid(...ENCOUNTER_TYPE_CHOICES).optional(),
   location: Joi.string().max(100).optional(),
   nature: Joi.string().max(20).optional(),
   iv_hp: Joi.number().integer().min(0).max(31).optional(),
@@ -247,9 +271,7 @@ const updateShinySchema = Joi.object({
 
 const screenshotSchema = Joi.object({
   screenshot_url: Joi.string().uri().required(),
-  encounter_type: Joi.string().valid(
-    'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'headbutt', 'gift'
-  ).required(),
+  encounter_type: Joi.string().valid(...ENCOUNTER_TYPE_CHOICES).required(),
   is_secret: Joi.boolean().default(false),
   is_alpha: Joi.boolean().default(false),
   command_called_at: Joi.string().isoDate().optional(),

@@ -133,7 +133,7 @@ describe('shinyHandlers', () => {
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
           trainer_name: 'T1',
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
           total_encounters: 1234,
           species_encounters: 567,
           iv_hp: 1,
@@ -183,7 +183,7 @@ describe('shinyHandlers', () => {
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
           trainer_name: 'T1',
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
           total_encounters: 1234,
           species_encounters: 567,
           iv_hp: 1,
@@ -211,7 +211,7 @@ describe('shinyHandlers', () => {
     const interaction = createMockInteraction({
       customId: 'sh:e:t:a:_:1:10:selected-id',
       member: { roles: { cache: [{ name: 'Champion' }] } },
-      values: ['horde'],
+      values: ['x5_horde'],
       update: jest.fn().mockResolvedValue(undefined),
     });
 
@@ -237,7 +237,7 @@ describe('shinyHandlers', () => {
             pokemon: 'pikachu',
             pokemon_name: 'Pikachu',
             trainer_name: 'T1',
-            encounter_type: 'horde',
+            encounter_type: 'x5_horde',
             nature: 'Bold',
             is_secret: false,
             is_alpha: false,
@@ -251,7 +251,7 @@ describe('shinyHandlers', () => {
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
           trainer_name: 'T1',
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
           nature: 'Bold',
           is_secret: false,
           is_alpha: false,
@@ -263,7 +263,7 @@ describe('shinyHandlers', () => {
 
     expect(fetchClient.put).toHaveBeenCalledWith(
       expect.stringContaining('/shinies/selected-id'),
-      expect.objectContaining({ encounter_type: 'horde' }),
+      expect.objectContaining({ encounter_type: 'x5_horde' }),
       expect.any(Object)
     );
     expect(interaction.update).toHaveBeenCalledWith(
@@ -296,7 +296,7 @@ describe('shinyHandlers', () => {
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
           trainer_name: 'T1',
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
         },
       },
     });
@@ -308,7 +308,7 @@ describe('shinyHandlers', () => {
           pokemon_name: 'Pikachu',
           trainer_name: 'T1',
           national_number: 25,
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
           catch_date: '2026-01-01',
           total_encounters: 10,
           species_encounters: 5,
@@ -344,7 +344,7 @@ describe('shinyHandlers', () => {
       options: {
         trainer: 'testtrainer',
         pokemon: 'dratini',
-        encounter_type: 'Horde',
+        encounter_type: '5x Horde',
         catch_date: '2026-01-15',
         secret: false,
         alpha: false,
@@ -366,7 +366,7 @@ describe('shinyHandlers', () => {
           national_number: 147,
           trainer_name: 'testtrainer',
           catch_date: '2026-01-15',
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
           total_encounters: 1000,
           species_encounters: 100,
           nature: 'Bold',
@@ -408,7 +408,7 @@ describe('shinyHandlers', () => {
           url: 'https://example.com/image.png',
           proxyURL: 'https://media.discordapp.net/attachments/image.png',
         },
-        encounter_type: 'Horde',
+        encounter_type: '5x Horde',
         secret: false,
         alpha: false,
       },
@@ -449,7 +449,7 @@ describe('shinyHandlers', () => {
       member: { roles: { cache: [{ name: 'Champion' }] } },
       options: {
         screenshot: { url: 'https://example.com/sneasel-mobile.png' },
-        encounter_type: 'Horde',
+        encounter_type: '5x Horde',
         secret: false,
         alpha: false,
       },
