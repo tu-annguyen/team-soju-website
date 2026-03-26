@@ -129,8 +129,11 @@ function buildShinyActionComponents(shinyId) {
   }];
 }
 
-function buildAsyncScreenshotSuccessPayload(shiny) {
+function buildAsyncScreenshotSuccessPayload(shiny, notes = []) {
+  const normalizedNotes = notes.filter(Boolean);
+
   return {
+    ...(normalizedNotes.length > 0 ? { content: normalizedNotes.join('\n') } : {}),
     embeds: [{
       color: shiny.is_secret ? 0xFFD700 : 0x4CAF50,
       title: `${shiny.is_secret ? 'Secret ' : ''}Shiny Added!`,
@@ -244,12 +247,12 @@ const updateShinySchema = Joi.object({
 
 const screenshotSchema = Joi.object({
   screenshot_url: Joi.string().uri().required(),
-  date_is_mdy: Joi.boolean().default(false),
   encounter_type: Joi.string().valid(
     'single', 'horde', 'safari', 'fishing', 'egg', 'mysterious_ball', 'honey_tree', 'rock_smash', 'swarm', 'fossil', 'headbutt', 'gift'
   ).required(),
   is_secret: Joi.boolean().default(false),
   is_alpha: Joi.boolean().default(false),
+  command_called_at: Joi.string().isoDate().optional(),
   discord_user_id: Joi.string().required(),
   member_roles: Joi.array().items(Joi.string()).default([]),
 });
@@ -259,6 +262,123 @@ const asyncScreenshotSchema = screenshotSchema.keys({
   discord_interaction_token: Joi.string().required(),
   callback_url: Joi.string().uri().required(),
 });
+
+function normalizeScreenshotYear(rawYear) {
+  const value = parseInt(rawYear, 10);
+  if (Number.isNaN(value)) return null;
+  if (String(rawYear).length === 2) return 2000 + value;
+  return value;
+}
+
+function isValidDateParts(year, month, day) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (year < 2000 || year > 2099) return false;
+  if (month < 1 || month > 12) return false;
+
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  return candidate.getUTCFullYear() === year
+    && (candidate.getUTCMonth() + 1) === month
+    && candidate.getUTCDate() === day;
+}
+
+function formatIsoDate(year, month, day) {
+  return [
+    String(year).padStart(4, '0'),
+    String(month).padStart(2, '0'),
+    String(day).padStart(2, '0'),
+  ].join('-');
+}
+
+function scoreDateCandidate({ format, first, second, third, separator, index, text }) {
+  let score = 0;
+
+  if (format === 'YMD') score += 4;
+  if (first > 12 || second > 12) score += 3;
+  if (separator === '-') score += 0.35;
+  if (separator === '.' && format !== 'YMD') score += 0.15;
+
+  const context = text.slice(Math.max(0, index - 12), Math.min(text.length, index + 28));
+  if (/[AP]M\b/i.test(context) && format === 'MDY') score += 1.5;
+  if (/[AP]M\b/i.test(context) && format === 'DMY') score -= 0.3;
+
+  const now = new Date();
+  const isoDate = formatIsoDate(
+    format === 'YMD' ? first : normalizeScreenshotYear(third),
+    format === 'YMD' ? second : (format === 'MDY' ? first : second),
+    format === 'YMD' ? third : (format === 'MDY' ? second : first)
+  );
+  const parsedDate = new Date(`${isoDate}T00:00:00.000Z`);
+  const ageDays = Math.abs((now.getTime() - parsedDate.getTime()) / 86400000);
+
+  if (parsedDate.getUTCFullYear() === now.getUTCFullYear()) score += 0.2;
+  if (parsedDate.getTime() > now.getTime()) score -= 1.2;
+  if (ageDays <= 366) score += 0.25;
+
+  return score;
+}
+
+function extractDateFromOcr(text) {
+  const pattern = /\b(\d{1,4})([\/.-])(\d{1,2})\2(\d{1,4})\b/g;
+  const candidates = [];
+  let hasAmbiguousCandidate = false;
+
+  for (const match of text.matchAll(pattern)) {
+    const rawFirst = match[1];
+    const separator = match[2];
+    const rawSecond = match[3];
+    const rawThird = match[4];
+    const first = parseInt(rawFirst, 10);
+    const second = parseInt(rawSecond, 10);
+    const third = parseInt(rawThird, 10);
+    const index = match.index || 0;
+
+    if ([first, second, third].some((value) => Number.isNaN(value))) continue;
+
+    if (rawFirst.length !== 4 && first <= 12 && second <= 12) {
+      hasAmbiguousCandidate = true;
+      continue;
+    }
+
+    const interpretations = rawFirst.length === 4
+      ? [{ format: 'YMD', year: first, month: second, day: third }]
+      : [
+        first > 12
+          ? { format: 'DMY', year: normalizeScreenshotYear(rawThird), month: second, day: first }
+          : { format: 'MDY', year: normalizeScreenshotYear(rawThird), month: first, day: second },
+      ];
+
+    for (const interpretation of interpretations) {
+      if (!isValidDateParts(interpretation.year, interpretation.month, interpretation.day)) continue;
+
+      candidates.push({
+        isoDate: formatIsoDate(interpretation.year, interpretation.month, interpretation.day),
+        score: scoreDateCandidate({
+          format: interpretation.format,
+          first,
+          second,
+          third,
+          separator,
+          index,
+          text,
+        }),
+      });
+    }
+  }
+
+  candidates.sort((left, right) => right.score - left.score);
+
+  if (candidates[0]) {
+    return {
+      isoDate: candidates[0].isoDate,
+      wasAmbiguous: false,
+    };
+  }
+
+  return {
+    isoDate: null,
+    wasAmbiguous: hasAmbiguousCandidate,
+  };
+}
 
 function normalizeEncounterDigits(value) {
   const token = String(value || '')
@@ -377,19 +497,9 @@ function chooseEncounterValue({ parsedValue, parsedConfidence, mobileValue, mobi
   return (mobileConfidence || 0) >= (parsedConfidence || 0) ? mobileValue : parsedValue;
 }
 
-function parseDataFromOcr(text, isMDY = false) {
+function parseDataFromOcr(text) {
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  const date = (() => {
-    const match = /(\d{1,2})\/(\d{1,2})\/(\d{1,2})/.exec(text);
-    if (!match) return null;
-    let day = parseInt(match[1], 10);
-    let monthIndex = parseInt(match[2], 10) - 1;
-    if (isMDY) {
-      [monthIndex, day] = [parseInt(match[1], 10) - 1, parseInt(match[2], 10)];
-    }
-    const year = 2000 + parseInt(match[3], 10);
-    return new Date(year, monthIndex, day).toISOString().split('T')[0];
-  })();
+  const dateResult = extractDateFromOcr(text);
 
   const name = (() => {
     const match = /Shiny\s+([A-Za-z]+)/i.exec(text);
@@ -415,7 +525,8 @@ function parseDataFromOcr(text, isMDY = false) {
   const speciesEncounterCandidate = pickEncounterCandidate(encounterCandidates, 'species');
 
   return {
-    date,
+    date: dateResult.isoDate,
+    dateWasAmbiguous: dateResult.wasAmbiguous,
     name,
     trainer,
     hp: ivs[0] ?? null,
@@ -541,7 +652,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '7',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/,:! ',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/,:!- ',
       }
     ));
 
@@ -602,7 +713,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '6',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,! ',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,!- ',
       }
     ));
 
@@ -617,7 +728,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '11',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,! ',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,!- ',
       }
     ));
 
@@ -634,7 +745,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '11',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,! ',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,!- ',
       }
     ));
 
@@ -769,7 +880,7 @@ async function createShinyFromScreenshotValue(value) {
     console.log('OCR Layout: ', layout);
     console.log('OCR Result: ', ocrText);
 
-    const parsed = parseDataFromOcr(ocrText, value.date_is_mdy);
+    const parsed = parseDataFromOcr(ocrText);
     let mobileStats = null;
 
     if (layout === 'mobile') {
@@ -784,6 +895,14 @@ async function createShinyFromScreenshotValue(value) {
     }
 
     const mergedParsed = mergeParsedStats(parsed, mobileStats);
+    const notes = [];
+
+    if (mergedParsed.dateWasAmbiguous) {
+      const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
+      mergedParsed.date = fallbackDate;
+      notes.push(`Note: ambiguous date in screenshot. Used today's date ${fallbackDate}. Press **Edit** > **Edit Text Fields** to change.`);
+    }
+
     const validation = validateParsedData(mergedParsed);
 
     if (!validation.isValid) {
@@ -871,7 +990,7 @@ async function createShinyFromScreenshotValue(value) {
       },
     });
 
-    return { shiny, ocrText };
+    return { shiny, ocrText, notes };
   } finally {
     if (ocrWorker) {
       await ocrWorker.terminate().catch((terminateError) => {
@@ -910,11 +1029,11 @@ async function processAsyncScreenshotQueue() {
       job.startedAt = new Date().toISOString();
 
       try {
-        const { shiny } = await createShinyFromScreenshotValue(job.payload);
+        const { shiny, notes } = await createShinyFromScreenshotValue(job.payload);
         await notifyScreenshotCallback(job.payload.callback_url, {
           application_id: job.payload.discord_application_id,
           interaction_token: job.payload.discord_interaction_token,
-          payload: buildAsyncScreenshotSuccessPayload(shiny),
+          payload: buildAsyncScreenshotSuccessPayload(shiny, notes),
         });
 
         job.status = SCREENSHOT_JOB_STATUS.completed;
@@ -1031,11 +1150,12 @@ router.post('/from-screenshot', authenticateBot, async (req, res) => {
       });
     }
 
-    const { shiny } = await createShinyFromScreenshotValue(value);
+    const { shiny, notes } = await createShinyFromScreenshotValue(value);
 
     res.status(201).json({
       success: true,
       data: shiny,
+      ...(notes?.length ? { notes } : {}),
       message: 'Shiny entry created successfully from screenshot',
     });
   } catch (routeError) {

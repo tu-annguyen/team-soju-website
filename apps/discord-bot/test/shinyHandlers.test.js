@@ -409,7 +409,6 @@ describe('shinyHandlers', () => {
           proxyURL: 'https://media.discordapp.net/attachments/image.png',
         },
         encounter_type: 'Horde',
-        date_is_mdy: false,
         secret: false,
         alpha: false,
       },
@@ -430,6 +429,7 @@ describe('shinyHandlers', () => {
       expect.stringContaining('/shinies/from-screenshot/async'),
       expect.objectContaining({
         screenshot_url: 'https://media.discordapp.net/attachments/image.png',
+        command_called_at: expect.any(String),
         discord_application_id: 'app-123',
         discord_interaction_token: 'interaction-token',
         callback_url: 'https://example.com/internal/screenshot-result',
@@ -450,7 +450,6 @@ describe('shinyHandlers', () => {
       options: {
         screenshot: { url: 'https://example.com/sneasel-mobile.png' },
         encounter_type: 'Horde',
-        date_is_mdy: false,
         secret: false,
         alpha: false,
       },

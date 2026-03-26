@@ -29,7 +29,7 @@ describe('mobile stats screenshot fixtures', () => {
     }
   });
 
-  async function parseFixtureScreenshot({ fixture, expected, isMDY }) {
+  async function parseFixtureScreenshot({ fixture, expected }) {
     const imageBuffer = fs.readFileSync(path.join(fixturesDir, fixture));
     const { jobs } = await shiniesRouter._test.buildOcrJobs(imageBuffer, sharp);
     const ocrResults = [];
@@ -41,7 +41,7 @@ describe('mobile stats screenshot fixtures', () => {
     }
 
     const ocrText = ocrResults.filter(Boolean).join('\n');
-    const parsed = shiniesRouter._test.parseDataFromOcr(ocrText, isMDY);
+    const parsed = shiniesRouter._test.parseDataFromOcr(ocrText);
     const mobileStats = await parseMobileStatsPanel({
       imageBuffer,
       sharp,
@@ -61,7 +61,6 @@ describe('mobile stats screenshot fixtures', () => {
   const cases = [
     {
       fixture: 'pachirisu.png',
-      isMDY: true,
       expected: {
         pokemon: 'Pachirisu',
         trainer: 'Scotty',
@@ -74,7 +73,6 @@ describe('mobile stats screenshot fixtures', () => {
     },
     {
       fixture: 'woobat.png',
-      isMDY: true,
       expected: {
         pokemon: 'Woobat',
         trainer: 'Pokio',
@@ -87,7 +85,6 @@ describe('mobile stats screenshot fixtures', () => {
     },
     {
       fixture: 'liepard.png',
-      isMDY: true,
       expected: {
         pokemon: 'Liepard',
         trainer: 'YangXiaoLong',
@@ -100,7 +97,6 @@ describe('mobile stats screenshot fixtures', () => {
     },
     {
       fixture: 'golett.png',
-      isMDY: true,
       expected: {
         pokemon: 'Golett',
         trainer: 'TMAvatar',
@@ -113,7 +109,6 @@ describe('mobile stats screenshot fixtures', () => {
     },
     {
       fixture: 'sneasel.png',
-      isMDY: false,
       expected: {
         pokemon: 'Sneasel',
         trainer: 'Llensjo',
@@ -128,8 +123,8 @@ describe('mobile stats screenshot fixtures', () => {
 
   it.each(cases)(
     'parses $fixture with exact field checks and relaxed encounter checks',
-    async ({ fixture, expected, isMDY }) => {
-      const { merged } = await parseFixtureScreenshot({ fixture, expected, isMDY });
+    async ({ fixture, expected }) => {
+      const { merged } = await parseFixtureScreenshot({ fixture, expected });
 
       expect(merged.name).toBe(expected.pokemon);
       expect(merged.trainer).toBe(expected.trainer);

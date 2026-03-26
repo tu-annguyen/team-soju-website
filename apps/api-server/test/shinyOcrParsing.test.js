@@ -10,7 +10,7 @@ describe('shiny OCR parsing', () => {
       'Mature: Maughty lloobat Encounters: 2257',
     ].join('\n');
 
-    const parsed = shiniesRouter._test.parseDataFromOcr(ocrText, true);
+    const parsed = shiniesRouter._test.parseDataFromOcr(ocrText);
     const merged = shiniesRouter._test.mergeParsedStats(parsed, {
       totalEncounters: 10751,
       speciesEncounters: 10751,
@@ -38,7 +38,7 @@ describe('shiny OCR parsing', () => {
       'Mature: ulet Golett Encounters: 4°57 |',
     ].join('\n');
 
-    const parsed = shiniesRouter._test.parseDataFromOcr(ocrText, true);
+    const parsed = shiniesRouter._test.parseDataFromOcr(ocrText);
     const merged = shiniesRouter._test.mergeParsedStats(parsed, {
       totalEncounters: 13751,
       speciesEncounters: 4757,
@@ -66,7 +66,7 @@ describe('shiny OCR parsing', () => {
       'Mature: HNaughty Sneasel Encounters: 11330',
     ].join('\n');
 
-    const parsed = shiniesRouter._test.parseDataFromOcr(ocrText, false);
+    const parsed = shiniesRouter._test.parseDataFromOcr(ocrText);
     const merged = shiniesRouter._test.mergeParsedStats(parsed, {
       totalEncounters: 12633,
       speciesEncounters: 1149,
@@ -85,5 +85,24 @@ describe('shiny OCR parsing', () => {
     expect(parsed.speciesEncountersConfidence).toBeCloseTo(0.66, 5);
     expect(merged.totalEncounters).toBe(12633);
     expect(merged.speciesEncounters).toBe(1149);
+  });
+
+  it('parses YYYY-MM-DD dates directly from OCR', () => {
+    const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Woobat was caught by Pokio! 2026-03-21, 3:03 PM');
+
+    expect(parsed.date).toBe('2026-03-21');
+  });
+
+  it('parses DD/MM/YYYY when the day makes the format unambiguous', () => {
+    const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Sneasel was caught by Llensjo! 16/03/2026, 14:08');
+
+    expect(parsed.date).toBe('2026-03-16');
+  });
+
+  it('flags ambiguous slash dates instead of guessing them', () => {
+    const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Woobat was caught by Pokio! 03/04/26, 3:03 PM');
+
+    expect(parsed.date).toBeNull();
+    expect(parsed.dateWasAmbiguous).toBe(true);
   });
 });

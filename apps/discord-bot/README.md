@@ -209,12 +209,16 @@ Record a new shiny Pokemon catch with an uploaded screenshot.
 **Options:**
 - `screenshot` (required): Screenshot of the shiny Pokemon's share page
 - `encounter_type` (required): How it was encountered
-- `date_is_mdy` (optional): Specify if date format is MM/DD/YY
 - `secret` (optional): Is this a secret shiny?
+- `alpha` (optional): Is this an alpha shiny?
+
+**Date handling:**
+- The bot auto-detects screenshot dates when the format is unambiguous, including common forms like `MM/DD/YY`, `DD/MM/YYYY`, and `YYYY-MM-DD`.
+- If the screenshot date is ambiguous, such as `03/04/26`, the OCR flow does not guess. It uses the date the command was called instead and adds an `ambiguous date` note before the success embed.
 
 **Example:**
 ```
-/addshinyscreenshot screenshot:image.png encounter_type:Horde date_is_mdy:True secret:False
+/addshinyscreenshot screenshot:image.png encounter_type:Horde secret:False
 ```
 
 #### `/editshiny`
