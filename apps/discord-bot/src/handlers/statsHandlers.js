@@ -8,6 +8,17 @@ const fetchClient = require('../fetchClient');
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const botToken = process.env.BOT_API_TOKEN;
 
+function formatEncounterType(value) {
+  return ({
+    x5_horde: '5x Horde',
+    x3_horde: '3x Horde',
+    horde: 'Horde',
+    mysterious_ball: 'Mysterious Ball',
+    honey_tree: 'Honey Tree',
+    rock_smash: 'Rock Smash',
+  }[value] || String(value || '').replace(/_/g, ' '));
+}
+
 async function handleLeaderboard(interaction) {
   await interaction.deferReply();
 
@@ -74,7 +85,7 @@ async function handleStats(interaction) {
       const encounterTypes = stats
         .filter(stat => stat.encounter_type)
         .slice(0, 5)
-        .map(stat => `${stat.encounter_type}: ${stat.count_by_type}`)
+        .map(stat => `${formatEncounterType(stat.encounter_type)}: ${stat.count_by_type}`)
         .join('\n');
       if (encounterTypes) {
         embed.addFields({ name: 'Top Encounter Types', value: encounterTypes });

@@ -53,7 +53,23 @@ function getGreyscaleSpriteUrl(nationalNumber) {
 
 function normalizeEncounterType(value) {
   if (!value) return null;
-  return String(value).trim().toLowerCase().replace(/\s+/g, '_');
+  const normalized = String(value).trim().toLowerCase().replace(/\s+/g, '_');
+
+  if (normalized === '5x_horde') return 'x5_horde';
+  if (normalized === '3x_horde') return 'x3_horde';
+
+  return normalized;
+}
+
+function formatEncounterType(value) {
+  return ({
+    x5_horde: '5x Horde',
+    x3_horde: '3x Horde',
+    horde: 'Horde',
+    mysterious_ball: 'Mysterious Ball',
+    honey_tree: 'Honey Tree',
+    rock_smash: 'Rock Smash',
+  }[value] || capitalize(String(value || '').replace(/_/g, ' ')));
 }
 
 function getMemberRoles(interaction) {
@@ -236,7 +252,7 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     ...[
       shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
-      shiny.encounter_type ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
+      shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
       shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
       shiny.is_alpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
       shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
@@ -267,7 +283,7 @@ async function buildFailedShinyPayload(shiny) {
   embed.addFields([
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
-    shiny.encounter_type ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
+    shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
   ].filter(Boolean));
 
   return { embeds: [embed] };
@@ -776,7 +792,7 @@ async function handleAddShiny(interaction) {
       { name: 'Trainer', value: shiny.trainer_name, inline: true },
       { name: 'Catch Date', value: shiny.catch_date, inline: true },
       ...[
-        encounterType ? { name: 'Encounter Type', value: shiny.encounter_type, inline: true } : null,
+        encounterType ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
         isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
         isAlpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
         encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,

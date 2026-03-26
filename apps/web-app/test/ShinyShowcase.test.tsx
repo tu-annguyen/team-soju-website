@@ -87,7 +87,7 @@ beforeEach(() => {
           id: 'shiny-3',
           pokemon_name: 'bulbasaur',
           trainer_name: 'TrainerTwo',
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
           is_secret: false,
           is_alpha: false,
           notes: null,
@@ -114,7 +114,8 @@ describe('ShinyShowcase', () => {
     expect(
       trainerTwo.compareDocumentPosition(trainerOne) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
-    expect(screen.getByText(/\(2 OT shinies • 50 pts\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 OT shinies/i)).toBeInTheDocument();
+    expect(screen.getByText(/50 pts/i)).toBeInTheDocument();
   });
 
   it('can sort trainers by points', async () => {

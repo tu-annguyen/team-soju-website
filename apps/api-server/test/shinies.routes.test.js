@@ -137,7 +137,7 @@ describe('Shinies routes', () => {
           pokemon: 'pikachu',
           original_trainer: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
           catch_date: new Date().toISOString().split('T')[0],
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
         });
 
       expect(res.status).toBe(201);
@@ -158,7 +158,7 @@ describe('Shinies routes', () => {
           pokemon: 'pikachu',
           original_trainer: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
           catch_date: new Date().toISOString().split('T')[0],
-          encounter_type: 'horde',
+          encounter_type: 'x5_horde',
         });
 
       expect(res.status).toBe(400);

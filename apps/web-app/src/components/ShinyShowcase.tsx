@@ -77,7 +77,9 @@ interface ShowcaseSort {
 
 const ENCOUNTER_TYPE_CHOICES = [
   { label: 'Any', value: '' },
-  { label: 'Horde', value: 'horde' },
+  { label: '5x Horde', value: 'x5_horde' },
+  { label: '3x Horde', value: 'x3_horde' },
+  { label: 'Horde (Legacy)', value: 'horde' },
   { label: 'Single', value: 'single' },
   { label: 'Fishing', value: 'fishing' },
   { label: 'Safari', value: 'safari' },
