@@ -11,6 +11,7 @@ interface ActivityLogProps {
   eligiblePokemon: EligiblePokemon;
   apiBaseUrl?: string;
   teamMembers?: Record<string, string[]>;
+  teamNames?: Record<string, string>;
   onEligibleShiniesLoaded?: (shinies: EventShiny[]) => void;
 }
 
@@ -90,6 +91,7 @@ const ActivityLog = ({
   eligiblePokemon,
   apiBaseUrl = defaultApiBaseUrl,
   teamMembers,
+  teamNames,
   onEligibleShiniesLoaded,
 }: ActivityLogProps) => {
   const [shinyData, setShinyData] = useState<EventShiny[]>([]);
@@ -148,6 +150,18 @@ const ActivityLog = ({
     [eligiblePokemon]
   );
 
+  const teamNameByTrainer = useMemo(() => {
+    if (!teamMembers) {
+      return new Map<string, string>();
+    }
+
+    return new Map(
+      Object.entries(teamMembers).flatMap(([teamKey, members]) =>
+        members.map((member) => [member.trim().toLowerCase(), teamNames?.[teamKey] ?? teamKey] as const)
+      )
+    );
+  }, [teamMembers, teamNames]);
+
   const eligibleShinies = useMemo(
     () =>
       applyTeamSpeciesDuplicatePenalty(
@@ -198,6 +212,7 @@ const ActivityLog = ({
                 variant="compact"
                 pokemonName={shiny.name}
                 trainerName={shiny.trainerName}
+                teamName={teamNameByTrainer.get(shiny.trainerName.trim().toLowerCase())}
                 imageUrl={shiny.imageUrl}
                 isFailed={shiny.isFailed}
                 isSecret={shiny.isSecret}

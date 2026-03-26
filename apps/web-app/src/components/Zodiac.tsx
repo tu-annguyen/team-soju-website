@@ -110,6 +110,9 @@ const Zodiac = () => {
       <ActivityLog
         eligiblePokemon={typedZodiacData.eligiblePokemon}
         teamMembers={typedZodiacData.teamMembers}
+        teamNames={Object.fromEntries(
+          teamSections.map(({ teamKey, teamName }) => [teamKey, teamName.split("'")[0]])
+        )}
         onEligibleShiniesLoaded={setEligibleShinies}
       />
 

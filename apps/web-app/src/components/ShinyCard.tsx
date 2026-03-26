@@ -6,6 +6,7 @@ import { formatPokemonCardName } from '../utils/pokemonName';
 interface ShinyCardProps {
   pokemonName: string;
   trainerName: string;
+  teamName?: string;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -47,6 +48,7 @@ const attributeIcons: Record<string, string> = {
 const ShinyCard = ({
   pokemonName,
   trainerName,
+  teamName,
   imageUrl,
   isFailed,
   isSecret,
@@ -123,6 +125,12 @@ const ShinyCard = ({
           <p className="text-xs text-gray-600 dark:text-gray-400">
             {trainerName}
           </p>
+
+          {teamName && (
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              {teamName}
+            </p>
+          )}
 
           {isDuplicate && !isFailed && (
             <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
