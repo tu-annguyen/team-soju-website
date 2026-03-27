@@ -54,7 +54,7 @@ function getGreyscaleSpriteUrl(nationalNumber) {
   if (!process.env.PUBLIC_API_BASE_URL && /:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(publicApiBaseUrl)) {
     return null;
   }
-  return `${publicApiBaseUrl}/shinies/sprites/${nationalNumber}/greyscale`;
+  return `${publicApiBaseUrl}/shinies/sprites/${nationalNumber}/greyscale.gif`;
 }
 
 function normalizeEncounterType(value) {

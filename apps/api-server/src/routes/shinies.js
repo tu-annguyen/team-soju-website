@@ -1226,8 +1226,7 @@ router.post('/from-screenshot/async', authenticateBot, async (req, res) => {
   }
 });
 
-// GET /api/shinies/sprites/:nationalNumber/greyscale - Get greyscale sprite for Pokemon
-router.get('/sprites/:nationalNumber/greyscale', async (req, res) => {
+async function handleGreyscaleSprite(req, res) {
   try {
     const nationalNumber = parseInt(req.params.nationalNumber, 10);
     if (!Number.isInteger(nationalNumber) || nationalNumber < 1) {
@@ -1247,6 +1246,7 @@ router.get('/sprites/:nationalNumber/greyscale', async (req, res) => {
 
     const spriteBuffer = await greyscale(spriteUrl);
     res.setHeader('Content-Type', 'image/gif');
+    res.setHeader('Content-Disposition', `inline; filename=\"pokemon-${nationalNumber}-greyscale.gif\"`);
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(spriteBuffer);
   } catch (error) {
@@ -1256,7 +1256,11 @@ router.get('/sprites/:nationalNumber/greyscale', async (req, res) => {
       message: 'Failed to generate greyscale sprite',
     });
   }
-});
+}
+
+// GET /api/shinies/sprites/:nationalNumber/greyscale(.gif) - Get greyscale animated sprite for Pokemon
+router.get('/sprites/:nationalNumber/greyscale', handleGreyscaleSprite);
+router.get('/sprites/:nationalNumber/greyscale.gif', handleGreyscaleSprite);
 
 // GET /api/shinies/:id - Get shiny by ID
 router.get('/:id', async (req, res) => {

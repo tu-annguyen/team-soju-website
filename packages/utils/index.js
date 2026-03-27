@@ -1,5 +1,5 @@
 // Image processing utilities for Team Soju projects
-// use axios + sharp to support more formats (GIFs etc.)
+// use gifwrap to preserve animated GIF frames when transforming sprites
 const { GifUtil, GifCodec } = require('gifwrap');
 
 /**
@@ -8,34 +8,27 @@ const { GifUtil, GifCodec } = require('gifwrap');
  * @returns {Promise<Buffer>} - The processed GIF as a Buffer.
  */
 async function greyscale(url) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    
-    const arrayBuffer = await response.arrayBuffer();
-    const inputBuffer = Buffer.from(arrayBuffer);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-    // Read the GIF
-    const gif = await GifUtil.read(inputBuffer);
-    
-    // Manually apply grayscale to each frame
-    gif.frames.forEach(frame => {
-        const { data } = frame.bitmap; // This is the RGBA Buffer
-        for (let i = 0; i < data.length; i += 4) {
-            // Luma formula for accurate grayscale
-            const gray = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
-            
-            data[i]     = gray; // Red
-            data[i + 1] = gray; // Green
-            data[i + 2] = gray; // Blue
-            // data[i + 3] is Alpha (transparency), we leave it as is
-        }
-    });
+  const arrayBuffer = await response.arrayBuffer();
+  const inputBuffer = Buffer.from(arrayBuffer);
 
-    // Encode frames back into a Buffer
-    const codec = new GifCodec();
-    const encodedGif = await codec.encodeGif(gif.frames, { loops: gif.loops });
-    
-    return encodedGif.buffer;
+  const gif = await GifUtil.read(inputBuffer);
+
+  gif.frames.forEach(frame => {
+    const { data } = frame.bitmap;
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+      data[i] = gray;
+      data[i + 1] = gray;
+      data[i + 2] = gray;
+    }
+  });
+
+  const codec = new GifCodec();
+  const encodedGif = await codec.encodeGif(gif.frames, { loops: gif.loops });
+  return encodedGif.buffer;
 }
 
 const tiers = require('./pokemon-tiers.json')
