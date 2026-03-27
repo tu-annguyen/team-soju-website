@@ -17,7 +17,6 @@ const RANK_CHOICES = [
 const ENCOUNTER_TYPE_CHOICES = [
   { name: '5x Horde', value: 'x5_horde' },
   { name: '3x Horde', value: 'x3_horde' },
-  { name: 'Horde (Legacy)', value: 'horde' },
   { name: 'Single', value: 'single' },
   { name: 'Fishing', value: 'fishing' },
   { name: 'Safari', value: 'safari' },
@@ -29,6 +28,7 @@ const ENCOUNTER_TYPE_CHOICES = [
   { name: 'Headbutt', value: 'headbutt' },
   { name: 'Mysterious Ball', value: 'mysterious_ball' },
   { name: 'Gift/Event', value: 'gift' },
+  { name: 'Horde (Legacy)', value: 'horde' },
 ];
 
 const NATURE_CHOICES = [
