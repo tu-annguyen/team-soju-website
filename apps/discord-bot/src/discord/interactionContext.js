@@ -139,6 +139,12 @@ class DiscordInteractionContext {
       return;
     }
 
+    if (this.initialResponse.type === InteractionResponseType.DeferredChannelMessageWithSource) {
+      this.replied = true;
+      await this.editReply(data);
+      return;
+    }
+
     await this.followUp(data);
   }
 

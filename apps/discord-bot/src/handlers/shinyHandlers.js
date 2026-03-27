@@ -30,9 +30,13 @@ const PAGE_SIZE_FALLBACK = 10;
 const MAX_SHINY_SELECT_OPTIONS = 25;
 const COMPONENT_PREFIX = 'sh';
 const MODAL_PREFIX = 'shm';
-const BOOLEAN_CHOICES = [
-  { name: 'Yes', value: 'true' },
-  { name: 'No', value: 'false' },
+const SECRET_SHINY_CHOICES = [
+  { name: 'Secret Shiny', value: 'true' },
+  { name: 'Not Secret Shiny', value: 'false' },
+];
+const ALPHA_SHINY_CHOICES = [
+  { name: 'Shiny Alpha', value: 'true' },
+  { name: 'Not Shiny Alpha', value: 'false' },
 ];
 
 function getAuthHeaders() {
@@ -402,11 +406,17 @@ function parseEncounterInput(input) {
 }
 
 function buildChoiceOptions(choices, currentValue) {
-  return choices.map(choice => ({
-    label: choice.name,
-    value: choice.value,
-    default: choice.value === currentValue,
-  }));
+  return choices.map(choice => {
+    const normalizedChoice = typeof choice === 'string'
+      ? { name: capitalize(choice.replace(/_/g, ' ')), value: choice }
+      : choice;
+
+    return {
+      label: normalizedChoice.name,
+      value: normalizedChoice.value,
+      default: normalizedChoice.value === currentValue,
+    };
+  });
 }
 
 function parseBooleanSelection(value) {
@@ -464,11 +474,6 @@ async function buildEditControlsPayload(interaction, state, content = null) {
   const shiny = await fetchShinyById(state.shinyId);
   const payload = await buildShinyDisplayPayload(shiny, `Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
   payload.content = content || [
-    'Dropdowns:',
-    '1. Encounter Type',
-    '2. Nature',
-    '3. Secret Shiny',
-    '4. Alpha Shiny',
     'Use "Edit Text Fields" for pokemon, catch date, encounters, and IVs.',
   ].join('\n');
   payload.components = [
@@ -494,15 +499,14 @@ async function buildEditControlsPayload(interaction, state, content = null) {
         .setPlaceholder('Secret Shiny')
         .setMinValues(1)
         .setMaxValues(1)
-        .addOptions(buildChoiceOptions(BOOLEAN_CHOICES, String(Boolean(shiny.is_secret))))
-    ),
+        .addOptions(buildChoiceOptions(SECRET_SHINY_CHOICES, String(Boolean(shiny.is_secret))))),
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('e', 'a', state))
         .setPlaceholder('Alpha Shiny')
         .setMinValues(1)
         .setMaxValues(1)
-        .addOptions(buildChoiceOptions(BOOLEAN_CHOICES, String(Boolean(shiny.is_alpha))))
+        .addOptions(buildChoiceOptions(ALPHA_SHINY_CHOICES, String(Boolean(shiny.is_alpha))))
     ),
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()

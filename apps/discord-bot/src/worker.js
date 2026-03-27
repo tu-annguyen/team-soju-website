@@ -20,6 +20,10 @@ const {
 const { DiscordInteractionContext } = require('./discord/interactionContext');
 const { MessageFlags } = require('./discord/api');
 const guildRoleCache = new Map();
+const AUTO_DEFER_FLAGS_BY_COMMAND = {
+  help: MessageFlags.Ephemeral,
+  myshinies: MessageFlags.Ephemeral,
+};
 
 function isDebugLoggingEnabled(env = process.env) {
   return env.DISCORD_LOG_LEVEL === 'debug' || env.DISCORD_DEBUG_LOGS === 'true';
@@ -76,6 +80,11 @@ function summarizeInitialResponse(response) {
       components: response?.data?.components?.length || 0,
     },
   };
+}
+
+function getAutoDeferredReplyOptions(commandName) {
+  const flags = AUTO_DEFER_FLAGS_BY_COMMAND[commandName];
+  return flags ? { flags } : {};
 }
 
 function validateSelectOption(option, path, issues) {
@@ -428,6 +437,10 @@ async function handleInteractionRequest(request, env = process.env, executionCon
   }
 
   const interaction = new DiscordInteractionContext(rawInteraction, env);
+  if (interaction.isChatInputCommand()) {
+    await interaction.deferReply(getAutoDeferredReplyOptions(interaction.commandName));
+  }
+
   const execution = dispatchInteraction(interaction).catch(async error => {
     logError('Discord interaction failed:', error, {
       interaction: summarizeInteraction(rawInteraction),
@@ -438,7 +451,7 @@ async function handleInteractionRequest(request, env = process.env, executionCon
     };
 
     if (interaction.initialResponse) {
-      await interaction.followUp(payload).catch(err => logError('Discord followUp failed:', err, {
+      await interaction.reply(payload).catch(err => logError('Discord followUp failed:', err, {
         interaction: summarizeInteraction(rawInteraction),
       }));
     } else {
@@ -489,5 +502,6 @@ async function registerCommandsIfNeeded(env = process.env) {
 module.exports = {
   fetch: handleInteractionRequest,
   handleInteractionRequest,
+  getAutoDeferredReplyOptions,
   registerCommandsIfNeeded,
 };
