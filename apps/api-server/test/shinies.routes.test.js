@@ -203,6 +203,20 @@ describe('Shinies routes', () => {
       expect(res.body.data).toEqual(updated);
       expect(res.body.message).toBe('Shiny entry updated successfully');
     });
+
+    it('accepts null notes to clear failed status', async () => {
+      const updated = { id: 1, pokemon: 'pikachu', notes: null };
+      TeamShiny.update.mockResolvedValue(updated);
+
+      const res = await request(app)
+        .put('/api/shinies/1')
+        .send({ notes: null });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(TeamShiny.update).toHaveBeenCalledWith('1', { notes: null });
+      expect(res.body.data).toEqual(updated);
+    });
   });
 
   describe('DELETE /api/shinies/:id', () => {

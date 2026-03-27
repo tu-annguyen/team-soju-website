@@ -30,13 +30,15 @@ const PAGE_SIZE_FALLBACK = 10;
 const MAX_SHINY_SELECT_OPTIONS = 25;
 const COMPONENT_PREFIX = 'sh';
 const MODAL_PREFIX = 'shm';
-const SECRET_SHINY_CHOICES = [
-  { name: 'Secret Shiny', value: 'true' },
-  { name: 'Not Secret Shiny', value: 'false' },
+const VARIANT_CHOICES = [
+  { name: 'Standard', value: 'standard' },
+  { name: 'Secret Shiny', value: 'secret' },
+  { name: 'Shiny Alpha', value: 'alpha' },
+  { name: 'Secret Alpha', value: 'secret_alpha' },
 ];
-const ALPHA_SHINY_CHOICES = [
-  { name: 'Shiny Alpha', value: 'true' },
-  { name: 'Not Shiny Alpha', value: 'false' },
+const STATUS_CHOICES = [
+  { name: 'Successfully Caught', value: 'success' },
+  { name: 'Failed to Catch', value: 'failed' },
 ];
 
 function getAuthHeaders() {
@@ -74,6 +76,17 @@ function formatEncounterType(value) {
     honey_tree: 'Honey Tree',
     rock_smash: 'Rock Smash',
   }[value] || capitalize(String(value || '').replace(/_/g, ' ')));
+}
+
+function getVariantValue(shiny) {
+  if (shiny.is_secret && shiny.is_alpha) return 'secret_alpha';
+  if (shiny.is_secret) return 'secret';
+  if (shiny.is_alpha) return 'alpha';
+  return 'standard';
+}
+
+function getStatusValue(shiny) {
+  return isFailedShiny(shiny) ? 'failed' : 'success';
 }
 
 function getMemberRoles(interaction) {
@@ -296,7 +309,6 @@ async function buildFailedShinyPayload(shiny) {
 function buildStandaloneActionRow(shinyId, {
   includeView = false,
   includeEdit = false,
-  includeFail = false,
   includeDelete = false,
 } = {}) {
   const state = { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId };
@@ -320,15 +332,6 @@ function buildStandaloneActionRow(shinyId, {
     );
   }
 
-  if (includeFail) {
-    buttons.push(
-      new ButtonBuilder()
-        .setCustomId(buildCustomId('a', 'f', state))
-        .setLabel('Fail')
-        .setStyle(ButtonStyle.Secondary)
-    );
-  }
-
   if (includeDelete) {
     buttons.push(
       new ButtonBuilder()
@@ -349,7 +352,6 @@ async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply',
   if (hasAnyRole(interaction, SHINY_MANAGER_ROLES)) {
     payload.components = buildStandaloneActionRow(shinyId, {
       includeEdit: true,
-      includeFail: true,
       includeDelete: true,
     });
   }
@@ -495,18 +497,19 @@ async function buildEditControlsPayload(interaction, state, content = null) {
     ),
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
-        .setCustomId(buildCustomId('e', 's', state))
-        .setPlaceholder('Secret Shiny')
+        .setCustomId(buildCustomId('e', 'v', state))
+        .setPlaceholder('Variant')
         .setMinValues(1)
         .setMaxValues(1)
-        .addOptions(buildChoiceOptions(SECRET_SHINY_CHOICES, String(Boolean(shiny.is_secret))))),
+        .addOptions(buildChoiceOptions(VARIANT_CHOICES, getVariantValue(shiny)))
+    ),
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
-        .setCustomId(buildCustomId('e', 'a', state))
-        .setPlaceholder('Alpha Shiny')
+        .setCustomId(buildCustomId('e', 'f', state))
+        .setPlaceholder('Status')
         .setMinValues(1)
         .setMaxValues(1)
-        .addOptions(buildChoiceOptions(ALPHA_SHINY_CHOICES, String(Boolean(shiny.is_alpha))))
+        .addOptions(buildChoiceOptions(STATUS_CHOICES, getStatusValue(shiny)))
     ),
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -607,11 +610,6 @@ function buildActionRow(state, allowMutation) {
         .setStyle(ButtonStyle.Primary)
         .setDisabled(disabled),
       new ButtonBuilder()
-        .setCustomId(buildCustomId('a', 'f', state))
-        .setLabel('Fail')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(disabled),
-      new ButtonBuilder()
         .setCustomId(buildCustomId('a', 'd', state))
         .setLabel('Delete')
         .setStyle(ButtonStyle.Danger)
@@ -703,10 +701,6 @@ async function buildDetailPayload(interaction, state) {
         .setCustomId(buildCustomId('a', 'e', backState))
         .setLabel('Edit')
         .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(buildCustomId('a', 'f', backState))
-        .setLabel('Fail')
-        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId(buildCustomId('a', 'd', backState))
         .setLabel('Delete')
@@ -812,7 +806,6 @@ async function handleAddShiny(interaction) {
     payload.components = buildStandaloneActionRow(shiny.id, {
       includeView: true,
       includeEdit: true,
-      includeFail: true,
       includeDelete: true,
     });
 
@@ -1034,8 +1027,11 @@ async function handleShinyComponent(interaction) {
 
       if (state.action === 't') updates.encounter_type = normalizeEncounterType(selectedValue);
       if (state.action === 'n') updates.nature = selectedValue;
-      if (state.action === 's') updates.is_secret = parseBooleanSelection(selectedValue);
-      if (state.action === 'a') updates.is_alpha = parseBooleanSelection(selectedValue);
+      if (state.action === 'v') {
+        updates.is_secret = selectedValue === 'secret' || selectedValue === 'secret_alpha';
+        updates.is_alpha = selectedValue === 'alpha' || selectedValue === 'secret_alpha';
+      }
+      if (state.action === 'f') updates.notes = selectedValue === 'failed' ? 'Failed' : null;
 
       if (Object.keys(updates).length === 0) {
         throw new Error('Unknown edit selection.');
@@ -1070,8 +1066,11 @@ async function handleShinyComponent(interaction) {
 
     if (state.action === 'f') {
       await requireOwnedShiny(interaction, state.shinyId);
-      const shiny = await failShinyRecord(state.shinyId);
-      await interaction.update(await buildFailedShinyPayload(shiny));
+      await interaction.update(await buildEditControlsPayload(
+        interaction,
+        state,
+        'Use the Status dropdown to mark this shiny as Success or Failed.'
+      ));
       return;
     }
 

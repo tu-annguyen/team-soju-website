@@ -100,6 +100,22 @@ describe('TeamShiny model', () => {
     const result = await TeamShiny.update(1, { notes: 'updated' });
 
     expect(mockQuery).toHaveBeenCalled();
+    const [, params] = mockQuery.mock.calls[0];
+    expect(params[18]).toBe('updated');
+    expect(params[19]).toBe(true);
+    expect(result).toEqual(updated);
+  });
+
+  it('update can clear notes explicitly', async () => {
+    const updated = { id: 1, pokemon: 'pikachu', notes: null };
+    mockQuery.mockResolvedValue({ rows: [updated] });
+
+    const result = await TeamShiny.update(1, { notes: null });
+
+    expect(mockQuery).toHaveBeenCalled();
+    const [, params] = mockQuery.mock.calls[0];
+    expect(params[18]).toBeNull();
+    expect(params[19]).toBe(true);
     expect(result).toEqual(updated);
   });
 

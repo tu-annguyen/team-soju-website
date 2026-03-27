@@ -186,14 +186,14 @@ class TeamShiny {
           is_secret = COALESCE($16, is_secret),
           is_alpha = COALESCE($17, is_alpha),
           screenshot_url = COALESCE($18, screenshot_url),
-          notes = COALESCE($19, notes)
+          notes = CASE WHEN $20 THEN $19 ELSE notes END
       WHERE id = $1
       RETURNING *
     `, [
       id, national_number, pokemon, catch_date, total_encounters, species_encounters,
       encounter_type, location, nature, 
       iv_hp, iv_attack, iv_defense, iv_sp_attack, iv_sp_defense, iv_speed,
-      is_secret, is_alpha, screenshot_url, notes
+      is_secret, is_alpha, screenshot_url, notes, Object.prototype.hasOwnProperty.call(shinyData, 'notes')
     ]);
 
     // Return the updated shiny with joined trainer_name

@@ -577,19 +577,10 @@ describe('shinyHandlers', () => {
 
     await handleFailShiny(interaction);
 
-    expect(interaction.editReply).toHaveBeenCalledWith(
-      expect.objectContaining({
-        embeds: [
-          expect.objectContaining({
-            data: expect.objectContaining({
-              title: 'Shiny Marked as Failed',
-              color: 0x757575,
-              thumbnail: { url: 'http://localhost:3001/api/shinies/sprites/25/greyscale' },
-            }),
-          }),
-        ],
-      })
-    );
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.embeds[0].data.title).toBe('Shiny Marked as Failed');
+    expect(payload.embeds[0].data.color).toBe(0x757575);
+    expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
   });
 
   it('uses a greyscaled sprite when viewing a failed shiny', async () => {
@@ -614,16 +605,129 @@ describe('shinyHandlers', () => {
 
     await handleGetShiny(interaction);
 
-    expect(interaction.editReply).toHaveBeenCalledWith(
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.embeds[0].data.color).toBe(0x757575);
+    expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
+  });
+
+  it('updates status to failed from edit controls and re-renders with greyscaled thumbnail', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:e:f:a:_:1:10:selected-id',
+      values: ['failed'],
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            trainer_name: 'T1',
+            trainer_id: 'trainer-1',
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            pokemon: 'pikachu',
+            pokemon_name: 'Pikachu',
+            national_number: 25,
+            trainer_name: 'T1',
+            notes: 'Failed',
+            encounter_type: 'horde',
+            nature: 'Bold',
+            is_secret: false,
+            is_alpha: false,
+          },
+        },
+      });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          notes: 'Failed',
+        },
+      },
+    });
+
+    await handleShinyComponent(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({ notes: 'Failed' }),
+      expect.any(Object)
+    );
+    const payload = interaction.update.mock.calls[0][0];
+    expect(payload.content).toBe('Shiny updated.');
+    expect(payload.embeds[0].data.color).toBe(0x757575);
+    expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
+  });
+
+  it('updates status to success from edit controls by clearing notes', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:e:f:a:_:1:10:selected-id',
+      values: ['success'],
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            trainer_name: 'T1',
+            trainer_id: 'trainer-1',
+            notes: 'Failed',
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            pokemon: 'pikachu',
+            pokemon_name: 'Pikachu',
+            national_number: 25,
+            trainer_name: 'T1',
+            notes: null,
+            encounter_type: 'horde',
+            nature: 'Bold',
+            is_secret: false,
+            is_alpha: false,
+          },
+        },
+      });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          notes: null,
+        },
+      },
+    });
+
+    await handleShinyComponent(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({ notes: null }),
+      expect.any(Object)
+    );
+    expect(interaction.update).toHaveBeenCalledWith(
       expect.objectContaining({
         embeds: [
           expect.objectContaining({
             data: expect.objectContaining({
-              thumbnail: { url: 'http://localhost:3001/api/shinies/sprites/25/greyscale' },
-              color: 0x757575,
+              thumbnail: { url: 'https://example.com/sprite.gif' },
+              color: 0x4CAF50,
             }),
           }),
         ],
+        content: 'Shiny updated.',
       })
     );
   });

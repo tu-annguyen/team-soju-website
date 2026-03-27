@@ -244,7 +244,7 @@ const shinySchema = Joi.object({
   is_secret: Joi.boolean().default(false),
   is_alpha: Joi.boolean().default(false),
   screenshot_url: Joi.string().uri().optional(),
-  notes: Joi.string().optional()
+  notes: Joi.string().allow(null).optional()
 });
 
 const updateShinySchema = Joi.object({
@@ -266,7 +266,7 @@ const updateShinySchema = Joi.object({
   is_secret: Joi.boolean().optional(),
   is_alpha: Joi.boolean().optional(),
   screenshot_url: Joi.string().uri().optional(),
-  notes: Joi.string().optional()
+  notes: Joi.string().allow(null).optional()
 });
 
 const screenshotSchema = Joi.object({
