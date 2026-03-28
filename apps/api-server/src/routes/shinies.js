@@ -151,7 +151,6 @@ function buildShinyActionComponents(shinyId) {
     components: [
       { type: 2, custom_id: `sh:a:v:a:_:1:10:${shinyId}`, label: 'View', style: 2 },
       { type: 2, custom_id: `sh:a:e:a:_:1:10:${shinyId}`, label: 'Edit', style: 1 },
-      { type: 2, custom_id: `sh:a:f:a:_:1:10:${shinyId}`, label: 'Fail', style: 2 },
       { type: 2, custom_id: `sh:a:d:a:_:1:10:${shinyId}`, label: 'Delete', style: 4 },
     ],
   }];
@@ -913,7 +912,7 @@ async function createShinyFromScreenshotValue(value) {
         existingNature: parsed.nature,
         pokemonName: parsed.name,
       });
-      console.log(formatMobileStatsLog(mobileStats));
+      // console.log(formatMobileStatsLog(mobileStats));
     }
 
     const mergedParsed = mergeParsedStats(parsed, mobileStats);
