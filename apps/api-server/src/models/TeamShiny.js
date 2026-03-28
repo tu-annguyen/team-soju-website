@@ -122,6 +122,7 @@ class TeamShiny {
       is_secret = false,
       is_alpha = false,
       screenshot_url,
+      status = 'Owned',
       notes
     } = shinyData;
 
@@ -130,15 +131,15 @@ class TeamShiny {
         national_number, pokemon, original_trainer, catch_date, total_encounters,
         species_encounters, encounter_type, location, 
         nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
-        iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, notes
+        iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING id
     `, [
       national_number, pokemon, original_trainer, catch_date, total_encounters,
       species_encounters, encounter_type, location, 
       nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
-      iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, notes
+      iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes
     ]);
 
     const insertedId = result.rows[0].id;
@@ -164,6 +165,7 @@ class TeamShiny {
       is_secret,
       is_alpha,
       screenshot_url,
+      status,
       notes
     } = shinyData;
 
@@ -186,14 +188,16 @@ class TeamShiny {
           is_secret = COALESCE($16, is_secret),
           is_alpha = COALESCE($17, is_alpha),
           screenshot_url = COALESCE($18, screenshot_url),
-          notes = CASE WHEN $20 THEN $19 ELSE notes END
+          status = CASE WHEN $20 THEN $19 ELSE status END,
+          notes = CASE WHEN $22 THEN $21 ELSE notes END
       WHERE id = $1
       RETURNING *
     `, [
       id, national_number, pokemon, catch_date, total_encounters, species_encounters,
       encounter_type, location, nature, 
       iv_hp, iv_attack, iv_defense, iv_sp_attack, iv_sp_defense, iv_speed,
-      is_secret, is_alpha, screenshot_url, notes, Object.prototype.hasOwnProperty.call(shinyData, 'notes')
+      is_secret, is_alpha, screenshot_url, status, Object.prototype.hasOwnProperty.call(shinyData, 'status'),
+      notes, Object.prototype.hasOwnProperty.call(shinyData, 'notes')
     ]);
 
     // Return the updated shiny with joined trainer_name

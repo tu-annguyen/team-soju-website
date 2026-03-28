@@ -94,14 +94,14 @@ describe('TeamShiny model', () => {
   });
 
   it('update updates shiny and returns row', async () => {
-    const updated = { id: 1, pokemon: 'pikachu', notes: 'updated' };
+    const updated = { id: 1, pokemon: 'pikachu', status: 'Sold' };
     mockQuery.mockResolvedValue({ rows: [updated] });
 
-    const result = await TeamShiny.update(1, { notes: 'updated' });
+    const result = await TeamShiny.update(1, { status: 'Sold' });
 
     expect(mockQuery).toHaveBeenCalled();
     const [, params] = mockQuery.mock.calls[0];
-    expect(params[18]).toBe('updated');
+    expect(params[18]).toBe('Sold');
     expect(params[19]).toBe(true);
     expect(result).toEqual(updated);
   });
@@ -114,8 +114,8 @@ describe('TeamShiny model', () => {
 
     expect(mockQuery).toHaveBeenCalled();
     const [, params] = mockQuery.mock.calls[0];
-    expect(params[18]).toBeNull();
-    expect(params[19]).toBe(true);
+    expect(params[20]).toBeNull();
+    expect(params[21]).toBe(true);
     expect(result).toEqual(updated);
   });
 
