@@ -59,6 +59,16 @@ const NATURE_CHOICES = [
   { name: 'Quirky', value: 'Quirky' },
 ];
 
+const SHINY_STATUS_CHOICES = [
+  { name: 'Owned', value: 'Owned' },
+  { name: 'Sold', value: 'Sold' },
+  { name: 'Fled', value: 'Fled' },
+  { name: 'Died', value: 'Died' },
+  { name: 'Bred', value: 'Bred' },
+];
+
+const FAILED_SHINY_STATUS_CHOICES = SHINY_STATUS_CHOICES.filter(({ value }) => value !== 'Owned');
+
 // Define required roles for commands
 const COMMAND_PERMISSIONS = {
   // Public commands (all members)
@@ -157,6 +167,11 @@ const COMMANDS = [
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
         .setRequired(false))
+    .addStringOption(option =>
+      option.setName('status')
+        .setDescription('Status of the shiny')
+        .setRequired(false)
+        .addChoices(...SHINY_STATUS_CHOICES))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
@@ -224,6 +239,11 @@ const COMMANDS = [
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
         .setRequired(false))
+    .addStringOption(option =>
+      option.setName('status')
+        .setDescription('Status of the shiny')
+        .setRequired(false)
+        .addChoices(...SHINY_STATUS_CHOICES))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
@@ -276,11 +296,16 @@ const COMMANDS = [
 
   new SlashCommandBuilder()
     .setName('failshiny')
-    .setDescription('Log a shiny as failed')
+    .setDescription('Mark a shiny with a non-owned status')
     .addStringOption(option =>
       option.setName('shiny_id')
-        .setDescription('ID of the shiny to mark as failed')
-        .setRequired(true)),
+        .setDescription('ID of the shiny to update')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('status')
+        .setDescription('Non-owned status to set')
+        .setRequired(true)
+        .addChoices(...FAILED_SHINY_STATUS_CHOICES)),
 
   new SlashCommandBuilder()
     .setName('deleteshiny')
@@ -343,4 +368,12 @@ const COMMANDS = [
     .setDescription('List useful commands'),
 ];
 
-module.exports = { COMMANDS, RANK_CHOICES, ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, COMMAND_PERMISSIONS };
+module.exports = {
+  COMMANDS,
+  RANK_CHOICES,
+  ENCOUNTER_TYPE_CHOICES,
+  NATURE_CHOICES,
+  SHINY_STATUS_CHOICES,
+  FAILED_SHINY_STATUS_CHOICES,
+  COMMAND_PERMISSIONS,
+};

@@ -16,6 +16,7 @@ interface ShinyFromAPI {
   encounter_type: string | null;
   is_secret: boolean;
   is_alpha: boolean;
+  status: string | null;
   notes: string | null;
   total_encounters?: number | null;
   catch_date?: string | null;
@@ -38,9 +39,7 @@ const transformAPIDataToMonthly = async (
 ): Promise<MonthlyShiny[]> => {
   const transformed = await Promise.all(
     shinies.map(async (shiny) => {
-      const isFailed = !!(
-        shiny.notes && shiny.notes.toLowerCase().includes('failed')
-      );
+      const isFailed = (shiny.status ?? 'Owned') !== 'Owned';
 
       return {
         name: capitalize(shiny.pokemon_name),

@@ -15,7 +15,7 @@ const {
   MessageFlags,
 } = require('../discord/api');
 const fetchClient = require('../fetchClient');
-const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES } = require('../commands');
+const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, SHINY_STATUS_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
 const { capitalize, getPokemonNationalNumber, getSpriteUrl } = require('@team-soju/utils');
 
@@ -36,17 +36,14 @@ const VARIANT_CHOICES = [
   { name: 'Shiny Alpha', value: 'alpha' },
   { name: 'Secret Alpha', value: 'secret_alpha' },
 ];
-const STATUS_CHOICES = [
-  { name: 'Successfully Caught', value: 'success' },
-  { name: 'Failed to Catch', value: 'failed' },
-];
+const STATUS_CHOICES = SHINY_STATUS_CHOICES;
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
 }
 
 function isFailedShiny(shiny) {
-  return String(shiny?.notes || '').trim().toLowerCase() === 'failed';
+  return String(shiny?.status || 'Owned').trim() !== 'Owned';
 }
 
 function getGreyscaleSpriteUrl(nationalNumber) {
@@ -86,7 +83,7 @@ function getVariantValue(shiny) {
 }
 
 function getStatusValue(shiny) {
-  return isFailedShiny(shiny) ? 'failed' : 'success';
+  return shiny?.status || 'Owned';
 }
 
 function getMemberRoles(interaction) {
@@ -268,6 +265,7 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   embed.addFields(
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     ...[
+      { name: 'Status', value: getStatusValue(shiny), inline: true },
       shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
       shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
       shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
@@ -275,7 +273,6 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
       shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
       encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
       buildIvString(shiny) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: buildIvString(shiny).replace(/,/g, '/'), inline: false } : null,
-      shiny.notes ? { name: 'Notes', value: shiny.notes, inline: false } : null,
     ].filter(Boolean)
   )
     .setFooter({ text: `Shiny ID: ${shiny.id}` })
@@ -285,10 +282,11 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
 }
 
 async function buildFailedShinyPayload(shiny) {
+  const status = shiny?.status || 'Owned';
   const embed = new EmbedBuilder()
     .setColor(0x757575)
-    .setTitle('Shiny Marked as Failed')
-    .setDescription(`${capitalize(shiny.pokemon_name || shiny.pokemon)} (#${shiny.national_number}) has been marked as failed`)
+    .setTitle('Shiny Status Updated')
+    .setDescription(`${capitalize(shiny.pokemon_name || shiny.pokemon)} (#${shiny.national_number}) status set to ${status}`)
     .setFooter({ text: `Shiny ID: ${shiny.id}` })
     .setTimestamp();
 
@@ -299,6 +297,7 @@ async function buildFailedShinyPayload(shiny) {
 
   embed.addFields([
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
+    { name: 'Status', value: status, inline: true },
     shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
     shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
   ].filter(Boolean));
@@ -543,8 +542,8 @@ function buildDeleteSuccessEmbed(shiny) {
     .setTimestamp();
 }
 
-async function failShinyRecord(shinyId) {
-  const response = await fetchClient.put(`${apiBaseUrl}/shinies/${shinyId}`, { notes: 'Failed' }, getAuthHeaders());
+async function failShinyRecord(shinyId, status) {
+  const response = await fetchClient.put(`${apiBaseUrl}/shinies/${shinyId}`, { status }, getAuthHeaders());
   return response.data.data;
 }
 
@@ -725,6 +724,7 @@ async function handleAddShiny(interaction) {
   const pokemon = interaction.options.getString('pokemon');
   const catchDate = interaction.options.getString('catch_date') || new Date().toISOString().split('T')[0];
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
+  const status = interaction.options.getString('status') || 'Owned';
   const isSecret = interaction.options.getBoolean('secret') || false;
   const isAlpha = interaction.options.getBoolean('alpha') || false;
   const isSafari = encounterType === 'safari';
@@ -765,6 +765,7 @@ async function handleAddShiny(interaction) {
       national_number: nationalNumber,
       catch_date: catchDate,
       encounter_type: encounterType,
+      status,
       is_secret: isSecret,
       is_alpha: isAlpha,
       total_encounters: totalEncounters,
@@ -791,6 +792,7 @@ async function handleAddShiny(interaction) {
       { name: 'Catch Date', value: shiny.catch_date, inline: true },
       ...[
         encounterType ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
+        status !== 'Owned' ? { name: 'Status', value: shiny.status || status, inline: true } : null,
         isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
         isAlpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
         encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
@@ -857,6 +859,7 @@ async function handleEditShiny(interaction) {
   const pokemon = interaction.options.getString('pokemon');
   const catchDate = interaction.options.getString('catch_date');
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
+  const status = interaction.options.getString('status');
   const isSecret = interaction.options.getBoolean('secret');
   const isAlpha = interaction.options.getBoolean('alpha');
   const totalEncounters = interaction.options.getInteger('total_encounters');
@@ -885,6 +888,7 @@ async function handleEditShiny(interaction) {
     }
     if (catchDate) updates.catch_date = catchDate;
     if (encounterType) updates.encounter_type = encounterType;
+    if (status) updates.status = status;
     if (isSecret !== null) updates.is_secret = isSecret;
     if (isAlpha !== null) updates.is_alpha = isAlpha;
     if (totalEncounters !== null) updates.total_encounters = totalEncounters;
@@ -915,10 +919,11 @@ async function handleFailShiny(interaction) {
   await interaction.deferReply();
 
   const shinyId = interaction.options.getString('shiny_id');
+  const status = interaction.options.getString('status');
 
   try {
     await requireOwnedShiny(interaction, shinyId);
-    const shiny = await failShinyRecord(shinyId);
+    const shiny = await failShinyRecord(shinyId, status);
     const payload = await buildFailedShinyPayload(shiny);
     await interaction.editReply(payload);
   } catch (error) {
@@ -1031,7 +1036,7 @@ async function handleShinyComponent(interaction) {
         updates.is_secret = selectedValue === 'secret' || selectedValue === 'secret_alpha';
         updates.is_alpha = selectedValue === 'alpha' || selectedValue === 'secret_alpha';
       }
-      if (state.action === 'f') updates.notes = selectedValue === 'failed' ? 'Failed' : null;
+      if (state.action === 'f') updates.status = selectedValue;
 
       if (Object.keys(updates).length === 0) {
         throw new Error('Unknown edit selection.');
@@ -1069,7 +1074,7 @@ async function handleShinyComponent(interaction) {
       await interaction.update(await buildEditControlsPayload(
         interaction,
         state,
-        'Use the Status dropdown to mark this shiny as Success or Failed.'
+        'Use the Status dropdown to set whether this shiny is Owned, Sold, Fled, Died, or Bred.'
       ));
       return;
     }

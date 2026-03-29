@@ -22,6 +22,7 @@ interface ShinyFromAPI {
   encounter_type: string | null;
   is_secret: boolean;
   is_alpha: boolean;
+  status: string | null;
   notes: string | null;
   total_encounters?: number | null;
   catch_date?: string | null;
@@ -58,9 +59,7 @@ const transformAPIDataToEvent = async (
   shinies: ShinyFromAPI[]
 ): Promise<EventShiny[]> => {
   return shinies.map((shiny) => {
-      const isFailed = !!(
-        shiny.notes && shiny.notes.toLowerCase().includes('failed')
-      );
+      const isFailed = (shiny.status ?? 'Owned') !== 'Owned';
 
       return {
         id: shiny.id,

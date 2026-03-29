@@ -44,6 +44,7 @@ interface ShinyFromAPI {
   encounter_type: string | null;
   is_secret: boolean;
   is_alpha: boolean;
+  status: string | null;
   notes: string | null;
   catch_date: string | null;
   total_encounters: number | null;
@@ -169,7 +170,7 @@ const transformAPIDataToShowcase = async (
       
       const shiniesWithUrls = await Promise.all(
         trainerShinies.map(async (shiny) => {
-          const isFailed = !!(shiny.notes && shiny.notes.toLowerCase().includes('failed'));
+          const isFailed = (shiny.status ?? 'Owned') !== 'Owned';
           if (isFailed) otCount--; // Don't count failed shinies as OT
           const isSecret = shiny.is_secret;
           const isAlpha = shiny.is_alpha;

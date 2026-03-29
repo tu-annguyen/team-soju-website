@@ -183,7 +183,7 @@ describe('Shinies routes', () => {
 
       const res = await request(app)
         .put('/api/shinies/999')
-        .send({ notes: 'updated' });
+        .send({ status: 'Sold' });
 
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
@@ -191,12 +191,12 @@ describe('Shinies routes', () => {
     });
 
     it('updates shiny when valid', async () => {
-      const updated = { id: 1, pokemon: 'pikachu', notes: 'updated' };
+      const updated = { id: 1, pokemon: 'pikachu', status: 'Sold' };
       TeamShiny.update.mockResolvedValue(updated);
 
       const res = await request(app)
         .put('/api/shinies/1')
-        .send({ notes: 'updated' });
+        .send({ status: 'Sold' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -204,17 +204,17 @@ describe('Shinies routes', () => {
       expect(res.body.message).toBe('Shiny entry updated successfully');
     });
 
-    it('accepts null notes to clear failed status', async () => {
-      const updated = { id: 1, pokemon: 'pikachu', notes: null };
+    it('accepts shiny status updates', async () => {
+      const updated = { id: 1, pokemon: 'pikachu', status: 'Owned' };
       TeamShiny.update.mockResolvedValue(updated);
 
       const res = await request(app)
         .put('/api/shinies/1')
-        .send({ notes: null });
+        .send({ status: 'Owned' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(TeamShiny.update).toHaveBeenCalledWith('1', { notes: null });
+      expect(TeamShiny.update).toHaveBeenCalledWith('1', { status: 'Owned' });
       expect(res.body.data).toEqual(updated);
     });
   });

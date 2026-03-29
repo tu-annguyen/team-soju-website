@@ -34,6 +34,8 @@ const ENCOUNTER_TYPE_CHOICES = [
   'gift',
 ];
 
+const SHINY_STATUS_CHOICES = ['Owned', 'Sold', 'Fled', 'Died', 'Bred'];
+
 function loadOcrDependencies() {
   try {
     return {
@@ -151,7 +153,6 @@ function buildShinyActionComponents(shinyId) {
     components: [
       { type: 2, custom_id: `sh:a:v:a:_:1:10:${shinyId}`, label: 'View', style: 2 },
       { type: 2, custom_id: `sh:a:e:a:_:1:10:${shinyId}`, label: 'Edit', style: 1 },
-      { type: 2, custom_id: `sh:a:f:a:_:1:10:${shinyId}`, label: 'Fail', style: 2 },
       { type: 2, custom_id: `sh:a:d:a:_:1:10:${shinyId}`, label: 'Delete', style: 4 },
     ],
   }];
@@ -244,6 +245,7 @@ const shinySchema = Joi.object({
   is_secret: Joi.boolean().default(false),
   is_alpha: Joi.boolean().default(false),
   screenshot_url: Joi.string().uri().optional(),
+  status: Joi.string().valid(...SHINY_STATUS_CHOICES).default('Owned'),
   notes: Joi.string().allow(null).optional()
 });
 
@@ -266,6 +268,7 @@ const updateShinySchema = Joi.object({
   is_secret: Joi.boolean().optional(),
   is_alpha: Joi.boolean().optional(),
   screenshot_url: Joi.string().uri().optional(),
+  status: Joi.string().valid(...SHINY_STATUS_CHOICES).optional(),
   notes: Joi.string().allow(null).optional()
 });
 
@@ -913,7 +916,7 @@ async function createShinyFromScreenshotValue(value) {
         existingNature: parsed.nature,
         pokemonName: parsed.name,
       });
-      console.log(formatMobileStatsLog(mobileStats));
+      // console.log(formatMobileStatsLog(mobileStats));
     }
 
     const mergedParsed = mergeParsedStats(parsed, mobileStats);

@@ -33,3 +33,6 @@ pnpm-debug.log*
 
 #ignore Tesseract trained data
 *.traineddata
+
+#ignore Codex files
+.codex

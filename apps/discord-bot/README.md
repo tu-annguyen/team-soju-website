@@ -203,6 +203,9 @@ Record a new shiny Pokemon catch.
 /addshiny trainer:tunacore pokemon:dratini encounter_type:Horde catch_date:2026-01-15 total_encounters:20374 species_encounters:3332 nature:Bold ivs:11,1,15,31,14,4
 ```
 
+**Notable optional fields:**
+- `status`: Dropdown with `Owned`, `Sold`, `Fled`, `Died`, `Bred`
+
 #### `/addshinyscreenshot`
 Record a new shiny Pokemon catch with an uploaded screenshot.
 
@@ -227,6 +230,7 @@ Update an existing shiny entry.
 **Options:**
 - `shiny_id` (required): ID of shiny to edit
 - All other options are optional for updating
+- `status` (optional): Dropdown with `Owned`, `Sold`, `Fled`, `Died`, `Bred`
 
 **Example:**
 ```
@@ -234,14 +238,15 @@ Update an existing shiny entry.
 ```
 
 #### `/failshiny`
-Mark a shiny entry as failed.
+Mark a shiny entry with a non-owned status.
 
 **Options:**
 - `shiny_id` (required): ID of shiny to edit
+- `status` (required): Dropdown with `Sold`, `Fled`, `Died`, `Bred`
 
 **Example:**
 ```
-/failshiny shiny_id:060df408-f200-48b6-addc-f4b8fa98b25a
+/failshiny shiny_id:060df408-f200-48b6-addc-f4b8fa98b25a status:Fled
 ```
 
 #### `/deleteshiny`

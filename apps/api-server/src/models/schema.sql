@@ -36,8 +36,32 @@ CREATE TABLE IF NOT EXISTS team_shinies (
   is_secret BOOLEAN DEFAULT false,
   is_alpha BOOLEAN DEFAULT false,
   screenshot_url TEXT,
+  status TEXT NOT NULL DEFAULT 'Owned' CHECK (status IN ('Owned', 'Sold', 'Fled', 'Died', 'Bred')),
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now());
+
+ALTER TABLE team_shinies
+  ADD COLUMN IF NOT EXISTS status TEXT;
+
+UPDATE team_shinies
+SET status = CASE
+  WHEN status IS NOT NULL THEN status
+  WHEN LOWER(TRIM(COALESCE(notes, ''))) = 'failed' THEN 'Fled'
+  ELSE 'Owned'
+END;
+
+ALTER TABLE team_shinies
+  ALTER COLUMN status SET DEFAULT 'Owned';
+
+ALTER TABLE team_shinies
+  ALTER COLUMN status SET NOT NULL;
+
+ALTER TABLE team_shinies
+  DROP CONSTRAINT IF EXISTS team_shinies_status_check;
+
+ALTER TABLE team_shinies
+  ADD CONSTRAINT team_shinies_status_check
+  CHECK (status IN ('Owned', 'Sold', 'Fled', 'Died', 'Bred'));
 
 -- Indexes for common lookups
 CREATE INDEX IF NOT EXISTS idx_team_shinies_trainer ON team_shinies(original_trainer);

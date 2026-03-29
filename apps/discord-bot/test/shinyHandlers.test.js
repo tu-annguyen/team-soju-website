@@ -159,10 +159,10 @@ describe('shinyHandlers', () => {
             components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:n:a:_:1:10:selected-id' })]),
           }),
           expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:s:a:_:1:10:selected-id' })]),
+            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:v:a:_:1:10:selected-id' })]),
           }),
           expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:a:a:_:1:10:selected-id' })]),
+            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:f:a:_:1:10:selected-id' })]),
           }),
         ]),
       })
@@ -346,6 +346,7 @@ describe('shinyHandlers', () => {
         pokemon: 'dratini',
         encounter_type: '5x Horde',
         catch_date: '2026-01-15',
+        status: 'Bred',
         secret: false,
         alpha: false,
         total_encounters: 1000,
@@ -367,6 +368,7 @@ describe('shinyHandlers', () => {
           trainer_name: 'testtrainer',
           catch_date: '2026-01-15',
           encounter_type: 'x5_horde',
+          status: 'Bred',
           total_encounters: 1000,
           species_encounters: 100,
           nature: 'Bold',
@@ -382,6 +384,12 @@ describe('shinyHandlers', () => {
 
     await handleAddShiny(interaction);
 
+    expect(fetchClient.post).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies'),
+      expect.objectContaining({ status: 'Bred' }),
+      expect.any(Object)
+    );
+
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
         embeds: expect.any(Array),
@@ -390,7 +398,6 @@ describe('shinyHandlers', () => {
             components: expect.arrayContaining([
               expect.objectContaining({ custom_id: 'sh:a:v:a:_:1:10:created-shiny-id' }),
               expect.objectContaining({ custom_id: 'sh:a:e:a:_:1:10:created-shiny-id' }),
-              expect.objectContaining({ custom_id: 'sh:a:f:a:_:1:10:created-shiny-id' }),
               expect.objectContaining({ custom_id: 'sh:a:d:a:_:1:10:created-shiny-id' }),
             ]),
           }),
@@ -501,7 +508,6 @@ describe('shinyHandlers', () => {
           expect.objectContaining({
             components: expect.arrayContaining([
               expect.objectContaining({ custom_id: 'sh:a:e:a:_:1:10:selected-id' }),
-              expect.objectContaining({ custom_id: 'sh:a:f:a:_:1:10:selected-id' }),
               expect.objectContaining({ custom_id: 'sh:a:d:a:_:1:10:selected-id' }),
             ]),
           }),
@@ -544,7 +550,7 @@ describe('shinyHandlers', () => {
     const interaction = createMockInteraction({
       commandName: 'failshiny',
       member: { roles: { cache: [{ name: 'Champion' }] } },
-      options: { shiny_id: 'selected-id' },
+      options: { shiny_id: 'selected-id', status: 'Died' },
     });
 
     fetchClient.get.mockResolvedValue({
@@ -570,7 +576,7 @@ describe('shinyHandlers', () => {
           trainer_name: 'T1',
           catch_date: '2026-01-01',
           encounter_type: 'horde',
-          notes: 'Failed',
+          status: 'Died',
         },
       },
     });
@@ -578,7 +584,12 @@ describe('shinyHandlers', () => {
     await handleFailShiny(interaction);
 
     const payload = interaction.editReply.mock.calls[0][0];
-    expect(payload.embeds[0].data.title).toBe('Shiny Marked as Failed');
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({ status: 'Died' }),
+      expect.any(Object)
+    );
+    expect(payload.embeds[0].data.title).toBe('Shiny Status Updated');
     expect(payload.embeds[0].data.color).toBe(0x757575);
     expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
   });
@@ -598,7 +609,7 @@ describe('shinyHandlers', () => {
           pokemon_name: 'Pikachu',
           trainer_name: 'T1',
           national_number: 25,
-          notes: 'Failed',
+          status: 'Sold',
         },
       },
     });
@@ -610,10 +621,10 @@ describe('shinyHandlers', () => {
     expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
   });
 
-  it('updates status to failed from edit controls and re-renders with greyscaled thumbnail', async () => {
+  it('updates status to a non-owned value from edit controls and re-renders with greyscaled thumbnail', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:e:f:a:_:1:10:selected-id',
-      values: ['failed'],
+      values: ['Died'],
       member: { roles: { cache: [{ name: 'Champion' }] } },
       update: jest.fn().mockResolvedValue(undefined),
     });
@@ -636,7 +647,7 @@ describe('shinyHandlers', () => {
             pokemon_name: 'Pikachu',
             national_number: 25,
             trainer_name: 'T1',
-            notes: 'Failed',
+            status: 'Died',
             encounter_type: 'horde',
             nature: 'Bold',
             is_secret: false,
@@ -648,7 +659,7 @@ describe('shinyHandlers', () => {
       data: {
         data: {
           id: 'selected-id',
-          notes: 'Failed',
+          status: 'Died',
         },
       },
     });
@@ -657,7 +668,7 @@ describe('shinyHandlers', () => {
 
     expect(fetchClient.put).toHaveBeenCalledWith(
       expect.stringContaining('/shinies/selected-id'),
-      expect.objectContaining({ notes: 'Failed' }),
+      expect.objectContaining({ status: 'Died' }),
       expect.any(Object)
     );
     const payload = interaction.update.mock.calls[0][0];
@@ -666,10 +677,10 @@ describe('shinyHandlers', () => {
     expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
   });
 
-  it('updates status to success from edit controls by clearing notes', async () => {
+  it('updates status to Owned from edit controls and restores the normal thumbnail', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:e:f:a:_:1:10:selected-id',
-      values: ['success'],
+      values: ['Owned'],
       member: { roles: { cache: [{ name: 'Champion' }] } },
       update: jest.fn().mockResolvedValue(undefined),
     });
@@ -681,7 +692,7 @@ describe('shinyHandlers', () => {
             id: 'selected-id',
             trainer_name: 'T1',
             trainer_id: 'trainer-1',
-            notes: 'Failed',
+            status: 'Fled',
           },
         },
       })
@@ -693,7 +704,7 @@ describe('shinyHandlers', () => {
             pokemon_name: 'Pikachu',
             national_number: 25,
             trainer_name: 'T1',
-            notes: null,
+            status: 'Owned',
             encounter_type: 'horde',
             nature: 'Bold',
             is_secret: false,
@@ -705,7 +716,7 @@ describe('shinyHandlers', () => {
       data: {
         data: {
           id: 'selected-id',
-          notes: null,
+          status: 'Owned',
         },
       },
     });
@@ -714,7 +725,7 @@ describe('shinyHandlers', () => {
 
     expect(fetchClient.put).toHaveBeenCalledWith(
       expect.stringContaining('/shinies/selected-id'),
-      expect.objectContaining({ notes: null }),
+      expect.objectContaining({ status: 'Owned' }),
       expect.any(Object)
     );
     expect(interaction.update).toHaveBeenCalledWith(
