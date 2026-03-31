@@ -16,8 +16,8 @@ const toPokemonDbSlug = (pokemonName: string) => {
   return POKEMON_DB_SLUG_OVERRIDES[normalized] ?? normalized;
 };
 
-export const getShinySpriteUrl = (pokemonName: string) => {
-  const slug = toPokemonDbSlug(pokemonName);
+export const getShinySpriteUrl = (pokemonName: string, variantName?: string | null) => {
+  const slug = toPokemonDbSlug(variantName || pokemonName);
 
   if (!slug) {
     return '';

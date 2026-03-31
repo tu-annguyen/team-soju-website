@@ -68,6 +68,7 @@ beforeEach(() => {
         {
           id: 'shiny-1',
           pokemon_name: 'pikachu',
+          variants: 'pikachu',
           trainer_name: 'TrainerOne',
           encounter_type: 'swarm',
           is_secret: false,
@@ -77,6 +78,7 @@ beforeEach(() => {
         {
           id: 'shiny-2',
           pokemon_name: 'charmander',
+          variants: 'charmander',
           trainer_name: 'TrainerTwo',
           encounter_type: 'single',
           is_secret: false,
@@ -86,6 +88,7 @@ beforeEach(() => {
         {
           id: 'shiny-3',
           pokemon_name: 'bulbasaur',
+          variants: 'bulbasaur',
           trainer_name: 'TrainerTwo',
           encounter_type: 'x5_horde',
           is_secret: false,

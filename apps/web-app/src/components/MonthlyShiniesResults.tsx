@@ -12,6 +12,7 @@ interface MonthlyShiniesResultsProps {
 
 interface ShinyFromAPI {
   pokemon_name: string;
+  variants?: string | null;
   trainer_name: string;
   encounter_type: string | null;
   is_secret: boolean;
@@ -24,6 +25,7 @@ interface ShinyFromAPI {
 
 interface MonthlyShiny {
   name: string;
+  variantName: string | null;
   trainerName: string;
   imageUrl: string;
   isFailed: boolean;
@@ -43,8 +45,9 @@ const transformAPIDataToMonthly = async (
 
       return {
         name: capitalize(shiny.pokemon_name),
+        variantName: shiny.variants ?? null,
         trainerName: shiny.trainer_name,
-        imageUrl: getShinySpriteUrl(shiny.pokemon_name),
+        imageUrl: getShinySpriteUrl(shiny.pokemon_name, shiny.variants),
         isFailed,
         isSecret: shiny.is_secret,
         isAlpha: shiny.is_alpha,
@@ -142,7 +145,8 @@ const MonthlyShiniesResults = ({
     return shinyData.filter(
       (shiny) =>
         shiny.trainerName.toLowerCase().includes(term) ||
-        shiny.name.toLowerCase().includes(term)
+        shiny.name.toLowerCase().includes(term) ||
+        (shiny.variantName || '').toLowerCase().includes(term)
     );
   }, [shinyData, searchTerm]);
 
@@ -237,6 +241,7 @@ const MonthlyShiniesResults = ({
               key={`${shiny.trainerName}-${shiny.name}-${index}`}
               variant="compact"
               pokemonName={shiny.name}
+              variantName={shiny.variantName}
               trainerName={shiny.trainerName}
               imageUrl={shiny.imageUrl}
               isFailed={shiny.isFailed}

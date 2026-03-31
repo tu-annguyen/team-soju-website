@@ -7,6 +7,7 @@ import { getShinySpriteUrl } from '../utils/pokemonSprite';
 export interface ShinyPokemon {
   id: string;
   name: string;
+  variantName: string | null;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -40,6 +41,7 @@ interface ShinyShowcaseProps {
 interface ShinyFromAPI {
   id: string;
   pokemon_name: string;
+  variants?: string | null;
   trainer_name: string;
   encounter_type: string | null;
   is_secret: boolean;
@@ -187,7 +189,8 @@ const transformAPIDataToShowcase = async (
           return {
             id: shiny.id,
             name: capitalize(shiny.pokemon_name),
-            imageUrl: getShinySpriteUrl(shiny.pokemon_name),
+            variantName: shiny.variants ?? null,
+            imageUrl: getShinySpriteUrl(shiny.pokemon_name, shiny.variants),
             isFailed,
             isSecret,
             isAlpha,
