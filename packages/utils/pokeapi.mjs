@@ -39,6 +39,23 @@ function dedupeVariantEntries(entries) {
   return deduped;
 }
 
+function collapseBaseSpeciesEntry(entries, speciesName) {
+  const normalizedSpecies = normalizePokemonName(speciesName);
+  if (!normalizedSpecies) return entries;
+
+  const hasFormSpecificEntries = entries.some(entry =>
+    entry?.value &&
+    entry.value !== normalizedSpecies &&
+    entry.value.startsWith(`${normalizedSpecies}-`)
+  );
+
+  if (!hasFormSpecificEntries) {
+    return entries;
+  }
+
+  return entries.filter(entry => entry?.value !== normalizedSpecies);
+}
+
 /** Fetches the national number for a given Pokémon name
  * @param {string} pokemon - Pokémon name
  * @returns {number|null} National number or null if not found
@@ -116,7 +133,10 @@ export async function getPokemonVariants(pokemon) {
       })
     );
 
-    const entries = dedupeVariantEntries([...varietyEntries, ...formEntries.filter(Boolean)]);
+    const entries = collapseBaseSpeciesEntry(
+      dedupeVariantEntries([...varietyEntries, ...formEntries.filter(Boolean)]),
+      species?.name || speciesName
+    );
 
     return {
       species: species?.name || speciesName || null,
