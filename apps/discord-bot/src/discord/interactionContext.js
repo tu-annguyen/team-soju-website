@@ -72,6 +72,14 @@ function buildFieldsAccessor(data) {
   };
 }
 
+function parseDiscordApiError(body) {
+  try {
+    return JSON.parse(body);
+  } catch (_error) {
+    return null;
+  }
+}
+
 class DiscordInteractionContext {
   constructor(interaction, env) {
     this.raw = interaction;
@@ -200,6 +208,13 @@ class DiscordInteractionContext {
 
     if (!response.ok) {
       const body = await response.text();
+      const parsedError = parseDiscordApiError(body);
+      if (parsedError?.code === 10015) {
+        throw new Error(
+          `Discord interaction webhook is no longer valid (code 10015). ` +
+          'This usually means the interaction token expired before a follow-up/edit was sent.'
+        );
+      }
       throw new Error(`Discord API request failed (${response.status}): ${body}`);
     }
   }

@@ -55,6 +55,11 @@ function logError(message, error, details) {
   }
 }
 
+function isInteractionWebhookExpiredError(error) {
+  const message = String(error?.message || '');
+  return message.includes('code 10015') || message.includes('Unknown Webhook');
+}
+
 function summarizeInteraction(rawInteraction) {
   const data = rawInteraction?.data || {};
 
@@ -453,9 +458,14 @@ async function handleInteractionRequest(request, env = process.env, executionCon
     };
 
     if (interaction.initialResponse) {
-      await interaction.reply(payload).catch(err => logError('Discord followUp failed:', err, {
-        interaction: summarizeInteraction(rawInteraction),
-      }));
+      await interaction.reply(payload).catch(err => {
+        const details = { interaction: summarizeInteraction(rawInteraction) };
+        if (isInteractionWebhookExpiredError(err)) {
+          logInfo('Discord followUp skipped because interaction webhook expired.', details);
+          return;
+        }
+        logError('Discord followUp failed:', err, details);
+      });
     } else {
       interaction.setInitialResponse({ type: 4, data: payload });
     }

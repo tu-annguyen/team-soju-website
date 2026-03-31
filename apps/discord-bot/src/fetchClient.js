@@ -1,5 +1,38 @@
+const DEFAULT_TIMEOUT_MS = Number.parseInt(process.env.DISCORD_BOT_HTTP_TIMEOUT_MS || '', 10) || 15000;
+
+function withTimeout(init = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const normalizedTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), normalizedTimeoutMs);
+
+  return {
+    init: {
+      ...init,
+      signal: controller.signal,
+    },
+    clear: () => clearTimeout(timeout),
+  };
+}
+
 async function request(url, options = {}) {
-  const response = await fetch(url, options);
+  const timeoutMs = options.timeoutMs;
+  const { timeoutMs: _timeoutMs, ...fetchOptions } = options;
+  const { init, clear } = withTimeout(fetchOptions, timeoutMs);
+  let response;
+
+  try {
+    response = await fetch(url, init);
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error(`Request timed out after ${Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS}ms`);
+      timeoutError.code = 'REQUEST_TIMEOUT';
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clear();
+  }
+
   const contentType = response.headers.get('content-type') || '';
   const payload = contentType.includes('application/json')
     ? await response.json()
