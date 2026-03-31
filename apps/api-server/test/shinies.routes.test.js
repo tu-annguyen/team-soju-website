@@ -289,6 +289,27 @@ describe('Shinies routes', () => {
         variants: 'deerling',
       });
     });
+
+    it('collapses nidoran route slugs into the base pokemon without creating variants', async () => {
+      const updated = { id: 1, pokemon: 'nidoran', variants: 'nidoran' };
+      TeamShiny.update.mockResolvedValue(updated);
+      getPokemonVariants.mockResolvedValue({
+        national_number: 29,
+        variants: ['nidoran'],
+      });
+
+      const res = await withBotAuth(request(app)
+        .put('/api/shinies/1')
+        .send({ pokemon: 'nidoran-f' }));
+
+      expect(res.status).toBe(200);
+      expect(getPokemonVariants).toHaveBeenCalledWith('nidoran-f');
+      expect(TeamShiny.update).toHaveBeenCalledWith('1', {
+        pokemon: 'nidoran',
+        national_number: 29,
+        variants: 'nidoran',
+      });
+    });
   });
 
   describe('DELETE /api/shinies/:id', () => {

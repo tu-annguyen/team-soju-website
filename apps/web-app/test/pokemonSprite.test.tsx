@@ -15,6 +15,13 @@ describe('getShinySpriteUrl', () => {
     expect(getShinySpriteUrl(413, 'wormadam-trash')).toContain('/413-trash.gif');
   });
 
+  it('treats nidoran route slugs as standalone pokemon routes, not variants', () => {
+    expect(getShinySpriteUrl(29, 'nidoran-f')).toContain('/29.gif');
+    expect(getShinySpriteUrl(29, 'nidoran-f')).not.toContain('/29-f.gif');
+    expect(getShinySpriteUrl(32, 'nidoran-m')).toContain('/32.gif');
+    expect(getShinySpriteUrl(32, 'nidoran-m')).not.toContain('/32-m.gif');
+  });
+
   it('returns an empty string when the dex number is missing', () => {
     expect(getShinySpriteUrl(null, 'wormadam-trash')).toBe('');
   });

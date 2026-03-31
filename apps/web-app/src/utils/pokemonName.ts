@@ -14,13 +14,25 @@ const toTitleCase = (value: string) =>
     .map((part) => capitalize(part))
     .join(' ');
 
+const normalizePokemonSlug = (value: string) =>
+  String(value || '')
+    .trim()
+    .toLowerCase();
+
+const normalizePokemonDisplayName = (value: string) => {
+  const normalized = normalizePokemonSlug(value);
+  return normalized === 'nidoran-f' || normalized === 'nidoran-m'
+    ? 'nidoran'
+    : normalized;
+};
+
 export const formatPokemonCardName = (pokemonName: string) => {
-  return toTitleCase(normalizePokemonLabel(pokemonName));
+  return toTitleCase(normalizePokemonLabel(normalizePokemonDisplayName(pokemonName)));
 };
 
 export const formatVariantLabel = (variantName?: string | null, pokemonName?: string) => {
-  const normalizedVariant = String(variantName || '').trim().toLowerCase();
-  const normalizedPokemon = String(pokemonName || '').trim().toLowerCase();
+  const normalizedVariant = normalizePokemonDisplayName(String(variantName || ''));
+  const normalizedPokemon = normalizePokemonDisplayName(String(pokemonName || ''));
 
   if (!normalizedVariant || normalizedVariant === normalizedPokemon) {
     return null;
