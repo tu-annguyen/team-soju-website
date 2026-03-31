@@ -67,6 +67,19 @@ ALTER TABLE team_shinies
 ALTER TABLE team_shinies
   ADD COLUMN IF NOT EXISTS variants TEXT;
 
+ALTER TABLE team_shinies
+  ADD COLUMN IF NOT EXISTS is_alpha BOOLEAN DEFAULT false;
+
+UPDATE team_shinies
+SET is_alpha = false
+WHERE is_alpha IS NULL;
+
+ALTER TABLE team_shinies
+  ALTER COLUMN is_alpha SET DEFAULT false;
+
+ALTER TABLE team_shinies
+  ALTER COLUMN is_alpha SET NOT NULL;
+
 DO $$
 BEGIN
   IF EXISTS (
