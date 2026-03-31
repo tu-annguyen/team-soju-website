@@ -14,4 +14,9 @@ async function getNationalNumber(nameOrId) {
   return mod.getNationalNumber(nameOrId);
 }
 
-module.exports = { getNationalNumber, getSpriteUrl };
+async function getPokemonVariants(nameOrId) {
+  const mod = await load();
+  return mod.getPokemonVariants(nameOrId);
+}
+
+module.exports = { getNationalNumber, getSpriteUrl, getPokemonVariants };
