@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS team_members (
 CREATE TABLE IF NOT EXISTS team_shinies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   pokemon TEXT NOT NULL,
+  variants TEXT NOT NULL DEFAULT '',
   national_number INTEGER NOT NULL,
   original_trainer UUID NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
   catch_date DATE DEFAULT CURRENT_DATE,
@@ -62,6 +63,43 @@ ALTER TABLE team_shinies
 ALTER TABLE team_shinies
   ADD CONSTRAINT team_shinies_status_check
   CHECK (status IN ('Owned', 'Sold', 'Fled', 'Died', 'Bred'));
+
+ALTER TABLE team_shinies
+  ADD COLUMN IF NOT EXISTS variants TEXT;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'team_shinies'
+      AND column_name = 'variants'
+      AND udt_name = '_text'
+  ) THEN
+    ALTER TABLE team_shinies
+      ALTER COLUMN variants DROP DEFAULT;
+
+    ALTER TABLE team_shinies
+      ALTER COLUMN variants TYPE TEXT
+      USING (
+        CASE
+          WHEN variants IS NULL OR cardinality(variants) = 0 THEN LOWER(TRIM(pokemon))
+          ELSE LOWER(TRIM(variants[1]))
+        END
+      );
+  END IF;
+END $$;
+
+UPDATE team_shinies
+SET variants = LOWER(TRIM(pokemon))
+WHERE variants IS NULL OR TRIM(variants) = '';
+
+ALTER TABLE team_shinies
+  ALTER COLUMN variants SET DEFAULT '';
+
+ALTER TABLE team_shinies
+  ALTER COLUMN variants SET NOT NULL;
 
 -- Indexes for common lookups
 CREATE INDEX IF NOT EXISTS idx_team_shinies_trainer ON team_shinies(original_trainer);
