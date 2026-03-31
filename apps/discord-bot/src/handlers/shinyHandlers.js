@@ -17,7 +17,7 @@ const {
 const fetchClient = require('../fetchClient');
 const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, SHINY_STATUS_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { capitalize, getNationalNumber, getSpriteUrl } = require('@team-soju/utils');
+const { capitalize, getNationalNumber, getSpriteUrl, getPokemonVariants } = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL || apiBaseUrl;
@@ -28,6 +28,7 @@ const SHINY_MANAGER_ROLES = ['Soju', 'Elite 4', 'Champion'];
 const SHINY_STAFF_ROLES = ['Elite 4', 'Champion'];
 const PAGE_SIZE_FALLBACK = 10;
 const MAX_SHINY_SELECT_OPTIONS = 25;
+const MAX_VARIANT_SELECT_OPTIONS = 25;
 const COMPONENT_PREFIX = 'sh';
 const MODAL_PREFIX = 'shm';
 const VARIANT_CHOICES = [
@@ -40,6 +41,19 @@ const STATUS_CHOICES = SHINY_STATUS_CHOICES;
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
+}
+
+function normalizeVariantSlug(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function humanizeVariantLabel(value) {
+  return String(value || '')
+    .trim()
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 function isFailedShiny(shiny) {
@@ -143,6 +157,100 @@ function formatShinySummary(shiny) {
   }
 
   return pieces.join(' • ');
+}
+
+function removeVariantSelectorRows(components = []) {
+  return components.filter(row => !row?.components?.some(component =>
+    String(component?.custom_id || '').startsWith(`${COMPONENT_PREFIX}:r:v:`)
+  ));
+}
+
+function extractShinyIdFromPayload(payload = {}) {
+  for (const row of payload.components || []) {
+    for (const component of row.components || []) {
+      const customId = String(component?.custom_id || '');
+      if (!customId.startsWith(`${COMPONENT_PREFIX}:`)) continue;
+      try {
+        const parsed = parseCustomId(customId);
+        if (parsed.shinyId) return parsed.shinyId;
+      } catch (error) {
+        continue;
+      }
+    }
+  }
+
+  const footerText = payload.embeds?.[0]?.footer?.text;
+  const match = String(footerText || '').match(/Shiny ID:\s*(.+)$/i);
+  return match?.[1] || null;
+}
+
+async function getVariantSelectionConfig(pokemonName) {
+  const variantData = await getPokemonVariants(pokemonName);
+  const entries = (variantData?.entries || [])
+    .filter(entry => entry?.value)
+    .slice(0, MAX_VARIANT_SELECT_OPTIONS);
+
+  if (entries.length <= 1) {
+    return null;
+  }
+
+  return {
+    entries,
+    defaultEntry: entries.find(entry => entry.is_default) || entries[0],
+  };
+}
+
+function buildVariantSelectorRow(shinyId, variantSelection, selectedVariant) {
+  const selected = normalizeVariantSlug(selectedVariant) || variantSelection.defaultEntry.value;
+
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(buildCustomId('r', 'v', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }))
+      .setPlaceholder('Select Variant')
+      .setMinValues(1)
+      .setMaxValues(1)
+      .addOptions(variantSelection.entries.map(entry => ({
+        label: humanizeVariantLabel(entry.label || entry.value).slice(0, 100),
+        value: entry.value,
+        default: entry.value === selected,
+        ...(entry.is_default ? { description: 'Default form' } : {}),
+      })))
+  );
+}
+
+async function ensureDefaultVariantForShiny(shiny, variantSelection) {
+  if (!variantSelection?.defaultEntry?.value || !shiny?.id) {
+    return shiny;
+  }
+
+  const currentVariant = normalizeVariantSlug(shiny.variants);
+  if (currentVariant === variantSelection.defaultEntry.value) {
+    return shiny;
+  }
+
+  return updateShinyRecord(shiny.id, { variants: variantSelection.defaultEntry.value });
+}
+
+async function attachVariantSelectorToPayload(payload, shiny) {
+  const variantSelection = await getVariantSelectionConfig(shiny?.pokemon || shiny?.pokemon_name);
+  if (!variantSelection) {
+    return { payload, shiny };
+  }
+
+  const updatedShiny = await ensureDefaultVariantForShiny(shiny, variantSelection);
+  const selectedVariant = normalizeVariantSlug(updatedShiny?.variants) || variantSelection.defaultEntry.value;
+  const variantRow = buildVariantSelectorRow(updatedShiny.id, variantSelection, selectedVariant);
+
+  return {
+    shiny: updatedShiny,
+    payload: {
+      ...payload,
+      components: [
+        variantRow,
+        ...removeVariantSelectorRows(payload.components || []),
+      ],
+    },
+  };
 }
 
 function buildShiniesEmbed(shinies, page, pageSize, title) {
@@ -265,6 +373,7 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   embed.addFields(
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     ...[
+      shiny.variants ? { name: 'Variant', value: humanizeVariantLabel(shiny.variants), inline: true } : null,
       { name: 'Status', value: getStatusValue(shiny), inline: true },
       shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
       shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
@@ -527,6 +636,34 @@ async function buildEditControlsPayload(interaction, state, content = null) {
 async function updateShinyRecord(shinyId, updates) {
   const response = await fetchClient.put(`${apiBaseUrl}/shinies/${shinyId}`, updates, getAuthHeaders());
   return response.data.data;
+}
+
+async function buildVariantSelectionUpdatePayload(shinyId, content = 'Shiny updated.') {
+  const shiny = await fetchShinyById(shinyId);
+  const payload = await buildShinyDisplayPayload(shiny, 'Shiny Updated Successfully');
+  payload.content = content;
+  payload.components = buildStandaloneActionRow(shinyId, {
+    includeView: true,
+    includeEdit: true,
+    includeDelete: true,
+  });
+
+  return (await attachVariantSelectorToPayload(payload, shiny)).payload;
+}
+
+async function enhanceAsyncScreenshotPayload(payload) {
+  const shinyId = extractShinyIdFromPayload(payload);
+  if (!shinyId) {
+    return payload;
+  }
+
+  try {
+    const shiny = await fetchShinyById(shinyId);
+    return (await attachVariantSelectorToPayload(payload, shiny)).payload;
+  } catch (error) {
+    console.error('Error attaching variant selector to screenshot payload:', error.message);
+    return payload;
+  }
 }
 
 async function deleteShinyRecord(shinyId) {
@@ -811,7 +948,7 @@ async function handleAddShiny(interaction) {
       includeDelete: true,
     });
 
-    await interaction.editReply(payload);
+    await interaction.editReply((await attachVariantSelectorToPayload(payload, shiny)).payload);
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
   }
@@ -1024,6 +1161,19 @@ async function handleShinyComponent(interaction) {
       return;
     }
 
+    if (state.kind === 'r' && state.action === 'v') {
+      await requireOwnedShiny(interaction, state.shinyId);
+      const selectedVariant = normalizeVariantSlug(interaction.values[0]);
+
+      if (!selectedVariant) {
+        throw new Error('Select a variant first.');
+      }
+
+      await updateShinyRecord(state.shinyId, { variants: selectedVariant });
+      await interaction.update(await buildVariantSelectionUpdatePayload(state.shinyId));
+      return;
+    }
+
     if (state.kind === 'e') {
       await requireOwnedShiny(interaction, state.shinyId);
 
@@ -1146,6 +1296,7 @@ function isShinyEditModal(customId) {
 }
 
 module.exports = {
+  enhanceAsyncScreenshotPayload,
   handleAddShiny,
   handleAddShinyScreenshot,
   handleDeleteShiny,
