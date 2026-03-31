@@ -231,6 +231,10 @@ const COMMANDS = [
         .setDescription('Pokemon name')
         .setRequired(false))
     .addStringOption(option =>
+      option.setName('variant')
+        .setDescription('Pokemon variant slug')
+        .setRequired(false))
+    .addStringOption(option =>
       option.setName('encounter_type')
         .setDescription('Encounter type')
         .setRequired(false)

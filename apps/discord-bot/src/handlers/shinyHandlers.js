@@ -1042,6 +1042,7 @@ async function handleEditShiny(interaction) {
 
   const shinyId = interaction.options.getString('shiny_id');
   const pokemon = interaction.options.getString('pokemon');
+  const variant = interaction.options.getString('variant');
   const catchDate = interaction.options.getString('catch_date');
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
   const status = interaction.options.getString('status');
@@ -1071,6 +1072,7 @@ async function handleEditShiny(interaction) {
       }
       updates.national_number = nationalNumber;
     }
+    if (variant) updates.variants = normalizeVariantSlug(variant);
     if (catchDate) updates.catch_date = catchDate;
     if (encounterType) updates.encounter_type = encounterType;
     if (status) updates.status = status;

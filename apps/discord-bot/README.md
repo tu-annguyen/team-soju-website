@@ -230,11 +230,12 @@ Update an existing shiny entry.
 **Options:**
 - `shiny_id` (required): ID of shiny to edit
 - All other options are optional for updating
+- `variant` (optional): Pokemon form slug. This must be a valid name from PokeAPI's `pokemon-form` route, such as `deerling-winter` or `basculin-blue-striped`.
 - `status` (optional): Dropdown with `Owned`, `Sold`, `Fled`, `Died`, `Bred`
 
 **Example:**
 ```
-/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 total_encounters:2000 secret:true
+/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 variant:deerling-winter total_encounters:2000 secret:true
 ```
 
 #### `/failshiny`

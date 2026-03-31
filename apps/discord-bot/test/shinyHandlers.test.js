@@ -22,6 +22,7 @@ const {
   enhanceAsyncScreenshotPayload,
   handleAddShiny,
   handleAddShinyScreenshot,
+  handleEditShiny,
   handleFailShiny,
   handleGetShiny,
   handleGetShinies,
@@ -886,6 +887,56 @@ describe('shinyHandlers', () => {
     expect(payload.embeds[0].data.title).toBe('Shiny Status Updated');
     expect(payload.embeds[0].data.color).toBe(0x757575);
     expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
+  });
+
+  it('updates the shiny variant from the editshiny slash command', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'editshiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { shiny_id: 'selected-id', variant: ' Deerling-Winter ' },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'deerling',
+          pokemon_name: 'Deerling',
+          variants: 'deerling-spring',
+          national_number: 585,
+          trainer_name: 'T1',
+          catch_date: '2026-01-01',
+          encounter_type: 'single',
+        },
+      },
+    });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'deerling',
+          pokemon_name: 'Deerling',
+          variants: 'deerling-winter',
+          national_number: 585,
+          trainer_name: 'T1',
+          catch_date: '2026-01-01',
+          encounter_type: 'single',
+        },
+      },
+    });
+
+    await handleEditShiny(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({ variants: 'deerling-winter' }),
+      expect.any(Object)
+    );
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: [expect.objectContaining({ data: expect.objectContaining({ title: 'Shiny Updated Successfully' }) })],
+      })
+    );
   });
 
   it('uses a greyscaled sprite when viewing a failed shiny', async () => {
