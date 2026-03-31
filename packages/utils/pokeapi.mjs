@@ -56,6 +56,52 @@ function collapseBaseSpeciesEntry(entries, speciesName) {
   return entries.filter(entry => entry?.value !== normalizedSpecies);
 }
 
+async function resolveSpeciesContext(pokemon) {
+  const normalizedPokemon = normalizePokemonName(pokemon);
+  const pokedex = getPokedex();
+
+  try {
+    const species = await pokedex.getPokemonSpeciesByName(normalizedPokemon);
+    return { species, speciesName: normalizePokemonName(species?.name || normalizedPokemon) };
+  } catch (speciesError) {
+    const pokemonData = await pokedex.getPokemonByName(normalizedPokemon);
+    const speciesName = normalizePokemonName(pokemonData?.species?.name || pokemonData?.name || normalizedPokemon);
+    const species = await pokedex.getPokemonSpeciesByName(speciesName);
+    return { species, speciesName };
+  }
+}
+
+async function getFormEntriesForPokemon(pokemonName) {
+  const normalizedPokemon = normalizePokemonName(pokemonName);
+  if (!normalizedPokemon) return [];
+
+  try {
+    const pokemonData = await getPokedex().getPokemonByName(normalizedPokemon);
+    return await Promise.all(
+      (pokemonData?.forms || []).map(async (form) => {
+        try {
+          const formData = await getPokedex().getPokemonFormByName(form.name);
+          return createVariantEntry({
+            value: formData?.name || formData?.pokemon?.name || form?.name || pokemonData?.name,
+            label: formData?.form_name || formData?.pokemon?.name || form?.name || pokemonData?.name,
+            source: 'pokemon.forms',
+            isDefault: formData?.is_default,
+          });
+        } catch (error) {
+          return createVariantEntry({
+            value: form?.name || pokemonData?.name,
+            label: form?.name || pokemonData?.name,
+            source: 'pokemon.forms',
+            isDefault: form?.name === pokemonData?.name,
+          });
+        }
+      })
+    );
+  } catch (error) {
+    return [];
+  }
+}
+
 /** Fetches the national number for a given Pokémon name
  * @param {string} pokemon - Pokémon name
  * @returns {number|null} National number or null if not found
@@ -99,9 +145,7 @@ export async function getSpriteUrl(pokemonId) {
  */
 export async function getPokemonVariants(pokemon) {
   try {
-    const pokemonData = await getPokedex().getPokemonByName(normalizePokemonName(pokemon));
-    const speciesName = normalizePokemonName(pokemonData?.species?.name || pokemonData?.name);
-    const species = await getPokedex().getPokemonSpeciesByName(speciesName);
+    const { species, speciesName } = await resolveSpeciesContext(pokemon);
 
     const varietyEntries = (species?.varieties || [])
       .map(variety => createVariantEntry({
@@ -112,29 +156,25 @@ export async function getPokemonVariants(pokemon) {
       }))
       .filter(Boolean);
 
-    const formEntries = await Promise.all(
-      (pokemonData?.forms || []).map(async (form) => {
-        try {
-          const formData = await getPokedex().getPokemonFormByName(form.name);
-          return createVariantEntry({
-            value: formData?.name || formData?.pokemon?.name || form?.name,
-            label: formData?.form_name || formData?.name || form?.name,
-            source: 'pokemon.forms',
-            isDefault: formData?.is_default,
-          });
-        } catch (error) {
-          return createVariantEntry({
-            value: form?.name,
-            label: form?.name,
-            source: 'pokemon.forms',
-            isDefault: form?.name === pokemonData?.name,
-          });
-        }
-      })
+    const formEntriesByVariety = await Promise.all(
+      varietyEntries.map(entry => getFormEntriesForPokemon(entry.value))
     );
 
+    const fallbackEntries = varietyEntries.length > 0
+      ? []
+      : [createVariantEntry({
+        value: speciesName,
+        label: speciesName,
+        source: 'species.fallback',
+        isDefault: true,
+      })];
+
     const entries = collapseBaseSpeciesEntry(
-      dedupeVariantEntries([...varietyEntries, ...formEntries.filter(Boolean)]),
+      dedupeVariantEntries([
+        ...varietyEntries,
+        ...formEntriesByVariety.flat().filter(Boolean),
+        ...fallbackEntries.filter(Boolean),
+      ]),
       species?.name || speciesName
     );
 
