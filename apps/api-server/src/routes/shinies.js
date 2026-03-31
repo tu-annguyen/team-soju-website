@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const Joi = require('joi');
 const path = require('path');
-const { capitalize, getPokemonNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
+const { capitalize, getNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
 const { parseMobileStatsPanel } = require('../utils/mobileStatsParser');
@@ -963,7 +963,7 @@ async function createShinyFromScreenshotValue(value) {
       throw error;
     }
 
-    const nationalNumber = await getPokemonNationalNumber(mergedParsed.name);
+    const nationalNumber = await getNationalNumber(mergedParsed.name);
     if (!nationalNumber) {
       const error = new Error(`Could not find national number for Pokemon "${mergedParsed.name}"`);
       error.status = 404;

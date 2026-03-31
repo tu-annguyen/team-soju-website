@@ -10,7 +10,7 @@ jest.mock('@team-soju/utils', () => ({
     const normalized = String(value || '').trim();
     return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
   }),
-  getPokemonNationalNumber: jest.fn().mockResolvedValue(1),
+  getNationalNumber: jest.fn().mockResolvedValue(1),
   getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
 }));
 

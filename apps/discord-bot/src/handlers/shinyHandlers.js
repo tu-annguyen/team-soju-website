@@ -17,7 +17,7 @@ const {
 const fetchClient = require('../fetchClient');
 const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, SHINY_STATUS_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { capitalize, getPokemonNationalNumber, getSpriteUrl } = require('@team-soju/utils');
+const { capitalize, getNationalNumber, getSpriteUrl } = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL || apiBaseUrl;
@@ -740,7 +740,7 @@ async function handleAddShiny(interaction) {
 
   let nationalNumber;
   try {
-    nationalNumber = await getPokemonNationalNumber(pokemon);
+    nationalNumber = await getNationalNumber(pokemon);
   } catch (error) {
     console.error('Error fetching national number:', error.message);
   }
@@ -879,7 +879,7 @@ async function handleEditShiny(interaction) {
     const updates = {};
     if (pokemon) {
       updates.pokemon = pokemon;
-      const nationalNumber = await getPokemonNationalNumber(pokemon);
+      const nationalNumber = await getNationalNumber(pokemon);
       if (!nationalNumber) {
         await interaction.editReply({ content: `Error: Could not find national number for Pokemon "${pokemon}"` });
         return;
@@ -1116,7 +1116,7 @@ async function handleShinyEditModal(interaction) {
 
     if (pokemon) {
       updates.pokemon = pokemon;
-      const nationalNumber = await getPokemonNationalNumber(pokemon);
+      const nationalNumber = await getNationalNumber(pokemon);
       if (!nationalNumber) {
         await interaction.reply({ content: `Error: Could not find national number for Pokemon "${pokemon}"`, flags: MessageFlags.Ephemeral });
         return;
