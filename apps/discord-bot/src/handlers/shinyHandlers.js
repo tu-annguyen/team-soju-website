@@ -60,12 +60,17 @@ function isFailedShiny(shiny) {
   return String(shiny?.status || 'Owned').trim() !== 'Owned';
 }
 
-function getGreyscaleSpriteUrl(nationalNumber) {
+function getGreyscaleSpriteUrl(nationalNumber, variant = null) {
   if (!nationalNumber || !publicApiBaseUrl.startsWith('http')) return null;
   if (!process.env.PUBLIC_API_BASE_URL && /:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(publicApiBaseUrl)) {
     return null;
   }
-  return `${publicApiBaseUrl}/shinies/sprites/${nationalNumber}/greyscale.gif`;
+  const params = new URLSearchParams();
+  if (variant) {
+    params.set('variant', normalizeVariantSlug(variant));
+  }
+  const query = params.toString();
+  return `${publicApiBaseUrl}/shinies/sprites/${nationalNumber}/greyscale.gif${query ? `?${query}` : ''}`;
 }
 
 function normalizeEncounterType(value) {
@@ -358,8 +363,8 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   if (shiny.national_number) {
     try {
       spriteUrl = isFailedShiny(shiny)
-        ? getGreyscaleSpriteUrl(shiny.national_number)
-        : await getSpriteUrl(shiny.national_number);
+        ? getGreyscaleSpriteUrl(shiny.national_number, shiny.variants)
+        : await getSpriteUrl(shiny.national_number, { variant: shiny.variants });
     } catch (error) {
       console.error('Error fetching sprite URL:', error.message);
     }
@@ -402,7 +407,7 @@ async function buildFailedShinyPayload(shiny) {
     .setFooter({ text: `Shiny ID: ${shiny.id}` })
     .setTimestamp();
 
-  const spriteUrl = getGreyscaleSpriteUrl(shiny.national_number);
+  const spriteUrl = getGreyscaleSpriteUrl(shiny.national_number, shiny.variants);
   if (spriteUrl) {
     embed.setThumbnail(spriteUrl);
   }

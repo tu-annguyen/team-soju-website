@@ -4,9 +4,9 @@ function load() {
   return (modPromise ??= import('./pokeapi.mjs'));
 }
 
-async function getSpriteUrl(nameOrId) {
+async function getSpriteUrl(nameOrId, options) {
   const mod = await load();
-  return mod.getSpriteUrl(nameOrId);
+  return mod.getSpriteUrl(nameOrId, options);
 }
 
 async function getNationalNumber(nameOrId) {

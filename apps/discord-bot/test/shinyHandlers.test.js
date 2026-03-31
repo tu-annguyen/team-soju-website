@@ -16,7 +16,7 @@ jest.mock('@team-soju/utils', () => ({
 }));
 
 const fetchClient = require('../src/fetchClient');
-const { getPokemonVariants } = require('@team-soju/utils');
+const { getPokemonVariants, getSpriteUrl } = require('@team-soju/utils');
 const localUtils = require('../src/utils');
 const {
   enhanceAsyncScreenshotPayload,
@@ -41,6 +41,7 @@ describe('shinyHandlers', () => {
     fetchClient.post.mockReset();
     fetchClient.put.mockReset();
     fetchClient.delete.mockReset();
+    getSpriteUrl.mockResolvedValue('https://example.com/sprite.gif');
     getPokemonVariants.mockResolvedValue({
       variants: ['dratini'],
       entries: [{ value: 'dratini', label: 'dratini', is_default: true }],
@@ -413,6 +414,7 @@ describe('shinyHandlers', () => {
         { value: 'deerling-winter', label: 'winter', is_default: false },
       ],
     });
+    getSpriteUrl.mockImplementation(async (pokemonId, options = {}) => `https://example.com/${options.variant || pokemonId}.gif`);
 
     fetchClient.get
       .mockResolvedValueOnce({
@@ -458,6 +460,13 @@ describe('shinyHandlers', () => {
     expect(interaction.update).toHaveBeenCalledWith(
       expect.objectContaining({
         content: 'Shiny updated.',
+        embeds: [
+          expect.objectContaining({
+            data: expect.objectContaining({
+              thumbnail: { url: 'https://example.com/deerling-winter.gif' },
+            }),
+          }),
+        ],
         components: expect.arrayContaining([
           expect.objectContaining({
             components: expect.arrayContaining([
@@ -772,6 +781,33 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('uses the shiny variant when fetching the normal sprite', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'shiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { id: 'selected-id' },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'wormadam',
+          pokemon_name: 'Wormadam',
+          variants: 'wormadam-sandy',
+          trainer_name: 'T1',
+          national_number: 413,
+        },
+      },
+    });
+
+    await handleGetShiny(interaction);
+
+    expect(getPokemonVariants).not.toHaveBeenCalledWith('wormadam-sandy');
+    const { getSpriteUrl } = require('@team-soju/utils');
+    expect(getSpriteUrl).toHaveBeenCalledWith(413, { variant: 'wormadam-sandy' });
+  });
+
   it('shows the delete success embed for delete interaction', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:a:d:a:_:1:10:selected-id',
@@ -815,6 +851,7 @@ describe('shinyHandlers', () => {
           id: 'selected-id',
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
+          variants: 'pikachu',
           national_number: 25,
           trainer_name: 'T1',
           catch_date: '2026-01-01',
@@ -828,6 +865,7 @@ describe('shinyHandlers', () => {
           id: 'selected-id',
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
+          variants: 'pikachu',
           national_number: 25,
           trainer_name: 'T1',
           catch_date: '2026-01-01',
@@ -863,6 +901,7 @@ describe('shinyHandlers', () => {
           id: 'selected-id',
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
+          variants: 'pikachu',
           trainer_name: 'T1',
           national_number: 25,
           status: 'Sold',
@@ -875,6 +914,7 @@ describe('shinyHandlers', () => {
     const payload = interaction.editReply.mock.calls[0][0];
     expect(payload.embeds[0].data.color).toBe(0x757575);
     expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
+    expect(payload.embeds[0].data.thumbnail.url).toContain('variant=pikachu');
   });
 
   it('updates status to a non-owned value from edit controls and re-renders with greyscaled thumbnail', async () => {

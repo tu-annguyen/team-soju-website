@@ -1265,6 +1265,9 @@ router.post('/from-screenshot/async', authenticateBot, async (req, res) => {
 async function handleGreyscaleSprite(req, res) {
   try {
     const nationalNumber = parseInt(req.params.nationalNumber, 10);
+    const variant = typeof req.query.variant === 'string'
+      ? normalizeVariantName(req.query.variant)
+      : null;
     if (!Number.isInteger(nationalNumber) || nationalNumber < 1) {
       return res.status(400).json({
         success: false,
@@ -1272,7 +1275,7 @@ async function handleGreyscaleSprite(req, res) {
       });
     }
 
-    const spriteUrl = await getSpriteUrl(nationalNumber);
+    const spriteUrl = await getSpriteUrl(nationalNumber, { variant });
     if (!spriteUrl) {
       return res.status(404).json({
         success: false,
