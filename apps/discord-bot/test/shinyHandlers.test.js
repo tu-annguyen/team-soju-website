@@ -939,6 +939,51 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('collapses nidoran route slugs when updating a shiny variant from the slash command', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'editshiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { shiny_id: 'selected-id', variant: ' Nidoran-F ' },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'nidoran',
+          pokemon_name: 'Nidoran',
+          variants: 'nidoran',
+          national_number: 29,
+          trainer_name: 'T1',
+          catch_date: '2026-01-01',
+          encounter_type: 'single',
+        },
+      },
+    });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'nidoran',
+          pokemon_name: 'Nidoran',
+          variants: 'nidoran',
+          national_number: 29,
+          trainer_name: 'T1',
+          catch_date: '2026-01-01',
+          encounter_type: 'single',
+        },
+      },
+    });
+
+    await handleEditShiny(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({ variants: 'nidoran' }),
+      expect.any(Object)
+    );
+  });
+
   it('uses a greyscaled sprite when viewing a failed shiny', async () => {
     const interaction = createMockInteraction({
       commandName: 'shiny',

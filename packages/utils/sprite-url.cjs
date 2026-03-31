@@ -5,11 +5,13 @@ function normalizePokemonName(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+const NIDORAN_ROUTE_NAMES = new Set(['nidoran', 'nidoran-f', 'nidoran-m']);
+
 function buildAnimatedShinySpriteUrl(pokemonId, variant = null) {
   if (!pokemonId) return null;
 
   const normalizedVariant = normalizePokemonName(variant);
-  if (!normalizedVariant || !normalizedVariant.includes('-')) {
+  if (!normalizedVariant || !normalizedVariant.includes('-') || NIDORAN_ROUTE_NAMES.has(normalizedVariant)) {
     return `${GEN5_ANIMATED_SHINY_SPRITE_BASE}/${pokemonId}.gif`;
   }
 

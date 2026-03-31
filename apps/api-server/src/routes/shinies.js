@@ -35,14 +35,26 @@ const ENCOUNTER_TYPE_CHOICES = [
 ];
 
 const SHINY_STATUS_CHOICES = ['Owned', 'Sold', 'Fled', 'Died', 'Bred'];
+const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
+
+function normalizePokemonRouteName(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function normalizePokemonName(value) {
+  const normalized = normalizePokemonRouteName(value);
+  return NIDORAN_ROUTE_NAMES.has(normalized) ? 'nidoran' : normalized;
+}
 
 function normalizeVariantName(value) {
-  return String(value || '').trim().toLowerCase();
+  const normalized = normalizePokemonRouteName(value);
+  return NIDORAN_ROUTE_NAMES.has(normalized) ? 'nidoran' : normalized;
 }
 
 async function enrichShinyPayloadWithVariants(payload) {
   const hasPokemon = Boolean(payload?.pokemon);
-  const pokemon = hasPokemon ? normalizeVariantName(payload.pokemon) : undefined;
+  const rawPokemon = hasPokemon ? normalizePokemonRouteName(payload.pokemon) : undefined;
+  const pokemon = hasPokemon ? normalizePokemonName(payload.pokemon) : undefined;
   const hasExplicitVariant = Object.prototype.hasOwnProperty.call(payload || {}, 'variants');
   const normalizedVariant = hasExplicitVariant ? normalizeVariantName(payload.variants) : null;
 
@@ -56,7 +68,7 @@ async function enrichShinyPayloadWithVariants(payload) {
     return nextPayload;
   }
 
-  const variantData = await getPokemonVariants(pokemon);
+  const variantData = await getPokemonVariants(rawPokemon || pokemon);
 
   return {
     ...nextPayload,
@@ -1005,7 +1017,7 @@ async function createShinyFromScreenshotValue(value) {
 
     const shiny = await TeamShiny.create({
       national_number: nationalNumber,
-      pokemon: mergedParsed.name,
+      pokemon: normalizePokemonName(mergedParsed.name),
       variants: normalizeVariantName(mergedParsed.name),
       original_trainer: trainer.id,
       catch_date: mergedParsed.date,

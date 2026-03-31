@@ -38,16 +38,23 @@ const SPECIAL_CHOICES = [
   { name: 'Secret Alpha', value: 'secret_alpha' },
 ];
 const STATUS_CHOICES = SHINY_STATUS_CHOICES;
+const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
 }
 
 function normalizeVariantSlug(value) {
-  return String(value || '').trim().toLowerCase();
+  const normalized = String(value || '').trim().toLowerCase();
+  return NIDORAN_ROUTE_NAMES.has(normalized) ? 'nidoran' : normalized;
 }
 
 function humanizeVariantLabel(value) {
+  const normalized = normalizeVariantSlug(value);
+  if (!normalized || normalized === 'nidoran') {
+    return '';
+  }
+
   return String(value || '')
     .trim()
     .split(/[-_\s]+/)
@@ -381,7 +388,10 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   embed.addFields(
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     ...[
-      shiny.variants ? { name: 'Variant', value: humanizeVariantLabel(shiny.variants), inline: true } : null,
+      (() => {
+        const variantLabel = humanizeVariantLabel(shiny.variants);
+        return variantLabel ? { name: 'Variant', value: variantLabel, inline: true } : null;
+      })(),
       { name: 'Status', value: getStatusValue(shiny), inline: true },
       shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
       shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,

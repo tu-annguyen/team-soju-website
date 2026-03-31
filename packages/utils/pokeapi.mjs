@@ -15,6 +15,33 @@ function normalizePokemonName(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
+
+function isNidoranRouteName(value) {
+  return NIDORAN_ROUTE_NAMES.has(normalizePokemonName(value));
+}
+
+function buildSingleEntryVariantResult(species, nationalNumber, metadata = {}) {
+  const normalizedSpecies = normalizePokemonName(species);
+  const entry = createVariantEntry({
+    value: normalizedSpecies,
+    label: normalizedSpecies,
+    source: 'species.special-case',
+    isDefault: true,
+  });
+
+  return {
+    species: normalizedSpecies || null,
+    national_number: nationalNumber ?? null,
+    variants: entry ? [entry.value] : [],
+    entries: entry ? [entry] : [],
+    metadata: {
+      has_gender_differences: Boolean(metadata.has_gender_differences),
+      forms_switchable: Boolean(metadata.forms_switchable),
+    },
+  };
+}
+
 function createVariantEntry({ value, label, source, isDefault = false }) {
   const normalizedValue = normalizePokemonName(value);
   if (!normalizedValue) return null;
@@ -156,7 +183,18 @@ export async function getSpriteUrl(pokemonId, options = {}) {
  */
 export async function getPokemonVariants(pokemon) {
   try {
+    const normalizedPokemon = normalizePokemonName(pokemon);
+    if (normalizedPokemon === 'nidoran') {
+      return buildSingleEntryVariantResult('nidoran', null);
+    }
+
     const { species, speciesName } = await resolveSpeciesContext(pokemon);
+    if (isNidoranRouteName(normalizedPokemon) || isNidoranRouteName(species?.name) || isNidoranRouteName(speciesName)) {
+      return buildSingleEntryVariantResult('nidoran', species?.id ?? null, {
+        has_gender_differences: species?.has_gender_differences,
+        forms_switchable: species?.forms_switchable,
+      });
+    }
 
     const varietyEntries = (species?.varieties || [])
       .map(variety => createVariantEntry({
