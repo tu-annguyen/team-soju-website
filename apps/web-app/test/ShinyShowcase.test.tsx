@@ -42,6 +42,9 @@ jest.mock('framer-motion', () => ({
 jest.mock('@team-soju/utils', () => ({
   calculateShinyPoints: jest.fn(),
   getPokemonTier: jest.fn().mockReturnValue('A'),
+  buildAnimatedShinySpriteUrl: jest.fn((nationalNumber: number, variant?: string | null) =>
+    `https://example.com/${nationalNumber}${variant ? `-${variant}` : ''}.gif`
+  ),
   capitalize: jest.fn((value: string) =>
     value ? value.charAt(0).toUpperCase() + value.slice(1) : value
   ),
@@ -67,6 +70,7 @@ beforeEach(() => {
       data: [
         {
           id: 'shiny-1',
+          national_number: 25,
           pokemon_name: 'pikachu',
           variants: 'pikachu',
           trainer_name: 'TrainerOne',
@@ -77,6 +81,7 @@ beforeEach(() => {
         },
         {
           id: 'shiny-2',
+          national_number: 4,
           pokemon_name: 'charmander',
           variants: 'charmander',
           trainer_name: 'TrainerTwo',
@@ -87,6 +92,7 @@ beforeEach(() => {
         },
         {
           id: 'shiny-3',
+          national_number: 1,
           pokemon_name: 'bulbasaur',
           variants: 'bulbasaur',
           trainer_name: 'TrainerTwo',

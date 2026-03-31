@@ -11,6 +11,7 @@ interface MonthlyShiniesResultsProps {
 }
 
 interface ShinyFromAPI {
+  national_number?: number | null;
   pokemon_name: string;
   variants?: string | null;
   trainer_name: string;
@@ -47,7 +48,7 @@ const transformAPIDataToMonthly = async (
         name: capitalize(shiny.pokemon_name),
         variantName: shiny.variants ?? null,
         trainerName: shiny.trainer_name,
-        imageUrl: getShinySpriteUrl(shiny.pokemon_name, shiny.variants),
+        imageUrl: getShinySpriteUrl(shiny.national_number, shiny.variants),
         isFailed,
         isSecret: shiny.is_secret,
         isAlpha: shiny.is_alpha,

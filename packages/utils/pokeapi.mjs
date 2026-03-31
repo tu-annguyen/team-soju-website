@@ -1,8 +1,8 @@
 import PokedexModule from 'pokedex-promise-v2';
+import { buildAnimatedShinySpriteUrl } from './sprite-url.mjs';
 
 const Pokedex = PokedexModule.default || PokedexModule;
 let pokedex;
-const GEN5_ANIMATED_SHINY_SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/shiny';
 
 function getPokedex() {
   if (!pokedex) {
@@ -13,30 +13,6 @@ function getPokedex() {
 
 function normalizePokemonName(value) {
   return String(value || '').trim().toLowerCase();
-}
-
-function buildAnimatedShinySpriteUrl(pokemonId, variant = null) {
-  if (!pokemonId) return null;
-
-  const normalizedVariant = normalizePokemonName(variant);
-  if (!normalizedVariant || !normalizedVariant.includes('-')) {
-    return `${GEN5_ANIMATED_SHINY_SPRITE_BASE}/${pokemonId}.gif`;
-  }
-
-  if (normalizedVariant.endsWith('-female')) {
-    return `${GEN5_ANIMATED_SHINY_SPRITE_BASE}/female/${pokemonId}.gif`;
-  }
-
-  if (normalizedVariant.endsWith('-male')) {
-    return `${GEN5_ANIMATED_SHINY_SPRITE_BASE}/${pokemonId}.gif`;
-  }
-
-  const variantSuffix = normalizedVariant.replace(/^[^-]+-/, '');
-  if (!variantSuffix || variantSuffix === normalizedVariant) {
-    return `${GEN5_ANIMATED_SHINY_SPRITE_BASE}/${pokemonId}.gif`;
-  }
-
-  return `${GEN5_ANIMATED_SHINY_SPRITE_BASE}/${pokemonId}-${variantSuffix}.gif`;
 }
 
 function createVariantEntry({ value, label, source, isDefault = false }) {
