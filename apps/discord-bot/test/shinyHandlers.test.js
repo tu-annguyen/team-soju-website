@@ -409,7 +409,13 @@ describe('shinyHandlers', () => {
         components: expect.arrayContaining([
           expect.objectContaining({
             components: expect.arrayContaining([
-              expect.objectContaining({ custom_id: 'sh:r:v:a:_:1:10:selected-id' }),
+              expect.objectContaining({
+                custom_id: 'sh:r:v:a:_:1:10:selected-id',
+                options: expect.arrayContaining([
+                  expect.objectContaining({ value: 'deerling-winter', default: true }),
+                  expect.objectContaining({ value: 'deerling-spring', default: false }),
+                ]),
+              }),
             ]),
           }),
         ]),

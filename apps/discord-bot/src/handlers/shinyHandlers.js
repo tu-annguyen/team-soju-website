@@ -224,7 +224,9 @@ async function ensureDefaultVariantForShiny(shiny, variantSelection) {
   }
 
   const currentVariant = normalizeVariantSlug(shiny.variants);
-  if (currentVariant === variantSelection.defaultEntry.value) {
+  const hasSelectableCurrentVariant = variantSelection.entries.some(entry => entry.value === currentVariant);
+
+  if (hasSelectableCurrentVariant) {
     return shiny;
   }
 
