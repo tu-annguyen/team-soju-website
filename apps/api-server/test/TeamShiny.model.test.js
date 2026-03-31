@@ -84,6 +84,7 @@ describe('TeamShiny model', () => {
     const result = await TeamShiny.create({
       national_number: 25,
       pokemon: 'pikachu',
+      variants: 'pikachu',
       original_trainer: 'uuid-1',
       catch_date: new Date().toISOString().split('T')[0],
       encounter_type: 'horde',
@@ -101,8 +102,8 @@ describe('TeamShiny model', () => {
 
     expect(mockQuery).toHaveBeenCalled();
     const [, params] = mockQuery.mock.calls[0];
-    expect(params[18]).toBe('Sold');
-    expect(params[19]).toBe(true);
+    expect(params[20]).toBe('Sold');
+    expect(params[21]).toBe(true);
     expect(result).toEqual(updated);
   });
 
@@ -114,8 +115,21 @@ describe('TeamShiny model', () => {
 
     expect(mockQuery).toHaveBeenCalled();
     const [, params] = mockQuery.mock.calls[0];
-    expect(params[20]).toBeNull();
-    expect(params[21]).toBe(true);
+    expect(params[22]).toBeNull();
+    expect(params[23]).toBe(true);
+    expect(result).toEqual(updated);
+  });
+
+  it('update can replace variants explicitly', async () => {
+    const updated = { id: 1, pokemon: 'basculin', variants: 'basculin-blue-striped' };
+    mockQuery.mockResolvedValue({ rows: [updated] });
+
+    const result = await TeamShiny.update(1, { variants: 'basculin-blue-striped' });
+
+    expect(mockQuery).toHaveBeenCalled();
+    const [, params] = mockQuery.mock.calls[0];
+    expect(params[3]).toBe('basculin-blue-striped');
+    expect(params[4]).toBe(true);
     expect(result).toEqual(updated);
   });
 

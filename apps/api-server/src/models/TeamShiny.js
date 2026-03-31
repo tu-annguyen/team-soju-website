@@ -106,6 +106,7 @@ class TeamShiny {
     const {
       national_number,
       pokemon,
+      variants = null,
       original_trainer,
       catch_date,
       total_encounters = 0,
@@ -128,15 +129,15 @@ class TeamShiny {
 
     const result = await pool.query(`
       INSERT INTO team_shinies (
-        national_number, pokemon, original_trainer, catch_date, total_encounters,
+        national_number, pokemon, variants, original_trainer, catch_date, total_encounters,
         species_encounters, encounter_type, location, 
         nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
         iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
       RETURNING id
     `, [
-      national_number, pokemon, original_trainer, catch_date, total_encounters,
+      national_number, pokemon, variants, original_trainer, catch_date, total_encounters,
       species_encounters, encounter_type, location, 
       nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
       iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes
@@ -150,6 +151,7 @@ class TeamShiny {
     const {
       national_number,
       pokemon,
+      variants,
       catch_date,
       total_encounters,
       species_encounters,
@@ -173,27 +175,29 @@ class TeamShiny {
       UPDATE team_shinies 
       SET national_number = COALESCE($2, national_number),
           pokemon = COALESCE($3, pokemon),
-          catch_date = COALESCE($4, catch_date),
-          total_encounters = COALESCE($5, total_encounters),
-          species_encounters = COALESCE($6, species_encounters),
-          encounter_type = COALESCE($7, encounter_type),
-          location = COALESCE($8, location),
-          nature = COALESCE($9, nature),
-          iv_hp = COALESCE($10, iv_hp),
-          iv_attack = COALESCE($11, iv_attack),
-          iv_defense = COALESCE($12, iv_defense),
-          iv_sp_attack = COALESCE($13, iv_sp_attack),
-          iv_sp_defense = COALESCE($14, iv_sp_defense),
-          iv_speed = COALESCE($15, iv_speed),
-          is_secret = COALESCE($16, is_secret),
-          is_alpha = COALESCE($17, is_alpha),
-          screenshot_url = COALESCE($18, screenshot_url),
-          status = CASE WHEN $20 THEN $19 ELSE status END,
-          notes = CASE WHEN $22 THEN $21 ELSE notes END
+          variants = CASE WHEN $5 THEN $4 ELSE variants END,
+          catch_date = COALESCE($6, catch_date),
+          total_encounters = COALESCE($7, total_encounters),
+          species_encounters = COALESCE($8, species_encounters),
+          encounter_type = COALESCE($9, encounter_type),
+          location = COALESCE($10, location),
+          nature = COALESCE($11, nature),
+          iv_hp = COALESCE($12, iv_hp),
+          iv_attack = COALESCE($13, iv_attack),
+          iv_defense = COALESCE($14, iv_defense),
+          iv_sp_attack = COALESCE($15, iv_sp_attack),
+          iv_sp_defense = COALESCE($16, iv_sp_defense),
+          iv_speed = COALESCE($17, iv_speed),
+          is_secret = COALESCE($18, is_secret),
+          is_alpha = COALESCE($19, is_alpha),
+          screenshot_url = COALESCE($20, screenshot_url),
+          status = CASE WHEN $22 THEN $21 ELSE status END,
+          notes = CASE WHEN $24 THEN $23 ELSE notes END
       WHERE id = $1
       RETURNING *
     `, [
-      id, national_number, pokemon, catch_date, total_encounters, species_encounters,
+      id, national_number, pokemon, variants, Object.prototype.hasOwnProperty.call(shinyData, 'variants'),
+      catch_date, total_encounters, species_encounters,
       encounter_type, location, nature, 
       iv_hp, iv_attack, iv_defense, iv_sp_attack, iv_sp_defense, iv_speed,
       is_secret, is_alpha, screenshot_url, status, Object.prototype.hasOwnProperty.call(shinyData, 'status'),

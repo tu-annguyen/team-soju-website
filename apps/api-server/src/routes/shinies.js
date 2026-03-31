@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const Joi = require('joi');
 const path = require('path');
-const { capitalize, getNationalNumber, getSpriteUrl, greyscale } = require('@team-soju/utils');
+const { capitalize, getNationalNumber, getSpriteUrl, greyscale, getPokemonVariants } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
 const { parseMobileStatsPanel } = require('../utils/mobileStatsParser');
@@ -35,6 +35,35 @@ const ENCOUNTER_TYPE_CHOICES = [
 ];
 
 const SHINY_STATUS_CHOICES = ['Owned', 'Sold', 'Fled', 'Died', 'Bred'];
+
+function normalizeVariantName(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+async function enrichShinyPayloadWithVariants(payload) {
+  const hasPokemon = Boolean(payload?.pokemon);
+  const pokemon = hasPokemon ? normalizeVariantName(payload.pokemon) : undefined;
+  const hasExplicitVariant = Object.prototype.hasOwnProperty.call(payload || {}, 'variants');
+  const normalizedVariant = hasExplicitVariant ? normalizeVariantName(payload.variants) : null;
+
+  const nextPayload = {
+    ...payload,
+    ...(hasPokemon ? { pokemon } : {}),
+    ...(hasExplicitVariant ? { variants: normalizedVariant } : {}),
+  };
+
+  if (!hasPokemon) {
+    return nextPayload;
+  }
+
+  const variantData = await getPokemonVariants(pokemon);
+
+  return {
+    ...nextPayload,
+    variants: normalizedVariant || pokemon,
+    national_number: nextPayload.national_number ?? variantData?.national_number ?? null,
+  };
+}
 
 function loadOcrDependencies() {
   try {
@@ -229,6 +258,7 @@ async function notifyScreenshotCallback(callbackUrl, payload) {
 const shinySchema = Joi.object({
   national_number: Joi.number().integer().min(1).max(1010).required(),
   pokemon: Joi.string().max(50).required(),
+  variants: Joi.string().trim().lowercase().max(50).optional(),
   original_trainer: Joi.string().uuid().required(),
   catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   total_encounters: Joi.number().integer().min(0).default(0),
@@ -252,6 +282,7 @@ const shinySchema = Joi.object({
 const updateShinySchema = Joi.object({
   national_number: Joi.number().integer().min(1).max(1010).optional(),
   pokemon: Joi.string().max(50).optional(),
+  variants: Joi.string().trim().lowercase().max(50).optional(),
   original_trainer: Joi.string().uuid().optional(),
   catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
   total_encounters: Joi.number().integer().min(0).optional(),
@@ -963,7 +994,8 @@ async function createShinyFromScreenshotValue(value) {
       throw error;
     }
 
-    const nationalNumber = await getNationalNumber(mergedParsed.name);
+    const variantData = await getPokemonVariants(mergedParsed.name);
+    const nationalNumber = variantData?.national_number ?? await getNationalNumber(mergedParsed.name);
     if (!nationalNumber) {
       const error = new Error(`Could not find national number for Pokemon "${mergedParsed.name}"`);
       error.status = 404;
@@ -974,6 +1006,7 @@ async function createShinyFromScreenshotValue(value) {
     const shiny = await TeamShiny.create({
       national_number: nationalNumber,
       pokemon: mergedParsed.name,
+      variants: normalizeVariantName(mergedParsed.name),
       original_trainer: trainer.id,
       catch_date: mergedParsed.date,
       encounter_type: value.encounter_type,
@@ -1300,7 +1333,7 @@ router.post('/', authenticateBot, async (req, res) => {
       });
     }
 
-    const shiny = await TeamShiny.create(value);
+    const shiny = await TeamShiny.create(await enrichShinyPayloadWithVariants(value));
     res.status(201).json({
       success: true,
       data: shiny,
@@ -1333,7 +1366,7 @@ router.put('/:id', authenticateBot, async (req, res) => {
       });
     }
 
-    const shiny = await TeamShiny.update(req.params.id, value);
+    const shiny = await TeamShiny.update(req.params.id, await enrichShinyPayloadWithVariants(value));
     if (!shiny) {
       return res.status(404).json({
         success: false,
