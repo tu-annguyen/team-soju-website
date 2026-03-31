@@ -31,7 +31,7 @@ const MAX_SHINY_SELECT_OPTIONS = 25;
 const MAX_VARIANT_SELECT_OPTIONS = 25;
 const COMPONENT_PREFIX = 'sh';
 const MODAL_PREFIX = 'shm';
-const VARIANT_CHOICES = [
+const SPECIAL_CHOICES = [
   { name: 'Standard', value: 'standard' },
   { name: 'Secret Shiny', value: 'secret' },
   { name: 'Shiny Alpha', value: 'alpha' },
@@ -200,12 +200,13 @@ async function getVariantSelectionConfig(pokemonName) {
   };
 }
 
-function buildVariantSelectorRow(shinyId, variantSelection, selectedVariant) {
+function buildVariantSelectorRow(shinyId, variantSelection, selectedVariant, state = null) {
   const selected = normalizeVariantSlug(selectedVariant) || variantSelection.defaultEntry.value;
+  const customIdState = state || { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId };
 
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
-      .setCustomId(buildCustomId('r', 'v', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }))
+      .setCustomId(buildCustomId('r', 'v', customIdState))
       .setPlaceholder('Select Variant')
       .setMinValues(1)
       .setMaxValues(1)
@@ -381,7 +382,7 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
       shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
       shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
       shiny.is_alpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
-      shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
+      shiny.nature ? { name: 'Nature', value: capitalize(shiny.nature), inline: true } : null,
       encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
       buildIvString(shiny) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: buildIvString(shiny).replace(/,/g, '/'), inline: false } : null,
     ].filter(Boolean)
@@ -517,7 +518,29 @@ function parseEncounterInput(input) {
   return updates;
 }
 
+function normalizeNatureInput(input) {
+  if (!input) return null;
+
+  const trimmed = String(input).trim();
+  if (!trimmed) return null;
+
+  const matchedNature = NATURE_CHOICES.find(choice => {
+    const value = typeof choice === 'string' ? choice : choice.value;
+    return String(value || '').toLowerCase() === trimmed.toLowerCase();
+  });
+  if (!matchedNature) {
+    const allowedValues = NATURE_CHOICES.map(choice => typeof choice === 'string' ? choice : choice.value);
+    throw new Error(`Nature must be one of: ${allowedValues.join(', ')}.`);
+  }
+
+  return String(typeof matchedNature === 'string' ? matchedNature : matchedNature.value).toLowerCase();
+}
+
 function buildChoiceOptions(choices, currentValue) {
+  const normalizedCurrentValue = typeof currentValue === 'string'
+    ? currentValue.toLowerCase()
+    : currentValue;
+
   return choices.map(choice => {
     const normalizedChoice = typeof choice === 'string'
       ? { name: capitalize(choice.replace(/_/g, ' ')), value: choice }
@@ -526,7 +549,7 @@ function buildChoiceOptions(choices, currentValue) {
     return {
       label: normalizedChoice.name,
       value: normalizedChoice.value,
-      default: normalizedChoice.value === currentValue,
+      default: String(normalizedChoice.value).toLowerCase() === normalizedCurrentValue,
     };
   });
 }
@@ -561,11 +584,11 @@ function buildEditModal(shiny) {
     ),
     new ActionRowBuilder().addComponents(
       new TextInputBuilder()
-        .setCustomId('encounters')
-        .setLabel('Encounters (total,species)')
+        .setCustomId('nature')
+        .setLabel('Nature')
         .setStyle(TextInputStyle.Short)
         .setRequired(false)
-        .setValue(`${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`)
+        .setValue(shiny.nature || '')
     ),
     new ActionRowBuilder().addComponents(
       new TextInputBuilder()
@@ -574,6 +597,14 @@ function buildEditModal(shiny) {
         .setStyle(TextInputStyle.Short)
         .setRequired(false)
         .setValue(buildIvString(shiny))
+    ),
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('encounters')
+        .setLabel('Encounters (total,species)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setValue(`${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`)
     ),
   ];
 
@@ -585,10 +616,13 @@ function buildEditModal(shiny) {
 async function buildEditControlsPayload(interaction, state, content = null) {
   const shiny = await fetchShinyById(state.shinyId);
   const payload = await buildShinyDisplayPayload(shiny, `Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
+  const variantSelection = await getVariantSelectionConfig(shiny.pokemon || shiny.pokemon_name);
   payload.content = content || [
-    'Use "Edit Text Fields" for pokemon, catch date, encounters, and IVs.',
+    variantSelection
+      ? 'Use "Edit Text Fields" for pokemon, catch date, nature, encounters, and IVs.'
+      : 'Use "Edit Text Fields" for pokemon, catch date, encounters, and IVs.',
   ].join('\n');
-  payload.components = [
+  const components = [
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('e', 't', state))
@@ -597,21 +631,27 @@ async function buildEditControlsPayload(interaction, state, content = null) {
         .setMaxValues(1)
         .addOptions(buildChoiceOptions(ENCOUNTER_TYPE_CHOICES, shiny.encounter_type))
     ),
-    new ActionRowBuilder().addComponents(
+    ...(!variantSelection ? [new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('e', 'n', state))
         .setPlaceholder('Nature')
         .setMinValues(1)
         .setMaxValues(1)
         .addOptions(buildChoiceOptions(NATURE_CHOICES, shiny.nature))
-    ),
+    )] : []),
+    ...(variantSelection ? [buildVariantSelectorRow(
+      shiny.id,
+      variantSelection,
+      shiny.variants,
+      state
+    )] : []),
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('e', 'v', state))
         .setPlaceholder('Variant')
         .setMinValues(1)
         .setMaxValues(1)
-        .addOptions(buildChoiceOptions(VARIANT_CHOICES, getVariantValue(shiny)))
+        .addOptions(buildChoiceOptions(SPECIAL_CHOICES, getVariantValue(shiny)))
     ),
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -632,6 +672,7 @@ async function buildEditControlsPayload(interaction, state, content = null) {
         .setStyle(ButtonStyle.Secondary)
     ),
   ];
+  payload.components = components;
   return payload;
 }
 
@@ -1261,8 +1302,9 @@ async function handleShinyEditModal(interaction) {
 
     const pokemon = interaction.fields.getTextInputValue('pokemon')?.trim();
     const catchDate = interaction.fields.getTextInputValue('catch_date')?.trim();
-    const encounters = interaction.fields.getTextInputValue('encounters')?.trim();
-    const ivs = interaction.fields.getTextInputValue('ivs')?.trim();
+  const nature = interaction.fields.getTextInputValue('nature')?.trim();
+  const ivs = interaction.fields.getTextInputValue('ivs')?.trim();
+  const encounters = interaction.fields.getTextInputValue('encounters')?.trim();
 
     const updates = {};
 
@@ -1277,8 +1319,9 @@ async function handleShinyEditModal(interaction) {
     }
 
     if (catchDate) updates.catch_date = catchDate;
-    if (encounters) Object.assign(updates, parseEncounterInput(encounters));
+    if (nature) updates.nature = normalizeNatureInput(nature);
     if (ivs) Object.assign(updates, parseIvInput(ivs));
+    if (encounters) Object.assign(updates, parseEncounterInput(encounters));
 
     if (Object.keys(updates).length === 0) {
       await interaction.reply({ content: 'No updates provided.', flags: MessageFlags.Ephemeral });

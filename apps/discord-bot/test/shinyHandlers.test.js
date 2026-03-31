@@ -137,8 +137,9 @@ describe('shinyHandlers', () => {
       data: {
         data: {
           id: 'selected-id',
-          pokemon: 'pikachu',
-          pokemon_name: 'Pikachu',
+          pokemon: 'deerling',
+          pokemon_name: 'Deerling',
+          variants: 'deerling-winter',
           trainer_name: 'T1',
           encounter_type: 'x5_horde',
           total_encounters: 1234,
@@ -152,24 +153,72 @@ describe('shinyHandlers', () => {
         },
       },
     });
+    getPokemonVariants.mockResolvedValue({
+      variants: ['deerling-spring', 'deerling-summer', 'deerling-autumn', 'deerling-winter'],
+      entries: [
+        { value: 'deerling-spring', label: 'spring', is_default: true },
+        { value: 'deerling-summer', label: 'summer', is_default: false },
+        { value: 'deerling-autumn', label: 'autumn', is_default: false },
+        { value: 'deerling-winter', label: 'winter', is_default: false },
+      ],
+    });
 
     await handleShinyComponent(interaction);
 
     expect(interaction.update).toHaveBeenCalledWith(
       expect.objectContaining({
+        content: 'Use "Edit Text Fields" for pokemon, catch date, nature, encounters, and IVs.',
         embeds: expect.any(Array),
         components: expect.arrayContaining([
           expect.objectContaining({
             components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:t:a:_:1:10:selected-id' })]),
           }),
           expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:n:a:_:1:10:selected-id' })]),
+            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:r:v:a:_:1:10:selected-id' })]),
           }),
           expect.objectContaining({
             components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:v:a:_:1:10:selected-id' })]),
           }),
           expect.objectContaining({
             components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:f:a:_:1:10:selected-id' })]),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it('keeps the nature dropdown in edit controls when the pokemon has no variants', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:a:e:a:_:1:10:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          variants: 'pikachu',
+          trainer_name: 'T1',
+          encounter_type: 'x5_horde',
+          nature: 'Bold',
+        },
+      },
+    });
+    getPokemonVariants.mockResolvedValue({
+      variants: ['pikachu'],
+      entries: [{ value: 'pikachu', label: 'pikachu', is_default: true }],
+    });
+
+    await handleShinyComponent(interaction);
+
+    expect(interaction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:n:a:_:1:10:selected-id' })]),
           }),
         ]),
       })
@@ -207,9 +256,10 @@ describe('shinyHandlers', () => {
 
     expect(interaction.showModal).toHaveBeenCalled();
     const modal = interaction.showModal.mock.calls[0][0].toJSON();
-    expect(modal.components).toHaveLength(4);
+    expect(modal.components).toHaveLength(5);
     expect(modal.components.some(row => row.components.some(component => component.custom_id === 'pokemon'))).toBe(true);
     expect(modal.components.some(row => row.components.some(component => component.custom_id === 'encounters'))).toBe(true);
+    expect(modal.components.some(row => row.components.some(component => component.custom_id === 'nature'))).toBe(true);
     expect(modal.components.find(row => row.components[0].custom_id === 'encounters').components[0].value).toBe('1234,567');
     expect(modal.components.find(row => row.components[0].custom_id === 'ivs').components[0].value).toBe('1,2,3,4,5,6');
   });
@@ -289,8 +339,9 @@ describe('shinyHandlers', () => {
         getTextInputValue: jest.fn((name) => ({
           pokemon: 'pikachu',
           catch_date: '2026-01-01',
-          encounters: '10,5',
+          nature: ' bold ',
           ivs: '1,2,3,4,5,6',
+          encounters: '10,5',
         }[name] || '')),
       },
       member: { roles: { cache: [{ name: 'Champion' }] } },
@@ -333,6 +384,7 @@ describe('shinyHandlers', () => {
         species_encounters: 5,
         iv_hp: 1,
         iv_speed: 6,
+        nature: 'bold',
       }),
       expect.any(Object)
     );
