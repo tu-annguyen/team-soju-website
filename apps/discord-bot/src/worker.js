@@ -12,6 +12,7 @@ const {
   getCommandRequiredRoles,
 } = require('./utils');
 const {
+  enhanceAsyncScreenshotPayload,
   handleShinyComponent,
   handleShinyEditModal,
   isShinyComponent,
@@ -276,6 +277,7 @@ async function handleScreenshotResultCallback(request, env = process.env) {
   }
 
   const payload = JSON.parse(body);
+  payload.payload = await enhanceAsyncScreenshotPayload(payload.payload);
   await patchDiscordInteractionOriginal({
     applicationId: payload.application_id,
     interactionToken: payload.interaction_token,

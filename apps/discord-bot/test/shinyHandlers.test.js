@@ -10,13 +10,16 @@ jest.mock('@team-soju/utils', () => ({
     const normalized = String(value || '').trim();
     return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
   }),
-  getPokemonNationalNumber: jest.fn().mockResolvedValue(1),
+  getNationalNumber: jest.fn().mockResolvedValue(1),
   getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
+  getPokemonVariants: jest.fn(),
 }));
 
 const fetchClient = require('../src/fetchClient');
+const { getPokemonVariants, getSpriteUrl } = require('@team-soju/utils');
 const localUtils = require('../src/utils');
 const {
+  enhanceAsyncScreenshotPayload,
   handleAddShiny,
   handleAddShinyScreenshot,
   handleFailShiny,
@@ -38,6 +41,11 @@ describe('shinyHandlers', () => {
     fetchClient.post.mockReset();
     fetchClient.put.mockReset();
     fetchClient.delete.mockReset();
+    getSpriteUrl.mockResolvedValue('https://example.com/sprite.gif');
+    getPokemonVariants.mockResolvedValue({
+      variants: ['dratini'],
+      entries: [{ value: 'dratini', label: 'dratini', is_default: true }],
+    });
     validateSojuTrainerIGNSpy.mockResolvedValue({ valid: true });
   });
 
@@ -130,8 +138,9 @@ describe('shinyHandlers', () => {
       data: {
         data: {
           id: 'selected-id',
-          pokemon: 'pikachu',
-          pokemon_name: 'Pikachu',
+          pokemon: 'deerling',
+          pokemon_name: 'Deerling',
+          variants: 'deerling-winter',
           trainer_name: 'T1',
           encounter_type: 'x5_horde',
           total_encounters: 1234,
@@ -145,24 +154,72 @@ describe('shinyHandlers', () => {
         },
       },
     });
+    getPokemonVariants.mockResolvedValue({
+      variants: ['deerling-spring', 'deerling-summer', 'deerling-autumn', 'deerling-winter'],
+      entries: [
+        { value: 'deerling-spring', label: 'spring', is_default: true },
+        { value: 'deerling-summer', label: 'summer', is_default: false },
+        { value: 'deerling-autumn', label: 'autumn', is_default: false },
+        { value: 'deerling-winter', label: 'winter', is_default: false },
+      ],
+    });
 
     await handleShinyComponent(interaction);
 
     expect(interaction.update).toHaveBeenCalledWith(
       expect.objectContaining({
+        content: 'Use "Edit Text Fields" for pokemon, catch date, nature, encounters, and IVs.',
         embeds: expect.any(Array),
         components: expect.arrayContaining([
           expect.objectContaining({
             components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:t:a:_:1:10:selected-id' })]),
           }),
           expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:n:a:_:1:10:selected-id' })]),
+            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:r:v:a:_:1:10:selected-id' })]),
           }),
           expect.objectContaining({
             components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:v:a:_:1:10:selected-id' })]),
           }),
           expect.objectContaining({
             components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:f:a:_:1:10:selected-id' })]),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it('keeps the nature dropdown in edit controls when the pokemon has no variants', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:a:e:a:_:1:10:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          variants: 'pikachu',
+          trainer_name: 'T1',
+          encounter_type: 'x5_horde',
+          nature: 'Bold',
+        },
+      },
+    });
+    getPokemonVariants.mockResolvedValue({
+      variants: ['pikachu'],
+      entries: [{ value: 'pikachu', label: 'pikachu', is_default: true }],
+    });
+
+    await handleShinyComponent(interaction);
+
+    expect(interaction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:n:a:_:1:10:selected-id' })]),
           }),
         ]),
       })
@@ -200,9 +257,10 @@ describe('shinyHandlers', () => {
 
     expect(interaction.showModal).toHaveBeenCalled();
     const modal = interaction.showModal.mock.calls[0][0].toJSON();
-    expect(modal.components).toHaveLength(4);
+    expect(modal.components).toHaveLength(5);
     expect(modal.components.some(row => row.components.some(component => component.custom_id === 'pokemon'))).toBe(true);
     expect(modal.components.some(row => row.components.some(component => component.custom_id === 'encounters'))).toBe(true);
+    expect(modal.components.some(row => row.components.some(component => component.custom_id === 'nature'))).toBe(true);
     expect(modal.components.find(row => row.components[0].custom_id === 'encounters').components[0].value).toBe('1234,567');
     expect(modal.components.find(row => row.components[0].custom_id === 'ivs').components[0].value).toBe('1,2,3,4,5,6');
   });
@@ -282,8 +340,9 @@ describe('shinyHandlers', () => {
         getTextInputValue: jest.fn((name) => ({
           pokemon: 'pikachu',
           catch_date: '2026-01-01',
-          encounters: '10,5',
+          nature: ' bold ',
           ivs: '1,2,3,4,5,6',
+          encounters: '10,5',
         }[name] || '')),
       },
       member: { roles: { cache: [{ name: 'Champion' }] } },
@@ -326,6 +385,7 @@ describe('shinyHandlers', () => {
         species_encounters: 5,
         iv_hp: 1,
         iv_speed: 6,
+        nature: 'bold',
       }),
       expect.any(Object)
     );
@@ -333,6 +393,93 @@ describe('shinyHandlers', () => {
       expect.objectContaining({
         embeds: expect.any(Array),
         flags: MessageFlags.Ephemeral,
+      })
+    );
+  });
+
+  it('updates the shiny variant from the post-add dropdown', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:r:v:a:_:1:10:selected-id',
+      values: ['deerling-winter'],
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    getPokemonVariants.mockResolvedValue({
+      variants: ['deerling-spring', 'deerling-summer', 'deerling-autumn', 'deerling-winter'],
+      entries: [
+        { value: 'deerling-spring', label: 'spring', is_default: true },
+        { value: 'deerling-summer', label: 'summer', is_default: false },
+        { value: 'deerling-autumn', label: 'autumn', is_default: false },
+        { value: 'deerling-winter', label: 'winter', is_default: false },
+      ],
+    });
+    getSpriteUrl.mockImplementation(async (pokemonId, options = {}) => `https://example.com/${options.variant || pokemonId}.gif`);
+
+    fetchClient.get
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            pokemon: 'deerling',
+            variants: 'deerling-spring',
+            trainer_name: 'T1',
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            pokemon: 'deerling',
+            pokemon_name: 'Deerling',
+            variants: 'deerling-winter',
+            national_number: 585,
+            trainer_name: 'T1',
+            status: 'Owned',
+            encounter_type: 'x5_horde',
+          },
+        },
+      });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          variants: 'deerling-winter',
+        },
+      },
+    });
+
+    await handleShinyComponent(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      { variants: 'deerling-winter' },
+      expect.any(Object)
+    );
+    expect(interaction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'Shiny updated.',
+        embeds: [
+          expect.objectContaining({
+            data: expect.objectContaining({
+              thumbnail: { url: 'https://example.com/deerling-winter.gif' },
+            }),
+          }),
+        ],
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({
+                custom_id: 'sh:r:v:a:_:1:10:selected-id',
+                options: expect.arrayContaining([
+                  expect.objectContaining({ value: 'deerling-winter', default: true }),
+                  expect.objectContaining({ value: 'deerling-spring', default: false }),
+                ]),
+              }),
+            ]),
+          }),
+        ]),
       })
     );
   });
@@ -406,6 +553,73 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('adds a variant selector after addshiny and defaults to the is_default form', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'addshiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: {
+        trainer: 'testtrainer',
+        pokemon: 'deerling',
+        encounter_type: '5x Horde',
+      },
+    });
+
+    getPokemonVariants.mockResolvedValue({
+      variants: ['deerling-spring', 'deerling-summer', 'deerling-autumn', 'deerling-winter'],
+      entries: [
+        { value: 'deerling-spring', label: 'spring', is_default: true },
+        { value: 'deerling-summer', label: 'summer', is_default: false },
+        { value: 'deerling-autumn', label: 'autumn', is_default: false },
+        { value: 'deerling-winter', label: 'winter', is_default: false },
+      ],
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: { data: { id: 'trainer-id', ign: 'testtrainer' } },
+    });
+    fetchClient.post.mockResolvedValue({
+      data: {
+        data: {
+          id: 'created-shiny-id',
+          pokemon: 'deerling',
+          variants: 'deerling',
+          national_number: 585,
+          trainer_name: 'testtrainer',
+          catch_date: '2026-01-15',
+          encounter_type: 'x5_horde',
+        },
+      },
+    });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'created-shiny-id',
+          pokemon: 'deerling',
+          variants: 'deerling-spring',
+          national_number: 585,
+          trainer_name: 'testtrainer',
+          catch_date: '2026-01-15',
+          encounter_type: 'x5_horde',
+        },
+      },
+    });
+
+    await handleAddShiny(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/created-shiny-id'),
+      { variants: 'deerling-spring' },
+      expect.any(Object)
+    );
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.components[0].components[0].custom_id).toBe('sh:r:v:a:_:1:10:created-shiny-id');
+    expect(payload.components[0].components[0].options).toEqual(expect.arrayContaining([
+      expect.objectContaining({ value: 'deerling-spring', default: true }),
+      expect.objectContaining({ value: 'deerling-winter', default: false }),
+    ]));
+  });
+
   it('queues addshinyscreenshot work and replies with a processing message', async () => {
     const interaction = createMockInteraction({
       commandName: 'addshinyscreenshot',
@@ -448,6 +662,57 @@ describe('shinyHandlers', () => {
         content: expect.stringContaining('ss-123'),
       })
     );
+  });
+
+  it('adds a variant selector to async screenshot success payloads', async () => {
+    getPokemonVariants.mockResolvedValue({
+      variants: ['basculin-red-striped', 'basculin-blue-striped'],
+      entries: [
+        { value: 'basculin-red-striped', label: 'red-striped', is_default: true },
+        { value: 'basculin-blue-striped', label: 'blue-striped', is_default: false },
+      ],
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'basculin',
+          variants: 'basculin',
+          national_number: 550,
+          trainer_name: 'T1',
+        },
+      },
+    });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'basculin',
+          variants: 'basculin-red-striped',
+          national_number: 550,
+          trainer_name: 'T1',
+        },
+      },
+    });
+
+    const payload = await enhanceAsyncScreenshotPayload({
+      embeds: [{ footer: { text: 'Shiny ID: selected-id' } }],
+      components: [
+        {
+          components: [
+            { custom_id: 'sh:a:v:a:_:1:10:selected-id' },
+          ],
+        },
+      ],
+    });
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      { variants: 'basculin-red-striped' },
+      expect.any(Object)
+    );
+    expect(payload.components[0].components[0].custom_id).toBe('sh:r:v:a:_:1:10:selected-id');
   });
 
   it('tells the user the original message will be updated after screenshot OCR finishes', async () => {
@@ -516,6 +781,33 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('uses the shiny variant when fetching the normal sprite', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'shiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { id: 'selected-id' },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'wormadam',
+          pokemon_name: 'Wormadam',
+          variants: 'wormadam-sandy',
+          trainer_name: 'T1',
+          national_number: 413,
+        },
+      },
+    });
+
+    await handleGetShiny(interaction);
+
+    expect(getPokemonVariants).not.toHaveBeenCalledWith('wormadam-sandy');
+    const { getSpriteUrl } = require('@team-soju/utils');
+    expect(getSpriteUrl).toHaveBeenCalledWith(413, { variant: 'wormadam-sandy' });
+  });
+
   it('shows the delete success embed for delete interaction', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:a:d:a:_:1:10:selected-id',
@@ -559,6 +851,7 @@ describe('shinyHandlers', () => {
           id: 'selected-id',
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
+          variants: 'pikachu',
           national_number: 25,
           trainer_name: 'T1',
           catch_date: '2026-01-01',
@@ -572,6 +865,7 @@ describe('shinyHandlers', () => {
           id: 'selected-id',
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
+          variants: 'pikachu',
           national_number: 25,
           trainer_name: 'T1',
           catch_date: '2026-01-01',
@@ -607,6 +901,7 @@ describe('shinyHandlers', () => {
           id: 'selected-id',
           pokemon: 'pikachu',
           pokemon_name: 'Pikachu',
+          variants: 'pikachu',
           trainer_name: 'T1',
           national_number: 25,
           status: 'Sold',
@@ -619,6 +914,7 @@ describe('shinyHandlers', () => {
     const payload = interaction.editReply.mock.calls[0][0];
     expect(payload.embeds[0].data.color).toBe(0x757575);
     expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
+    expect(payload.embeds[0].data.thumbnail.url).toContain('variant=pikachu');
   });
 
   it('updates status to a non-owned value from edit controls and re-renders with greyscaled thumbnail', async () => {

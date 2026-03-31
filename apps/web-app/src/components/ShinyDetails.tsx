@@ -6,6 +6,7 @@ interface ShinyDetailsProps {
   open: boolean;
   onClose: () => void;
   pokemonName: string;
+  variantName?: string | null;
   trainerName: string;
   imageUrl: string;
   isFailed: boolean;
@@ -60,6 +61,7 @@ const ShinyDetails = ({
   open,
   onClose,
   pokemonName,
+  variantName,
   trainerName,
   imageUrl,
   isFailed,
@@ -79,7 +81,7 @@ const ShinyDetails = ({
   ivSpDefense,
   ivSpeed,
 }: ShinyDetailsProps) => {
-  const detailsPokemonName = formatPokemonDetailsName(pokemonName);
+  const detailsPokemonName = formatPokemonDetailsName(pokemonName, variantName);
 
   useEffect(() => {
     if (!open) {

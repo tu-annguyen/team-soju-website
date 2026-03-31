@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import ShinyDetails from './ShinyDetails';
-import { formatPokemonCardName } from '../utils/pokemonName';
+import { formatPokemonCardName, formatVariantLabel } from '../utils/pokemonName';
 
 interface ShinyCardProps {
   pokemonName: string;
+  variantName?: string | null;
   trainerName: string;
   teamName?: string;
   imageUrl: string;
@@ -47,6 +48,7 @@ const attributeIcons: Record<string, string> = {
 
 const ShinyCard = ({
   pokemonName,
+  variantName,
   trainerName,
   teamName,
   imageUrl,
@@ -72,6 +74,7 @@ const ShinyCard = ({
 }: ShinyCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
   const cardPokemonName = formatPokemonCardName(pokemonName);
+  const cardVariantName = formatVariantLabel(variantName, pokemonName);
   const resolvedPoints = points ?? pointValue;
 
   if (variant === 'compact') {
@@ -121,6 +124,12 @@ const ShinyCard = ({
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             {cardPokemonName}
           </h3>
+
+          {cardVariantName && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {cardVariantName}
+            </p>
+          )}
 
           <p className="text-xs text-gray-600 dark:text-gray-400">
             {trainerName}
@@ -206,6 +215,7 @@ const ShinyCard = ({
         open={showDetails}
         onClose={() => setShowDetails(false)}
         pokemonName={pokemonName}
+        variantName={variantName}
         trainerName={trainerName}
         imageUrl={imageUrl}
         isFailed={isFailed}

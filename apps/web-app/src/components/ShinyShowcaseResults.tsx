@@ -10,6 +10,7 @@ interface ShinyShowcaseResultsProps {
 
 export interface ShinyPokemon {
   name: string;
+  variantName: string | null;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -45,7 +46,8 @@ const ShinyShowcaseResults = ({
   const filteredTrainers = shinyData.filter(trainer => 
     trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     trainer.shinies.some(shiny => 
-      shiny.name.toLowerCase().includes(searchTerm.toLowerCase())
+      shiny.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (shiny.variantName || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
   
@@ -98,6 +100,7 @@ const ShinyShowcaseResults = ({
                   <ShinyCard
                     key={`${trainer.name}-${shiny.name}-${index}`}
                     pokemonName={shiny.name}
+                    variantName={shiny.variantName}
                     trainerName={trainer.name}
                     imageUrl={shiny.imageUrl}
                     isFailed={shiny.isFailed}

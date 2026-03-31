@@ -4,19 +4,19 @@ function load() {
   return (modPromise ??= import('./pokeapi.mjs'));
 }
 
+async function getSpriteUrl(nameOrId, options) {
+  const mod = await load();
+  return mod.getSpriteUrl(nameOrId, options);
+}
+
 async function getNationalNumber(nameOrId) {
   const mod = await load();
   return mod.getNationalNumber(nameOrId);
 }
 
-async function getSpriteUrl(nameOrId) {
+async function getPokemonVariants(nameOrId) {
   const mod = await load();
-  return mod.getSpriteUrl(nameOrId);
+  return mod.getPokemonVariants(nameOrId);
 }
 
-async function getPokemonNationalNumber(nameOrId) {
-  const mod = await load();
-  return mod.getPokemonNationalNumber(nameOrId);
-}
-
-module.exports = { getNationalNumber, getPokemonNationalNumber, getSpriteUrl };
+module.exports = { getNationalNumber, getSpriteUrl, getPokemonVariants };

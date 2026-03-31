@@ -17,7 +17,7 @@ const {
 const fetchClient = require('../fetchClient');
 const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, SHINY_STATUS_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { capitalize, getPokemonNationalNumber, getSpriteUrl } = require('@team-soju/utils');
+const { capitalize, getNationalNumber, getSpriteUrl, getPokemonVariants } = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL || apiBaseUrl;
@@ -28,9 +28,10 @@ const SHINY_MANAGER_ROLES = ['Soju', 'Elite 4', 'Champion'];
 const SHINY_STAFF_ROLES = ['Elite 4', 'Champion'];
 const PAGE_SIZE_FALLBACK = 10;
 const MAX_SHINY_SELECT_OPTIONS = 25;
+const MAX_VARIANT_SELECT_OPTIONS = 25;
 const COMPONENT_PREFIX = 'sh';
 const MODAL_PREFIX = 'shm';
-const VARIANT_CHOICES = [
+const SPECIAL_CHOICES = [
   { name: 'Standard', value: 'standard' },
   { name: 'Secret Shiny', value: 'secret' },
   { name: 'Shiny Alpha', value: 'alpha' },
@@ -42,16 +43,34 @@ function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
 }
 
+function normalizeVariantSlug(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function humanizeVariantLabel(value) {
+  return String(value || '')
+    .trim()
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function isFailedShiny(shiny) {
   return String(shiny?.status || 'Owned').trim() !== 'Owned';
 }
 
-function getGreyscaleSpriteUrl(nationalNumber) {
+function getGreyscaleSpriteUrl(nationalNumber, variant = null) {
   if (!nationalNumber || !publicApiBaseUrl.startsWith('http')) return null;
   if (!process.env.PUBLIC_API_BASE_URL && /:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(publicApiBaseUrl)) {
     return null;
   }
-  return `${publicApiBaseUrl}/shinies/sprites/${nationalNumber}/greyscale.gif`;
+  const params = new URLSearchParams();
+  if (variant) {
+    params.set('variant', normalizeVariantSlug(variant));
+  }
+  const query = params.toString();
+  return `${publicApiBaseUrl}/shinies/sprites/${nationalNumber}/greyscale.gif${query ? `?${query}` : ''}`;
 }
 
 function normalizeEncounterType(value) {
@@ -143,6 +162,103 @@ function formatShinySummary(shiny) {
   }
 
   return pieces.join(' • ');
+}
+
+function removeVariantSelectorRows(components = []) {
+  return components.filter(row => !row?.components?.some(component =>
+    String(component?.custom_id || '').startsWith(`${COMPONENT_PREFIX}:r:v:`)
+  ));
+}
+
+function extractShinyIdFromPayload(payload = {}) {
+  for (const row of payload.components || []) {
+    for (const component of row.components || []) {
+      const customId = String(component?.custom_id || '');
+      if (!customId.startsWith(`${COMPONENT_PREFIX}:`)) continue;
+      try {
+        const parsed = parseCustomId(customId);
+        if (parsed.shinyId) return parsed.shinyId;
+      } catch (error) {
+        continue;
+      }
+    }
+  }
+
+  const footerText = payload.embeds?.[0]?.footer?.text;
+  const match = String(footerText || '').match(/Shiny ID:\s*(.+)$/i);
+  return match?.[1] || null;
+}
+
+async function getVariantSelectionConfig(pokemonName) {
+  const variantData = await getPokemonVariants(pokemonName);
+  const entries = (variantData?.entries || [])
+    .filter(entry => entry?.value)
+    .slice(0, MAX_VARIANT_SELECT_OPTIONS);
+
+  if (entries.length <= 1) {
+    return null;
+  }
+
+  return {
+    entries,
+    defaultEntry: entries.find(entry => entry.is_default) || entries[0],
+  };
+}
+
+function buildVariantSelectorRow(shinyId, variantSelection, selectedVariant, state = null) {
+  const selected = normalizeVariantSlug(selectedVariant) || variantSelection.defaultEntry.value;
+  const customIdState = state || { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId };
+
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(buildCustomId('r', 'v', customIdState))
+      .setPlaceholder('Select Variant')
+      .setMinValues(1)
+      .setMaxValues(1)
+      .addOptions(variantSelection.entries.map(entry => ({
+        label: humanizeVariantLabel(entry.label || entry.value).slice(0, 100),
+        value: entry.value,
+        default: entry.value === selected,
+        ...(entry.is_default ? { description: 'Default form' } : {}),
+      })))
+  );
+}
+
+async function ensureDefaultVariantForShiny(shiny, variantSelection) {
+  if (!variantSelection?.defaultEntry?.value || !shiny?.id) {
+    return shiny;
+  }
+
+  const currentVariant = normalizeVariantSlug(shiny.variants);
+  const hasSelectableCurrentVariant = variantSelection.entries.some(entry => entry.value === currentVariant);
+
+  if (hasSelectableCurrentVariant) {
+    return shiny;
+  }
+
+  return updateShinyRecord(shiny.id, { variants: variantSelection.defaultEntry.value });
+}
+
+async function attachVariantSelectorToPayload(payload, shiny) {
+  const variantSelection = await getVariantSelectionConfig(shiny?.pokemon || shiny?.pokemon_name);
+  if (!variantSelection) {
+    return { payload, shiny };
+  }
+
+  const updatedShiny = await ensureDefaultVariantForShiny(shiny, variantSelection);
+  const selectedVariant = normalizeVariantSlug(updatedShiny?.variants) || variantSelection.defaultEntry.value;
+  const variantRow = buildVariantSelectorRow(updatedShiny.id, variantSelection, selectedVariant);
+
+  return {
+    shiny: updatedShiny,
+    payload: {
+      ...payload,
+      components: [
+        variantRow,
+        ...removeVariantSelectorRows(payload.components || []),
+      ],
+    },
+  };
 }
 
 function buildShiniesEmbed(shinies, page, pageSize, title) {
@@ -247,8 +363,8 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   if (shiny.national_number) {
     try {
       spriteUrl = isFailedShiny(shiny)
-        ? getGreyscaleSpriteUrl(shiny.national_number)
-        : await getSpriteUrl(shiny.national_number);
+        ? getGreyscaleSpriteUrl(shiny.national_number, shiny.variants)
+        : await getSpriteUrl(shiny.national_number, { variant: shiny.variants });
     } catch (error) {
       console.error('Error fetching sprite URL:', error.message);
     }
@@ -265,12 +381,13 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   embed.addFields(
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     ...[
+      shiny.variants ? { name: 'Variant', value: humanizeVariantLabel(shiny.variants), inline: true } : null,
       { name: 'Status', value: getStatusValue(shiny), inline: true },
       shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
       shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
       shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
       shiny.is_alpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
-      shiny.nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
+      shiny.nature ? { name: 'Nature', value: capitalize(shiny.nature), inline: true } : null,
       encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
       buildIvString(shiny) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: buildIvString(shiny).replace(/,/g, '/'), inline: false } : null,
     ].filter(Boolean)
@@ -290,7 +407,7 @@ async function buildFailedShinyPayload(shiny) {
     .setFooter({ text: `Shiny ID: ${shiny.id}` })
     .setTimestamp();
 
-  const spriteUrl = getGreyscaleSpriteUrl(shiny.national_number);
+  const spriteUrl = getGreyscaleSpriteUrl(shiny.national_number, shiny.variants);
   if (spriteUrl) {
     embed.setThumbnail(spriteUrl);
   }
@@ -406,7 +523,29 @@ function parseEncounterInput(input) {
   return updates;
 }
 
+function normalizeNatureInput(input) {
+  if (!input) return null;
+
+  const trimmed = String(input).trim();
+  if (!trimmed) return null;
+
+  const matchedNature = NATURE_CHOICES.find(choice => {
+    const value = typeof choice === 'string' ? choice : choice.value;
+    return String(value || '').toLowerCase() === trimmed.toLowerCase();
+  });
+  if (!matchedNature) {
+    const allowedValues = NATURE_CHOICES.map(choice => typeof choice === 'string' ? choice : choice.value);
+    throw new Error(`Nature must be one of: ${allowedValues.join(', ')}.`);
+  }
+
+  return String(typeof matchedNature === 'string' ? matchedNature : matchedNature.value).toLowerCase();
+}
+
 function buildChoiceOptions(choices, currentValue) {
+  const normalizedCurrentValue = typeof currentValue === 'string'
+    ? currentValue.toLowerCase()
+    : currentValue;
+
   return choices.map(choice => {
     const normalizedChoice = typeof choice === 'string'
       ? { name: capitalize(choice.replace(/_/g, ' ')), value: choice }
@@ -415,7 +554,7 @@ function buildChoiceOptions(choices, currentValue) {
     return {
       label: normalizedChoice.name,
       value: normalizedChoice.value,
-      default: normalizedChoice.value === currentValue,
+      default: String(normalizedChoice.value).toLowerCase() === normalizedCurrentValue,
     };
   });
 }
@@ -450,11 +589,11 @@ function buildEditModal(shiny) {
     ),
     new ActionRowBuilder().addComponents(
       new TextInputBuilder()
-        .setCustomId('encounters')
-        .setLabel('Encounters (total,species)')
+        .setCustomId('nature')
+        .setLabel('Nature')
         .setStyle(TextInputStyle.Short)
         .setRequired(false)
-        .setValue(`${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`)
+        .setValue(shiny.nature || '')
     ),
     new ActionRowBuilder().addComponents(
       new TextInputBuilder()
@@ -463,6 +602,14 @@ function buildEditModal(shiny) {
         .setStyle(TextInputStyle.Short)
         .setRequired(false)
         .setValue(buildIvString(shiny))
+    ),
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('encounters')
+        .setLabel('Encounters (total,species)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setValue(`${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`)
     ),
   ];
 
@@ -474,10 +621,13 @@ function buildEditModal(shiny) {
 async function buildEditControlsPayload(interaction, state, content = null) {
   const shiny = await fetchShinyById(state.shinyId);
   const payload = await buildShinyDisplayPayload(shiny, `Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
+  const variantSelection = await getVariantSelectionConfig(shiny.pokemon || shiny.pokemon_name);
   payload.content = content || [
-    'Use "Edit Text Fields" for pokemon, catch date, encounters, and IVs.',
+    variantSelection
+      ? 'Use "Edit Text Fields" for pokemon, catch date, nature, encounters, and IVs.'
+      : 'Use "Edit Text Fields" for pokemon, catch date, encounters, and IVs.',
   ].join('\n');
-  payload.components = [
+  const components = [
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('e', 't', state))
@@ -486,21 +636,27 @@ async function buildEditControlsPayload(interaction, state, content = null) {
         .setMaxValues(1)
         .addOptions(buildChoiceOptions(ENCOUNTER_TYPE_CHOICES, shiny.encounter_type))
     ),
-    new ActionRowBuilder().addComponents(
+    ...(!variantSelection ? [new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('e', 'n', state))
         .setPlaceholder('Nature')
         .setMinValues(1)
         .setMaxValues(1)
         .addOptions(buildChoiceOptions(NATURE_CHOICES, shiny.nature))
-    ),
+    )] : []),
+    ...(variantSelection ? [buildVariantSelectorRow(
+      shiny.id,
+      variantSelection,
+      shiny.variants,
+      state
+    )] : []),
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(buildCustomId('e', 'v', state))
         .setPlaceholder('Variant')
         .setMinValues(1)
         .setMaxValues(1)
-        .addOptions(buildChoiceOptions(VARIANT_CHOICES, getVariantValue(shiny)))
+        .addOptions(buildChoiceOptions(SPECIAL_CHOICES, getVariantValue(shiny)))
     ),
     new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -521,12 +677,41 @@ async function buildEditControlsPayload(interaction, state, content = null) {
         .setStyle(ButtonStyle.Secondary)
     ),
   ];
+  payload.components = components;
   return payload;
 }
 
 async function updateShinyRecord(shinyId, updates) {
   const response = await fetchClient.put(`${apiBaseUrl}/shinies/${shinyId}`, updates, getAuthHeaders());
   return response.data.data;
+}
+
+async function buildVariantSelectionUpdatePayload(shinyId, content = 'Shiny updated.') {
+  const shiny = await fetchShinyById(shinyId);
+  const payload = await buildShinyDisplayPayload(shiny, 'Shiny Updated Successfully');
+  payload.content = content;
+  payload.components = buildStandaloneActionRow(shinyId, {
+    includeView: true,
+    includeEdit: true,
+    includeDelete: true,
+  });
+
+  return (await attachVariantSelectorToPayload(payload, shiny)).payload;
+}
+
+async function enhanceAsyncScreenshotPayload(payload) {
+  const shinyId = extractShinyIdFromPayload(payload);
+  if (!shinyId) {
+    return payload;
+  }
+
+  try {
+    const shiny = await fetchShinyById(shinyId);
+    return (await attachVariantSelectorToPayload(payload, shiny)).payload;
+  } catch (error) {
+    console.error('Error attaching variant selector to screenshot payload:', error.message);
+    return payload;
+  }
 }
 
 async function deleteShinyRecord(shinyId) {
@@ -740,7 +925,7 @@ async function handleAddShiny(interaction) {
 
   let nationalNumber;
   try {
-    nationalNumber = await getPokemonNationalNumber(pokemon);
+    nationalNumber = await getNationalNumber(pokemon);
   } catch (error) {
     console.error('Error fetching national number:', error.message);
   }
@@ -811,7 +996,7 @@ async function handleAddShiny(interaction) {
       includeDelete: true,
     });
 
-    await interaction.editReply(payload);
+    await interaction.editReply((await attachVariantSelectorToPayload(payload, shiny)).payload);
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
   }
@@ -879,7 +1064,7 @@ async function handleEditShiny(interaction) {
     const updates = {};
     if (pokemon) {
       updates.pokemon = pokemon;
-      const nationalNumber = await getPokemonNationalNumber(pokemon);
+      const nationalNumber = await getNationalNumber(pokemon);
       if (!nationalNumber) {
         await interaction.editReply({ content: `Error: Could not find national number for Pokemon "${pokemon}"` });
         return;
@@ -1024,6 +1209,19 @@ async function handleShinyComponent(interaction) {
       return;
     }
 
+    if (state.kind === 'r' && state.action === 'v') {
+      await requireOwnedShiny(interaction, state.shinyId);
+      const selectedVariant = normalizeVariantSlug(interaction.values[0]);
+
+      if (!selectedVariant) {
+        throw new Error('Select a variant first.');
+      }
+
+      await updateShinyRecord(state.shinyId, { variants: selectedVariant });
+      await interaction.update(await buildVariantSelectionUpdatePayload(state.shinyId));
+      return;
+    }
+
     if (state.kind === 'e') {
       await requireOwnedShiny(interaction, state.shinyId);
 
@@ -1109,14 +1307,15 @@ async function handleShinyEditModal(interaction) {
 
     const pokemon = interaction.fields.getTextInputValue('pokemon')?.trim();
     const catchDate = interaction.fields.getTextInputValue('catch_date')?.trim();
-    const encounters = interaction.fields.getTextInputValue('encounters')?.trim();
-    const ivs = interaction.fields.getTextInputValue('ivs')?.trim();
+  const nature = interaction.fields.getTextInputValue('nature')?.trim();
+  const ivs = interaction.fields.getTextInputValue('ivs')?.trim();
+  const encounters = interaction.fields.getTextInputValue('encounters')?.trim();
 
     const updates = {};
 
     if (pokemon) {
       updates.pokemon = pokemon;
-      const nationalNumber = await getPokemonNationalNumber(pokemon);
+      const nationalNumber = await getNationalNumber(pokemon);
       if (!nationalNumber) {
         await interaction.reply({ content: `Error: Could not find national number for Pokemon "${pokemon}"`, flags: MessageFlags.Ephemeral });
         return;
@@ -1125,8 +1324,9 @@ async function handleShinyEditModal(interaction) {
     }
 
     if (catchDate) updates.catch_date = catchDate;
-    if (encounters) Object.assign(updates, parseEncounterInput(encounters));
+    if (nature) updates.nature = normalizeNatureInput(nature);
     if (ivs) Object.assign(updates, parseIvInput(ivs));
+    if (encounters) Object.assign(updates, parseEncounterInput(encounters));
 
     if (Object.keys(updates).length === 0) {
       await interaction.reply({ content: 'No updates provided.', flags: MessageFlags.Ephemeral });
@@ -1146,6 +1346,7 @@ function isShinyEditModal(customId) {
 }
 
 module.exports = {
+  enhanceAsyncScreenshotPayload,
   handleAddShiny,
   handleAddShinyScreenshot,
   handleDeleteShiny,

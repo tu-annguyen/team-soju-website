@@ -17,7 +17,9 @@ interface ActivityLogProps {
 
 interface ShinyFromAPI {
   id: string;
+  national_number?: number | null;
   pokemon_name: string;
+  variants?: string | null;
   trainer_name: string;
   encounter_type: string | null;
   is_secret: boolean;
@@ -33,6 +35,7 @@ export interface EventShiny {
   id: string;
   pokemonName: string;
   name: string;
+  variantName: string | null;
   trainerName: string;
   imageUrl: string;
   isFailed: boolean;
@@ -65,8 +68,9 @@ const transformAPIDataToEvent = async (
         id: shiny.id,
         pokemonName: shiny.pokemon_name,
         name: capitalize(shiny.pokemon_name),
+        variantName: shiny.variants ?? null,
         trainerName: shiny.trainer_name,
-        imageUrl: getShinySpriteUrl(shiny.pokemon_name),
+        imageUrl: getShinySpriteUrl(shiny.national_number, shiny.variants),
         isFailed,
         isSecret: shiny.is_secret,
         isAlpha: shiny.is_alpha,
@@ -210,6 +214,7 @@ const ActivityLog = ({
                 key={`${shiny.trainerName}-${shiny.name}-${index}`}
                 variant="compact"
                 pokemonName={shiny.name}
+                variantName={shiny.variantName}
                 trainerName={shiny.trainerName}
                 teamName={teamNameByTrainer.get(shiny.trainerName.trim().toLowerCase())}
                 imageUrl={shiny.imageUrl}

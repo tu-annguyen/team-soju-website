@@ -1,13 +1,32 @@
 const request = require('supertest');
+const jwt = require('jsonwebtoken');
+
+jest.mock('@team-soju/utils', () => ({
+  capitalize: jest.fn(value => value),
+  getNationalNumber: jest.fn(),
+  getSpriteUrl: jest.fn(),
+  greyscale: jest.fn(),
+  getPokemonVariants: jest.fn(),
+}));
+
+process.env.JWT_SECRET = 'test-secret';
 
 const app = require('../src/server');
 const TeamShiny = require('../src/models/TeamShiny');
+const { getPokemonVariants } = require('@team-soju/utils');
 
 jest.mock('../src/models/TeamShiny');
+
+const BOT_TOKEN = jwt.sign({ type: 'discord_bot' }, process.env.JWT_SECRET);
+const withBotAuth = (testRequest) => testRequest.set('Authorization', `Bearer ${BOT_TOKEN}`);
 
 describe('Shinies routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    getPokemonVariants.mockResolvedValue({
+      national_number: null,
+      variants: [],
+    });
   });
 
   describe('GET /api/shinies', () => {
@@ -117,9 +136,9 @@ describe('Shinies routes', () => {
 
   describe('POST /api/shinies', () => {
     it('validates body and returns 400 on invalid payload', async () => {
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .post('/api/shinies')
-        .send({});
+        .send({}));
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
@@ -129,21 +148,31 @@ describe('Shinies routes', () => {
     it('creates shiny on valid payload', async () => {
       const created = { id: 1, pokemon: 'pikachu' };
       TeamShiny.create.mockResolvedValue(created);
+      getPokemonVariants.mockResolvedValue({
+        national_number: 25,
+        variants: ['pikachu'],
+      });
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .post('/api/shinies')
         .send({
           national_number: 25,
           pokemon: 'pikachu',
+          variants: 'pikachu',
           original_trainer: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
           catch_date: new Date().toISOString().split('T')[0],
           encounter_type: 'x5_horde',
-        });
+        }));
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       expect(res.body.data).toEqual(created);
       expect(res.body.message).toBe('Shiny entry created successfully');
+      expect(TeamShiny.create).toHaveBeenCalledWith(expect.objectContaining({
+        pokemon: 'pikachu',
+        national_number: 25,
+        variants: 'pikachu',
+      }));
     });
 
     it('handles foreign key violations with 400', async () => {
@@ -151,7 +180,7 @@ describe('Shinies routes', () => {
       error.code = '23503';
       TeamShiny.create.mockRejectedValue(error);
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .post('/api/shinies')
         .send({
           national_number: 25,
@@ -159,7 +188,7 @@ describe('Shinies routes', () => {
           original_trainer: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
           catch_date: new Date().toISOString().split('T')[0],
           encounter_type: 'x5_horde',
-        });
+        }));
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
@@ -169,9 +198,9 @@ describe('Shinies routes', () => {
 
   describe('PUT /api/shinies/:id', () => {
     it('returns 400 for invalid body', async () => {
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .put('/api/shinies/1')
-        .send({ national_number: 0 }); // invalid
+        .send({ national_number: 0 })); // invalid
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
@@ -181,9 +210,9 @@ describe('Shinies routes', () => {
     it('returns 404 when updating non-existent shiny', async () => {
       TeamShiny.update.mockResolvedValue(null);
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .put('/api/shinies/999')
-        .send({ status: 'Sold' });
+        .send({ status: 'Sold' }));
 
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
@@ -193,29 +222,72 @@ describe('Shinies routes', () => {
     it('updates shiny when valid', async () => {
       const updated = { id: 1, pokemon: 'pikachu', status: 'Sold' };
       TeamShiny.update.mockResolvedValue(updated);
+      getPokemonVariants.mockResolvedValue({
+        national_number: 25,
+        variants: ['pikachu'],
+      });
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .put('/api/shinies/1')
-        .send({ status: 'Sold' });
+        .send({ status: 'Sold' }));
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data).toEqual(updated);
       expect(res.body.message).toBe('Shiny entry updated successfully');
+      expect(TeamShiny.update).toHaveBeenCalledWith('1', expect.objectContaining({
+        status: 'Sold',
+      }));
     });
 
     it('accepts shiny status updates', async () => {
       const updated = { id: 1, pokemon: 'pikachu', status: 'Owned' };
       TeamShiny.update.mockResolvedValue(updated);
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .put('/api/shinies/1')
-        .send({ status: 'Owned' });
+        .send({ status: 'Owned' }));
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(TeamShiny.update).toHaveBeenCalledWith('1', { status: 'Owned' });
       expect(res.body.data).toEqual(updated);
+    });
+
+    it('accepts variants updates', async () => {
+      const updated = { id: 1, pokemon: 'basculin', variants: 'basculin-blue-striped' };
+      TeamShiny.update.mockResolvedValue(updated);
+
+      const res = await withBotAuth(request(app)
+        .put('/api/shinies/1')
+        .send({ variants: 'basculin-blue-striped' }));
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(TeamShiny.update).toHaveBeenCalledWith('1', {
+        variants: 'basculin-blue-striped',
+      });
+      expect(res.body.data).toEqual(updated);
+    });
+
+    it('hydrates variants when pokemon changes without explicit variants', async () => {
+      const updated = { id: 1, pokemon: 'deerling', variants: 'deerling' };
+      TeamShiny.update.mockResolvedValue(updated);
+      getPokemonVariants.mockResolvedValue({
+        national_number: 585,
+        variants: ['deerling-spring', 'deerling-summer', 'deerling-autumn', 'deerling-winter'],
+      });
+
+      const res = await withBotAuth(request(app)
+        .put('/api/shinies/1')
+        .send({ pokemon: 'deerling' }));
+
+      expect(res.status).toBe(200);
+      expect(TeamShiny.update).toHaveBeenCalledWith('1', {
+        pokemon: 'deerling',
+        national_number: 585,
+        variants: 'deerling',
+      });
     });
   });
 
@@ -223,7 +295,7 @@ describe('Shinies routes', () => {
     it('returns 404 when shiny not found', async () => {
       TeamShiny.delete.mockResolvedValue(null);
 
-      const res = await request(app).delete('/api/shinies/999');
+      const res = await withBotAuth(request(app).delete('/api/shinies/999'));
 
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
@@ -233,7 +305,7 @@ describe('Shinies routes', () => {
     it('deletes shiny when found', async () => {
       TeamShiny.delete.mockResolvedValue({ id: 1 });
 
-      const res = await request(app).delete('/api/shinies/1');
+      const res = await withBotAuth(request(app).delete('/api/shinies/1'));
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);

@@ -32,6 +32,7 @@ async function greyscale(url) {
 }
 
 const tiers = require('./pokemon-tiers.json')
+const { buildAnimatedShinySpriteUrl } = require('./sprite-url.cjs');
 
 const TIER_POINTS = {
     'Tier 0': 30,
@@ -130,5 +131,6 @@ module.exports = {
   getPokemonTier,
   calculateShinyPoints,
   formatLocalDate,
+  buildAnimatedShinySpriteUrl,
   ...pokeapi
 };

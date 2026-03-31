@@ -96,7 +96,8 @@ describe('ShinyCard', () => {
 
     render(
       <ShinyCard
-        pokemonName="Basculin-red-striped"
+        pokemonName="Basculin"
+        variantName="basculin-red-striped"
         trainerName="Trainer"
         imageUrl="/basculin.png"
         isFailed={false}
@@ -108,12 +109,12 @@ describe('ShinyCard', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /Basculin-red-striped/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Basculin/i })).toBeInTheDocument();
     expect(screen.getByText('Basculin')).toBeInTheDocument();
-    expect(screen.queryByText('Basculin-red-striped')).not.toBeInTheDocument();
+    expect(screen.getByText('Red Striped')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Basculin-red-striped/i }));
+    await user.click(screen.getByRole('button', { name: /Basculin/i }));
 
-    expect(screen.getByRole('heading', { name: 'Basculin (red striped)' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Basculin (Red Striped)' })).toBeInTheDocument();
   });
 });
