@@ -14,6 +14,15 @@ const USEFUL_COMMANDS = [
   { name: 'addshinyscreenshot', description: 'Add a shiny using a screenshot' },
 ];
 
+function isTransientDiscordError(error) {
+  const status = error?.response?.status;
+  if (status === 429 || status >= 500) {
+    return true;
+  }
+
+  return /temporarily unavailable/i.test(String(error?.message || ''));
+}
+
 function getDiscordBotToken(interaction) {
   return interaction.env?.DISCORD_TOKEN || process.env.DISCORD_TOKEN;
 }
@@ -48,7 +57,16 @@ async function fetchRegisteredCommands(interaction) {
 }
 
 async function buildUsefulCommandsField(interaction) {
-  const commands = await fetchRegisteredCommands(interaction);
+  let commands = [];
+
+  try {
+    commands = await fetchRegisteredCommands(interaction);
+  } catch (error) {
+    if (!isTransientDiscordError(error)) {
+      throw error;
+    }
+  }
+
   const commandIdsByName = new Map();
 
   commands.forEach(command => {

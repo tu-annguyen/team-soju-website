@@ -53,4 +53,66 @@ describe('DiscordInteractionContext', () => {
       data: { flags: MessageFlags.Ephemeral },
     });
   });
+
+  it('retries transient Discord API failures before succeeding', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        headers: {
+          get: jest.fn().mockReturnValue(null),
+        },
+        text: jest.fn().mockResolvedValue('upstream connect error'),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        headers: {
+          get: jest.fn().mockReturnValue(null),
+        },
+        text: jest.fn().mockResolvedValue('upstream connect error'),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: jest.fn().mockResolvedValue(''),
+      });
+
+    const interaction = new DiscordInteractionContext({
+      application_id: 'app-123',
+      token: 'interaction-token',
+      type: 2,
+      data: { name: 'addshiny' },
+      member: { user: { id: 'user-1' }, roles: [] },
+    }, { DISCORD_CLIENT_ID: 'env-app-id' });
+
+    await interaction.deferReply();
+    await interaction.reply({ content: 'Finished.' });
+
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('throws a cleaner message when Discord remains unavailable', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      headers: {
+        get: jest.fn().mockReturnValue(null),
+      },
+      text: jest.fn().mockResolvedValue('upstream connect error'),
+    });
+
+    const interaction = new DiscordInteractionContext({
+      application_id: 'app-123',
+      token: 'interaction-token',
+      type: 2,
+      data: { name: 'addshiny' },
+      member: { user: { id: 'user-1' }, roles: [] },
+    }, { DISCORD_CLIENT_ID: 'env-app-id' });
+
+    await interaction.deferReply();
+
+    await expect(interaction.reply({ content: 'Finished.' })).rejects.toThrow(
+      'Discord is temporarily unavailable (503), so the bot could not send its response. Please try again in a moment.'
+    );
+  });
 });

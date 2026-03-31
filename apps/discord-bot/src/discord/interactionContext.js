@@ -1,5 +1,9 @@
 const { toJSON } = require('./api');
 
+const DISCORD_API_BASE_URL = 'https://discord.com/api/v10';
+const DISCORD_API_MAX_RETRIES = 3;
+const DEFAULT_RETRY_DELAY_MS = 250;
+
 const InteractionResponseType = {
   Pong: 1,
   ChannelMessageWithSource: 4,
@@ -78,6 +82,23 @@ function parseDiscordApiError(body) {
   } catch (_error) {
     return null;
   }
+}
+
+function isRetryableDiscordStatus(status) {
+  return status === 429 || status >= 500;
+}
+
+function getRetryDelayMs(response, attempt) {
+  const retryAfterSeconds = Number.parseFloat(response?.headers?.get?.('retry-after') || '');
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+
+  return DEFAULT_RETRY_DELAY_MS * attempt;
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 class DiscordInteractionContext {
@@ -198,15 +219,31 @@ class DiscordInteractionContext {
   }
 
   async discordRequest(path, init) {
-    const response = await fetch(`https://discord.com/api/v10${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-      },
-    });
+    for (let attempt = 1; attempt <= DISCORD_API_MAX_RETRIES; attempt += 1) {
+      let response;
 
-    if (!response.ok) {
+      try {
+        response = await fetch(`${DISCORD_API_BASE_URL}${path}`, {
+          ...init,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(init.headers || {}),
+          },
+        });
+      } catch (error) {
+        if (attempt < DISCORD_API_MAX_RETRIES) {
+          await wait(DEFAULT_RETRY_DELAY_MS * attempt);
+          continue;
+        }
+
+        throw new Error(
+          'Discord is temporarily unavailable, so the bot could not send its response. Please try again in a moment.'
+        );
+      }
+      if (response.ok) {
+        return;
+      }
+
       const body = await response.text();
       const parsedError = parseDiscordApiError(body);
       if (parsedError?.code === 10015) {
@@ -215,6 +252,18 @@ class DiscordInteractionContext {
           'This usually means the interaction token expired before a follow-up/edit was sent.'
         );
       }
+
+      if (isRetryableDiscordStatus(response.status) && attempt < DISCORD_API_MAX_RETRIES) {
+        await wait(getRetryDelayMs(response, attempt));
+        continue;
+      }
+
+      if (isRetryableDiscordStatus(response.status)) {
+        throw new Error(
+          `Discord is temporarily unavailable (${response.status}), so the bot could not send its response. Please try again in a moment.`
+        );
+      }
+
       throw new Error(`Discord API request failed (${response.status}): ${body}`);
     }
   }
