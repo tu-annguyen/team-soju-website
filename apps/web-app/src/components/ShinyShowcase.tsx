@@ -86,6 +86,7 @@ const ENCOUNTER_TYPE_CHOICES = [
   { label: 'Horde (Legacy)', value: 'horde' },
   { label: 'Single', value: 'single' },
   { label: 'Fishing', value: 'fishing' },
+  { label: 'Raid Den', value: 'raid_den' },
   { label: 'Safari', value: 'safari' },
   { label: 'Egg', value: 'egg' },
   { label: 'Swarm', value: 'swarm' },

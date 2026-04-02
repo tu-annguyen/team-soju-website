@@ -38,6 +38,7 @@ const attributeIcons: Record<string, string> = {
   fossil: '/images/fossil.png',
   rock_smash: '/images/rock.png',
   headbutt: '/images/headbutt.png',
+  raid_den: '/images/raid-den.png',
   gift: '/images/gift.png',
   alpha: '/images/alpha.png',
 };
@@ -47,6 +48,7 @@ const formatLabel = (value: string) =>
     x5_horde: '5x Horde',
     x3_horde: '3x Horde',
     horde: 'Horde',
+    raid_den: 'Raid Den',
   }[value] || value
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

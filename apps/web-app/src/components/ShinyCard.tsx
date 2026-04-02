@@ -42,6 +42,7 @@ const attributeIcons: Record<string, string> = {
   fossil: '/images/fossil.png',
   rock_smash: '/images/rock.png',
   headbutt: '/images/headbutt.png',
+  raid_den: '/images/raid-den.png',
   gift: '/images/gift.png',
   alpha: '/images/alpha.png',
 };

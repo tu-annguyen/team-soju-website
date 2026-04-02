@@ -13,6 +13,7 @@ function formatEncounterType(value) {
     x5_horde: '5x Horde',
     x3_horde: '3x Horde',
     horde: 'Horde',
+    raid_den: 'Raid Den',
     mysterious_ball: 'Mysterious Ball',
     honey_tree: 'Honey Tree',
     rock_smash: 'Rock Smash',

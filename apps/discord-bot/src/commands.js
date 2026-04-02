@@ -27,6 +27,7 @@ const ENCOUNTER_TYPE_CHOICES = [
   { name: 'Fossil', value: 'fossil' },
   { name: 'Headbutt', value: 'headbutt' },
   { name: 'Mysterious Ball', value: 'mysterious_ball' },
+  { name: 'Raid Den', value: 'raid_den' },
   { name: 'Gift/Event', value: 'gift' },
   { name: 'Horde (Legacy)', value: 'horde' },
 ];
