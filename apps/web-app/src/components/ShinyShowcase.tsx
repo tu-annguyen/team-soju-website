@@ -168,24 +168,25 @@ const transformAPIDataToShowcase = async (
   // Transform to showcase format
   const trainers = await Promise.all(
     Array.from(trainerMap.entries()).map(async ([trainerName, trainerShinies]) => {
-      // Count unique OT shinies
-      let otCount = trainerShinies.length;
+      let otCount = 0;
       
       const shiniesWithUrls = await Promise.all(
         trainerShinies.map(async (shiny) => {
           const isFailed = (shiny.status ?? 'Owned') !== 'Owned';
-          if (isFailed) otCount--; // Don't count failed shinies as OT
+          const isGiftEvent = shiny.encounter_type === 'gift';
+          const countsTowardTotals = !isFailed && !isGiftEvent;
+          if (countsTowardTotals) otCount++;
           const isSecret = shiny.is_secret;
           const isAlpha = shiny.is_alpha;
           const encounterType = shiny.encounter_type || '';
           const tier = getPokemonTier(shiny.pokemon_name);
-          const pointValue = isFailed
-            ? 0
-            : calculateShinyPoints(shiny.pokemon_name, {
+          const pointValue = countsTowardTotals
+            ? calculateShinyPoints(shiny.pokemon_name, {
                 encounter_type: shiny.encounter_type,
                 is_secret: shiny.is_secret,
                 is_alpha: shiny.is_alpha,
-              });
+              })
+            : 0;
 
           return {
             id: shiny.id,

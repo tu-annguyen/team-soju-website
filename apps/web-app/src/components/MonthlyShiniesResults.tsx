@@ -41,7 +41,9 @@ const transformAPIDataToMonthly = async (
   shinies: ShinyFromAPI[]
 ): Promise<MonthlyShiny[]> => {
   const transformed = await Promise.all(
-    shinies.map(async (shiny) => {
+    shinies
+      .filter((shiny) => shiny.encounter_type !== 'gift')
+      .map(async (shiny) => {
       const isFailed = (shiny.status ?? 'Owned') !== 'Owned';
 
       return {
