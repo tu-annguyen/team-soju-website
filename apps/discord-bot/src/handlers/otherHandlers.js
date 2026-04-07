@@ -8,10 +8,10 @@ const fetchClient = require('../fetchClient');
 const DISCORD_API_BASE_URL = 'https://discord.com/api/v10';
 const SUPPORT_USER_ID = '272201126068092928';
 const USEFUL_COMMANDS = [
-  { name: 'shinies', description: 'List recent shinies' },
-  { name: 'myshinies', description: 'List your recent shinies with mobile-friendly actions' },
-  { name: 'addshiny', description: 'Add a new shiny catch' },
-  { name: 'addshinyscreenshot', description: 'Add a shiny using a screenshot' },
+  { name: 'myshinies', description: 'List your recent shinies with actions to view, edit, or delete' },
+  { name: 'shinies', description: "List the team's recent shinies" },
+  { name: 'addshiny', description: 'Manually add a shiny' },
+  { name: 'addshinyscreenshot', description: 'Add a shiny using an encounter tracker screenshot' },
 ];
 
 function isTransientDiscordError(error) {
