@@ -120,6 +120,7 @@ Point your Discord Interactions Endpoint URL at the deployed Worker URL.
 ## Commands
 
 ### Member Management
+Only Champions and Elite 4 can run these commands.
 
 #### `/addmember`
 Add a new team member to the roster.
@@ -182,6 +183,7 @@ Display information about a team member.
 ```
 
 ### Shiny Management
+Only Soju members can run these commands.
 
 #### `/addshiny`
 Record a new shiny Pokemon catch.
@@ -191,7 +193,8 @@ Record a new shiny Pokemon catch.
 - `pokemon` (required): Pokemon name
 - `pokedex_number` (required): National Pokedex number
 - `encounter_type` (required): How it was encountered
-- `catch_date` (required): Date of the catch (YYYY-MM-DD)
+- `catch_date` (optional): Date of the catch (YYYY-MM-DD) (default: today)
+- `status` (optional): Status of the shiny (`Owned`, `Sold`, `Fled`, `Died`, `Bred`)
 - `secret` (optional): Is this a secret shiny?
 - `total_encounters` (optional): Total encounters before catch
 - `specie_encounters` (optional): Species encounters before catch
@@ -204,7 +207,6 @@ Record a new shiny Pokemon catch.
 ```
 
 **Notable optional fields:**
-- `status`: Dropdown with `Owned`, `Sold`, `Fled`, `Died`, `Bred`
 
 #### `/addshinyscreenshot`
 Record a new shiny Pokemon catch with an uploaded screenshot.
@@ -279,8 +281,8 @@ List recent shiny catches with interactive pagination.
 - `trainer` (optional): Filter by trainer IGN
 - `limit` (optional): Page size (default: 10). Use buttons below the response to navigate between pages.
 
-Each page includes a selector for the visible shinies plus `View`, `Edit`, `Fail`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
-`View` is public. `Edit`, `Fail`, and `Delete` require `Soju`, `Elite 4`, or `Champion`. Only `Elite 4` and `Champion` can mutate shinies that are not their own.
+Each page includes a selector for the visible shinies plus `View`, `Edit`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
+`View` is public. `Edit` and `Delete` require `Soju`, `Elite 4`, or `Champion` role(s). Only `Elite 4` and `Champion` can mutate shinies that are not their own.
 
 **Example:**
 ```
@@ -289,10 +291,11 @@ Each page includes a selector for the visible shinies plus `View`, `Edit`, `Fail
 
 #### `/myshinies`
 List shinies for the Discord account linked to your member profile.
-This command requires `Soju`, `Elite 4`, or `Champion`.
 
 **Options:**
 - `limit` (optional): Page size (default: 10)
+
+Each page includes a selector for the visible shinies plus `View`, `Edit`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
 
 **Example:**
 ```
@@ -300,6 +303,7 @@ This command requires `Soju`, `Elite 4`, or `Champion`.
 ```
 
 ### Statistics
+These commands are open to the public.
 
 #### `/leaderboard`
 Show top trainers by shiny count.
