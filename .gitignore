@@ -36,3 +36,6 @@ pnpm-debug.log*
 
 #ignore Codex files
 .codex
+
+#ignore Wrangler files
+.wrangler
