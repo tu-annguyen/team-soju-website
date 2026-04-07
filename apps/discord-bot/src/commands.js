@@ -345,7 +345,9 @@ const COMMANDS = [
         .setRequired(false))
     .addIntegerOption(option =>
       option.setName('limit')
-        .setDescription('Number of results to show (default: 10)')
+        .setDescription('Number of results to show (1-25, default: 10)')
+        .setMinValue(1)
+        .setMaxValue(25)
         .setRequired(false)),
 
   new SlashCommandBuilder()
@@ -353,7 +355,9 @@ const COMMANDS = [
     .setDescription('List your recent shinies with mobile-friendly actions')
     .addIntegerOption(option =>
       option.setName('limit')
-        .setDescription('Number of results to show (default: 10)')
+        .setDescription('Number of results to show (1-25, default: 10)')
+        .setMinValue(1)
+        .setMaxValue(25)
         .setRequired(false)),
 
   new SlashCommandBuilder()

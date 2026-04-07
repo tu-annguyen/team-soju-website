@@ -103,6 +103,32 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('clamps oversized shiny list limits to 25 select options', async () => {
+    const interaction = createMockInteraction({
+      options: { trainer: 'tester', limit: 30 },
+    });
+
+    const shinyRows = Array.from({ length: 30 }, (_, index) => ({
+      id: String(index + 1),
+      pokemon_name: `Pokemon ${index + 1}`,
+      trainer_name: 'Tester',
+      catch_date: `2026-01-${String(30 - index).padStart(2, '0')}`,
+      total_encounters: index + 1,
+    }));
+
+    fetchClient.get
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id' } } })
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id', ign: 'tester' } } })
+      .mockResolvedValueOnce({ data: { data: shinyRows } });
+
+    await handleGetShinies(interaction);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+
+    expect(payload.components[1].components[0].options).toHaveLength(25);
+    expect(payload.embeds[0].data.footer.text).toBe('Page 1 of 2');
+  });
+
   it('updates the list when a shiny is selected', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:s:pick:a:_:1:10:_',

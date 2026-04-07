@@ -113,6 +113,15 @@ function getStatusValue(shiny) {
   return shiny?.status || 'Owned';
 }
 
+function normalizePageSize(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue < 1) {
+    return PAGE_SIZE_FALLBACK;
+  }
+
+  return Math.min(Math.floor(numericValue), MAX_SHINY_SELECT_OPTIONS);
+}
+
 function getMemberRoles(interaction) {
   return interaction.member?.roles?.cache || [];
 }
@@ -303,7 +312,7 @@ function buildCustomId(kind, action, state = {}) {
   const scope = encodeScope(state.scope);
   const trainerId = state.trainerId || '_';
   const page = state.page || 1;
-  const pageSize = state.pageSize || PAGE_SIZE_FALLBACK;
+  const pageSize = normalizePageSize(state.pageSize);
   const shinyId = state.shinyId || '_';
   return [COMPONENT_PREFIX, kind, action, scope, trainerId, page, pageSize, shinyId].join(':');
 }
@@ -320,7 +329,7 @@ function parseCustomId(customId) {
     scope: decodeScope(scopeCode),
     trainerId: trainerId === '_' ? null : trainerId,
     page: Number(page) || 1,
-    pageSize: Number(pageSize) || PAGE_SIZE_FALLBACK,
+    pageSize: normalizePageSize(pageSize),
     shinyId: shinyId === '_' ? null : shinyId,
   };
 }
@@ -858,17 +867,18 @@ async function buildListPayload(interaction, state, content = null) {
     return { content: content || 'No shinies found', embeds: [], components: [] };
   }
 
-  const page = clampPage(state.page, state.pageSize, shinies);
-  const selectedId = getSelectedShinyForPage(shinies, page, state.pageSize, state.shinyId);
-  const totalPages = Math.ceil(shinies.length / state.pageSize) || 1;
-  const startIndex = (page - 1) * state.pageSize;
-  const pageItems = shinies.slice(startIndex, startIndex + state.pageSize);
-  const normalizedState = { ...state, trainerId, page, shinyId: selectedId };
+  const pageSize = normalizePageSize(state.pageSize);
+  const page = clampPage(state.page, pageSize, shinies);
+  const selectedId = getSelectedShinyForPage(shinies, page, pageSize, state.shinyId);
+  const totalPages = Math.ceil(shinies.length / pageSize) || 1;
+  const startIndex = (page - 1) * pageSize;
+  const pageItems = shinies.slice(startIndex, startIndex + pageSize);
+  const normalizedState = { ...state, trainerId, page, pageSize, shinyId: selectedId };
   const allowMutation = hasAnyRole(interaction, SHINY_MANAGER_ROLES);
 
   return {
     content,
-    embeds: [buildShiniesEmbed(shinies, page, state.pageSize, title)],
+    embeds: [buildShiniesEmbed(shinies, page, pageSize, title)],
     components: [
       buildPaginationRow(page, totalPages, normalizedState),
       buildSelectRow(pageItems, normalizedState),
@@ -1159,7 +1169,7 @@ async function handleGetShinies(interaction) {
   await interaction.deferReply();
 
   const trainerIgn = interaction.options.getString('trainer');
-  const pageSize = interaction.options.getInteger('limit') || PAGE_SIZE_FALLBACK;
+  const pageSize = normalizePageSize(interaction.options.getInteger('limit'));
 
   try {
     const state = { scope: trainerIgn ? 'trainer' : 'all', page: 1, pageSize };
@@ -1178,7 +1188,7 @@ async function handleGetShinies(interaction) {
 async function handleGetMyShinies(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const pageSize = interaction.options.getInteger('limit') || PAGE_SIZE_FALLBACK;
+  const pageSize = normalizePageSize(interaction.options.getInteger('limit'));
 
   try {
     await interaction.editReply(await buildListPayload(interaction, {

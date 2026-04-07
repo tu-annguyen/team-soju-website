@@ -15,4 +15,34 @@ describe('commands', () => {
       required: false,
     }));
   });
+
+  it('caps /shinies limit at 25', () => {
+    const shinies = COMMANDS.find(command => command.toJSON().name === 'shinies');
+
+    expect(shinies).toBeDefined();
+
+    const limitOption = shinies.toJSON().options.find(option => option.name === 'limit');
+
+    expect(limitOption).toEqual(expect.objectContaining({
+      type: 4,
+      name: 'limit',
+      min_value: 1,
+      max_value: 25,
+    }));
+  });
+
+  it('caps /myshinies limit at 25', () => {
+    const myShinies = COMMANDS.find(command => command.toJSON().name === 'myshinies');
+
+    expect(myShinies).toBeDefined();
+
+    const limitOption = myShinies.toJSON().options.find(option => option.name === 'limit');
+
+    expect(limitOption).toEqual(expect.objectContaining({
+      type: 4,
+      name: 'limit',
+      min_value: 1,
+      max_value: 25,
+    }));
+  });
 });
