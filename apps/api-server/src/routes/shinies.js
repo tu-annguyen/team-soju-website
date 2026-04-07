@@ -37,6 +37,7 @@ const ENCOUNTER_TYPE_CHOICES = [
 
 const SHINY_STATUS_CHOICES = ['Owned', 'Sold', 'Fled', 'Died', 'Bred'];
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
+const SHINY_WARS_2025_RELEASE_DATE = '2025-07-11';
 
 function normalizePokemonRouteName(value) {
   return String(value || '').trim().toLowerCase();
@@ -357,6 +358,11 @@ function formatIsoDate(year, month, day) {
     String(month).padStart(2, '0'),
     String(day).padStart(2, '0'),
   ].join('-');
+}
+
+function isBeforeIsoDate(value, minimum) {
+  if (!value || !minimum) return false;
+  return value < minimum;
 }
 
 function scoreDateCandidate({ format, first, second, third, separator, index, text }) {
@@ -971,6 +977,10 @@ async function createShinyFromScreenshotValue(value) {
       const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
       mergedParsed.date = fallbackDate;
       notes.push(`Note: ambiguous date in screenshot. Used today's date ${fallbackDate}. Press **Edit** > **Edit Text Fields** to change.`);
+    }
+
+    if (isBeforeIsoDate(mergedParsed.date, SHINY_WARS_2025_RELEASE_DATE)) {
+      notes.push(`Warning: OCR read the screenshot date as ${mergedParsed.date}, which is before ${SHINY_WARS_2025_RELEASE_DATE}. Screenshots from the Encounter Tracker should only exist after the Shiny Wars 2025 update, so please double-check the date.`);
     }
 
     const validation = validateParsedData(mergedParsed);
