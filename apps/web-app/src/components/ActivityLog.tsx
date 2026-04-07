@@ -165,15 +165,30 @@ const ActivityLog = ({
     );
   }, [teamMembers, teamNames]);
 
+  const eligibleTrainerSet = useMemo(() => {
+    if (!teamMembers) {
+      return null;
+    }
+
+    return new Set(
+      Object.values(teamMembers)
+        .flat()
+        .map((member) => member.trim().toLowerCase())
+    );
+  }, [teamMembers]);
+
   const eligibleShinies = useMemo(
     () =>
       applyTeamSpeciesDuplicatePenalty(
         shinyData.filter((shiny) =>
-          eligiblePokemonSet.has(shiny.pokemonName.trim().toLowerCase())
+          eligiblePokemonSet.has(shiny.pokemonName.trim().toLowerCase()) &&
+          (eligibleTrainerSet
+            ? eligibleTrainerSet.has(shiny.trainerName.trim().toLowerCase())
+            : true)
         ),
         teamMembers
       ),
-    [eligiblePokemonSet, shinyData, teamMembers]
+    [eligiblePokemonSet, eligibleTrainerSet, shinyData, teamMembers]
   );
 
   useEffect(() => {
