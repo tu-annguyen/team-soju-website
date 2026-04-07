@@ -202,24 +202,39 @@ function buildShinyActionComponents(shinyId) {
   }];
 }
 
-function buildAsyncScreenshotSuccessPayload(shiny, notes = []) {
+function buildScreenshotNotesEmbed(notes = []) {
   const normalizedNotes = notes.filter(Boolean);
+  if (normalizedNotes.length === 0) return null;
 
   return {
-    ...(normalizedNotes.length > 0 ? { content: normalizedNotes.join('\n') } : {}),
-    embeds: [{
-      color: shiny.is_secret ? 0xFFD700 : 0x4CAF50,
-      title: `${shiny.is_secret ? 'Secret ' : ''}Shiny Added!`,
-      image: shiny.screenshot_url ? { url: shiny.screenshot_url } : undefined,
-      fields: [
-        { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Pokemon', value: `${capitalize(shiny.pokemon)} (#${shiny.national_number})`, inline: true },
-        { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true },
-        { name: 'Encounters', value: String(shiny.total_encounters || 0), inline: true },
-      ],
-      footer: { text: `Shiny ID: ${shiny.id}` },
-      timestamp: new Date().toISOString(),
-    }],
+    color: 0xFFB300,
+    title: 'Screenshot Parsing Warnings',
+    description: normalizedNotes.map((note) => `- ${note}`).join('\n').slice(0, 4096),
+  };
+}
+
+function buildAsyncScreenshotSuccessPayload(shiny, notes = []) {
+  const notesEmbed = buildScreenshotNotesEmbed(notes);
+  const embeds = [{
+    color: shiny.is_secret ? 0xFFD700 : 0x4CAF50,
+    title: `${shiny.is_secret ? 'Secret ' : ''}Shiny Added!`,
+    image: shiny.screenshot_url ? { url: shiny.screenshot_url } : undefined,
+    fields: [
+      { name: 'Trainer', value: shiny.trainer_name, inline: true },
+      { name: 'Pokemon', value: `${capitalize(shiny.pokemon)} (#${shiny.national_number})`, inline: true },
+      { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true },
+      { name: 'Encounters', value: String(shiny.total_encounters || 0), inline: true },
+    ],
+    footer: { text: `Shiny ID: ${shiny.id}` },
+    timestamp: new Date().toISOString(),
+  }];
+
+  if (notesEmbed) {
+    embeds.unshift(notesEmbed);
+  }
+
+  return {
+    embeds,
     components: buildShinyActionComponents(shiny.id),
   };
 }
@@ -976,11 +991,11 @@ async function createShinyFromScreenshotValue(value) {
     if (mergedParsed.dateWasAmbiguous) {
       const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
       mergedParsed.date = fallbackDate;
-      notes.push(`Note: ambiguous date in screenshot. Used today's date ${fallbackDate}. Press **Edit** > **Edit Text Fields** to change.`);
+      notes.push(`Ambiguous date was found in screenshot. Set caught date to today's date ${fallbackDate}. Select **Edit** > **Edit Text Fields** to change.`);
     }
 
     if (isBeforeIsoDate(mergedParsed.date, SHINY_WARS_2025_RELEASE_DATE)) {
-      notes.push(`Warning: OCR read the screenshot date as ${mergedParsed.date}, which is before ${SHINY_WARS_2025_RELEASE_DATE}. Screenshots from the Encounter Tracker should only exist after the Shiny Wars 2025 update, so please double-check the date.`);
+      notes.push(`The date was read as ${mergedParsed.date}, which is before ${SHINY_WARS_2025_RELEASE_DATE}. Screenshots from the Encounter Tracker should only exist after the Shiny Wars 2025 update, so please double-check the date.`);
     }
 
     const validation = validateParsedData(mergedParsed);
