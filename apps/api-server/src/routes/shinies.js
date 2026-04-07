@@ -213,7 +213,7 @@ function buildScreenshotNotesEmbed(notes = []) {
   };
 }
 
-function buildAsyncScreenshotSuccessPayload(shiny, notes = []) {
+function buildAsyncScreenshotSuccessPayload(shiny, notes = [], extractedFields = []) {
   const notesEmbed = buildScreenshotNotesEmbed(notes);
   const embeds = [{
     color: shiny.is_secret ? 0xFFD700 : 0x4CAF50,
@@ -223,7 +223,14 @@ function buildAsyncScreenshotSuccessPayload(shiny, notes = []) {
       { name: 'Trainer', value: shiny.trainer_name, inline: true },
       { name: 'Pokemon', value: `${capitalize(shiny.pokemon)} (#${shiny.national_number})`, inline: true },
       { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true },
-      { name: 'Encounters', value: String(shiny.total_encounters || 0), inline: true },
+      ...extractedFields
+        .filter(field => field?.name && field?.value)
+        .slice(0, 21)
+        .map((field) => ({
+          name: `${field.name}`,
+          value: field.value,
+          inline: field.inline !== false,
+        })),
     ],
     footer: { text: `Shiny ID: ${shiny.id}` },
     timestamp: new Date().toISOString(),
@@ -934,6 +941,66 @@ function mergeParsedStats(parsed, stats) {
   };
 }
 
+function formatExtractedEncounterValue(value) {
+  if (!Number.isInteger(value)) return null;
+  return value.toLocaleString();
+}
+
+function buildOcrExtractedFieldsSummary({ parsed, mergedParsed, trainer }) {
+  const extractedFields = [];
+
+  if (parsed.date) {
+    extractedFields.push({
+      name: 'Catch Date',
+      value: parsed.date,
+      inline: true,
+    });
+  }
+
+  if (mergedParsed.nature) {
+    extractedFields.push({
+      name: 'Nature',
+      value: mergedParsed.nature,
+      inline: true,
+    });
+  }
+
+  const totalEncounters = formatExtractedEncounterValue(mergedParsed.totalEncounters);
+  const speciesEncounters = formatExtractedEncounterValue(mergedParsed.speciesEncounters);
+  if (totalEncounters) {
+    if (speciesEncounters && parsed.name) {
+      extractedFields.push({
+        name: 'Encounters',
+        value: `${totalEncounters} Total (${speciesEncounters} ${parsed.name})`
+      })
+    } else {
+      extractedFields.push({
+        name: 'Encounters',
+        value: totalEncounters,
+        inline: true,
+      });
+    }
+  }
+
+  const ivs = [
+    mergedParsed.hp,
+    mergedParsed.atk,
+    mergedParsed.def,
+    mergedParsed.spa,
+    mergedParsed.spd,
+    mergedParsed.spe,
+  ];
+  if (ivs.every(value => Number.isInteger(value))) {
+    extractedFields.push({
+      name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)',
+      value: ivs.join('/'),
+      inline: false,
+    });
+  }
+
+  return extractedFields;
+}
+
 async function createShinyFromScreenshotValue(value) {
   let ocrWorker = null;
 
@@ -1062,6 +1129,7 @@ async function createShinyFromScreenshotValue(value) {
       ...(Number.isInteger(mergedParsed.spd) ? { iv_sp_defense: mergedParsed.spd } : {}),
       ...(Number.isInteger(mergedParsed.spe) ? { iv_speed: mergedParsed.spe } : {}),
     });
+    const extractedFields = buildOcrExtractedFieldsSummary({ parsed, mergedParsed, trainer });
 
     console.log('Saved Shiny Encounters', {
       parsed: {
@@ -1087,7 +1155,7 @@ async function createShinyFromScreenshotValue(value) {
       },
     });
 
-    return { shiny, ocrText, notes };
+    return { shiny, ocrText, notes, extractedFields };
   } finally {
     if (ocrWorker) {
       await ocrWorker.terminate().catch((terminateError) => {
@@ -1126,11 +1194,11 @@ async function processAsyncScreenshotQueue() {
       job.startedAt = new Date().toISOString();
 
       try {
-        const { shiny, notes } = await createShinyFromScreenshotValue(job.payload);
+        const { shiny, notes, extractedFields } = await createShinyFromScreenshotValue(job.payload);
         await notifyScreenshotCallback(job.payload.callback_url, {
           application_id: job.payload.discord_application_id,
           interaction_token: job.payload.discord_interaction_token,
-          payload: buildAsyncScreenshotSuccessPayload(shiny, notes),
+          payload: buildAsyncScreenshotSuccessPayload(shiny, notes, extractedFields),
         });
 
         job.status = SCREENSHOT_JOB_STATUS.completed;
