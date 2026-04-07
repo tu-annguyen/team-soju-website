@@ -1,0 +1,155 @@
+const crypto = globalThis.crypto || require('crypto').webcrypto;
+
+function base64UrlEncode(value) {
+  return Buffer.from(value)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function base64UrlDecode(value) {
+  const normalized = String(value)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(Math.ceil(value.length / 4) * 4, '=');
+
+  return Buffer.from(normalized, 'base64').toString('utf8');
+}
+
+function parseExpiresIn(expiresIn) {
+  if (typeof expiresIn === 'number') return expiresIn;
+
+  const match = /^(\d+)([smhd])$/.exec(String(expiresIn || '').trim());
+  if (!match) {
+    throw new Error(`Unsupported expiresIn value: ${expiresIn}`);
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const multipliers = {
+    s: 1,
+    m: 60,
+    h: 60 * 60,
+    d: 60 * 60 * 24,
+  };
+
+  return amount * multipliers[unit];
+}
+
+async function createSignature(secret, payload) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return base64UrlEncode(Buffer.from(signature));
+}
+
+async function verifySignature(secret, payload, signature) {
+  const expected = await createSignature(secret, payload);
+  return expected === signature;
+}
+
+async function signJwt(payload, secret, options = {}) {
+  const nowSeconds = Math.floor((options.now || Date.now()) / 1000);
+  const exp = nowSeconds + parseExpiresIn(options.expiresIn || '30d');
+  const fullPayload = {
+    ...payload,
+    iat: nowSeconds,
+    exp,
+  };
+
+  const encodedHeader = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+  const signature = await createSignature(secret, signingInput);
+
+  return `${signingInput}.${signature}`;
+}
+
+async function verifyJwt(token, secret) {
+  const [encodedHeader, encodedPayload, signature] = String(token || '').split('.');
+  if (!encodedHeader || !encodedPayload || !signature) {
+    throw new Error('Invalid token.');
+  }
+
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+  const valid = await verifySignature(secret, signingInput, signature);
+  if (!valid) {
+    throw new Error('Invalid token.');
+  }
+
+  const header = JSON.parse(base64UrlDecode(encodedHeader));
+  if (header.alg !== 'HS256') {
+    throw new Error('Invalid token.');
+  }
+
+  const payload = JSON.parse(base64UrlDecode(encodedPayload));
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (payload.exp && nowSeconds >= payload.exp) {
+    throw new Error('Invalid token.');
+  }
+
+  return payload;
+}
+
+async function generateBotToken(secret) {
+  return signJwt(
+    {
+      type: 'discord_bot',
+      permissions: ['read', 'write', 'delete'],
+    },
+    secret,
+    { expiresIn: '30d' }
+  );
+}
+
+async function authenticateBotRequest(request, env) {
+  const headerValue = request.headers.get('authorization');
+  const token = headerValue?.replace('Bearer ', '');
+
+  if (!token) {
+    return {
+      ok: false,
+      response: {
+        status: 401,
+        body: { success: false, message: 'Access denied. No token provided.' },
+      },
+    };
+  }
+
+  try {
+    const decoded = await verifyJwt(token, env.JWT_SECRET);
+    if (decoded?.type !== 'discord_bot') {
+      return {
+        ok: false,
+        response: {
+          status: 403,
+          body: { success: false, message: 'Forbidden. Not a bot token.' },
+        },
+      };
+    }
+
+    return { ok: true, bot: decoded };
+  } catch {
+    return {
+      ok: false,
+      response: {
+        status: 400,
+        body: { success: false, message: 'Invalid token.' },
+      },
+    };
+  }
+}
+
+module.exports = {
+  authenticateBotRequest,
+  generateBotToken,
+  signJwt,
+  verifyJwt,
+};

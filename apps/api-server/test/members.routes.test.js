@@ -1,9 +1,14 @@
 const request = require('supertest');
+const jwt = require('jsonwebtoken');
 
 const app = require('../src/server');
 const TeamMember = require('../src/models/TeamMember');
 
 jest.mock('../src/models/TeamMember');
+
+process.env.JWT_SECRET = 'test-secret';
+const BOT_TOKEN = jwt.sign({ type: 'discord_bot' }, process.env.JWT_SECRET);
+const withBotAuth = (testRequest) => testRequest.set('Authorization', `Bearer ${BOT_TOKEN}`);
 
 describe('Members routes', () => {
   beforeEach(() => {
@@ -62,6 +67,7 @@ describe('Members routes', () => {
     it('validates body and returns 400 on invalid payload', async () => {
       const res = await request(app)
         .post('/api/members')
+        .set('Authorization', `Bearer ${BOT_TOKEN}`)
         .send({}); // missing ign
 
       expect(res.status).toBe(400);
@@ -73,9 +79,9 @@ describe('Members routes', () => {
       const created = { id: 1, ign: 'NewMember', rank: 'Member' };
       TeamMember.create.mockResolvedValue(created);
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .post('/api/members')
-        .send({ ign: 'NewMember', rank: 'Member' });
+        .send({ ign: 'NewMember', rank: 'Member' }));
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
@@ -89,9 +95,9 @@ describe('Members routes', () => {
       error.code = '23505';
       TeamMember.create.mockRejectedValue(error);
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .post('/api/members')
-        .send({ ign: 'ExistingMember' });
+        .send({ ign: 'ExistingMember' }));
 
       expect(res.status).toBe(409);
       expect(res.body.success).toBe(false);
@@ -101,9 +107,9 @@ describe('Members routes', () => {
 
   describe('PUT /api/members/:id', () => {
     it('returns 400 for invalid body', async () => {
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .put('/api/members/1')
-        .send({ ign: '' }); // fails Joi min length
+        .send({ ign: '' })); // fails Joi min length
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
@@ -113,9 +119,9 @@ describe('Members routes', () => {
     it('returns 404 when updating non-existent member', async () => {
       TeamMember.update.mockResolvedValue(null);
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .put('/api/members/999')
-        .send({ notes: 'updated' });
+        .send({ notes: 'updated' }));
 
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
@@ -126,9 +132,9 @@ describe('Members routes', () => {
       const updated = { id: 1, ign: 'MemberOne', notes: 'updated' };
       TeamMember.update.mockResolvedValue(updated);
 
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .put('/api/members/1')
-        .send({ notes: 'updated' });
+        .send({ notes: 'updated' }));
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -141,7 +147,7 @@ describe('Members routes', () => {
     it('returns 404 when member not found', async () => {
       TeamMember.delete.mockResolvedValue(null);
 
-      const res = await request(app).delete('/api/members/999');
+      const res = await withBotAuth(request(app).delete('/api/members/999'));
 
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
@@ -151,7 +157,7 @@ describe('Members routes', () => {
     it('deactivates member when found', async () => {
       TeamMember.delete.mockResolvedValue({ id: 1, ign: 'MemberOne' });
 
-      const res = await request(app).delete('/api/members/1');
+      const res = await withBotAuth(request(app).delete('/api/members/1'));
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -196,7 +202,7 @@ describe('Members routes', () => {
     it('returns 404 when member not found', async () => {
       TeamMember.reactivate.mockResolvedValue(null);
 
-      const res = await request(app).put('/api/members/reactivate/999');
+      const res = await withBotAuth(request(app).put('/api/members/reactivate/999'));
 
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
@@ -207,7 +213,7 @@ describe('Members routes', () => {
       const reactivated = { id: 1, ign: 'MemberOne', is_active: true };
       TeamMember.reactivate.mockResolvedValue(reactivated);
 
-      const res = await request(app).put('/api/members/reactivate/1');
+      const res = await withBotAuth(request(app).put('/api/members/reactivate/1'));
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);

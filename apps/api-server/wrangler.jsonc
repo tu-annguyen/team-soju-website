@@ -1,0 +1,23 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "team-soju-api",
+  "main": "src/cloudflare/worker.js",
+  "compatibility_date": "2026-04-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "keep_vars": true,
+  "vars": {
+    "DB_BACKEND": "postgres",
+    "NODE_ENV": "production"
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
+  "env": {
+    "staging": {
+      "name": "team-soju-api-staging"
+    }
+  }
+}
