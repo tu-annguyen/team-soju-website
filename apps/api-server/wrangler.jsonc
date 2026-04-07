@@ -10,12 +10,12 @@
     "NODE_ENV": "production",
     "LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/"
   },
-  // "hyperdrive": [
-  //   {
-  //     "binding": "HYPERDRIVE",
-  //     "id": "YOUR_PROD_HYPERDRIVE_ID"
-  //   }
-  // ],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "3b6d54cde2fd4ea9af567c0c71f99f80"
+    }
+  ],
   "observability": {
     "logs": {
       "enabled": true,
@@ -31,12 +31,13 @@
         "NODE_ENV": "staging",
         "LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
       },
-      // "hyperdrive": [
-      //   {
-      //     "binding": "HYPERDRIVE",
-      //     "id": "YOUR_STAGING_HYPERDRIVE_ID"
-      //   }
-      // ]
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "ee09d9c74944457b8e1249c328e8eee8",
+          "localConnectionString": "postgresql://user:password@127.0.0.1:5432/team_soju"
+        }
+      ]
     }
   }
 }
