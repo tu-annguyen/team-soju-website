@@ -1,7 +1,20 @@
 const path = require('path');
-if (process.env.NODE_ENV !== 'production') {
+
+function loadDotenvForNodeOnly() {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
+  // `wrangler dev` runs inside the Workers runtime, where `__dirname` is not
+  // available. Keep dotenv loading for direct Node execution only.
+  if (typeof __dirname === 'undefined') {
+    return;
+  }
+
   require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 }
+
+loadDotenvForNodeOnly();
 
 const { COMMANDS } = require('./commands');
 const { getCommandHandler } = require('./commandRouter');

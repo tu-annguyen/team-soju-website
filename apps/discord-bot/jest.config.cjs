@@ -4,7 +4,6 @@ module.exports = {
   testMatch: ['**/test/**/*.test.js'],
   collectCoverageFrom: [
     'src/**/*.js',
-    '!src/app.js', // Skip class-based app entry point
     '!**/node_modules/**'
   ],
   clearMocks: true,

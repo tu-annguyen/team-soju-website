@@ -1,12 +1,12 @@
 /**
  * Verification script for Discord bot structure
- * Validates app.js, commands, and handlers load correctly
+ * Validates worker, commands, and handlers load correctly
  */
 
 console.log('🧪 Discord Bot Structure Verification\n');
 
 try {
-  console.log('Checking app structure...');
+  console.log('Checking worker structure...');
 
   // Verify commands
   const { COMMANDS } = require('./src/commands');
@@ -35,15 +35,17 @@ try {
   console.log(`  - statsHandlers: ${Object.keys(statsHandlers).length} functions`);
   console.log(`    ${Object.keys(statsHandlers).join(', ')}`);
 
-  // Verify app.js structure
-  const TeamSojuBot = require('./src/app');
-  console.log(`\n✓ App class loaded`);
+  // Verify worker structure
+  const worker = require('./src/worker');
+  console.log(`\n✓ Worker loaded`);
+  console.log(`  - fetch: ${typeof worker.fetch}`);
+  console.log(`  - registerCommandsIfNeeded: ${typeof worker.registerCommandsIfNeeded}`);
 
   console.log(`\n✅ All verification checks passed!`);
   console.log(`\n📝 Next steps:`);
   console.log(`  1. Copy .env.example to .env`);
   console.log(`  2. Add your Discord credentials to .env`);
-  console.log(`  3. Run: npm start`);
+  console.log(`  3. Run: npm run dev`);
 
 } catch (error) {
   console.error(`\n❌ Verification failed:`);

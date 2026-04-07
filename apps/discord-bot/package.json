@@ -4,8 +4,9 @@
   "description": "Discord bot for Team Soju - manages team members and shiny Pokemon",
   "main": "src/worker.js",
   "scripts": {
-    "start": "node src/devServer.js",
-    "dev": "node --watch src/devServer.js",
+    "start": "cross-env REGISTER_COMMANDS_ON_START=true wrangler dev --config wrangler.jsonc",
+    "dev": "cross-env REGISTER_COMMANDS_ON_START=true wrangler dev --config wrangler.jsonc",
+    "dev:staging": "cross-env REGISTER_COMMANDS_ON_START=true wrangler dev --config wrangler.jsonc --env staging",
     "register": "node -e \"require('./src/worker').registerCommandsIfNeeded({ ...process.env, REGISTER_COMMANDS_ON_START: 'true' })\"",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\" && npm run register",
     "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",

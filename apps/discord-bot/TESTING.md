@@ -194,7 +194,7 @@ Remember to call `jest.resetAllMocks()` in `beforeEach()` to clear mock state be
 Consider adding tests for:
 - **shinyHandlers.js** - Complete shiny command test suite (currently 0% coverage)
 - **commands.js** - Validate command builders and options
-- **app.js** - Integration tests for the Discord client
+- **worker.js** - Integration tests for the Worker request lifecycle
 - Edge cases and error scenarios for handlers
 
 ---

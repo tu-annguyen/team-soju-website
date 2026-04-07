@@ -14,7 +14,6 @@ This app uses the following structure:
 
 ```
 src/
-├── app.js              # Local dev server entry point
 ├── worker.js           # HTTP interaction handler
 ├── worker.mjs          # Cloudflare Worker module entry
 ├── commands.js         # Slash command definitions
@@ -77,16 +76,16 @@ src/
 
 ### Running the Bot
 
-**Development** (local HTTP endpoint with auto-reload):
+**Development** (local Worker with auto-reload):
 ```bash
 npm run dev
 ```
 
-By default the local interaction server listens on `8787`. Override it with `DISCORD_BOT_PORT`.
+By default Wrangler serves the Worker on `http://localhost:8787`.
 
-From the repo root, `npm run dev:bot` now starts the bot dev server and `ngrok http 8787` together so Discord can reach your local interactions endpoint. `npm run bot` is an alias for the same workflow.
+From the repo root, `npm run dev:bot` runs `wrangler dev` for the bot workspace. `npm run bot` is an alias for the same workflow.
 
-This assumes the `ngrok` CLI is already installed and authenticated on your machine.
+The bot now auto-registers slash commands during local `wrangler dev` startup when `REGISTER_COMMANDS_ON_START=true`, which is enabled by the workspace scripts.
 
 **Register slash commands**:
 ```bash
@@ -95,19 +94,19 @@ npm run register
 
 `npm run deploy:cf` now performs both steps for production: it deploys the Worker to the top-level Wrangler environment with `--env=""` and then re-registers the Discord slash commands so new commands become available.
 
-**Local server**:
+**Staging-flavored local Worker**:
 ```bash
-npm start
+npm run dev:staging
 ```
 
-From the repo root, `npm run start:bot` starts the local interaction server and `ngrok http 8787` together.
+Use this when you want local execution with the staging Wrangler environment name.
 
 You should see:
 ```
-Discord interaction dev server listening on http://0.0.0.0:8787
+Ready on http://localhost:8787
 ```
 
-Point your Discord Interactions Endpoint URL at the deployed Worker URL.
+For live Discord callbacks, point the Discord Interactions Endpoint URL at a deployed Worker URL such as staging or production. `wrangler dev` is ideal for local iteration and manual request testing, but Discord still needs a publicly reachable HTTPS endpoint.
 
 ## Cloudflare Worker Notes
 
@@ -344,7 +343,8 @@ Or use `DATABASE_URL` for a complete connection string.
 ```
 apps/discord-bot/
 ├── src/
-│   ├── app.js                    # Main bot application
+│   ├── worker.js                 # Worker request handler and command registration
+│   ├── worker.mjs                # Cloudflare Worker module entry
 │   ├── commands.js               # Command definitions
 │   ├── utils.js                  # Utility functions
 │   └── handlers/
@@ -374,12 +374,12 @@ Helper functions:
 - `getCommandHandler()` - Route commands to handlers
 - `validateEnvironment()` - Validate required env vars
 
-### Application (`app.js`)
-Main bot client:
-- Sets up Discord.js client with proper intents
-- Configures event handlers
-- Routes interactions to appropriate handlers
-- Manages bot lifecycle
+### Worker Entry (`worker.js`, `worker.mjs`)
+The Worker runtime:
+- Verifies Discord request signatures
+- Routes interactions to the appropriate handler
+- Registers slash commands when explicitly requested
+- Exposes the Cloudflare Worker `fetch()` entry point
 
 ## Troubleshooting
 
@@ -429,11 +429,11 @@ Main bot client:
    }
    ```
 
-4. **Restart bot** for command registration
+4. **Restart `wrangler dev` or redeploy** so the command registration flow picks up the change
 
 ### Testing Commands
 
-After starting the bot, test in Discord:
+After starting the Worker or deploying it, test in Discord:
 ```
 /stats           # Should always work if connected to DB
 /leaderboard     # Shows team progress
@@ -455,7 +455,7 @@ All operations complete well within Discord's 3-second timeout limit.
 
 ## Deployment
 
-### Production Setup
+### Cloudflare Worker Setup
 
 1. Create a Discord Application and Bot in [Developer Portal](https://discord.com/developers/applications)
 
@@ -472,12 +472,17 @@ All operations complete well within Discord's 3-second timeout limit.
    # No DISCORD_GUILD_ID (will register globally)
    ```
 
-4. Run with process manager (PM2, systemd, etc.):
+4. Deploy the Worker:
    ```bash
-   pm2 start apps/discord-bot/src/app.js --name team-soju-bot
+   npm run deploy:cf
    ```
 
-5. Verify commands appear in Discord (may take up to 1 hour for global registration)
+5. For staging deploys, use:
+   ```bash
+   npm run deploy:cf:staging
+   ```
+
+6. Verify commands appear in Discord (may take up to 1 hour for global registration)
 
 ## Support
 
