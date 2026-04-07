@@ -94,6 +94,20 @@ npm run register
 
 `npm run deploy:cf` now performs both steps for production: it deploys the Worker to the top-level Wrangler environment with `--env=""` and then re-registers the Discord slash commands so new commands become available.
 
+**Stable dev preview URL**:
+```bash
+npm run deploy:cf:preview:dev
+```
+
+This uploads a new preview version for the staging Worker and assigns the stable preview alias `dev`. Use the returned `workers.dev` preview URL as a non-production Discord Interactions Endpoint when you want public testing without deploying to production traffic.
+
+**Simple Discord dev refresh**:
+```bash
+npm run discord:dev
+```
+
+From the repo root, this is also available as `npm run discord:dev`. It uploads the latest bot code to the staging preview alias `dev` and then re-registers slash commands.
+
 **Staging-flavored local Worker**:
 ```bash
 npm run dev:staging
@@ -482,7 +496,17 @@ All operations complete well within Discord's 3-second timeout limit.
    npm run deploy:cf:staging
    ```
 
-6. Verify commands appear in Discord (may take up to 1 hour for global registration)
+6. For a stable public preview URL without changing live traffic, use:
+   ```bash
+   npm run deploy:cf:preview:dev
+   ```
+
+7. For the simplest "update the Discord dev bot" flow, use:
+   ```bash
+   npm run discord:dev
+   ```
+
+8. Verify commands appear in Discord (may take up to 1 hour for global registration)
 
 ## Support
 

@@ -14,6 +14,7 @@
     "dev:web": "npm run dev --workspace=@team-soju/web-app",
     "dev:api": "npm run dev --workspace=@team-soju/api-server",
     "dev:bot": "npm run dev --workspace=@team-soju/discord-bot",
+    "discord:dev": "npm run discord:dev --workspace=@team-soju/discord-bot",
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:bot\"",
     "bot": "npm run dev:bot",
     "build": "npm run build --workspace=@team-soju/web-app",
