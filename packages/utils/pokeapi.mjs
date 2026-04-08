@@ -67,6 +67,34 @@ function dedupeVariantEntries(entries) {
   return deduped;
 }
 
+function hasGenerationVAnimatedSprite(pokemonData) {
+  const animatedSprites = pokemonData?.sprites?.versions?.['generation-v']?.['black-white']?.animated;
+  if (!animatedSprites) return false;
+
+  return Object.values(animatedSprites).some(Boolean);
+}
+
+async function filterEntriesToGenerationV(entries) {
+  const spriteAvailabilityCache = new Map();
+
+  const filteredEntries = await Promise.all(entries.map(async (entry) => {
+    if (!entry?.value) return null;
+
+    if (!spriteAvailabilityCache.has(entry.value)) {
+      const hasGen5Sprite = await getPokedex()
+        .getPokemonByName(entry.value)
+        .then(hasGenerationVAnimatedSprite)
+        .catch(() => false);
+
+      spriteAvailabilityCache.set(entry.value, hasGen5Sprite);
+    }
+
+    return spriteAvailabilityCache.get(entry.value) ? entry : null;
+  }));
+
+  return filteredEntries.filter(Boolean);
+}
+
 function collapseBaseSpeciesEntry(entries, speciesName) {
   const normalizedSpecies = normalizePokemonName(speciesName);
   if (!normalizedSpecies) return entries;
@@ -218,12 +246,16 @@ export async function getPokemonVariants(pokemon) {
         isDefault: true,
       })];
 
-    const entries = collapseBaseSpeciesEntry(
+    const generationVEntries = await filterEntriesToGenerationV(
       dedupeVariantEntries([
         ...varietyEntries,
         ...formEntriesByVariety.flat().filter(Boolean),
         ...fallbackEntries.filter(Boolean),
-      ]),
+      ])
+    );
+
+    const entries = collapseBaseSpeciesEntry(
+      generationVEntries,
       species?.name || speciesName
     );
 
