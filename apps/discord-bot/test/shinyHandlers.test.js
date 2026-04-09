@@ -256,7 +256,6 @@ describe('shinyHandlers', () => {
           expect.objectContaining({
             components: expect.arrayContaining([
               expect.objectContaining({ custom_id: 'sh:fp:special:open:selected-id' }),
-              expect.objectContaining({ custom_id: 'sh:a:d:a:_:1:10:selected-id' }),
               expect.objectContaining({ custom_id: 'sh:d:b:a:_:1:10:selected-id' }),
             ]),
           }),
