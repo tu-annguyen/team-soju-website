@@ -8,6 +8,7 @@ interface ShinyCardProps {
   variantName?: string | null;
   trainerName: string;
   teamName?: string;
+  status?: string | null;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -52,6 +53,7 @@ const ShinyCard = ({
   variantName,
   trainerName,
   teamName,
+  status,
   imageUrl,
   isFailed,
   isSecret,
@@ -218,6 +220,7 @@ const ShinyCard = ({
         pokemonName={pokemonName}
         variantName={variantName}
         trainerName={trainerName}
+        status={status}
         imageUrl={imageUrl}
         isFailed={isFailed}
         isSecret={isSecret}

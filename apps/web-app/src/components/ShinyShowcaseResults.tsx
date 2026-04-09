@@ -11,6 +11,7 @@ interface ShinyShowcaseResultsProps {
 export interface ShinyPokemon {
   name: string;
   variantName: string | null;
+  status: string | null;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -102,6 +103,7 @@ const ShinyShowcaseResults = ({
                     pokemonName={shiny.name}
                     variantName={shiny.variantName}
                     trainerName={trainer.name}
+                    status={shiny.status}
                     imageUrl={shiny.imageUrl}
                     isFailed={shiny.isFailed}
                     isSecret={shiny.isSecret}

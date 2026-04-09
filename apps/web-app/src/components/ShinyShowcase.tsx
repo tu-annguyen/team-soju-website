@@ -8,6 +8,7 @@ export interface ShinyPokemon {
   id: string;
   name: string;
   variantName: string | null;
+  status: string | null;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -193,6 +194,7 @@ const transformAPIDataToShowcase = async (
             id: shiny.id,
             name: capitalize(shiny.pokemon_name),
             variantName: shiny.variants ?? null,
+            status: shiny.status ?? null,
             imageUrl: getShinySpriteUrl(shiny.national_number, shiny.variants),
             isFailed,
             isSecret,

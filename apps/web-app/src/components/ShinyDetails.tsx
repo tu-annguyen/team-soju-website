@@ -8,6 +8,7 @@ interface ShinyDetailsProps {
   pokemonName: string;
   variantName?: string | null;
   trainerName: string;
+  status?: string | null;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -65,6 +66,7 @@ const ShinyDetails = ({
   pokemonName,
   variantName,
   trainerName,
+  status,
   imageUrl,
   isFailed,
   isSecret,
@@ -106,6 +108,10 @@ const ShinyDetails = ({
   );
 
   const details = [
+    {
+      label: 'Status',
+      value: status && status !== 'Owned' ? status : null,
+    },
     { label: 'Tier', value: tier || null },
     {
       label: 'Point Value',
