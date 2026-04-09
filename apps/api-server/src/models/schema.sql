@@ -152,3 +152,20 @@ CREATE INDEX IF NOT EXISTS idx_feebas_cycles_location_cycle_start
 
 CREATE INDEX IF NOT EXISTS idx_feebas_tile_states_cycle_id
   ON feebas_tile_states(cycle_id);
+
+CREATE TABLE IF NOT EXISTS feebas_activity_logs (
+  id BIGSERIAL PRIMARY KEY,
+  cycle_id BIGINT NOT NULL REFERENCES feebas_cycles(id) ON DELETE CASCADE,
+  location TEXT NOT NULL,
+  tile_id TEXT NOT NULL,
+  tile_label TEXT NOT NULL,
+  action_type TEXT NOT NULL,
+  previous_status TEXT,
+  next_status TEXT NOT NULL,
+  actor_name TEXT,
+  actor_fingerprint TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_cycle_id_created_at
+  ON feebas_activity_logs(cycle_id, created_at DESC);

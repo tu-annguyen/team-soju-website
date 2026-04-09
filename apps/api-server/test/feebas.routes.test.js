@@ -20,6 +20,7 @@ const boardFixture = {
   confirmedTileId: null,
   isLocked: false,
   layout: { rows: 10, cols: 12 },
+  activity: [],
   tiles: [
     {
       tileId: 'r1c3',

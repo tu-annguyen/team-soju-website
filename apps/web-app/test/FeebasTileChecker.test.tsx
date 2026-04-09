@@ -17,6 +17,18 @@ const boardFixture = {
     rows: 2,
     cols: 2,
   },
+  activity: [
+    {
+      id: 1,
+      tileId: 'r1c1',
+      tileLabel: 'A1',
+      actionType: 'reported',
+      previousStatus: 'checked',
+      nextStatus: 'pending',
+      actorName: 'May',
+      createdAt: '2026-04-09T20:18:00.000Z',
+    },
+  ],
   tiles: [
     {
       tileId: 'r1c1',
@@ -73,6 +85,8 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByRole('button', { name: /A1 Pending/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /A2 Unchecked/i })).toBeInTheDocument();
     expect(screen.getByText(/Confirmation requires a second distinct browser/i)).toBeInTheDocument();
+    expect(screen.getAllByText('May').length).toBeGreaterThan(0);
+    expect(screen.getByText(/reported as a Feebas tile/i)).toBeInTheDocument();
   });
 
   it('allows a second client to confirm a pending tile', async () => {
@@ -85,5 +99,37 @@ describe('FeebasTileChecker', () => {
     fireEvent.click(screen.getByRole('button', { name: /A1 Pending/i }));
 
     expect(screen.getByRole('button', { name: /Second And Confirm/i })).toBeEnabled();
+  });
+
+  it('makes the board read-only once confirmed', async () => {
+    (global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        success: true,
+        data: {
+          ...boardFixture,
+          isLocked: true,
+          confirmedTileId: 'r1c1',
+          tiles: [
+            {
+              ...boardFixture.tiles[0],
+              status: 'confirmed',
+              confirmedByName: 'Brendan',
+              confirmedAt: '2026-04-09T20:19:00.000Z',
+            },
+            boardFixture.tiles[1],
+          ],
+        },
+      }),
+    });
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A1 Confirmed/i })).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('button', { name: /A1 Confirmed/i })).toBeDisabled();
+    expect(screen.getByText(/The board is locked for this cycle/i)).toBeInTheDocument();
   });
 });

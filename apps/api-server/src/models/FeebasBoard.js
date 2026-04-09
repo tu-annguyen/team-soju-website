@@ -72,6 +72,17 @@ class FeebasBoard {
         now,
       });
 
+      await this.insertActivityLog(client, {
+        cycleId: cycle.id,
+        location,
+        tileDefinition,
+        previousStatus: tile.status,
+        nextStatus,
+        actorName,
+        actorFingerprint,
+        now,
+      });
+
       if (nextStatus === 'confirmed') {
         await client.query(`
           UPDATE feebas_cycles
@@ -200,6 +211,66 @@ class FeebasBoard {
     `, baseValues);
   }
 
+  static async insertActivityLog(client, {
+    cycleId,
+    location,
+    tileDefinition,
+    previousStatus,
+    nextStatus,
+    actorName,
+    actorFingerprint,
+    now,
+  }) {
+    const actionType = this.getActionType(previousStatus, nextStatus);
+
+    await client.query(`
+      INSERT INTO feebas_activity_logs (
+        cycle_id,
+        location,
+        tile_id,
+        tile_label,
+        action_type,
+        previous_status,
+        next_status,
+        actor_name,
+        actor_fingerprint,
+        created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `, [
+      cycleId,
+      location,
+      tileDefinition.tileId,
+      tileDefinition.label,
+      actionType,
+      previousStatus,
+      nextStatus,
+      actorName,
+      actorFingerprint,
+      now.toISOString(),
+    ]);
+  }
+
+  static getActionType(previousStatus, nextStatus) {
+    if (nextStatus === 'confirmed') {
+      return 'confirmed';
+    }
+
+    if (nextStatus === 'pending') {
+      return 'reported';
+    }
+
+    if (nextStatus === 'checked') {
+      return previousStatus === 'pending' ? 'reverted_to_checked' : 'checked';
+    }
+
+    if (nextStatus === 'unchecked') {
+      return previousStatus === 'pending' ? 'cleared_pending' : 'unchecked';
+    }
+
+    return 'updated';
+  }
+
   static async getBoardForCycle(client, location, cycle, now = new Date()) {
     const locationConfig = getLocationConfig(location);
     const tilesResult = await client.query(`
@@ -207,6 +278,13 @@ class FeebasBoard {
       FROM feebas_tile_states
       WHERE cycle_id = $1
       ORDER BY tile_id ASC
+    `, [cycle.id]);
+    const activityResult = await client.query(`
+      SELECT *
+      FROM feebas_activity_logs
+      WHERE cycle_id = $1
+      ORDER BY created_at DESC, id DESC
+      LIMIT 20
     `, [cycle.id]);
 
     const tileMap = new Map(tilesResult.rows.map((row) => [row.tile_id, row]));
@@ -226,6 +304,16 @@ class FeebasBoard {
         rows: locationConfig.rows,
         cols: locationConfig.cols,
       },
+      activity: activityResult.rows.map((entry) => ({
+        id: entry.id,
+        tileId: entry.tile_id,
+        tileLabel: entry.tile_label,
+        actionType: entry.action_type,
+        previousStatus: entry.previous_status,
+        nextStatus: entry.next_status,
+        actorName: entry.actor_name,
+        createdAt: new Date(entry.created_at).toISOString(),
+      })),
       tiles: locationConfig.tiles.map((tileDefinition) => {
         const row = tileMap.get(tileDefinition.tileId);
         return {

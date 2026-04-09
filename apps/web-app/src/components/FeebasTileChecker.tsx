@@ -16,6 +16,17 @@ type FeebasTile = {
   confirmedAt: string | null;
 };
 
+type FeebasActivityEntry = {
+  id: number;
+  tileId: string;
+  tileLabel: string;
+  actionType: string;
+  previousStatus: string | null;
+  nextStatus: TileStatus;
+  actorName: string | null;
+  createdAt: string;
+};
+
 type FeebasBoard = {
   location: string;
   displayName: string;
@@ -31,6 +42,7 @@ type FeebasBoard = {
     rows: number;
     cols: number;
   };
+  activity: FeebasActivityEntry[];
   tiles: FeebasTile[];
 };
 
@@ -48,12 +60,24 @@ type Props = {
 const DEFAULT_LOCATION = 'route-119-main';
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
+const ROUTE_119_MAIN_TERRAIN = [
+  ['grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank'],
+  ['grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank'],
+  ['grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['grass', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank', 'bank', 'bank'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank', 'bank', 'bank', 'bank'],
+  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank'],
+] as const;
 
 function getStatusClasses(status: TileStatus) {
   return ({
-    unchecked: 'bg-slate-500 hover:bg-slate-400 text-white',
-    checked: 'bg-rose-600 hover:bg-rose-500 text-white',
-    pending: 'bg-amber-400 hover:bg-amber-300 text-slate-900',
+    unchecked: 'bg-slate-500/90 hover:bg-slate-400 text-white',
+    checked: 'bg-rose-600/95 hover:bg-rose-500 text-white',
+    pending: 'bg-amber-400/95 hover:bg-amber-300 text-slate-950',
     confirmed: 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-200',
   }[status]);
 }
@@ -65,6 +89,26 @@ function getStatusLabel(status: TileStatus) {
     pending: 'Pending',
     confirmed: 'Confirmed',
   }[status]);
+}
+
+function getTerrainClasses(terrain: string) {
+  return ({
+    grass: 'bg-[linear-gradient(180deg,_#c4e2ab_0%,_#8fbd72_100%)]',
+    bank: 'bg-[linear-gradient(180deg,_#f0dfaa_0%,_#cfb479_100%)]',
+    water: 'bg-[linear-gradient(180deg,_#496dd1_0%,_#2d488f_100%)]',
+  }[terrain] || 'bg-transparent');
+}
+
+function getActivityMessage(actionType: string) {
+  return ({
+    checked: 'marked checked',
+    unchecked: 'returned to unchecked',
+    reported: 'reported as a Feebas tile',
+    cleared_pending: 'cleared the pending report on',
+    reverted_to_checked: 'moved back to checked',
+    confirmed: 'confirmed as the Feebas tile',
+    updated: 'updated',
+  }[actionType] || 'updated');
 }
 
 function formatCountdown(targetIso: string | null) {
@@ -90,6 +134,17 @@ function createClientId() {
   }
 
   return `client-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function formatActorName(actorName: string | null) {
+  return actorName?.trim() || 'Anonymous';
+}
+
+function formatTimestamp(isoTimestamp: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(isoTimestamp));
 }
 
 const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) => {
@@ -222,6 +277,14 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
     }
 
     return new Map(board.tiles.map((tile) => [tile.tileId, tile]));
+  }, [board]);
+
+  const tileByPosition = useMemo(() => {
+    if (!board) {
+      return new Map<string, FeebasTile>();
+    }
+
+    return new Map(board.tiles.map((tile) => [`${tile.row}-${tile.col}`, tile]));
   }, [board]);
 
   const selectedTile = selectedTileId ? tileMap.get(selectedTileId) || null : null;
@@ -358,36 +421,55 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
             </div>
           </div>
 
-          <div className="overflow-x-auto bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.5),_transparent_30%),linear-gradient(180deg,_#8fd4e8_0%,_#2f7dc0_100%)] p-4">
+          <div className="overflow-x-auto bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.35),_transparent_30%),linear-gradient(180deg,_#d6f2f4_0%,_#8fd4e8_45%,_#4d8bc6_100%)] p-4">
             <div
-              className="mx-auto grid max-w-3xl gap-1 rounded-2xl border border-sky-100/40 bg-sky-950/20 p-2 backdrop-blur-sm"
+              className="mx-auto grid max-w-3xl gap-1 rounded-2xl border border-sky-100/50 bg-sky-950/10 p-2 shadow-[0_18px_45px_rgba(20,55,107,0.24)] backdrop-blur-sm"
               style={{
                 gridTemplateColumns: `repeat(${board?.layout.cols || 1}, minmax(0, 1fr))`,
               }}
             >
               {Array.from({ length: (board?.layout.rows || 0) * (board?.layout.cols || 0) }, (_, index) => {
-                const row = Math.floor(index / (board?.layout.cols || 1));
-                const col = index % (board?.layout.cols || 1);
-                const tile = board?.tiles.find((entry) => entry.row === row && entry.col === col) || null;
+                const cols = board?.layout.cols || 1;
+                const row = Math.floor(index / cols);
+                const col = index % cols;
+                const tile = tileByPosition.get(`${row}-${col}`) || null;
+                const terrain = ROUTE_119_MAIN_TERRAIN[row]?.[col] || 'bank';
+                const terrainClasses = getTerrainClasses(terrain);
 
                 if (!tile) {
-                  return <div key={`void-${row}-${col}`} className="aspect-square rounded-lg bg-transparent" />;
+                  return (
+                    <div
+                      key={`void-${row}-${col}`}
+                      className={`aspect-square rounded-[0.35rem] border border-black/5 ${terrainClasses}`}
+                    />
+                  );
                 }
 
                 const isSelected = selectedTileId === tile.tileId;
+                const pendingName = tile.status === 'pending' ? formatActorName(tile.pendingReportedByName) : null;
 
                 return (
-                  <button
+                  <div
                     key={tile.tileId}
-                    type="button"
-                    onClick={() => handleTilePress(tile)}
-                    className={`aspect-square min-h-[2.75rem] rounded-lg border border-white/20 text-[0.72rem] font-semibold uppercase tracking-wide transition ${getStatusClasses(tile.status)} ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${board?.isLocked ? 'cursor-default' : 'cursor-pointer'}`}
-                    aria-pressed={isSelected}
-                    aria-label={`${tile.label} ${getStatusLabel(tile.status)}`}
-                    disabled={pendingAction === tile.tileId}
+                    className={`relative aspect-square rounded-[0.35rem] border border-white/10 ${terrainClasses}`}
                   >
-                    {tile.label}
-                  </button>
+                    <div className="absolute inset-[8%] rounded-[0.3rem] bg-[linear-gradient(180deg,_rgba(255,255,255,0.18),_rgba(255,255,255,0.03))]" />
+                    <button
+                      type="button"
+                      onClick={() => handleTilePress(tile)}
+                      className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${getStatusClasses(tile.status)} ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${board?.isLocked ? 'cursor-default' : 'cursor-pointer'}`}
+                      aria-pressed={isSelected}
+                      aria-label={`${tile.label} ${getStatusLabel(tile.status)}`}
+                      disabled={Boolean(board?.isLocked) || pendingAction === tile.tileId}
+                    >
+                      <span>{tile.label}</span>
+                      {pendingName ? (
+                        <span className="mt-1 max-w-full truncate rounded bg-black/20 px-1.5 py-0.5 text-[0.54rem] normal-case tracking-normal text-slate-950">
+                          {pendingName}
+                        </span>
+                      ) : null}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -439,42 +521,48 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                   {selectedTile.pendingReportedByName ? (
                     <p>Reported by {selectedTile.pendingReportedByName}</p>
                   ) : null}
-                  {selectedTile.confirmedByName ? (
-                    <p>Confirmed by {selectedTile.confirmedByName}</p>
-                  ) : null}
                   {!selectedTile.pendingReportedByName && selectedTile.status === 'pending' ? (
                     <p>Reported by an anonymous player</p>
                   ) : null}
+                  {selectedTile.confirmedByName ? (
+                    <p>Confirmed by {selectedTile.confirmedByName}</p>
+                  ) : null}
                 </div>
 
-                <div className="grid gap-3">
-                  <button
-                    type="button"
-                    onClick={() => updateTile(selectedTile.tileId, 'pending')}
-                    className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={Boolean(board?.isLocked) || pendingAction === selectedTile.tileId || selectedTile.status === 'confirmed'}
-                  >
-                    Mark As Found
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
-                    className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-                    disabled={Boolean(board?.isLocked) || pendingAction === selectedTile.tileId || selectedTile.status === 'confirmed' || selectedTile.status === 'unchecked'}
-                  >
-                    Reset Tile
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateTile(selectedTile.tileId, 'confirmed')}
-                    className="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={Boolean(board?.isLocked) || pendingAction === selectedTile.tileId || !canConfirmSelectedTile}
-                  >
-                    Second And Confirm
-                  </button>
-                </div>
+                {board?.isLocked ? (
+                  <p className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                    This cycle is locked. Tiles stay read-only until the next reset.
+                  </p>
+                ) : (
+                  <div className="grid gap-3">
+                    <button
+                      type="button"
+                      onClick={() => updateTile(selectedTile.tileId, 'pending')}
+                      className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={pendingAction === selectedTile.tileId || selectedTile.status === 'confirmed'}
+                    >
+                      Mark As Found
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
+                      className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+                      disabled={pendingAction === selectedTile.tileId || selectedTile.status === 'confirmed' || selectedTile.status === 'unchecked'}
+                    >
+                      Reset Tile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateTile(selectedTile.tileId, 'confirmed')}
+                      className="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={pendingAction === selectedTile.tileId || !canConfirmSelectedTile}
+                    >
+                      Second And Confirm
+                    </button>
+                  </div>
+                )}
 
-                {selectedTile.status === 'pending' && !canConfirmSelectedTile ? (
+                {selectedTile.status === 'pending' && !canConfirmSelectedTile && !board?.isLocked ? (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     This pending tile must be confirmed by a different browser than the one that reported it.
                   </p>
@@ -482,7 +570,36 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                Select a tile to mark it checked, report a find, or confirm a pending report.
+                {board?.isLocked
+                  ? 'The board is locked for this cycle. Check the confirmed tile and activity feed until reset.'
+                  : 'Select a tile to mark it checked, report a find, or confirm a pending report.'}
+              </p>
+            )}
+          </div>
+
+          <div className="card p-5">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Activity</h3>
+            {board?.activity.length ? (
+              <div className="mt-4 space-y-3">
+                {board.activity.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950/70"
+                  >
+                    <p className="text-slate-800 dark:text-slate-100">
+                      <span className="font-semibold">{formatActorName(entry.actorName)}</span>{' '}
+                      {getActivityMessage(entry.actionType)}{' '}
+                      <span className="font-semibold">{entry.tileLabel}</span>.
+                    </p>
+                    <p className="mt-1 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {formatTimestamp(entry.createdAt)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+                Tile updates will appear here as players check, report, and confirm the board.
               </p>
             )}
           </div>
