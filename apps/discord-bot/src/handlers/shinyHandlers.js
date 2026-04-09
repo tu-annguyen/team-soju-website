@@ -751,10 +751,6 @@ async function buildEditControlsPayload(interaction, state, content = null) {
     new ActionRowBuilder().addComponents(
       buildPickerButton(buildFieldPickerCustomId('special', 'open', shiny.id), 'Secret/Alpha'),
       new ButtonBuilder()
-        .setCustomId(buildCustomId('a', 'd', state))
-        .setLabel('Delete')
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
         .setCustomId(buildCustomId('d', 'b', state))
         .setLabel('Back')
         .setStyle(ButtonStyle.Secondary)
