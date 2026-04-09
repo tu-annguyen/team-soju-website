@@ -10,6 +10,14 @@ jest.mock('@team-soju/utils', () => ({
     const normalized = String(value || '').trim();
     return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
   }),
+  getKnownPokemonNames: jest.fn(() => [
+    'charizard',
+    'charmander',
+    'charmeleon',
+    'chimchar',
+    'nidoran-f',
+    'nidoran-m',
+  ]),
   getNationalNumber: jest.fn().mockResolvedValue(1),
   getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
   getPokemonVariants: jest.fn(),
@@ -27,6 +35,7 @@ const {
   handleGetShiny,
   handleGetShinies,
   handleGetMyShinies,
+  handlePokemonAutocomplete,
   handleShinyComponent,
   handleShinyEditModal,
 } = require('../src/handlers/shinyHandlers');
@@ -76,6 +85,30 @@ describe('shinyHandlers', () => {
         components: expect.any(Array),
       })
     );
+  });
+
+  it('returns pokemon autocomplete suggestions from the known list', async () => {
+    const interaction = createMockInteraction({
+      isChatInputCommand: jest.fn().mockReturnValue(false),
+      isAutocomplete: jest.fn().mockReturnValue(true),
+      respondAutocomplete: jest.fn().mockResolvedValue(undefined),
+    });
+
+    interaction.options.getFocused = jest.fn().mockReturnValue('char');
+    interaction.options.getFocusedOption = jest.fn().mockReturnValue({
+      name: 'pokemon',
+      value: 'char',
+      focused: true,
+    });
+
+    await handlePokemonAutocomplete(interaction);
+
+    expect(interaction.respondAutocomplete).toHaveBeenCalledWith([
+      { name: 'Charizard', value: 'charizard' },
+      { name: 'Charmander', value: 'charmander' },
+      { name: 'Charmeleon', value: 'charmeleon' },
+      { name: 'Chimchar', value: 'chimchar' },
+    ]);
   });
 
   it('renders linked member shinies for myshinies as ephemeral', async () => {

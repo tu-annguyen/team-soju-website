@@ -54,6 +54,36 @@ describe('DiscordInteractionContext', () => {
     });
   });
 
+  it('captures the focused autocomplete option and responds with choices', async () => {
+    const interaction = new DiscordInteractionContext({
+      application_id: 'app-123',
+      token: 'interaction-token',
+      type: 4,
+      data: {
+        name: 'addshiny',
+        options: [
+          { name: 'pokemon', type: 3, value: 'char', focused: true },
+        ],
+      },
+      member: { user: { id: 'user-1' }, roles: [] },
+    }, { DISCORD_CLIENT_ID: 'env-app-id' });
+
+    expect(interaction.isAutocomplete()).toBe(true);
+    expect(interaction.options.getFocused()).toBe('char');
+    expect(interaction.options.getFocusedOption()).toEqual(
+      expect.objectContaining({ name: 'pokemon', value: 'char', focused: true })
+    );
+
+    await interaction.respondAutocomplete([{ name: 'Charizard', value: 'charizard' }]);
+
+    expect(interaction.initialResponse).toEqual({
+      type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+      data: {
+        choices: [{ name: 'Charizard', value: 'charizard' }],
+      },
+    });
+  });
+
   it('retries transient Discord API failures before succeeding', async () => {
     global.fetch = jest.fn()
       .mockResolvedValueOnce({

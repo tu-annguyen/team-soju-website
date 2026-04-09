@@ -17,7 +17,13 @@ const {
 const fetchClient = require('../fetchClient');
 const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, SHINY_STATUS_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { capitalize, getNationalNumber, getSpriteUrl, getPokemonVariants } = require('@team-soju/utils');
+const {
+  capitalize,
+  getKnownPokemonNames,
+  getNationalNumber,
+  getSpriteUrl,
+  getPokemonVariants,
+} = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL || apiBaseUrl;
@@ -39,9 +45,44 @@ const SPECIAL_CHOICES = [
 ];
 const STATUS_CHOICES = SHINY_STATUS_CHOICES;
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
+const MAX_AUTOCOMPLETE_CHOICES = 25;
+const KNOWN_POKEMON_NAMES = getKnownPokemonNames();
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
+}
+
+function formatPokemonAutocompleteLabel(name) {
+  return String(name || '')
+    .trim()
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function getPokemonAutocompleteChoices(query) {
+  const normalizedQuery = String(query || '').trim().toLowerCase();
+  const matches = KNOWN_POKEMON_NAMES.filter(name => {
+    if (!normalizedQuery) return true;
+    return name.includes(normalizedQuery);
+  }).slice(0, MAX_AUTOCOMPLETE_CHOICES);
+
+  return matches.map(name => ({
+    name: formatPokemonAutocompleteLabel(name).slice(0, 100),
+    value: name,
+  }));
+}
+
+async function handlePokemonAutocomplete(interaction) {
+  const focusedOption = interaction.options.getFocusedOption();
+
+  if (focusedOption?.name !== 'pokemon') {
+    await interaction.respondAutocomplete([]);
+    return;
+  }
+
+  await interaction.respondAutocomplete(getPokemonAutocompleteChoices(interaction.options.getFocused(true)));
 }
 
 function normalizeVariantSlug(value) {
@@ -1376,6 +1417,7 @@ module.exports = {
   handleEditShiny,
   handleFailShiny,
   handleGetMyShinies,
+  handlePokemonAutocomplete,
   handleGetShinies,
   handleGetShiny,
   handleShinyComponent,

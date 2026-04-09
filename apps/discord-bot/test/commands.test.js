@@ -1,6 +1,30 @@
 const { COMMANDS } = require('../src/commands');
 
 describe('commands', () => {
+  it('enables autocomplete for the pokemon option on /addshiny', () => {
+    const addShiny = COMMANDS.find(command => command.toJSON().name === 'addshiny');
+
+    expect(addShiny).toBeDefined();
+
+    const pokemonOption = addShiny.toJSON().options.find(option => option.name === 'pokemon');
+
+    expect(pokemonOption).toEqual(expect.objectContaining({
+      type: 3,
+      name: 'pokemon',
+      description: 'Pokemon name',
+      required: true,
+      autocomplete: true,
+    }));
+    expect(pokemonOption.choices).toBeUndefined();
+  });
+
+  it('does not include a variant slash option on /addshiny', () => {
+    const addShiny = COMMANDS.find(command => command.toJSON().name === 'addshiny');
+
+    expect(addShiny).toBeDefined();
+    expect(addShiny.toJSON().options.find(option => option.name === 'variant')).toBeUndefined();
+  });
+
   it('includes a variant option on /editshiny', () => {
     const editShiny = COMMANDS.find(command => command.toJSON().name === 'editshiny');
 
@@ -14,6 +38,23 @@ describe('commands', () => {
       description: 'Pokemon variant slug',
       required: false,
     }));
+  });
+
+  it('enables autocomplete for the pokemon option on /editshiny', () => {
+    const editShiny = COMMANDS.find(command => command.toJSON().name === 'editshiny');
+
+    expect(editShiny).toBeDefined();
+
+    const pokemonOption = editShiny.toJSON().options.find(option => option.name === 'pokemon');
+
+    expect(pokemonOption).toEqual(expect.objectContaining({
+      type: 3,
+      name: 'pokemon',
+      description: 'Pokemon name',
+      required: false,
+      autocomplete: true,
+    }));
+    expect(pokemonOption.choices).toBeUndefined();
   });
 
   it('caps /shinies limit at 25', () => {

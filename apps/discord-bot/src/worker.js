@@ -4,7 +4,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const { COMMANDS } = require('./commands');
-const { getCommandHandler } = require('./commandRouter');
+const { getAutocompleteHandler, getCommandHandler } = require('./commandRouter');
 const {
   registerSlashCommands,
   validateEnvironment,
@@ -371,7 +371,7 @@ async function dispatchInteraction(interaction) {
     throw new Error(`Unhandled component: ${interaction.customId}`);
   }
 
-  if (!interaction.isChatInputCommand()) {
+  if (!interaction.isChatInputCommand() && !interaction.isAutocomplete()) {
     throw new Error('Unsupported interaction type.');
   }
 
@@ -383,6 +383,16 @@ async function dispatchInteraction(interaction) {
       content: `❌ ${permissionResult.reason}`,
       flags: MessageFlags.Ephemeral,
     });
+    return;
+  }
+
+  if (interaction.isAutocomplete()) {
+    const autocompleteHandler = getAutocompleteHandler(interaction.commandName);
+    if (!autocompleteHandler) {
+      await interaction.respondAutocomplete([]);
+      return;
+    }
+    await autocompleteHandler(interaction);
     return;
   }
 

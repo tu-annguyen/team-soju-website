@@ -70,6 +70,14 @@ const SHINY_STATUS_CHOICES = [
 
 const FAILED_SHINY_STATUS_CHOICES = SHINY_STATUS_CHOICES.filter(({ value }) => value !== 'Owned');
 
+function configurePokemonAutocompleteOption(option, description, required) {
+  return option
+    .setName('pokemon')
+    .setDescription(description)
+    .setRequired(required)
+    .setAutocomplete(true);
+}
+
 // Define required roles for commands
 const COMMAND_PERMISSIONS = {
   // Public commands (all members)
@@ -155,10 +163,7 @@ const COMMANDS = [
       option.setName('trainer')
         .setDescription('Trainer IGN')
         .setRequired(true))
-    .addStringOption(option =>
-      option.setName('pokemon')
-        .setDescription('Pokemon name')
-        .setRequired(true))
+    .addStringOption(option => configurePokemonAutocompleteOption(option, 'Pokemon name', true))
     .addStringOption(option =>
       option.setName('encounter_type')
         .setDescription('How was it encountered?')
@@ -227,10 +232,7 @@ const COMMANDS = [
       option.setName('shiny_id')
         .setDescription('ID of the shiny to edit')
         .setRequired(true))
-    .addStringOption(option =>
-      option.setName('pokemon')
-        .setDescription('Pokemon name')
-        .setRequired(false))
+    .addStringOption(option => configurePokemonAutocompleteOption(option, 'Pokemon name', false))
     .addStringOption(option =>
       option.setName('variant')
         .setDescription('Pokemon variant slug')

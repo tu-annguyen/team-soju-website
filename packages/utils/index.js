@@ -53,6 +53,55 @@ function capitalize(value) {
     return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
 }
 
+const SPECIES_NAME_EXCEPTIONS = new Set([
+    'ho-oh',
+    'mime-jr',
+    'mr-mime',
+    'nidoran-f',
+    'nidoran-m',
+    'porygon-z',
+]);
+
+const VARIANT_PREFIX_TO_SPECIES = new Map([
+    ['basculin-', 'basculin'],
+    ['deerling-', 'deerling'],
+    ['frillish-', 'frillish'],
+    ['gastrodon-', 'gastrodon'],
+    ['jellicent-', 'jellicent'],
+    ['sawsbuck-', 'sawsbuck'],
+    ['shellos-', 'shellos'],
+    ['unfezant-', 'unfezant'],
+    ['wormadam-', 'wormadam'],
+]);
+
+function normalizeKnownPokemonSpeciesName(pokemon) {
+    const normalized = normalizePokemonName(pokemon);
+    if (!normalized || SPECIES_NAME_EXCEPTIONS.has(normalized)) {
+        return normalized;
+    }
+
+    for (const [prefix, species] of VARIANT_PREFIX_TO_SPECIES.entries()) {
+        if (normalized.startsWith(prefix)) {
+            return species;
+        }
+    }
+
+    return normalized;
+}
+
+const KNOWN_POKEMON_NAMES = Object.freeze(
+    [...new Set(
+        Object.values(tiers)
+            .flat()
+            .map(normalizeKnownPokemonSpeciesName)
+            .filter(Boolean)
+    )].sort()
+);
+
+function getKnownPokemonNames() {
+    return [...KNOWN_POKEMON_NAMES];
+}
+
 /**
  * Gets the tier of a Pokémon based on its name.
  * @param {string} pokemon - The name of the Pokémon.
@@ -128,6 +177,7 @@ const pokeapi = require('./pokeapi.cjs');
 module.exports = {
   greyscale,
   capitalize,
+  getKnownPokemonNames,
   getPokemonTier,
   calculateShinyPoints,
   formatLocalDate,
