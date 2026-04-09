@@ -19,12 +19,13 @@ jest.mock('@team-soju/utils', () => ({
     'nidoran-m',
   ]),
   getNationalNumber: jest.fn().mockResolvedValue(1),
+  getPokemonEvolutionLine: jest.fn().mockResolvedValue(['charmander', 'charmeleon', 'charizard']),
   getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
   getPokemonVariants: jest.fn(),
 }));
 
 const fetchClient = require('../src/fetchClient');
-const { getPokemonVariants, getSpriteUrl } = require('@team-soju/utils');
+const { getPokemonEvolutionLine, getPokemonVariants, getSpriteUrl } = require('@team-soju/utils');
 const localUtils = require('../src/utils');
 const {
   enhanceAsyncScreenshotPayload,
@@ -52,6 +53,7 @@ describe('shinyHandlers', () => {
     fetchClient.put.mockReset();
     fetchClient.delete.mockReset();
     getSpriteUrl.mockResolvedValue('https://example.com/sprite.gif');
+    getPokemonEvolutionLine.mockResolvedValue(['charmander', 'charmeleon', 'charizard']);
     getPokemonVariants.mockResolvedValue({
       variants: ['dratini'],
       entries: [{ value: 'dratini', label: 'dratini', is_default: true }],
@@ -456,6 +458,7 @@ describe('shinyHandlers', () => {
       member: { roles: { cache: [{ name: 'Champion' }] } },
       update: jest.fn().mockResolvedValue(undefined),
     });
+    getPokemonEvolutionLine.mockResolvedValue(['chimchar', 'monferno', 'infernape']);
 
     fetchClient.get.mockResolvedValue({
       data: {
@@ -472,15 +475,17 @@ describe('shinyHandlers', () => {
     await handleShinyComponent(interaction);
 
     const payload = interaction.update.mock.calls[0][0];
-    expect(payload.components[0].components[0].custom_id).toBe('sh:pk:pick:1:selected-id');
+    expect(payload.content).toBe('Choose a Pokemon from the Chimchar evolution line.');
+    expect(payload.components[0].components[0].custom_id).toBe('sh:pk:pick:selected-id');
     expect(payload.components[0].components[0].options).toEqual(expect.arrayContaining([
       expect.objectContaining({ value: 'chimchar', default: true }),
+      expect.objectContaining({ value: 'infernape', default: false }),
     ]));
   });
 
   it('updates a shiny from pokemon picker selection', async () => {
     const interaction = createMockInteraction({
-      customId: 'sh:pk:pick:1:selected-id',
+      customId: 'sh:pk:pick:selected-id',
       member: { roles: { cache: [{ name: 'Champion' }] } },
       values: ['charizard'],
       update: jest.fn().mockResolvedValue(undefined),

@@ -20,6 +20,7 @@ const { generateEncountersString, validateSojuTrainerIGN } = require('../utils')
 const {
   capitalize,
   getKnownPokemonNames,
+  getPokemonEvolutionLine,
   getNationalNumber,
   getSpriteUrl,
   getPokemonVariants,
@@ -35,7 +36,6 @@ const SHINY_STAFF_ROLES = ['Elite 4', 'Champion'];
 const PAGE_SIZE_FALLBACK = 10;
 const MAX_SHINY_SELECT_OPTIONS = 25;
 const MAX_VARIANT_SELECT_OPTIONS = 25;
-const POKEMON_PICKER_PAGE_SIZE = 25;
 const COMPONENT_PREFIX = 'sh';
 const MODAL_PREFIX = 'shm';
 const SPECIAL_CHOICES = [
@@ -679,46 +679,18 @@ function buildPickerButton(customId, label, {
     .setDisabled(disabled);
 }
 
-function buildPokemonPickerItems(currentPokemon, page = null) {
-  const sortedNames = [...KNOWN_POKEMON_NAMES].sort((left, right) => left.localeCompare(right));
-  const totalPages = Math.ceil(sortedNames.length / POKEMON_PICKER_PAGE_SIZE) || 1;
-  const normalizedCurrent = String(currentPokemon || '').trim().toLowerCase();
-
-  let resolvedPage = page == null
-    ? 1
-    : Math.max(1, Math.min(page, totalPages));
-  if (page == null && normalizedCurrent) {
-    const currentIndex = sortedNames.findIndex(name => name === normalizedCurrent);
-    if (currentIndex >= 0) {
-      resolvedPage = Math.floor(currentIndex / POKEMON_PICKER_PAGE_SIZE) + 1;
-    }
-  }
-
-  const startIndex = (resolvedPage - 1) * POKEMON_PICKER_PAGE_SIZE;
-  return {
-    page: resolvedPage,
-    totalPages,
-    items: sortedNames.slice(startIndex, startIndex + POKEMON_PICKER_PAGE_SIZE),
-  };
-}
-
-function buildPokemonPickerSelectCustomId(shinyId, page) {
-  return `${COMPONENT_PREFIX}:pk:pick:${page}:${shinyId}`;
-}
-
-function buildPokemonPickerNavCustomId(action, shinyId, page) {
-  return `${COMPONENT_PREFIX}:pk:${action}:${page}:${shinyId}`;
+function buildPokemonPickerSelectCustomId(shinyId) {
+  return `${COMPONENT_PREFIX}:pk:pick:${shinyId}`;
 }
 
 function parsePokemonPickerCustomId(customId) {
-  const [, kind, action, page, shinyId] = String(customId || '').split(':');
+  const [, kind, action, shinyId] = String(customId || '').split(':');
   if (kind !== 'pk') {
     throw new Error('Unknown Pokemon picker interaction.');
   }
 
   return {
     action,
-    page: Number(page) || 1,
     shinyId,
   };
 }
@@ -791,33 +763,33 @@ async function buildEditControlsPayload(interaction, state, content = null) {
   return payload;
 }
 
-async function buildPokemonPickerPayload(shinyId, page = null, content = null) {
+async function buildPokemonPickerPayload(shinyId, content = null) {
   const shiny = await fetchShinyById(shinyId);
-  const { items, totalPages, page: resolvedPage } = buildPokemonPickerItems(shiny.pokemon || shiny.pokemon_name, page);
+  const evolutionLine = await getPokemonEvolutionLine(shiny.pokemon || shiny.pokemon_name);
+  const normalizedCurrentPokemon = String(shiny.pokemon || shiny.pokemon_name || '').trim().toLowerCase();
+  const options = [...new Set((evolutionLine || []).filter(Boolean))];
+
+  if (!options.includes(normalizedCurrentPokemon) && normalizedCurrentPokemon) {
+    options.unshift(normalizedCurrentPokemon);
+  }
 
   return {
-    content: content || `Choose a Pokemon for ${capitalize(shiny.pokemon_name || shiny.pokemon)}. Type in the select to filter this page.`,
+    content: content || `Choose a Pokemon from the ${capitalize(shiny.pokemon_name || shiny.pokemon)} evolution line.`,
     embeds: (await buildShinyDisplayPayload(shiny, 'Choose Pokemon')).embeds,
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
-          .setCustomId(buildPokemonPickerSelectCustomId(shinyId, resolvedPage))
+          .setCustomId(buildPokemonPickerSelectCustomId(shinyId))
           .setPlaceholder('Select Pokemon')
           .setMinValues(1)
           .setMaxValues(1)
-          .addOptions(items.map(name => ({
+          .addOptions(options.map(name => ({
             label: formatPokemonAutocompleteLabel(name).slice(0, 100),
             value: name,
             default: name === String(shiny.pokemon || '').trim().toLowerCase(),
           })))
       ),
       new ActionRowBuilder().addComponents(
-        buildPickerButton(buildPokemonPickerNavCustomId('prev', shinyId, resolvedPage - 1), '<', {
-          disabled: resolvedPage <= 1,
-        }),
-        buildPickerButton(buildPokemonPickerNavCustomId('next', shinyId, resolvedPage + 1), '>', {
-          disabled: resolvedPage >= totalPages,
-        }),
         buildPickerButton(buildCustomId('a', 'e', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }), 'Back')
       ),
     ],
@@ -895,7 +867,7 @@ function getFieldPickerConfig(field, shiny) {
 
 async function buildFieldPickerPayload(field, shinyId, content = null) {
   if (field === 'pokemon') {
-    return buildPokemonPickerPayload(shinyId, null, content);
+    return buildPokemonPickerPayload(shinyId, content);
   }
 
   const shiny = await fetchShinyById(shinyId);
@@ -1449,14 +1421,6 @@ async function handleShinyComponent(interaction) {
           pageSize: PAGE_SIZE_FALLBACK,
           shinyId: pokemonPicker.shinyId,
         }, 'Pokemon updated.'));
-        return;
-      }
-
-      if (pokemonPicker.action === 'prev' || pokemonPicker.action === 'next') {
-        await interaction.update(await buildPokemonPickerPayload(
-          pokemonPicker.shinyId,
-          pokemonPicker.page,
-        ));
         return;
       }
     }
