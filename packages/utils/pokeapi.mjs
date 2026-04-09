@@ -15,6 +15,19 @@ function normalizePokemonName(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function extractEvolutionSpecies(chainNode, collected = []) {
+  const speciesName = normalizePokemonName(chainNode?.species?.name);
+  if (speciesName) {
+    collected.push(speciesName);
+  }
+
+  for (const evolvesTo of chainNode?.evolves_to || []) {
+    extractEvolutionSpecies(evolvesTo, collected);
+  }
+
+  return collected;
+}
+
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
 
 function isNidoranRouteName(value) {
@@ -169,6 +182,24 @@ export async function getNationalNumber(pokemon) {
   } catch (err) {
     console.error(`Error fetching species data for Pokémon "${pokemon}":`, err.message || err);
     return null;
+  }
+}
+
+export async function getPokemonEvolutionLine(pokemon) {
+  try {
+    const { species } = await resolveSpeciesContext(pokemon);
+    const chainUrl = species?.evolution_chain?.url;
+    if (!chainUrl) {
+      const speciesName = normalizePokemonName(species?.name || pokemon);
+      return speciesName ? [speciesName] : [];
+    }
+
+    const evolutionChain = await getPokedex().resource(chainUrl);
+    return [...new Set(extractEvolutionSpecies(evolutionChain?.chain, []))];
+  } catch (err) {
+    console.error(`Error fetching evolution line for Pokémon "${pokemon}":`, err.message || err);
+    const normalizedPokemon = normalizePokemonName(pokemon);
+    return normalizedPokemon ? [normalizedPokemon] : [];
   }
 }
 
