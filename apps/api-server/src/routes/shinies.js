@@ -387,6 +387,20 @@ function isBeforeIsoDate(value, minimum) {
   return value < minimum;
 }
 
+function isAfterIsoDate(value, maximum) {
+  if (!value || !maximum) return false;
+  return value > maximum;
+}
+
+function getLatestPossibleTodayIso(now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Pacific/Kiritimati',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
 function scoreDateCandidate({ format, first, second, third, separator, index, text }) {
   let score = 0;
 
@@ -1037,7 +1051,7 @@ async function createShinyFromScreenshotValue(value) {
       .join('\n');
     console.log('OCR Layout: ', layout);
     console.log('OCR Result: ', ocrText);
-
+   
     const parsed = parseDataFromOcr(ocrText);
     let mobileStats = null;
 
@@ -1058,11 +1072,17 @@ async function createShinyFromScreenshotValue(value) {
     if (mergedParsed.dateWasAmbiguous) {
       const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
       mergedParsed.date = fallbackDate;
-      notes.push(`Ambiguous date was found in screenshot. Set caught date to today's date ${fallbackDate}. Select **Edit** > **Edit Text Fields** to change.`);
+      notes.push(`Ambiguous date was found in screenshot. The caught date was set to today's date (${fallbackDate}), instead. Select **Edit** > **Edit Text Fields** to change.`);
     }
 
     if (isBeforeIsoDate(mergedParsed.date, SHINY_WARS_2025_RELEASE_DATE)) {
-      notes.push(`The date was read as ${mergedParsed.date}, which is before ${SHINY_WARS_2025_RELEASE_DATE}. Screenshots from the Encounter Tracker should only exist after the Shiny Wars 2025 update, so please double-check the date.`);
+      notes.push(`The date was read as ${mergedParsed.date}, which is before ${SHINY_WARS_2025_RELEASE_DATE}. Screenshots from the Encounter Tracker should only exist after the Shiny Wars 2025 update, so please double-check the date. Select **Edit** > **Edit Text Fields** to change.`);
+    }
+
+    if (isAfterIsoDate(mergedParsed.date, getLatestPossibleTodayIso())) {
+      const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
+      notes.push(`The date was read as ${mergedParsed.date}, which is in the future. The caught date was set to today's date (${fallbackDate}), instead. Please double-check the date. Select **Edit** > **Edit Text Fields** to change.`);
+      mergedParsed.date = fallbackDate;
     }
 
     const validation = validateParsedData(mergedParsed);
