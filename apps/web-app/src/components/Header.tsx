@@ -69,6 +69,12 @@ const Header = () => {
           >
             Discord
           </a>
+          <a 
+            href="/feebas-tile-checker" 
+            className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+          >
+            Feebas
+          </a>
           <div className="ml-4">
             <ThemeToggle />
           </div>
@@ -147,6 +153,13 @@ const Header = () => {
                 onClick={() => setIsOpen(false)}
               >
                 Discord
+              </a>
+              <a 
+                href="/feebas-tile-checker" 
+                className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Feebas
               </a>
             </nav>
           </motion.div>

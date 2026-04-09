@@ -117,3 +117,38 @@ ALTER TABLE team_shinies
 -- Indexes for common lookups
 CREATE INDEX IF NOT EXISTS idx_team_shinies_trainer ON team_shinies(original_trainer);
 CREATE INDEX IF NOT EXISTS idx_team_shinies_natno ON team_shinies(national_number);
+
+-- Feebas tile coordination cycles
+CREATE TABLE IF NOT EXISTS feebas_cycles (
+  id BIGSERIAL PRIMARY KEY,
+  location TEXT NOT NULL,
+  cycle_start TIMESTAMPTZ NOT NULL,
+  cycle_end TIMESTAMPTZ NOT NULL,
+  confirmed_tile_id TEXT,
+  locked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(location, cycle_start)
+);
+
+CREATE TABLE IF NOT EXISTS feebas_tile_states (
+  id BIGSERIAL PRIMARY KEY,
+  cycle_id BIGINT NOT NULL REFERENCES feebas_cycles(id) ON DELETE CASCADE,
+  tile_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'unchecked'
+    CHECK (status IN ('unchecked', 'checked', 'pending', 'confirmed')),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  updated_by_name TEXT,
+  updated_by_fingerprint TEXT,
+  pending_reported_by_name TEXT,
+  pending_reported_by_fingerprint TEXT,
+  confirmed_by_name TEXT,
+  confirmed_by_fingerprint TEXT,
+  confirmed_at TIMESTAMPTZ,
+  UNIQUE(cycle_id, tile_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_feebas_cycles_location_cycle_start
+  ON feebas_cycles(location, cycle_start DESC);
+
+CREATE INDEX IF NOT EXISTS idx_feebas_tile_states_cycle_id
+  ON feebas_tile_states(cycle_id);

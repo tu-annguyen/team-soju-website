@@ -1,0 +1,29 @@
+---
+import Layout from '../layouts/Layout.astro';
+import FeebasTileChecker from '../components/FeebasTileChecker.tsx';
+
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+---
+
+<Layout
+  title="Feebas Tile Checker - Team Soju"
+  description="Coordinate Route 119 Feebas checks live with a shared tile board."
+>
+  <section class="bg-gradient-to-br from-cyan-100 via-sky-100 to-teal-100 py-16 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div class="container">
+      <div class="max-w-4xl">
+        <p class="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-sky-700 dark:text-sky-300">Live Coordination Tool</p>
+        <h1 class="text-gray-900 dark:text-white">Feebas Tile Checker</h1>
+        <p class="mt-4 text-lg text-slate-700 dark:text-slate-300">
+          Coordinate Route 119 Feebas checks in real time. Mark tiles as checked, flag likely Feebas hits, and wait for a second hunter to confirm before the board locks for the cycle.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-12">
+    <div class="container">
+      <FeebasTileChecker client:load apiBaseUrl={apiBaseUrl} />
+    </div>
+  </section>
+</Layout>
