@@ -132,4 +132,38 @@ router.post('/:location/tiles/:tileId', async (req, res) => {
   }
 });
 
+router.post('/:location/reset', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      success: false,
+      message: 'Feebas board reset is not available in production',
+    });
+  }
+
+  try {
+    getLocationConfig(req.params.location);
+    const board = await FeebasBoard.resetBoard(req.params.location);
+    broadcastBoard(req.params.location, board);
+
+    res.json({
+      success: true,
+      data: board,
+      message: 'Feebas board reset successfully',
+    });
+  } catch (error) {
+    if (error instanceof FeebasRuleError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    console.error('Error resetting Feebas board:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset Feebas board',
+    });
+  }
+});
+
 module.exports = router;

@@ -19,6 +19,33 @@ class FeebasBoard {
     return this.getBoardForCycle(client, location, cycle, now);
   }
 
+  static async resetBoard(location, options = {}) {
+    const now = options.now ? new Date(options.now) : new Date();
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      getLocationConfig(location);
+      const { cycleStart } = getCycleWindow(now);
+
+      await client.query(`
+        DELETE FROM feebas_cycles
+        WHERE location = $1 AND cycle_start = $2
+      `, [location, cycleStart.toISOString()]);
+
+      const board = await this.getBoard(location, { client, now });
+
+      await client.query('COMMIT');
+      return board;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   static async updateTile(location, tileId, payload, options = {}) {
     const actorFingerprint = sanitizeFingerprint(payload?.actorFingerprint);
     if (!actorFingerprint) {

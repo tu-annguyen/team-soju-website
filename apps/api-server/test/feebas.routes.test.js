@@ -2,6 +2,7 @@ const request = require('supertest');
 
 jest.mock('../src/models/FeebasBoard', () => ({
   getBoard: jest.fn(),
+  resetBoard: jest.fn(),
   updateTile: jest.fn(),
 }));
 
@@ -39,10 +40,18 @@ const boardFixture = {
 };
 
 describe('Feebas routes', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.NODE_ENV = 'test';
     FeebasBoard.getBoard.mockResolvedValue(boardFixture);
+    FeebasBoard.resetBoard.mockResolvedValue(boardFixture);
     FeebasBoard.updateTile.mockResolvedValue(boardFixture);
+  });
+
+  afterAll(() => {
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it('returns the active Feebas board', async () => {
@@ -81,5 +90,25 @@ describe('Feebas routes', () => {
       actorFingerprint: 'client-12345678',
       actorName: 'May',
     });
+  });
+
+  it('resets the board in non-production environments', async () => {
+    const response = await request(app).post('/api/feebas/route-119-main/reset');
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('Feebas board reset successfully');
+    expect(FeebasBoard.resetBoard).toHaveBeenCalledWith('route-119-main');
+  });
+
+  it('blocks board resets in production', async () => {
+    process.env.NODE_ENV = 'production';
+
+    const response = await request(app).post('/api/feebas/route-119-main/reset');
+
+    expect(response.status).toBe(403);
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toBe('Feebas board reset is not available in production');
+    expect(FeebasBoard.resetBoard).not.toHaveBeenCalled();
   });
 });
