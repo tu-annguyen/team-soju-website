@@ -61,16 +61,21 @@ const DEFAULT_LOCATION = 'route-119-main';
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
 const ROUTE_119_MAIN_TERRAIN = [
-  ['grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank'],
-  ['grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank'],
-  ['grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
-  ['grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
-  ['grass', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
-  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
-  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
-  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank', 'bank', 'bank'],
-  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank', 'bank', 'bank', 'bank'],
-  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank'],
+  ['bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'water', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank'],
+  ['bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'water', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank'],
+  ['bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'water', 'water', 'water', 'bank', 'bank', 'water', 'water', 'bank', 'bank', 'water', 'water', 'bank'],
+  ['bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank'],
+  ['bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank'],
+  ['bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank'],
+  ['bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['bank', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'water', 'water', 'water'],
+  ['bank', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['bank', 'bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank'],
+  ['bank', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank'],
+  ['bank', 'water', 'water', 'water', 'water', 'water', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank'],
+  ['water', 'water', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank', 'bank'],
 ] as const;
 
 function getStatusClasses(status: TileStatus) {
@@ -96,6 +101,7 @@ function getTerrainClasses(terrain: string) {
     grass: 'bg-[linear-gradient(180deg,_#c4e2ab_0%,_#8fbd72_100%)]',
     bank: 'bg-[linear-gradient(180deg,_#f0dfaa_0%,_#cfb479_100%)]',
     water: 'bg-[linear-gradient(180deg,_#496dd1_0%,_#2d488f_100%)]',
+    rock: 'bg-[linear-gradient(180deg,_#62666f_0%,_#3b3f48_100%)]',
   }[terrain] || 'bg-transparent');
 }
 
