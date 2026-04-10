@@ -328,12 +328,15 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const totalPendingVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.pending, 0) || 0;
   const totalConfirmedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.confirmed, 0) || 0;
   const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length) : null;
+  const selectedTileCurrentVote = selectedTile?.currentUserVote || 'unchecked';
   const selectedTileHasPending = Boolean(selectedTile && selectedTile.voteCounts.pending > 0);
+  const selectedTileIsPendingOwner = selectedTileCurrentVote === 'pending';
+  const selectedTileHasNoVote = selectedTileCurrentVote === 'unchecked';
   const canConfirmSelectedTile = Boolean(
     selectedTile &&
     selectedTileHasPending &&
-    selectedTile.currentUserVote !== 'pending' &&
-    selectedTile.currentUserVote !== 'confirmed'
+    !selectedTileIsPendingOwner &&
+    selectedTileCurrentVote !== 'confirmed'
   );
 
   const updateTile = async (tileId: string, status: TileStatus) => {
@@ -589,7 +592,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'pending')}
                     className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'pending' || (selectedTileHasPending && selectedTile.currentUserVote !== 'pending')}
+                    disabled={pendingAction === selectedTile.tileId || selectedTileIsPendingOwner || (selectedTileHasPending && !selectedTileIsPendingOwner)}
                   >
                     Feebas Found
                   </button>
@@ -605,7 +608,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
                     className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'unchecked' || selectedTile.currentUserVote === 'pending'}
+                    disabled={pendingAction === selectedTile.tileId || selectedTileHasNoVote || selectedTileIsPendingOwner}
                   >
                     Clear My Vote
                   </button>
@@ -616,12 +619,12 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     This tile needs at least one pending vote before confirmed votes are allowed.
                   </p>
                 ) : null}
-                {selectedTile.currentUserVote === 'pending' ? (
+                {selectedTileIsPendingOwner ? (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     You placed the active pending vote, so this tile now needs to be resolved as checked or confirmed by another player.
                   </p>
                 ) : null}
-                {selectedTileHasPending && selectedTile.currentUserVote === 'unchecked' ? (
+                {selectedTileHasPending && selectedTileHasNoVote ? (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     Another player already has the pending nomination on this tile, so you can only resolve it as checked or confirmed.
                   </p>
