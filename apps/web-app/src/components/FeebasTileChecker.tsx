@@ -369,6 +369,12 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
 
   const handleTilePress = (tile: FeebasTile) => {
     setSelectedTileId(tile.tileId);
+
+    if (pendingAction || tile.currentUserVote !== 'unchecked') {
+      return;
+    }
+
+    updateTile(tile.tileId, 'checked');
   };
 
   if (loading) {
@@ -395,9 +401,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
               {board?.displayName || 'Feebas Tile Checker'}
             </h2>
-            <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-300">
-              Vote tiles as checked, pending, or confirmed. Colors stack at 25% opacity per vote so the board behaves like a live heatmap of group opinion.
-            </p>
           </div>
 
           <div className="grid gap-3 rounded-2xl bg-slate-100 p-4 dark:bg-slate-900/70">
@@ -574,7 +577,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     className="btn bg-rose-600 text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'checked'}
                   >
-                    Vote Checked
+                    No Feebas
                   </button>
                   <button
                     type="button"
@@ -582,7 +585,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'pending'}
                   >
-                    Vote Pending
+                    Feebas Found
                   </button>
                   <button
                     type="button"
@@ -590,7 +593,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     className="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={pendingAction === selectedTile.tileId || !canConfirmSelectedTile}
                   >
-                    Vote Confirmed
+                    Feebas Confirmed
                   </button>
                   <button
                     type="button"

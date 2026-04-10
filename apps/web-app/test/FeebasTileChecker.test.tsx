@@ -92,6 +92,44 @@ describe('FeebasTileChecker', () => {
   });
 
   it('allows a second client to confirm a pending tile', async () => {
+    (global as any).fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: boardFixture,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: boardFixture,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              {
+                ...boardFixture.tiles[0],
+                voteCounts: {
+                  checked: 1,
+                  pending: 1,
+                  confirmed: 0,
+                },
+                totalVotes: 2,
+                currentUserVote: 'checked',
+              },
+              boardFixture.tiles[1],
+            ],
+          },
+        }),
+      });
+
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
     await waitFor(() =>
@@ -100,33 +138,117 @@ describe('FeebasTileChecker', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i }));
 
+    await waitFor(() =>
+      expect(screen.getByText(/Your vote: Checked/i)).toBeInTheDocument()
+    );
+
     expect(screen.getByRole('button', { name: /Vote Confirmed/i })).toBeEnabled();
   });
 
-  it('lets a user clear their vote after selecting a tile', async () => {
-    (global as any).fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        success: true,
-        data: {
-          ...boardFixture,
-          tiles: [
-            {
-              ...boardFixture.tiles[0],
-              status: 'confirmed',
-              voteCounts: {
-                checked: 0,
-                pending: 1,
-                confirmed: 1,
+  it('casts a checked vote when a tile is clicked', async () => {
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: boardFixture,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: boardFixture,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              boardFixture.tiles[0],
+              {
+                ...boardFixture.tiles[1],
+                status: 'checked',
+                voteCounts: {
+                  checked: 1,
+                  pending: 0,
+                  confirmed: 0,
+                },
+                totalVotes: 1,
+                currentUserVote: 'checked',
               },
-              totalVotes: 2,
-              currentUserVote: 'confirmed',
-            },
-            boardFixture.tiles[1],
-          ],
-        },
+            ],
+          },
+        }),
+      });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Your vote: Checked/i)).toBeInTheDocument()
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'http://localhost:3001/api/feebas/route-119-main/tiles/r1c2',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          status: 'checked',
+          actorFingerprint: 'client-self',
+          actorName: undefined,
+        }),
       }),
-    });
+    );
+  });
+
+  it('does not overwrite an existing vote to checked when selecting a tile', async () => {
+    const votedBoard = {
+      ...boardFixture,
+      tiles: [
+        {
+          ...boardFixture.tiles[0],
+          status: 'confirmed',
+          voteCounts: {
+            checked: 0,
+            pending: 1,
+            confirmed: 1,
+          },
+          totalVotes: 2,
+          currentUserVote: 'confirmed',
+        },
+        boardFixture.tiles[1],
+      ],
+    };
+
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: votedBoard,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: votedBoard,
+        }),
+      });
+
+    (global as any).fetch = fetchMock;
 
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
@@ -136,8 +258,92 @@ describe('FeebasTileChecker', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i }));
 
-    expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
     expect(screen.getByText(/Your vote: Confirmed/i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets a user clear their vote after selecting a tile', async () => {
+    (global as any).fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              {
+                ...boardFixture.tiles[0],
+                status: 'confirmed',
+                voteCounts: {
+                  checked: 0,
+                  pending: 1,
+                  confirmed: 1,
+                },
+                totalVotes: 2,
+                currentUserVote: 'confirmed',
+              },
+              boardFixture.tiles[1],
+            ],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              {
+                ...boardFixture.tiles[0],
+                status: 'confirmed',
+                voteCounts: {
+                  checked: 0,
+                  pending: 1,
+                  confirmed: 1,
+                },
+                totalVotes: 2,
+                currentUserVote: 'confirmed',
+              },
+              boardFixture.tiles[1],
+            ],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              {
+                ...boardFixture.tiles[0],
+                status: 'checked',
+                voteCounts: {
+                  checked: 1,
+                  pending: 1,
+                  confirmed: 0,
+                },
+                totalVotes: 2,
+                currentUserVote: 'checked',
+              },
+              boardFixture.tiles[1],
+            ],
+          },
+        }),
+      });
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i }));
+
+    expect(screen.getByText(/Your vote: Confirmed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
     expect(screen.getByText(/Mixed colors mean mixed opinions/i)).toBeInTheDocument();
   });
 });
