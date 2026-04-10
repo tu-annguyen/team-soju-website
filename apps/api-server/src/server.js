@@ -8,6 +8,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 const membersRoutes = require('./routes/members');
 const shiniesRoutes = require('./routes/shinies');
+const feebasRoutes = require('./routes/feebas');
 const { generateBotToken } = require('./middleware/auth');
 
 const app = express();
@@ -63,6 +64,7 @@ app.get('/generate-bot-token', (req, res) => {
 // API Routes
 app.use('/api/members', membersRoutes);
 app.use('/api/shinies', shiniesRoutes); 
+app.use('/api/feebas', feebasRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
