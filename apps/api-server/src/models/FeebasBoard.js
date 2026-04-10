@@ -143,15 +143,38 @@ class FeebasBoard {
   }
 
   static async ensureCycle(client, location, cycleStart, cycleEnd) {
-    const result = await client.query(`
+    const cycleStartIso = cycleStart.toISOString();
+    const cycleEndIso = cycleEnd.toISOString();
+    const existingCycleResult = await client.query(`
+      SELECT *
+      FROM feebas_cycles
+      WHERE location = $1 AND cycle_start = $2
+      LIMIT 1
+    `, [location, cycleStartIso]);
+
+    if (existingCycleResult.rows[0]) {
+      return existingCycleResult.rows[0];
+    }
+
+    const insertedCycleResult = await client.query(`
       INSERT INTO feebas_cycles (location, cycle_start, cycle_end)
       VALUES ($1, $2, $3)
-      ON CONFLICT (location, cycle_start)
-      DO UPDATE SET cycle_end = EXCLUDED.cycle_end
+      ON CONFLICT (location, cycle_start) DO NOTHING
       RETURNING *
-    `, [location, cycleStart.toISOString(), cycleEnd.toISOString()]);
+    `, [location, cycleStartIso, cycleEndIso]);
 
-    return result.rows[0];
+    if (insertedCycleResult.rows[0]) {
+      return insertedCycleResult.rows[0];
+    }
+
+    const concurrentCycleResult = await client.query(`
+      SELECT *
+      FROM feebas_cycles
+      WHERE location = $1 AND cycle_start = $2
+      LIMIT 1
+    `, [location, cycleStartIso]);
+
+    return concurrentCycleResult.rows[0];
   }
 
   static async getTileVotesForUpdate(client, cycleId, tileId) {
