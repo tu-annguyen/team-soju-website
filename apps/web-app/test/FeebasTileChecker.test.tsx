@@ -10,7 +10,7 @@ const boardFixture = {
   cycleEnd: '2099-04-09T21:00:00.000Z',
   serverTime: '2026-04-09T20:20:00.000Z',
   resetIntervalMinutes: 45,
-  requiresDistinctConfirmation: true,
+  requiresDistinctConfirmation: false,
   confirmedTileId: null,
   isLocked: false,
   layout: {
@@ -22,7 +22,7 @@ const boardFixture = {
       id: 1,
       tileId: 'r1c1',
       tileLabel: 'A1',
-      actionType: 'reported',
+      actionType: 'voted',
       previousStatus: 'checked',
       nextStatus: 'pending',
       actorName: 'May',
@@ -36,12 +36,13 @@ const boardFixture = {
       row: 0,
       col: 0,
       status: 'pending',
-      updatedAt: null,
-      updatedByName: 'May',
-      pendingReportedByName: 'May',
-      pendingReportedByFingerprint: 'other-client',
-      confirmedByName: null,
-      confirmedAt: null,
+      voteCounts: {
+        checked: 0,
+        pending: 1,
+        confirmed: 0,
+      },
+      totalVotes: 1,
+      currentUserVote: 'unchecked',
     },
     {
       tileId: 'r1c2',
@@ -49,12 +50,13 @@ const boardFixture = {
       row: 0,
       col: 1,
       status: 'unchecked',
-      updatedAt: null,
-      updatedByName: null,
-      pendingReportedByName: null,
-      pendingReportedByFingerprint: null,
-      confirmedByName: null,
-      confirmedAt: null,
+      voteCounts: {
+        checked: 0,
+        pending: 0,
+        confirmed: 0,
+      },
+      totalVotes: 0,
+      currentUserVote: 'unchecked',
     },
   ],
 };
@@ -82,40 +84,43 @@ describe('FeebasTileChecker', () => {
       expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
     );
 
-    expect(screen.getByRole('button', { name: /A2 Pending/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /B2 Unchecked/i })).toBeInTheDocument();
-    expect(screen.getByText(/Confirmation requires a second distinct browser/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument();
+    expect(screen.getByText(/Each browser can keep one active vote per tile/i)).toBeInTheDocument();
     expect(screen.getAllByText('May').length).toBeGreaterThan(0);
-    expect(screen.getByText(/reported as a Feebas tile/i)).toBeInTheDocument();
+    expect(screen.getByText(/voted pending on/i)).toBeInTheDocument();
   });
 
   it('allows a second client to confirm a pending tile', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /A2 Pending/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /A2 Pending/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i }));
 
-    expect(screen.getByRole('button', { name: /Second And Confirm/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Vote Confirmed/i })).toBeEnabled();
   });
 
-  it('keeps the board interactive after a tile is confirmed', async () => {
+  it('lets a user clear their vote after selecting a tile', async () => {
     (global as any).fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
         success: true,
         data: {
           ...boardFixture,
-          isLocked: true,
-          confirmedTileId: 'r1c1',
           tiles: [
             {
               ...boardFixture.tiles[0],
               status: 'confirmed',
-              confirmedByName: 'Brendan',
-              confirmedAt: '2026-04-09T20:19:00.000Z',
+              voteCounts: {
+                checked: 0,
+                pending: 1,
+                confirmed: 1,
+              },
+              totalVotes: 2,
+              currentUserVote: 'confirmed',
             },
             boardFixture.tiles[1],
           ],
@@ -126,13 +131,13 @@ describe('FeebasTileChecker', () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /A2 Confirmed/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i })).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /A2 Confirmed/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i }));
 
-    expect(screen.getByRole('button', { name: /A2 Confirmed/i })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /Reset Tile/i })).toBeEnabled();
-    expect(screen.getByText(/currently confirmed\. You can still adjust the board/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
+    expect(screen.getByText(/Your vote: Confirmed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mixed colors mean mixed opinions/i)).toBeInTheDocument();
   });
 });

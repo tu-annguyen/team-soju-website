@@ -8,12 +8,13 @@ type FeebasTile = {
   row: number;
   col: number;
   status: TileStatus;
-  updatedAt: string | null;
-  updatedByName: string | null;
-  pendingReportedByName: string | null;
-  pendingReportedByFingerprint: string | null;
-  confirmedByName: string | null;
-  confirmedAt: string | null;
+  voteCounts: {
+    checked: number;
+    pending: number;
+    confirmed: number;
+  };
+  totalVotes: number;
+  currentUserVote: TileStatus;
 };
 
 type FeebasActivityEntry = {
@@ -22,7 +23,7 @@ type FeebasActivityEntry = {
   tileLabel: string;
   actionType: string;
   previousStatus: string | null;
-  nextStatus: TileStatus;
+  nextStatus: TileStatus | null;
   actorName: string | null;
   createdAt: string;
 };
@@ -80,10 +81,10 @@ const ROUTE_119_MAIN_TERRAIN = [
 
 function getStatusClasses(status: TileStatus) {
   return ({
-    unchecked: 'bg-slate-500/90 hover:bg-slate-400 text-white',
-    checked: 'bg-rose-600/95 hover:bg-rose-500 text-white',
-    pending: 'bg-amber-400/95 hover:bg-amber-300 text-slate-950',
-    confirmed: 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-200',
+    unchecked: 'bg-slate-500/70 text-white',
+    checked: 'bg-rose-600/35 text-white',
+    pending: 'bg-amber-400/35 text-slate-950',
+    confirmed: 'bg-emerald-500/35 text-slate-950 ring-2 ring-emerald-200',
   }[status]);
 }
 
@@ -105,16 +106,36 @@ function getTerrainClasses(terrain: string) {
   }[terrain] || 'bg-transparent');
 }
 
-function getActivityMessage(actionType: string) {
+function getVoteActionMessage(actionType: string, nextStatus: TileStatus | null) {
+  if (actionType === 'cleared_vote') {
+    return 'cleared their vote on';
+  }
+
+  if (actionType === 'changed_vote') {
+    return `changed their vote to ${getStatusLabel(nextStatus || 'unchecked').toLowerCase()} on`;
+  }
+
+  return `voted ${getStatusLabel(nextStatus || 'unchecked').toLowerCase()} on`;
+}
+
+function getVoteLayerOpacity(voteCount: number) {
+  return Math.min(voteCount * 0.25, 0.95);
+}
+
+function getVoteLayerColor(status: Exclude<TileStatus, 'unchecked'>) {
   return ({
-    checked: 'marked checked',
-    unchecked: 'returned to unchecked',
-    reported: 'reported as a Feebas tile',
-    cleared_pending: 'cleared the pending report on',
-    reverted_to_checked: 'moved back to checked',
-    confirmed: 'confirmed as the Feebas tile',
-    updated: 'updated',
-  }[actionType] || 'updated');
+    checked: '#e11d48',
+    pending: '#fbbf24',
+    confirmed: '#10b981',
+  }[status]);
+}
+
+function getVoteSummary(tile: FeebasTile) {
+  return [
+    `${tile.voteCounts.checked} checked`,
+    `${tile.voteCounts.pending} pending`,
+    `${tile.voteCounts.confirmed} confirmed`,
+  ].join(', ');
 }
 
 function formatCountdown(targetIso: string | null) {
@@ -168,9 +189,10 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const [countdown, setCountdown] = useState('--:--');
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
+  const querySuffix = clientId ? `?actorFingerprint=${encodeURIComponent(clientId)}` : '';
 
   const fetchBoard = async () => {
-    const response = await fetch(`${apiBaseUrl}/feebas/${location}`);
+    const response = await fetch(`${apiBaseUrl}/feebas/${location}${querySuffix}`);
     const payload: BoardResponse = await response.json();
 
     if (!response.ok || !payload.success) {
@@ -218,14 +240,18 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
     return () => {
       mounted = false;
     };
-  }, [apiBaseUrl, location]);
+  }, [apiBaseUrl, clientId, location]);
 
   useEffect(() => {
     if (typeof EventSource === 'undefined') {
       return undefined;
     }
 
-    const eventSource = new EventSource(`${apiBaseUrl}/feebas/${location}/stream`);
+    if (!clientId) {
+      return undefined;
+    }
+
+    const eventSource = new EventSource(`${apiBaseUrl}/feebas/${location}/stream?actorFingerprint=${encodeURIComponent(clientId)}`);
 
     eventSource.onmessage = (event) => {
       try {
@@ -249,7 +275,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
     return () => {
       eventSource.close();
     };
-  }, [apiBaseUrl, location]);
+  }, [apiBaseUrl, clientId, location]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -298,17 +324,11 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   }, [board]);
 
   const selectedTile = selectedTileId ? tileMap.get(selectedTileId) || null : null;
-  const pendingTileCount = board?.tiles.filter((tile) => tile.status === 'pending').length || 0;
-  const checkedTileCount = board?.tiles.filter((tile) => tile.status === 'checked').length || 0;
-  const confirmedTile = board?.tiles.find((tile) => tile.status === 'confirmed') || null;
+  const totalCheckedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.checked, 0) || 0;
+  const totalPendingVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.pending, 0) || 0;
+  const totalConfirmedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.confirmed, 0) || 0;
   const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length) : null;
-  const confirmedTileLabel = confirmedTile ? getTileLabel(confirmedTile.row, confirmedTile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length) : null;
-  const canConfirmSelectedTile = Boolean(
-    selectedTile &&
-    selectedTile.status === 'pending' &&
-    clientId &&
-    selectedTile.pendingReportedByFingerprint !== clientId
-  );
+  const canConfirmSelectedTile = Boolean(selectedTile && selectedTile.voteCounts.pending > 0 && selectedTile.currentUserVote !== 'confirmed');
 
   const updateTile = async (tileId: string, status: TileStatus) => {
     if (!clientId) {
@@ -349,19 +369,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
 
   const handleTilePress = (tile: FeebasTile) => {
     setSelectedTileId(tile.tileId);
-
-    if (pendingAction) {
-      return;
-    }
-
-    if (tile.status === 'unchecked') {
-      updateTile(tile.tileId, 'checked');
-      return;
-    }
-
-    if (tile.status === 'checked') {
-      updateTile(tile.tileId, 'unchecked');
-    }
   };
 
   if (loading) {
@@ -389,8 +396,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               {board?.displayName || 'Feebas Tile Checker'}
             </h2>
             <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-300">
-              Mark tiles as checked, report a likely Feebas tile as pending, and have a second player confirm it.
-              Confirmed tiles can still be corrected if the board needs to be updated.
+              Vote tiles as checked, pending, or confirmed. Colors stack at 25% opacity per vote so the board behaves like a live heatmap of group opinion.
             </p>
           </div>
 
@@ -417,7 +423,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
           </label>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-            Confirmation requires a second distinct browser. Names are optional and not verified.
+            Each browser can keep one active vote per tile. Confirmed votes are only allowed while that tile still has at least one pending vote.
           </div>
         </div>
       </section>
@@ -458,7 +464,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                 }
 
                 const isSelected = selectedTileId === tile.tileId;
-                const pendingName = tile.status === 'pending' ? formatActorName(tile.pendingReportedByName) : null;
                 const tileLabel = getTileLabel(tile.row, tile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length);
 
                 return (
@@ -467,18 +472,45 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     className={`relative aspect-square rounded-[0.35rem] border border-white/10 ${terrainClasses}`}
                   >
                     <div className="absolute inset-[8%] rounded-[0.3rem] bg-[linear-gradient(180deg,_rgba(255,255,255,0.18),_rgba(255,255,255,0.03))]" />
+                    {tile.voteCounts.checked > 0 ? (
+                      <div
+                        className="absolute inset-[8%] rounded-[0.3rem]"
+                        style={{
+                          backgroundColor: getVoteLayerColor('checked'),
+                          opacity: getVoteLayerOpacity(tile.voteCounts.checked),
+                        }}
+                      />
+                    ) : null}
+                    {tile.voteCounts.pending > 0 ? (
+                      <div
+                        className="absolute inset-[8%] rounded-[0.3rem]"
+                        style={{
+                          backgroundColor: getVoteLayerColor('pending'),
+                          opacity: getVoteLayerOpacity(tile.voteCounts.pending),
+                        }}
+                      />
+                    ) : null}
+                    {tile.voteCounts.confirmed > 0 ? (
+                      <div
+                        className="absolute inset-[8%] rounded-[0.3rem]"
+                        style={{
+                          backgroundColor: getVoteLayerColor('confirmed'),
+                          opacity: getVoteLayerOpacity(tile.voteCounts.confirmed),
+                        }}
+                      />
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => handleTilePress(tile)}
                       className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${getStatusClasses(tile.status)} ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${pendingAction === tile.tileId ? 'cursor-wait' : 'cursor-pointer'}`}
                       aria-pressed={isSelected}
-                      aria-label={`${tileLabel} ${getStatusLabel(tile.status)}`}
+                      aria-label={`${tileLabel} ${getVoteSummary(tile)}`}
                       disabled={pendingAction === tile.tileId}
                     >
                       <span>{tileLabel}</span>
-                      {pendingName ? (
-                        <span className="mt-1 max-w-full truncate rounded bg-black/20 px-1.5 py-0.5 text-[0.54rem] normal-case tracking-normal text-slate-950">
-                          {pendingName}
+                      {tile.totalVotes > 0 ? (
+                        <span className="mt-1 rounded bg-black/25 px-1.5 py-0.5 text-[0.54rem] tracking-normal text-white">
+                          {tile.totalVotes}
                         </span>
                       ) : null}
                     </button>
@@ -494,21 +526,19 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Board Status</h3>
             <div className="mt-4 grid gap-3 text-sm text-slate-700 dark:text-slate-200">
               <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-                <span>Checked tiles</span>
-                <span className="font-semibold">{checkedTileCount}</span>
+                <span>Checked votes</span>
+                <span className="font-semibold">{totalCheckedVotes}</span>
               </div>
               <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-                <span>Pending reports</span>
-                <span className="font-semibold">{pendingTileCount}</span>
+                <span>Pending votes</span>
+                <span className="font-semibold">{totalPendingVotes}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
+                <span>Confirmed votes</span>
+                <span className="font-semibold">{totalConfirmedVotes}</span>
               </div>
               <div className="rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-                {confirmedTile ? (
-                  <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                    {confirmedTileLabel} is currently confirmed. You can still adjust the board if this changes.
-                  </p>
-                ) : (
-                  <p>Board is open. Pending tiles still need a second distinct confirmation.</p>
-                )}
+                <p>Mixed colors mean mixed opinions. More votes make a tile’s overlay stronger.</p>
               </div>
               {error ? (
                 <p className="rounded-xl bg-rose-50 px-4 py-3 text-rose-700 dark:bg-rose-950/50 dark:text-rose-200">
@@ -526,38 +556,33 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                   <p className="text-sm uppercase tracking-wide text-slate-500 dark:text-slate-400">Tile</p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">{selectedTileLabel}</p>
                   <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Status: {getStatusLabel(selectedTile.status)}
+                    Leading status: {getStatusLabel(selectedTile.status)}
                   </p>
                 </div>
 
                 <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                  {selectedTile.pendingReportedByName ? (
-                    <p>Reported by {selectedTile.pendingReportedByName}</p>
-                  ) : null}
-                  {!selectedTile.pendingReportedByName && selectedTile.status === 'pending' ? (
-                    <p>Reported by an anonymous player</p>
-                  ) : null}
-                  {selectedTile.confirmedByName ? (
-                    <p>Confirmed by {selectedTile.confirmedByName}</p>
-                  ) : null}
+                  <p>{selectedTile.voteCounts.checked} checked vote(s)</p>
+                  <p>{selectedTile.voteCounts.pending} pending vote(s)</p>
+                  <p>{selectedTile.voteCounts.confirmed} confirmed vote(s)</p>
+                  <p>Your vote: {getStatusLabel(selectedTile.currentUserVote)}</p>
                 </div>
 
                 <div className="grid gap-3">
                   <button
                     type="button"
-                    onClick={() => updateTile(selectedTile.tileId, 'pending')}
-                    className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={pendingAction === selectedTile.tileId || selectedTile.status === 'pending'}
+                    onClick={() => updateTile(selectedTile.tileId, 'checked')}
+                    className="btn bg-rose-600 text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'checked'}
                   >
-                    Mark As Found
+                    Vote Checked
                   </button>
                   <button
                     type="button"
-                    onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
-                    className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-                    disabled={pendingAction === selectedTile.tileId || selectedTile.status === 'unchecked'}
+                    onClick={() => updateTile(selectedTile.tileId, 'pending')}
+                    className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'pending'}
                   >
-                    Reset Tile
+                    Vote Pending
                   </button>
                   <button
                     type="button"
@@ -565,19 +590,27 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     className="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={pendingAction === selectedTile.tileId || !canConfirmSelectedTile}
                   >
-                    Second And Confirm
+                    Vote Confirmed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
+                    className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'unchecked'}
+                  >
+                    Clear My Vote
                   </button>
                 </div>
 
-                {selectedTile.status === 'pending' && !canConfirmSelectedTile ? (
+                {selectedTile.voteCounts.pending === 0 ? (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    This pending tile must be confirmed by a different browser than the one that reported it.
+                    This tile needs at least one pending vote before confirmed votes are allowed.
                   </p>
                 ) : null}
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                Select a tile to mark it checked, report a find, or confirm a pending report.
+                Select a tile to cast your vote or clear it.
               </p>
             )}
           </div>
@@ -593,7 +626,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                   >
                     <p className="text-slate-800 dark:text-slate-100">
                       <span className="font-semibold">{formatActorName(entry.actorName)}</span>{' '}
-                      {getActivityMessage(entry.actionType)}{' '}
+                      {getVoteActionMessage(entry.actionType, entry.nextStatus)}{' '}
                       <span className="font-semibold">{entry.tileLabel}</span>.
                     </p>
                     <p className="mt-1 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -604,7 +637,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                Tile updates will appear here as players check, report, and confirm the board.
+                Vote changes will appear here as players shape the board together.
               </p>
             )}
           </div>

@@ -20,6 +20,7 @@ const ROUTE_119_MAIN_MASK = [
 ];
 
 const FEEBAS_STATUSES = ['unchecked', 'checked', 'pending', 'confirmed'];
+const FEEBAS_VOTABLE_STATUSES = ['checked', 'pending', 'confirmed'];
 
 function buildTilesFromMask(mask) {
   const totalRows = mask.length;
@@ -109,29 +110,16 @@ function validateStatus(status) {
   return status;
 }
 
-function validateTransition(currentStatus, nextStatus) {
-  const allowedTransitions = {
-    unchecked: new Set(['checked', 'pending']),
-    checked: new Set(['unchecked', 'pending']),
-    pending: new Set(['unchecked', 'checked', 'confirmed']),
-    confirmed: new Set(['unchecked', 'checked', 'pending']),
-  };
-
-  if (!allowedTransitions[currentStatus]?.has(nextStatus)) {
-    throw new FeebasRuleError(`Cannot change tile from ${currentStatus} to ${nextStatus}`);
-  }
-}
-
 module.exports = {
   FEEBAS_LOCATIONS,
   FEEBAS_RESET_ANCHOR_ISO,
   FEEBAS_RESET_INTERVAL_MS,
   FEEBAS_STATUSES,
+  FEEBAS_VOTABLE_STATUSES,
   FeebasRuleError,
   getLocationConfig,
   getCycleWindow,
   sanitizeActorName,
   sanitizeFingerprint,
   validateStatus,
-  validateTransition,
 };

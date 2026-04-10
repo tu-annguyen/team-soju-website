@@ -1,8 +1,6 @@
 const {
-  FeebasRuleError,
   getCycleWindow,
   getLocationConfig,
-  validateTransition,
 } = require('../src/utils/feebas');
 
 describe('Feebas utilities', () => {
@@ -27,13 +25,5 @@ describe('Feebas utilities', () => {
       col: expect.any(Number),
       label: expect.any(String),
     }));
-  });
-
-  it('enforces valid state transitions', () => {
-    expect(() => validateTransition('unchecked', 'checked')).not.toThrow();
-    expect(() => validateTransition('checked', 'pending')).not.toThrow();
-    expect(() => validateTransition('pending', 'confirmed')).not.toThrow();
-    expect(() => validateTransition('checked', 'confirmed')).toThrow(FeebasRuleError);
-    expect(() => validateTransition('confirmed', 'unchecked')).not.toThrow();
   });
 });

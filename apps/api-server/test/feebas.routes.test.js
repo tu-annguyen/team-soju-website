@@ -17,7 +17,7 @@ const boardFixture = {
   cycleEnd: '2026-04-09T21:00:00.000Z',
   serverTime: '2026-04-09T20:20:00.000Z',
   resetIntervalMinutes: 45,
-  requiresDistinctConfirmation: true,
+  requiresDistinctConfirmation: false,
   confirmedTileId: null,
   isLocked: false,
   layout: { rows: 10, cols: 12 },
@@ -29,12 +29,13 @@ const boardFixture = {
       row: 0,
       col: 2,
       status: 'unchecked',
-      updatedAt: null,
-      updatedByName: null,
-      pendingReportedByName: null,
-      pendingReportedByFingerprint: null,
-      confirmedByName: null,
-      confirmedAt: null,
+      voteCounts: {
+        checked: 0,
+        pending: 0,
+        confirmed: 0,
+      },
+      totalVotes: 0,
+      currentUserVote: 'unchecked',
     },
   ],
 };
@@ -60,7 +61,7 @@ describe('Feebas routes', () => {
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data).toEqual(boardFixture);
-    expect(FeebasBoard.getBoard).toHaveBeenCalledWith('route-119-main');
+    expect(FeebasBoard.getBoard).toHaveBeenCalledWith('route-119-main', { actorFingerprint: undefined });
   });
 
   it('validates tile update payloads', async () => {

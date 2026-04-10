@@ -11,24 +11,28 @@ const updateTileSchema = Joi.object({
   actorFingerprint: Joi.string().trim().min(8).max(120).required(),
   actorName: Joi.string().trim().allow('', null).max(40).optional(),
 });
+const actorFingerprintQuerySchema = Joi.string().trim().min(8).max(120).optional();
 
-function broadcastBoard(location, board) {
+async function broadcastBoard(location) {
   const subscribers = subscribersByLocation.get(location);
   if (!subscribers || subscribers.size === 0) {
     return;
   }
 
-  const payload = `data: ${JSON.stringify({ success: true, data: board })}\n\n`;
-
-  subscribers.forEach((response) => {
-    response.write(payload);
-  });
+  await Promise.all(Array.from(subscribers).map(async (subscriber) => {
+    const board = await FeebasBoard.getBoard(location, {
+      actorFingerprint: subscriber.actorFingerprint,
+    });
+    const payload = `data: ${JSON.stringify({ success: true, data: board })}\n\n`;
+    subscriber.response.write(payload);
+  }));
 }
 
 router.get('/:location', async (req, res) => {
   try {
     getLocationConfig(req.params.location);
-    const board = await FeebasBoard.getBoard(req.params.location);
+    const actorFingerprint = actorFingerprintQuerySchema.validate(req.query.actorFingerprint).value;
+    const board = await FeebasBoard.getBoard(req.params.location, { actorFingerprint });
 
     res.json({
       success: true,
@@ -53,7 +57,8 @@ router.get('/:location', async (req, res) => {
 router.get('/:location/stream', async (req, res) => {
   try {
     getLocationConfig(req.params.location);
-    const board = await FeebasBoard.getBoard(req.params.location);
+    const actorFingerprint = actorFingerprintQuerySchema.validate(req.query.actorFingerprint).value;
+    const board = await FeebasBoard.getBoard(req.params.location, { actorFingerprint });
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -62,7 +67,8 @@ router.get('/:location/stream', async (req, res) => {
 
     const location = req.params.location;
     const subscribers = subscribersByLocation.get(location) || new Set();
-    subscribers.add(res);
+    const subscriber = { response: res, actorFingerprint };
+    subscribers.add(subscriber);
     subscribersByLocation.set(location, subscribers);
 
     res.write(`data: ${JSON.stringify({ success: true, data: board })}\n\n`);
@@ -73,7 +79,7 @@ router.get('/:location/stream', async (req, res) => {
 
     req.on('close', () => {
       clearInterval(heartbeat);
-      subscribers.delete(res);
+      subscribers.delete(subscriber);
       if (subscribers.size === 0) {
         subscribersByLocation.delete(location);
       }
@@ -109,7 +115,7 @@ router.post('/:location/tiles/:tileId', async (req, res) => {
     }
 
     const board = await FeebasBoard.updateTile(req.params.location, req.params.tileId, value);
-    broadcastBoard(req.params.location, board);
+    await broadcastBoard(req.params.location);
 
     res.json({
       success: true,
@@ -143,7 +149,7 @@ router.post('/:location/reset', async (req, res) => {
   try {
     getLocationConfig(req.params.location);
     const board = await FeebasBoard.resetBoard(req.params.location);
-    broadcastBoard(req.params.location, board);
+    await broadcastBoard(req.params.location);
 
     res.json({
       success: true,

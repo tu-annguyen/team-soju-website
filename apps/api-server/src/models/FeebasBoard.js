@@ -1,22 +1,23 @@
 const pool = require('../config/connection');
 const {
+  FEEBAS_VOTABLE_STATUSES,
   FeebasRuleError,
   getCycleWindow,
   getLocationConfig,
   sanitizeActorName,
   sanitizeFingerprint,
   validateStatus,
-  validateTransition,
 } = require('../utils/feebas');
 
 class FeebasBoard {
   static async getBoard(location, options = {}) {
     const client = options.client || pool;
     const now = options.now ? new Date(options.now) : new Date();
+    const actorFingerprint = sanitizeFingerprint(options.actorFingerprint);
     const { cycleStart, cycleEnd } = getCycleWindow(now);
 
     const cycle = await this.ensureCycle(client, location, cycleStart, cycleEnd);
-    return this.getBoardForCycle(client, location, cycle, now);
+    return this.getBoardForCycle(client, location, cycle, now, actorFingerprint);
   }
 
   static async resetBoard(location, options = {}) {
@@ -69,30 +70,29 @@ class FeebasBoard {
 
       const { cycleStart, cycleEnd } = getCycleWindow(now);
       const cycle = await this.ensureCycle(client, location, cycleStart, cycleEnd);
-      const lockedCycle = await this.getCycleById(client, cycle.id, true);
+      const tileVotes = await this.getTileVotesForUpdate(client, cycle.id, tileId);
+      const currentVote = tileVotes.find((vote) => vote.actor_fingerprint === actorFingerprint) || null;
+      const isNoOp = currentVote?.status === nextStatus || (!currentVote && nextStatus === 'unchecked');
 
-      const tile = await this.getTileForUpdate(client, cycle.id, tileId);
-      validateTransition(tile.status, nextStatus);
+      if (isNoOp) {
+        const board = await this.getBoardForCycle(
+          client,
+          location,
+          { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd },
+          now,
+          actorFingerprint,
+        );
 
-      if (nextStatus === 'confirmed') {
-        if (tile.status !== 'pending') {
-          throw new FeebasRuleError('Only pending tiles can be confirmed');
-        }
-
-        if (!tile.pending_reported_by_fingerprint) {
-          throw new FeebasRuleError('Pending tiles must record the original reporter');
-        }
-
-        if (tile.pending_reported_by_fingerprint === actorFingerprint) {
-          throw new FeebasRuleError('A second distinct user must confirm a pending Feebas tile');
-        }
-
-        if (lockedCycle.confirmed_tile_id && lockedCycle.confirmed_tile_id !== tileId) {
-          throw new FeebasRuleError('Reset the currently confirmed tile before confirming a different one');
-        }
+        await client.query('COMMIT');
+        return board;
       }
 
-      await this.applyTileUpdate(client, cycle.id, tile, {
+      if (nextStatus === 'confirmed' && !tileVotes.some((vote) => vote.status === 'pending')) {
+        throw new FeebasRuleError('Confirmed votes require at least one pending vote on the tile');
+      }
+
+      await this.applyTileVote(client, cycle.id, tileId, {
+        currentVote,
         actorFingerprint,
         actorName,
         nextStatus,
@@ -103,30 +103,20 @@ class FeebasBoard {
         cycleId: cycle.id,
         location,
         tileDefinition,
-        previousStatus: tile.status,
+        previousStatus: currentVote?.status || null,
         nextStatus,
         actorName,
         actorFingerprint,
         now,
       });
 
-      if (nextStatus === 'confirmed') {
-        await client.query(`
-          UPDATE feebas_cycles
-          SET confirmed_tile_id = $2,
-              locked_at = NULL
-          WHERE id = $1
-        `, [cycle.id, tileId]);
-      } else if (tile.status === 'confirmed') {
-        await client.query(`
-          UPDATE feebas_cycles
-          SET confirmed_tile_id = NULL,
-              locked_at = NULL
-          WHERE id = $1
-        `, [cycle.id]);
-      }
-
-      const board = await this.getBoardForCycle(client, location, { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd }, now);
+      const board = await this.getBoardForCycle(
+        client,
+        location,
+        { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd },
+        now,
+        actorFingerprint,
+      );
 
       await client.query('COMMIT');
       return board;
@@ -147,102 +137,56 @@ class FeebasBoard {
       RETURNING *
     `, [location, cycleStart.toISOString(), cycleEnd.toISOString()]);
 
-    const cycle = result.rows[0];
-    const locationConfig = getLocationConfig(location);
-
-    await Promise.all(locationConfig.tiles.map((tile) =>
-      client.query(`
-        INSERT INTO feebas_tile_states (cycle_id, tile_id, status)
-        VALUES ($1, $2, 'unchecked')
-        ON CONFLICT (cycle_id, tile_id) DO NOTHING
-      `, [cycle.id, tile.tileId])
-    ));
-
-    return cycle;
-  }
-
-  static async getCycleById(client, cycleId, forUpdate = false) {
-    const lockClause = forUpdate ? 'FOR UPDATE' : '';
-    const result = await client.query(`
-      SELECT *
-      FROM feebas_cycles
-      WHERE id = $1
-      ${lockClause}
-    `, [cycleId]);
-
     return result.rows[0];
   }
 
-  static async getTileForUpdate(client, cycleId, tileId) {
+  static async getTileVotesForUpdate(client, cycleId, tileId) {
     const result = await client.query(`
       SELECT *
-      FROM feebas_tile_states
+      FROM feebas_tile_votes
       WHERE cycle_id = $1 AND tile_id = $2
       FOR UPDATE
     `, [cycleId, tileId]);
 
-    if (!result.rows[0]) {
-      throw new FeebasRuleError('Feebas tile state not found', 404);
-    }
-
-    return result.rows[0];
+    return result.rows;
   }
 
-  static async applyTileUpdate(client, cycleId, tile, { actorFingerprint, actorName, nextStatus, now }) {
-    const baseValues = [
-      cycleId,
-      tile.tile_id,
-      nextStatus,
-      now.toISOString(),
-      actorName,
-      actorFingerprint,
-    ];
+  static async applyTileVote(client, cycleId, tileId, { currentVote, actorFingerprint, actorName, nextStatus, now }) {
+    if (nextStatus === 'unchecked') {
+      if (!currentVote) {
+        return;
+      }
 
-    if (nextStatus === 'pending') {
       await client.query(`
-        UPDATE feebas_tile_states
-        SET status = $3,
-            updated_at = $4,
-            updated_by_name = $5,
-            updated_by_fingerprint = $6,
-            pending_reported_by_name = $5,
-            pending_reported_by_fingerprint = $6,
-            confirmed_by_name = NULL,
-            confirmed_by_fingerprint = NULL,
-            confirmed_at = NULL
-        WHERE cycle_id = $1 AND tile_id = $2
-      `, baseValues);
+        DELETE FROM feebas_tile_votes
+        WHERE id = $1
+      `, [currentVote.id]);
       return;
     }
 
-    if (nextStatus === 'confirmed') {
+    if (currentVote) {
       await client.query(`
-        UPDATE feebas_tile_states
-        SET status = $3,
-            updated_at = $4,
-            updated_by_name = $5,
-            updated_by_fingerprint = $6,
-            confirmed_by_name = $5,
-            confirmed_by_fingerprint = $6,
-            confirmed_at = $4
-        WHERE cycle_id = $1 AND tile_id = $2
-      `, baseValues);
+        UPDATE feebas_tile_votes
+        SET status = $2,
+            actor_name = $3,
+            updated_at = $4
+        WHERE id = $1
+      `, [currentVote.id, nextStatus, actorName, now.toISOString()]);
       return;
     }
 
     await client.query(`
-      UPDATE feebas_tile_states
-      SET status = $3,
-          updated_at = $4,
-          updated_by_name = $5,
-          updated_by_fingerprint = $6,
-          pending_reported_by_name = CASE WHEN status = 'pending' THEN NULL ELSE pending_reported_by_name END,
-          pending_reported_by_fingerprint = CASE WHEN status = 'pending' THEN NULL ELSE pending_reported_by_fingerprint END,
-          confirmed_by_name = NULL,
-          confirmed_by_fingerprint = NULL,
-          confirmed_at = NULL
-      WHERE cycle_id = $1 AND tile_id = $2
-    `, baseValues);
+      INSERT INTO feebas_tile_votes (
+        cycle_id,
+        tile_id,
+        actor_fingerprint,
+        actor_name,
+        status,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $6)
+    `, [cycleId, tileId, actorFingerprint, actorName, nextStatus, now.toISOString()]);
   }
 
   static async insertActivityLog(client, {
@@ -286,32 +230,36 @@ class FeebasBoard {
   }
 
   static getActionType(previousStatus, nextStatus) {
-    if (nextStatus === 'confirmed') {
-      return 'confirmed';
-    }
-
-    if (nextStatus === 'pending') {
-      return 'reported';
-    }
-
-    if (nextStatus === 'checked') {
-      return previousStatus === 'pending' ? 'reverted_to_checked' : 'checked';
-    }
-
     if (nextStatus === 'unchecked') {
-      return previousStatus === 'pending' ? 'cleared_pending' : 'unchecked';
+      return 'cleared_vote';
     }
 
-    return 'updated';
+    if (!previousStatus) {
+      return 'voted';
+    }
+
+    return 'changed_vote';
   }
 
-  static async getBoardForCycle(client, location, cycle, now = new Date()) {
+  static getDominantStatus(voteCounts) {
+    const ranked = [...FEEBAS_VOTABLE_STATUSES].sort((left, right) => {
+      const countDiff = voteCounts[right] - voteCounts[left];
+      if (countDiff !== 0) {
+        return countDiff;
+      }
+
+      return FEEBAS_VOTABLE_STATUSES.indexOf(right) - FEEBAS_VOTABLE_STATUSES.indexOf(left);
+    });
+
+    return voteCounts[ranked[0]] > 0 ? ranked[0] : 'unchecked';
+  }
+
+  static async getBoardForCycle(client, location, cycle, now = new Date(), actorFingerprint = null) {
     const locationConfig = getLocationConfig(location);
-    const tilesResult = await client.query(`
-      SELECT *
-      FROM feebas_tile_states
+    const votesResult = await client.query(`
+      SELECT tile_id, actor_fingerprint, actor_name, status
+      FROM feebas_tile_votes
       WHERE cycle_id = $1
-      ORDER BY tile_id ASC
     `, [cycle.id]);
     const activityResult = await client.query(`
       SELECT *
@@ -321,7 +269,12 @@ class FeebasBoard {
       LIMIT 20
     `, [cycle.id]);
 
-    const tileMap = new Map(tilesResult.rows.map((row) => [row.tile_id, row]));
+    const votesByTile = votesResult.rows.reduce((map, row) => {
+      const existing = map.get(row.tile_id) || [];
+      existing.push(row);
+      map.set(row.tile_id, existing);
+      return map;
+    }, new Map());
 
     return {
       location: locationConfig.id,
@@ -331,8 +284,8 @@ class FeebasBoard {
       cycleEnd: new Date(cycle.cycle_end).toISOString(),
       serverTime: now.toISOString(),
       resetIntervalMinutes: 45,
-      requiresDistinctConfirmation: true,
-      confirmedTileId: cycle.confirmed_tile_id,
+      requiresDistinctConfirmation: false,
+      confirmedTileId: null,
       isLocked: false,
       layout: {
         rows: locationConfig.rows,
@@ -344,21 +297,27 @@ class FeebasBoard {
         tileLabel: entry.tile_label,
         actionType: entry.action_type,
         previousStatus: entry.previous_status,
-        nextStatus: entry.next_status,
+        nextStatus: entry.next_status === 'unchecked' ? null : entry.next_status,
         actorName: entry.actor_name,
         createdAt: new Date(entry.created_at).toISOString(),
       })),
       tiles: locationConfig.tiles.map((tileDefinition) => {
-        const row = tileMap.get(tileDefinition.tileId);
+        const tileVotes = votesByTile.get(tileDefinition.tileId) || [];
+        const voteCounts = {
+          checked: tileVotes.filter((vote) => vote.status === 'checked').length,
+          pending: tileVotes.filter((vote) => vote.status === 'pending').length,
+          confirmed: tileVotes.filter((vote) => vote.status === 'confirmed').length,
+        };
+        const currentUserVote = actorFingerprint
+          ? tileVotes.find((vote) => vote.actor_fingerprint === actorFingerprint)?.status || 'unchecked'
+          : 'unchecked';
+
         return {
           ...tileDefinition,
-          status: row?.status || 'unchecked',
-          updatedAt: row?.updated_at ? new Date(row.updated_at).toISOString() : null,
-          updatedByName: row?.updated_by_name || null,
-          pendingReportedByName: row?.pending_reported_by_name || null,
-          pendingReportedByFingerprint: row?.pending_reported_by_fingerprint || null,
-          confirmedByName: row?.confirmed_by_name || null,
-          confirmedAt: row?.confirmed_at ? new Date(row.confirmed_at).toISOString() : null,
+          status: this.getDominantStatus(voteCounts),
+          voteCounts,
+          totalVotes: voteCounts.checked + voteCounts.pending + voteCounts.confirmed,
+          currentUserVote,
         };
       }),
     };
