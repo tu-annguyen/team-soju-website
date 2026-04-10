@@ -320,7 +320,7 @@ describe('FeebasTileChecker', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('does not let the pending voter confirm or clear the same tile', async () => {
+  it('does not let the pending voter confirm the same tile, but still lets them clear it', async () => {
     const pendingOwnerBoard = {
       ...boardFixture,
       tiles: [
@@ -360,9 +360,9 @@ describe('FeebasTileChecker', () => {
 
     expect(screen.getByText(/Your vote: Pending/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Feebas Confirmed/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /No Feebas/i })).toBeEnabled();
-    expect(screen.getByText(/You placed the active pending vote/i)).toBeInTheDocument();
+    expect(screen.getByText(/another player can confirm it, or you can clear your pending mark/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

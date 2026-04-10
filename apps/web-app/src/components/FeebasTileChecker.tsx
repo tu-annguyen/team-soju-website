@@ -713,7 +713,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
                     className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-                    disabled={pendingAction === selectedTile.tileId || selectedTileHasNoVote || selectedTileIsPendingOwner}
+                    disabled={pendingAction === selectedTile.tileId || selectedTileHasNoVote}
                   >
                     Clear My Vote
                   </button>
@@ -726,7 +726,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                 ) : null}
                 {selectedTileIsPendingOwner ? (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    You placed the active pending vote, so this tile now needs to be resolved as checked or confirmed by another player.
+                    You placed the active pending vote, so another player can confirm it, or you can clear your pending mark.
                   </p>
                 ) : null}
                 {selectedTileHasPending && selectedTileHasNoVote ? (

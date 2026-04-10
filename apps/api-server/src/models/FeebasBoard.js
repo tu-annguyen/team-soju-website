@@ -92,10 +92,6 @@ class FeebasBoard {
         throw new FeebasRuleError('Only one pending vote can exist on a tile at a time');
       }
 
-      if (nextStatus === 'unchecked' && currentVote?.status === 'pending') {
-        throw new FeebasRuleError('Pending tiles must be resolved as checked or confirmed');
-      }
-
       if (nextStatus === 'confirmed' && !pendingVote) {
         throw new FeebasRuleError('Confirmed votes require at least one pending vote on the tile');
       }
