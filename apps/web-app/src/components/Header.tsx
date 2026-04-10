@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
 
+const toolsLinks = [
+  {
+    href: '/feebas-tile-checker',
+    label: 'Feebas Tile Tracker',
+  },
+];
+
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -55,6 +62,38 @@ const Header = () => {
           >
             Events
           </a>
+          <div className="group relative">
+            <a
+              href="/tools"
+              className="flex items-center gap-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+              aria-haspopup="true"
+            >
+              Tools
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </a>
+            <div className="pointer-events-none absolute left-0 top-full pt-3 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+              <div className="min-w-56 rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/95">
+                {toolsLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="block rounded-xl px-4 py-3 text-sm font-medium text-gray-800 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-400"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
           <a 
             href="https://forums.pokemmo.com/index.php?/clubs/261-soj%C3%BC-sojusanctuary/" 
             target="_blank" 
@@ -68,12 +107,6 @@ const Header = () => {
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
             Discord
-          </a>
-          <a 
-            href="/feebas-tile-checker" 
-            className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
-          >
-            Feebas
           </a>
           <div className="ml-4">
             <ThemeToggle />
@@ -138,6 +171,25 @@ const Header = () => {
               >
                 Events
               </a>
+              <a
+                href="/tools"
+                className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Tools
+              </a>
+              <div className="pl-4 -mt-2 flex flex-col gap-2">
+                {toolsLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
               <a 
                 href="https://forums.pokemmo.com/index.php?/clubs/261-soj%C3%BC-sojusanctuary/" 
                 target="_blank" 
@@ -153,13 +205,6 @@ const Header = () => {
                 onClick={() => setIsOpen(false)}
               >
                 Discord
-              </a>
-              <a 
-                href="/feebas-tile-checker" 
-                className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
-                Feebas
               </a>
             </nav>
           </motion.div>
