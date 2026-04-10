@@ -350,7 +350,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const handleTilePress = (tile: FeebasTile) => {
     setSelectedTileId(tile.tileId);
 
-    if (board?.isLocked || pendingAction) {
+    if (pendingAction) {
       return;
     }
 
@@ -390,7 +390,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
             </h2>
             <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-300">
               Mark tiles as checked, report a likely Feebas tile as pending, and have a second player confirm it.
-              Once confirmed, the board locks until the next in-game reset.
+              Confirmed tiles can still be corrected if the board needs to be updated.
             </p>
           </div>
 
@@ -470,10 +470,10 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     <button
                       type="button"
                       onClick={() => handleTilePress(tile)}
-                      className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${getStatusClasses(tile.status)} ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${board?.isLocked ? 'cursor-default' : 'cursor-pointer'}`}
+                      className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${getStatusClasses(tile.status)} ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${pendingAction === tile.tileId ? 'cursor-wait' : 'cursor-pointer'}`}
                       aria-pressed={isSelected}
                       aria-label={`${tileLabel} ${getStatusLabel(tile.status)}`}
-                      disabled={Boolean(board?.isLocked) || pendingAction === tile.tileId}
+                      disabled={pendingAction === tile.tileId}
                     >
                       <span>{tileLabel}</span>
                       {pendingName ? (
@@ -502,9 +502,9 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                 <span className="font-semibold">{pendingTileCount}</span>
               </div>
               <div className="rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-                {board?.isLocked && confirmedTile ? (
+                {confirmedTile ? (
                   <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                    {confirmedTileLabel} is confirmed. The board is locked until reset.
+                    {confirmedTileLabel} is currently confirmed. You can still adjust the board if this changes.
                   </p>
                 ) : (
                   <p>Board is open. Pending tiles still need a second distinct confirmation.</p>
@@ -542,40 +542,34 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                   ) : null}
                 </div>
 
-                {board?.isLocked ? (
-                  <p className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">
-                    This cycle is locked. Tiles stay read-only until the next reset.
-                  </p>
-                ) : (
-                  <div className="grid gap-3">
-                    <button
-                      type="button"
-                      onClick={() => updateTile(selectedTile.tileId, 'pending')}
-                      className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={pendingAction === selectedTile.tileId || selectedTile.status === 'confirmed'}
-                    >
-                      Mark As Found
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
-                      className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-                      disabled={pendingAction === selectedTile.tileId || selectedTile.status === 'confirmed' || selectedTile.status === 'unchecked'}
-                    >
-                      Reset Tile
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateTile(selectedTile.tileId, 'confirmed')}
-                      className="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={pendingAction === selectedTile.tileId || !canConfirmSelectedTile}
-                    >
-                      Second And Confirm
-                    </button>
-                  </div>
-                )}
+                <div className="grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => updateTile(selectedTile.tileId, 'pending')}
+                    className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={pendingAction === selectedTile.tileId || selectedTile.status === 'pending'}
+                  >
+                    Mark As Found
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
+                    className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+                    disabled={pendingAction === selectedTile.tileId || selectedTile.status === 'unchecked'}
+                  >
+                    Reset Tile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateTile(selectedTile.tileId, 'confirmed')}
+                    className="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={pendingAction === selectedTile.tileId || !canConfirmSelectedTile}
+                  >
+                    Second And Confirm
+                  </button>
+                </div>
 
-                {selectedTile.status === 'pending' && !canConfirmSelectedTile && !board?.isLocked ? (
+                {selectedTile.status === 'pending' && !canConfirmSelectedTile ? (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     This pending tile must be confirmed by a different browser than the one that reported it.
                   </p>
@@ -583,9 +577,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                {board?.isLocked
-                  ? 'The board is locked for this cycle. Check the confirmed tile and activity feed until reset.'
-                  : 'Select a tile to mark it checked, report a find, or confirm a pending report.'}
+                Select a tile to mark it checked, report a find, or confirm a pending report.
               </p>
             )}
           </div>

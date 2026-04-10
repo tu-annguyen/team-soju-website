@@ -34,6 +34,6 @@ describe('Feebas utilities', () => {
     expect(() => validateTransition('checked', 'pending')).not.toThrow();
     expect(() => validateTransition('pending', 'confirmed')).not.toThrow();
     expect(() => validateTransition('checked', 'confirmed')).toThrow(FeebasRuleError);
-    expect(() => validateTransition('confirmed', 'unchecked')).toThrow(FeebasRuleError);
+    expect(() => validateTransition('confirmed', 'unchecked')).not.toThrow();
   });
 });

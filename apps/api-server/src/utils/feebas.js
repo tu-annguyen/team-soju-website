@@ -114,7 +114,7 @@ function validateTransition(currentStatus, nextStatus) {
     unchecked: new Set(['checked', 'pending']),
     checked: new Set(['unchecked', 'pending']),
     pending: new Set(['unchecked', 'checked', 'confirmed']),
-    confirmed: new Set([]),
+    confirmed: new Set(['unchecked', 'checked', 'pending']),
   };
 
   if (!allowedTransitions[currentStatus]?.has(nextStatus)) {

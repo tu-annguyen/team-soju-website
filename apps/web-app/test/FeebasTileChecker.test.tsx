@@ -82,8 +82,8 @@ describe('FeebasTileChecker', () => {
       expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
     );
 
-    expect(screen.getByRole('button', { name: /A1 Pending/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /A2 Unchecked/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A2 Pending/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /B2 Unchecked/i })).toBeInTheDocument();
     expect(screen.getByText(/Confirmation requires a second distinct browser/i)).toBeInTheDocument();
     expect(screen.getAllByText('May').length).toBeGreaterThan(0);
     expect(screen.getByText(/reported as a Feebas tile/i)).toBeInTheDocument();
@@ -93,15 +93,15 @@ describe('FeebasTileChecker', () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /A1 Pending/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /A2 Pending/i })).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /A1 Pending/i }));
+    fireEvent.click(screen.getByRole('button', { name: /A2 Pending/i }));
 
     expect(screen.getByRole('button', { name: /Second And Confirm/i })).toBeEnabled();
   });
 
-  it('makes the board read-only once confirmed', async () => {
+  it('keeps the board interactive after a tile is confirmed', async () => {
     (global as any).fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -126,10 +126,13 @@ describe('FeebasTileChecker', () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /A1 Confirmed/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /A2 Confirmed/i })).toBeInTheDocument()
     );
 
-    expect(screen.getByRole('button', { name: /A1 Confirmed/i })).toBeDisabled();
-    expect(screen.getByText(/The board is locked for this cycle/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /A2 Confirmed/i }));
+
+    expect(screen.getByRole('button', { name: /A2 Confirmed/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Reset Tile/i })).toBeEnabled();
+    expect(screen.getByText(/currently confirmed\. You can still adjust the board/i)).toBeInTheDocument();
   });
 });

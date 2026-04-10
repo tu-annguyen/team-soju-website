@@ -71,10 +71,6 @@ class FeebasBoard {
       const cycle = await this.ensureCycle(client, location, cycleStart, cycleEnd);
       const lockedCycle = await this.getCycleById(client, cycle.id, true);
 
-      if (lockedCycle.locked_at) {
-        throw new FeebasRuleError('This board is locked until the next Feebas reset');
-      }
-
       const tile = await this.getTileForUpdate(client, cycle.id, tileId);
       validateTransition(tile.status, nextStatus);
 
@@ -89,6 +85,10 @@ class FeebasBoard {
 
         if (tile.pending_reported_by_fingerprint === actorFingerprint) {
           throw new FeebasRuleError('A second distinct user must confirm a pending Feebas tile');
+        }
+
+        if (lockedCycle.confirmed_tile_id && lockedCycle.confirmed_tile_id !== tileId) {
+          throw new FeebasRuleError('Reset the currently confirmed tile before confirming a different one');
         }
       }
 
@@ -114,9 +114,16 @@ class FeebasBoard {
         await client.query(`
           UPDATE feebas_cycles
           SET confirmed_tile_id = $2,
-              locked_at = $3
+              locked_at = NULL
           WHERE id = $1
-        `, [cycle.id, tileId, now.toISOString()]);
+        `, [cycle.id, tileId]);
+      } else if (tile.status === 'confirmed') {
+        await client.query(`
+          UPDATE feebas_cycles
+          SET confirmed_tile_id = NULL,
+              locked_at = NULL
+          WHERE id = $1
+        `, [cycle.id]);
       }
 
       const board = await this.getBoardForCycle(client, location, { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd }, now);
@@ -326,7 +333,7 @@ class FeebasBoard {
       resetIntervalMinutes: 45,
       requiresDistinctConfirmation: true,
       confirmedTileId: cycle.confirmed_tile_id,
-      isLocked: Boolean(cycle.locked_at),
+      isLocked: false,
       layout: {
         rows: locationConfig.rows,
         cols: locationConfig.cols,
