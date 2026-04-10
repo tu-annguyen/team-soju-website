@@ -58,6 +58,13 @@ type Props = {
   location?: string;
 };
 
+type LocationOption = {
+  id: string;
+  tabLabel: string;
+  displayName: string;
+  terrain: readonly (readonly string[])[];
+};
+
 const DEFAULT_LOCATION = 'route-119-main';
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
@@ -78,6 +85,57 @@ const ROUTE_119_MAIN_TERRAIN = [
   ['rock', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
   ['water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
 ] as const;
+const MT_CORONET_TERRAIN = [
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'water', 'water'],
+  ['water', 'water', 'water', 'rock', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'rock', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'water', 'water', 'water'],
+  ['water', 'water', 'rock', 'rock', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'water', 'water', 'water'],
+  ['water', 'water', 'rock', 'rock', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'water', 'water', 'water'],
+  ['water', 'water', 'rock', 'rock', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'rock', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'rock', 'rock', 'rock', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'rock', 'rock', 'rock', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'rock', 'rock', 'rock', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'rock', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water'],
+] as const;
+const LOCATION_OPTIONS: readonly LocationOption[] = [
+  {
+    id: 'route-119-main',
+    tabLabel: 'Route 119',
+    displayName: 'Route 119, Hoenn',
+    terrain: ROUTE_119_MAIN_TERRAIN,
+  },
+  {
+    id: 'mt-coronet',
+    tabLabel: 'Mt. Coronet',
+    displayName: 'Mt. Coronet, Sinnoh',
+    terrain: MT_CORONET_TERRAIN,
+  },
+] as const;
+const LOCATION_OPTIONS_BY_ID = new Map(LOCATION_OPTIONS.map((option) => [option.id, option]));
 
 function getStatusClasses(status: TileStatus) {
   return ({
@@ -178,7 +236,12 @@ function getTileLabel(row: number, col: number, totalRows: number) {
   return `${String.fromCharCode(65 + col)}${totalRows - row}`;
 }
 
+function resolveLocationId(location?: string) {
+  return location && LOCATION_OPTIONS_BY_ID.has(location) ? location : DEFAULT_LOCATION;
+}
+
 const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) => {
+  const [activeLocation, setActiveLocation] = useState(resolveLocationId(location));
   const [board, setBoard] = useState<FeebasBoard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -189,10 +252,12 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const [countdown, setCountdown] = useState('--:--');
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
+  const activeLocationOption = LOCATION_OPTIONS_BY_ID.get(activeLocation) || LOCATION_OPTIONS_BY_ID.get(DEFAULT_LOCATION)!;
+  const activeTerrain = activeLocationOption.terrain;
   const querySuffix = clientId ? `?actorFingerprint=${encodeURIComponent(clientId)}` : '';
 
   const fetchBoard = async () => {
-    const response = await fetch(`${apiBaseUrl}/feebas/${location}${querySuffix}`);
+    const response = await fetch(`${apiBaseUrl}/feebas/${activeLocation}${querySuffix}`);
     const payload: BoardResponse = await response.json();
 
     if (!response.ok || !payload.success) {
@@ -219,12 +284,18 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   }, []);
 
   useEffect(() => {
+    setActiveLocation(resolveLocationId(location));
+  }, [location]);
+
+  useEffect(() => {
     let mounted = true;
 
     (async () => {
       try {
         setLoading(true);
         setError(null);
+        setBoard(null);
+        setSelectedTileId(null);
         await fetchBoard();
       } catch (nextError) {
         if (mounted) {
@@ -240,7 +311,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
     return () => {
       mounted = false;
     };
-  }, [apiBaseUrl, clientId, location]);
+  }, [activeLocation, apiBaseUrl, clientId]);
 
   useEffect(() => {
     if (typeof EventSource === 'undefined') {
@@ -251,7 +322,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
       return undefined;
     }
 
-    const eventSource = new EventSource(`${apiBaseUrl}/feebas/${location}/stream?actorFingerprint=${encodeURIComponent(clientId)}`);
+    const eventSource = new EventSource(`${apiBaseUrl}/feebas/${activeLocation}/stream?actorFingerprint=${encodeURIComponent(clientId)}`);
 
     eventSource.onmessage = (event) => {
       try {
@@ -275,7 +346,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
     return () => {
       eventSource.close();
     };
-  }, [apiBaseUrl, clientId, location]);
+  }, [activeLocation, apiBaseUrl, clientId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -327,7 +398,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const totalCheckedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.checked, 0) || 0;
   const totalPendingVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.pending, 0) || 0;
   const totalConfirmedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.confirmed, 0) || 0;
-  const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length) : null;
+  const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || activeTerrain.length) : null;
   const selectedTileCurrentVote = selectedTile?.currentUserVote || 'unchecked';
   const selectedTileHasPending = Boolean(selectedTile && selectedTile.voteCounts.pending > 0);
   const selectedTileIsPendingOwner = selectedTileCurrentVote === 'pending';
@@ -348,7 +419,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
     setError(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/feebas/${location}/tiles/${tileId}`, {
+      const response = await fetch(`${apiBaseUrl}/feebas/${activeLocation}/tiles/${tileId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -406,8 +477,31 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
     <div className="space-y-6">
       <section className="card p-6">
         <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Feebas locations">
+            {LOCATION_OPTIONS.map((option) => {
+              const isActive = option.id === activeLocation;
+
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveLocation(option.id)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    isActive
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {option.tabLabel}
+                </button>
+              );
+            })}
+          </div>
+
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {board?.displayName || 'Feebas Tile Checker'}
+            {board?.displayName || activeLocationOption.displayName}
           </h2>
 
           <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
@@ -463,7 +557,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                 const row = Math.floor(index / cols);
                 const col = index % cols;
                 const tile = tileByPosition.get(`${row}-${col}`) || null;
-                const terrain = ROUTE_119_MAIN_TERRAIN[row]?.[col] || 'bank';
+                const terrain = activeTerrain[row]?.[col] || 'water';
                 const terrainClasses = getTerrainClasses(terrain);
 
                 if (!tile) {
@@ -476,7 +570,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                 }
 
                 const isSelected = selectedTileId === tile.tileId;
-                const tileLabel = getTileLabel(tile.row, tile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length);
+                const tileLabel = getTileLabel(tile.row, tile.col, board?.layout.rows || activeTerrain.length);
 
                 return (
                   <div

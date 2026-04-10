@@ -26,4 +26,13 @@ describe('Feebas utilities', () => {
       label: expect.any(String),
     }));
   });
+
+  it('exposes Mt. Coronet tile definitions with the expected board size', () => {
+    const location = getLocationConfig('mt-coronet');
+
+    expect(location.displayName).toBe('Mt. Coronet, Sinnoh');
+    expect(location.rows).toBe(34);
+    expect(location.cols).toBe(18);
+    expect(location.tiles.length).toBeGreaterThan(0);
+  });
 });

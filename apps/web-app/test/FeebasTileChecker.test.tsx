@@ -61,6 +61,17 @@ const boardFixture = {
   ],
 };
 
+const mtCoronetBoardFixture = {
+  ...boardFixture,
+  location: 'mt-coronet',
+  displayName: 'Mt. Coronet, Sinnoh',
+  description: 'Mt. Coronet pond tiles for live Feebas coordination.',
+  layout: {
+    rows: 34,
+    cols: 18,
+  },
+};
+
 describe('FeebasTileChecker', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -437,5 +448,36 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/Your vote: Confirmed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
     expect(screen.getByText(/Mixed colors mean mixed opinions/i)).toBeInTheDocument();
+  });
+
+  it('switches to the Mt. Coronet tab and fetches that board', async () => {
+    const fetchMock = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const data = url.includes('/mt-coronet') ? mtCoronetBoardFixture : boardFixture;
+
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data,
+        }),
+      });
+    });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /Mt. Coronet/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self');
   });
 });
