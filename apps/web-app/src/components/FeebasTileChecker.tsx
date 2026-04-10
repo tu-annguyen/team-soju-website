@@ -68,6 +68,8 @@ type LocationOption = {
 const DEFAULT_LOCATION = 'route-119-main';
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
+const BOARD_MIN_TILE_SIZE_PX = 40;
+const BOARD_MIN_WIDTH_PX = 768;
 const ROUTE_119_MAIN_TERRAIN = [
   ['bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'grass'],
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'grass'],
@@ -240,6 +242,10 @@ function resolveLocationId(location?: string) {
   return location && LOCATION_OPTIONS_BY_ID.has(location) ? location : DEFAULT_LOCATION;
 }
 
+function getBoardMinWidth(cols: number) {
+  return `${Math.max(cols * BOARD_MIN_TILE_SIZE_PX, BOARD_MIN_WIDTH_PX)}px`;
+}
+
 const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) => {
   const [activeLocation, setActiveLocation] = useState(resolveLocationId(location));
   const [board, setBoard] = useState<FeebasBoard | null>(null);
@@ -403,6 +409,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const selectedTileHasPending = Boolean(selectedTile && selectedTile.voteCounts.pending > 0);
   const selectedTileIsPendingOwner = selectedTileCurrentVote === 'pending';
   const selectedTileHasNoVote = selectedTileCurrentVote === 'unchecked';
+  const boardMinWidth = getBoardMinWidth(board?.layout.cols || 1);
   const canConfirmSelectedTile = Boolean(
     selectedTile &&
     selectedTileHasPending &&
@@ -543,12 +550,16 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               <span className="rounded-full bg-amber-400 px-3 py-1 text-slate-950">Pending</span>
               <span className="rounded-full bg-emerald-500 px-3 py-1 text-slate-950">Confirmed</span>
             </div>
+            <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-300 sm:hidden">
+              Scroll sideways to view the full board.
+            </p>
           </div>
 
-          <div className="overflow-x-auto bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.35),_transparent_30%),linear-gradient(180deg,_#d6f2f4_0%,_#8fd4e8_45%,_#4d8bc6_100%)] p-4">
+          <div className="overflow-x-auto overscroll-x-contain bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.35),_transparent_30%),linear-gradient(180deg,_#d6f2f4_0%,_#8fd4e8_45%,_#4d8bc6_100%)] p-4">
             <div
-              className="mx-auto grid max-w-3xl gap-1 rounded-2xl border border-sky-100/50 bg-sky-950/10 p-2 shadow-[0_18px_45px_rgba(20,55,107,0.24)] backdrop-blur-sm"
+              className="grid gap-1 rounded-2xl border border-sky-100/50 bg-sky-950/10 p-2 shadow-[0_18px_45px_rgba(20,55,107,0.24)] backdrop-blur-sm"
               style={{
+                minWidth: boardMinWidth,
                 gridTemplateColumns: `repeat(${board?.layout.cols || 1}, minmax(0, 1fr))`,
               }}
             >

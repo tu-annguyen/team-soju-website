@@ -98,6 +98,7 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument();
     expect(screen.getByText(/Each browser can keep one active vote per tile/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scroll sideways to view the full board/i)).toBeInTheDocument();
     expect(screen.getAllByText('May').length).toBeGreaterThan(0);
     expect(screen.getByText(/voted pending on/i)).toBeInTheDocument();
   });
