@@ -22,6 +22,8 @@ const ROUTE_119_MAIN_MASK = [
 const FEEBAS_STATUSES = ['unchecked', 'checked', 'pending', 'confirmed'];
 
 function buildTilesFromMask(mask) {
+  const totalRows = mask.length;
+
   return mask.flatMap((rowMask, rowIndex) =>
     rowMask.split('').flatMap((value, colIndex) => {
       if (value !== '1') {
@@ -30,7 +32,7 @@ function buildTilesFromMask(mask) {
 
       return [{
         tileId: `r${rowIndex + 1}c${colIndex + 1}`,
-        label: `${String.fromCharCode(65 + rowIndex)}${colIndex + 1}`,
+        label: `${String.fromCharCode(65 + colIndex)}${totalRows - rowIndex}`,
         row: rowIndex,
         col: colIndex,
       }];

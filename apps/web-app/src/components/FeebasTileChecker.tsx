@@ -61,7 +61,7 @@ const DEFAULT_LOCATION = 'route-119-main';
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
 const ROUTE_119_MAIN_TERRAIN = [
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'grass'],
+  ['bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'grass'],
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'grass'],
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'water', 'water', 'grass'],
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass'],
@@ -151,6 +151,10 @@ function formatTimestamp(isoTimestamp: string) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(isoTimestamp));
+}
+
+function getTileLabel(row: number, col: number, totalRows: number) {
+  return `${String.fromCharCode(65 + col)}${totalRows - row}`;
 }
 
 const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) => {
@@ -297,6 +301,8 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const pendingTileCount = board?.tiles.filter((tile) => tile.status === 'pending').length || 0;
   const checkedTileCount = board?.tiles.filter((tile) => tile.status === 'checked').length || 0;
   const confirmedTile = board?.tiles.find((tile) => tile.status === 'confirmed') || null;
+  const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length) : null;
+  const confirmedTileLabel = confirmedTile ? getTileLabel(confirmedTile.row, confirmedTile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length) : null;
   const canConfirmSelectedTile = Boolean(
     selectedTile &&
     selectedTile.status === 'pending' &&
@@ -453,6 +459,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
 
                 const isSelected = selectedTileId === tile.tileId;
                 const pendingName = tile.status === 'pending' ? formatActorName(tile.pendingReportedByName) : null;
+                const tileLabel = getTileLabel(tile.row, tile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length);
 
                 return (
                   <div
@@ -465,10 +472,10 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                       onClick={() => handleTilePress(tile)}
                       className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${getStatusClasses(tile.status)} ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${board?.isLocked ? 'cursor-default' : 'cursor-pointer'}`}
                       aria-pressed={isSelected}
-                      aria-label={`${tile.label} ${getStatusLabel(tile.status)}`}
+                      aria-label={`${tileLabel} ${getStatusLabel(tile.status)}`}
                       disabled={Boolean(board?.isLocked) || pendingAction === tile.tileId}
                     >
-                      <span>{tile.label}</span>
+                      <span>{tileLabel}</span>
                       {pendingName ? (
                         <span className="mt-1 max-w-full truncate rounded bg-black/20 px-1.5 py-0.5 text-[0.54rem] normal-case tracking-normal text-slate-950">
                           {pendingName}
@@ -497,7 +504,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               <div className="rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
                 {board?.isLocked && confirmedTile ? (
                   <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                    {confirmedTile.label} is confirmed. The board is locked until reset.
+                    {confirmedTileLabel} is confirmed. The board is locked until reset.
                   </p>
                 ) : (
                   <p>Board is open. Pending tiles still need a second distinct confirmation.</p>
@@ -517,7 +524,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               <div className="mt-4 space-y-4">
                 <div>
                   <p className="text-sm uppercase tracking-wide text-slate-500 dark:text-slate-400">Tile</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{selectedTile.label}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{selectedTileLabel}</p>
                   <p className="text-sm text-slate-600 dark:text-slate-300">
                     Status: {getStatusLabel(selectedTile.status)}
                   </p>
