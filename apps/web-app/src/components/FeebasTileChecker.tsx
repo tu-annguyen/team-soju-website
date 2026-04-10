@@ -405,25 +405,29 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   return (
     <div className="space-y-6">
       <section className="card p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {board?.displayName || 'Feebas Tile Checker'}
-            </h2>
-          </div>
+        <div className="flex flex-col gap-4">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {board?.displayName || 'Feebas Tile Checker'}
+          </h2>
 
-          <div className="grid gap-3 rounded-2xl bg-slate-100 p-4 dark:bg-slate-900/70">
-            <span className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-              Next Reset
-            </span>
-            <span className="font-display text-3xl text-slate-900 dark:text-white">{countdown}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Resets every {board?.resetIntervalMinutes || 45} real-time minutes
-            </span>
+          <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="grid gap-3 rounded-2xl bg-slate-100 p-4 dark:bg-slate-900/70">
+              <span className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                Next Reset
+              </span>
+              <span className="font-display text-3xl text-slate-900 dark:text-white">{countdown}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Resets every {board?.resetIntervalMinutes || 45} real-time minutes
+              </span>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              Each browser can keep one active vote per tile. Only one pending nomination can exist at a time per tile, and the player who marked it pending cannot confirm it.
+            </div>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="mt-6 grid gap-4">
           <label className="grid gap-2">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Optional display name</span>
             <input
@@ -433,10 +437,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-primary-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
           </label>
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-            Each browser can keep one active vote per tile. Only one pending nomination can exist at a time, and the player who marked it pending cannot confirm it.
-          </div>
         </div>
       </section>
 
