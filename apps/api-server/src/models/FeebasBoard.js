@@ -72,6 +72,7 @@ class FeebasBoard {
       const cycle = await this.ensureCycle(client, location, cycleStart, cycleEnd);
       const tileVotes = await this.getTileVotesForUpdate(client, cycle.id, tileId);
       const currentVote = tileVotes.find((vote) => vote.actor_fingerprint === actorFingerprint) || null;
+      const pendingVote = tileVotes.find((vote) => vote.status === 'pending') || null;
       const isNoOp = currentVote?.status === nextStatus || (!currentVote && nextStatus === 'unchecked');
 
       if (isNoOp) {
@@ -87,12 +88,25 @@ class FeebasBoard {
         return board;
       }
 
-      if (nextStatus === 'confirmed' && !tileVotes.some((vote) => vote.status === 'pending')) {
+      if (nextStatus === 'pending' && pendingVote && pendingVote.actor_fingerprint !== actorFingerprint) {
+        throw new FeebasRuleError('Only one pending vote can exist on a tile at a time');
+      }
+
+      if (nextStatus === 'unchecked' && currentVote?.status === 'pending') {
+        throw new FeebasRuleError('Pending tiles must be resolved as checked or confirmed');
+      }
+
+      if (nextStatus === 'confirmed' && !pendingVote) {
         throw new FeebasRuleError('Confirmed votes require at least one pending vote on the tile');
+      }
+
+      if (nextStatus === 'confirmed' && pendingVote?.actor_fingerprint === actorFingerprint) {
+        throw new FeebasRuleError('The player who marked a tile pending cannot confirm it');
       }
 
       await this.applyTileVote(client, cycle.id, tileId, {
         currentVote,
+        pendingVote,
         actorFingerprint,
         actorName,
         nextStatus,
@@ -151,7 +165,7 @@ class FeebasBoard {
     return result.rows;
   }
 
-  static async applyTileVote(client, cycleId, tileId, { currentVote, actorFingerprint, actorName, nextStatus, now }) {
+  static async applyTileVote(client, cycleId, tileId, { currentVote, pendingVote, actorFingerprint, actorName, nextStatus, now }) {
     if (nextStatus === 'unchecked') {
       if (!currentVote) {
         return;
@@ -162,6 +176,13 @@ class FeebasBoard {
         WHERE id = $1
       `, [currentVote.id]);
       return;
+    }
+
+    if (pendingVote && pendingVote.actor_fingerprint !== actorFingerprint && ['checked', 'confirmed'].includes(nextStatus)) {
+      await client.query(`
+        DELETE FROM feebas_tile_votes
+        WHERE id = $1
+      `, [pendingVote.id]);
     }
 
     if (currentVote) {

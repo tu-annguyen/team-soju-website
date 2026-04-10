@@ -328,7 +328,13 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const totalPendingVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.pending, 0) || 0;
   const totalConfirmedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.confirmed, 0) || 0;
   const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || ROUTE_119_MAIN_TERRAIN.length) : null;
-  const canConfirmSelectedTile = Boolean(selectedTile && selectedTile.voteCounts.pending > 0 && selectedTile.currentUserVote !== 'confirmed');
+  const selectedTileHasPending = Boolean(selectedTile && selectedTile.voteCounts.pending > 0);
+  const canConfirmSelectedTile = Boolean(
+    selectedTile &&
+    selectedTileHasPending &&
+    selectedTile.currentUserVote !== 'pending' &&
+    selectedTile.currentUserVote !== 'confirmed'
+  );
 
   const updateTile = async (tileId: string, status: TileStatus) => {
     if (!clientId) {
@@ -370,7 +376,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const handleTilePress = (tile: FeebasTile) => {
     setSelectedTileId(tile.tileId);
 
-    if (pendingAction || tile.currentUserVote !== 'unchecked') {
+    if (pendingAction || tile.currentUserVote !== 'unchecked' || tile.voteCounts.pending > 0 || tile.voteCounts.confirmed > 0) {
       return;
     }
 
@@ -426,7 +432,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
           </label>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-            Each browser can keep one active vote per tile. Confirmed votes are only allowed while that tile still has at least one pending vote.
+            Each browser can keep one active vote per tile. Only one pending nomination can exist at a time, and the player who marked it pending cannot confirm it.
           </div>
         </div>
       </section>
@@ -583,7 +589,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'pending')}
                     className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'pending'}
+                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'pending' || (selectedTileHasPending && selectedTile.currentUserVote !== 'pending')}
                   >
                     Feebas Found
                   </button>
@@ -599,15 +605,25 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
                     className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'unchecked'}
+                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'unchecked' || selectedTile.currentUserVote === 'pending'}
                   >
                     Clear My Vote
                   </button>
                 </div>
 
-                {selectedTile.voteCounts.pending === 0 ? (
+                {!selectedTileHasPending ? (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     This tile needs at least one pending vote before confirmed votes are allowed.
+                  </p>
+                ) : null}
+                {selectedTile.currentUserVote === 'pending' ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    You placed the active pending vote, so this tile now needs to be resolved as checked or confirmed by another player.
+                  </p>
+                ) : null}
+                {selectedTileHasPending && selectedTile.currentUserVote === 'unchecked' ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Another player already has the pending nomination on this tile, so you can only resolve it as checked or confirmed.
                   </p>
                 ) : null}
               </div>
