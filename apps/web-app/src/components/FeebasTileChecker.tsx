@@ -150,10 +150,10 @@ function getStatusClasses(status: TileStatus) {
 
 function getStatusLabel(status: TileStatus) {
   return ({
-    unchecked: 'Unchecked',
-    checked: 'Checked',
-    pending: 'Pending',
-    confirmed: 'Confirmed',
+    unchecked: 'unchecked',
+    checked: 'checked',
+    pending: 'found Feebas',
+    confirmed: 'confirmed Feebas',
   }[status]);
 }
 
@@ -171,11 +171,11 @@ function getVoteActionMessage(actionType: string, nextStatus: TileStatus | null)
     return 'cleared their vote on';
   }
 
-  if (actionType === 'changed_vote') {
-    return `changed their vote to ${getStatusLabel(nextStatus || 'unchecked').toLowerCase()} on`;
-  }
+  // if (actionType === 'changed_vote') {
+    // return `changed their vote to ${getStatusLabel(nextStatus || 'unchecked').toLowerCase()} on`;
+  // }
 
-  return `voted ${getStatusLabel(nextStatus || 'unchecked').toLowerCase()} on`;
+  return `${getStatusLabel(nextStatus || 'unchecked')} on`;
 }
 
 function getVoteLayerOpacity(voteCount: number) {
@@ -643,15 +643,15 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Board Status</h3>
             <div className="mt-4 grid gap-3 text-sm text-slate-700 dark:text-slate-200">
               <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-                <span>Checked votes</span>
+                <span>Checked tiles</span>
                 <span className="font-semibold">{totalCheckedVotes}</span>
               </div>
               <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-                <span>Pending votes</span>
+                <span>Pending Feebas tiles</span>
                 <span className="font-semibold">{totalPendingVotes}</span>
               </div>
               <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-                <span>Confirmed votes</span>
+                <span>Confirmed Feebas tiles</span>
                 <span className="font-semibold">{totalConfirmedVotes}</span>
               </div>
               <div className="rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
@@ -764,7 +764,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                Vote changes will appear here as players shape the board together.
+                Tile changes will appear here as players shape the board together.
               </p>
             )}
           </div>
