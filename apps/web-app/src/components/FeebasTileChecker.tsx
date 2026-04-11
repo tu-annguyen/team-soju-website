@@ -712,7 +712,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
                   <button
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
-                    className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+                    className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-700"
                     disabled={pendingAction === selectedTile.tileId || selectedTileHasNoVote}
                   >
                     Clear My Vote
