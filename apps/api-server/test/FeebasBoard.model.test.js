@@ -49,6 +49,7 @@ describe('FeebasBoard model', () => {
     };
     pool.query
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [cycle] });
 
     const result = await FeebasBoard.ensureCycle(
@@ -59,8 +60,12 @@ describe('FeebasBoard model', () => {
     );
 
     expect(result).toEqual(cycle);
-    expect(pool.query).toHaveBeenCalledTimes(2);
-    expect(pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('ON CONFLICT (location, cycle_start) DO NOTHING'), [
+    expect(pool.query).toHaveBeenCalledTimes(3);
+    expect(pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('WHERE location = $1 AND cycle_start < $2'), [
+      'route-119-main',
+      '2026-04-10T00:00:00.000Z',
+    ]);
+    expect(pool.query).toHaveBeenNthCalledWith(3, expect.stringContaining('ON CONFLICT (location, cycle_start) DO NOTHING'), [
       'route-119-main',
       '2026-04-10T00:00:00.000Z',
       '2026-04-10T00:45:00.000Z',
@@ -77,6 +82,7 @@ describe('FeebasBoard model', () => {
     pool.query
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [cycle] });
 
     const result = await FeebasBoard.ensureCycle(
@@ -87,11 +93,118 @@ describe('FeebasBoard model', () => {
     );
 
     expect(result).toEqual(cycle);
-    expect(pool.query).toHaveBeenCalledTimes(3);
-    expect(pool.query).toHaveBeenNthCalledWith(3, expect.stringContaining('SELECT *'), [
+    expect(pool.query).toHaveBeenCalledTimes(4);
+    expect(pool.query).toHaveBeenNthCalledWith(4, expect.stringContaining('SELECT *'), [
       'route-119-main',
       '2026-04-10T00:00:00.000Z',
     ]);
+  });
+
+  it('archives confirmed tiles from the previous cycle before creating a new one', async () => {
+    const previousCycle = {
+      id: 41,
+      location: 'route-119-main',
+      cycle_start: '2026-04-09T23:15:00.000Z',
+      cycle_end: '2026-04-10T00:00:00.000Z',
+    };
+    const nextCycle = {
+      id: 43,
+      location: 'route-119-main',
+      cycle_start: '2026-04-10T00:00:00.000Z',
+      cycle_end: '2026-04-10T00:45:00.000Z',
+    };
+
+    pool.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [previousCycle] })
+      .mockResolvedValueOnce({
+        rows: [
+          { tile_id: 'r3c8', confirmed_vote_count: 2 },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [{ inserted: true }] })
+      .mockResolvedValueOnce({ rows: [nextCycle] });
+
+    const result = await FeebasBoard.ensureCycle(
+      pool,
+      'route-119-main',
+      new Date('2026-04-10T00:00:00.000Z'),
+      new Date('2026-04-10T00:45:00.000Z'),
+    );
+
+    expect(result).toEqual(nextCycle);
+    expect(pool.query).toHaveBeenNthCalledWith(3, expect.stringContaining("WHERE cycle_id = $1 AND status = 'confirmed'"), [
+      41,
+    ]);
+    expect(pool.query).toHaveBeenNthCalledWith(4, expect.stringContaining('INSERT INTO feebas_confirmed_tile_snapshots'), [
+      'route-119-main',
+      41,
+      '2026-04-09T23:15:00.000Z',
+      '2026-04-10T00:00:00.000Z',
+      'r3c8',
+      'H13',
+      2,
+      expect.any(String),
+    ]);
+  });
+
+  it('archives confirmed tiles before deleting the active cycle during reset', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce()
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 88,
+            location: 'route-119-main',
+            cycle_start: '2026-04-10T00:00:00.000Z',
+            cycle_end: '2026-04-10T00:45:00.000Z',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ tile_id: 'r3c8', confirmed_vote_count: 1 }],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce()
+        .mockResolvedValueOnce(),
+      release: jest.fn(),
+    };
+    const board = { tiles: [] };
+
+    pool.connect.mockResolvedValue(client);
+    jest.spyOn(FeebasBoard, 'getBoard').mockResolvedValueOnce(board);
+
+    const result = await FeebasBoard.resetBoard('route-119-main', {
+      now: '2026-04-10T00:20:00.000Z',
+    });
+
+    expect(result).toEqual(board);
+    expect(client.query).toHaveBeenNthCalledWith(2, expect.stringContaining('WHERE location = $1 AND cycle_start = $2'), [
+      'route-119-main',
+      '2026-04-10T00:00:00.000Z',
+    ]);
+    expect(client.query).toHaveBeenNthCalledWith(3, expect.stringContaining("WHERE cycle_id = $1 AND status = 'confirmed'"), [
+      88,
+    ]);
+    expect(client.query).toHaveBeenNthCalledWith(4, expect.stringContaining('INSERT INTO feebas_confirmed_tile_snapshots'), [
+      'route-119-main',
+      88,
+      '2026-04-10T00:00:00.000Z',
+      '2026-04-10T00:45:00.000Z',
+      'r3c8',
+      'H13',
+      1,
+      '2026-04-10T00:20:00.000Z',
+    ]);
+    expect(client.query).toHaveBeenNthCalledWith(5, expect.stringContaining('DELETE FROM feebas_cycles'), [
+      'route-119-main',
+      '2026-04-10T00:00:00.000Z',
+    ]);
+    expect(FeebasBoard.getBoard).toHaveBeenCalledWith('route-119-main', {
+      client,
+      now: new Date('2026-04-10T00:20:00.000Z'),
+    });
+    expect(client.query).toHaveBeenNthCalledWith(6, 'COMMIT');
+    expect(client.release).toHaveBeenCalled();
   });
 
   it('allows the pending voter to clear their own vote', async () => {

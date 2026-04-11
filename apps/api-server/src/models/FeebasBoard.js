@@ -29,6 +29,11 @@ class FeebasBoard {
 
       getLocationConfig(location);
       const { cycleStart } = getCycleWindow(now);
+      const existingCycle = await this.getCycleByStart(client, location, cycleStart);
+
+      if (existingCycle) {
+        await this.archiveConfirmedTilesForCycle(client, location, existingCycle, now);
+      }
 
       await client.query(`
         DELETE FROM feebas_cycles
@@ -141,16 +146,14 @@ class FeebasBoard {
   static async ensureCycle(client, location, cycleStart, cycleEnd) {
     const cycleStartIso = cycleStart.toISOString();
     const cycleEndIso = cycleEnd.toISOString();
-    const existingCycleResult = await client.query(`
-      SELECT *
-      FROM feebas_cycles
-      WHERE location = $1 AND cycle_start = $2
-      LIMIT 1
-    `, [location, cycleStartIso]);
+    const existingCycle = await this.getCycleByStart(client, location, cycleStart);
 
-    if (existingCycleResult.rows[0]) {
-      return existingCycleResult.rows[0];
+    if (existingCycle) {
+      return existingCycle;
     }
+
+    const previousCycle = await this.getPreviousCycle(client, location, cycleStart);
+    await this.archiveConfirmedTilesForCycle(client, location, previousCycle);
 
     const insertedCycleResult = await client.query(`
       INSERT INTO feebas_cycles (location, cycle_start, cycle_end)
@@ -171,6 +174,75 @@ class FeebasBoard {
     `, [location, cycleStartIso]);
 
     return concurrentCycleResult.rows[0];
+  }
+
+  static async getCycleByStart(client, location, cycleStart) {
+    const cycleStartIso = cycleStart instanceof Date ? cycleStart.toISOString() : new Date(cycleStart).toISOString();
+    const result = await client.query(`
+      SELECT *
+      FROM feebas_cycles
+      WHERE location = $1 AND cycle_start = $2
+      LIMIT 1
+    `, [location, cycleStartIso]);
+
+    return result.rows[0] || null;
+  }
+
+  static async getPreviousCycle(client, location, cycleStart) {
+    const cycleStartIso = cycleStart instanceof Date ? cycleStart.toISOString() : new Date(cycleStart).toISOString();
+    const result = await client.query(`
+      SELECT *
+      FROM feebas_cycles
+      WHERE location = $1 AND cycle_start < $2
+      ORDER BY cycle_start DESC
+      LIMIT 1
+    `, [location, cycleStartIso]);
+
+    return result.rows[0] || null;
+  }
+
+  static async archiveConfirmedTilesForCycle(client, location, cycle, now = new Date()) {
+    if (!cycle?.id) {
+      return;
+    }
+
+    const snapshotResult = await client.query(`
+      SELECT tile_id, COUNT(*)::INT AS confirmed_vote_count
+      FROM feebas_tile_votes
+      WHERE cycle_id = $1 AND status = 'confirmed'
+      GROUP BY tile_id
+    `, [cycle.id]);
+
+    if (snapshotResult.rows.length === 0) {
+      return;
+    }
+
+    const locationConfig = getLocationConfig(location);
+    const tileLabels = new Map(locationConfig.tiles.map((tile) => [tile.tileId, tile.label]));
+
+    await Promise.all(snapshotResult.rows.map((row) => client.query(`
+      INSERT INTO feebas_confirmed_tile_snapshots (
+        location,
+        source_cycle_id,
+        cycle_start,
+        cycle_end,
+        tile_id,
+        tile_label,
+        confirmed_vote_count,
+        archived_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (source_cycle_id, tile_id) DO NOTHING
+    `, [
+      location,
+      cycle.id,
+      new Date(cycle.cycle_start).toISOString(),
+      new Date(cycle.cycle_end).toISOString(),
+      row.tile_id,
+      tileLabels.get(row.tile_id) || row.tile_id,
+      Number(row.confirmed_vote_count) || 0,
+      now.toISOString(),
+    ])));
   }
 
   static async getTileVotesForUpdate(client, cycleId, tileId) {

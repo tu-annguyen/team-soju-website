@@ -185,3 +185,19 @@ CREATE TABLE IF NOT EXISTS feebas_activity_logs (
 
 CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_cycle_id_created_at
   ON feebas_activity_logs(cycle_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS feebas_confirmed_tile_snapshots (
+  id BIGSERIAL PRIMARY KEY,
+  location TEXT NOT NULL,
+  source_cycle_id BIGINT NOT NULL,
+  cycle_start TIMESTAMPTZ NOT NULL,
+  cycle_end TIMESTAMPTZ NOT NULL,
+  tile_id TEXT NOT NULL,
+  tile_label TEXT NOT NULL,
+  confirmed_vote_count INTEGER NOT NULL,
+  archived_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(source_cycle_id, tile_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_feebas_confirmed_tile_snapshots_location_cycle_start
+  ON feebas_confirmed_tile_snapshots(location, cycle_start DESC);
