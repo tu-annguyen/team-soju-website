@@ -59,14 +59,6 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <a
-                  href="/feebas-tile-checker"
-                  className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
-                >
-                  Feebas Tile Tracker
-                </a>
-              </li>
-              <li>
                 <a 
                   href="https://forums.pokemmo.com/index.php?/clubs/261-soj%C3%BC-sojusanctuary/" 
                   target="_blank" 
