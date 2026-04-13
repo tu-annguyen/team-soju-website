@@ -66,7 +66,8 @@ type BooleanFilter = 'any' | 'true' | 'false';
 
 interface ShowcaseFilters {
   trainerName: string;
-  points: string;
+  minPoints: string;
+  maxPoints: string;
   pokemonName: string;
   encounterType: string;
   isSecret: BooleanFilter;
@@ -101,7 +102,8 @@ const ENCOUNTER_TYPE_CHOICES = [
 
 const defaultFilters: ShowcaseFilters = {
   trainerName: '',
-  points: '',
+  minPoints: '',
+  maxPoints: '',
   pokemonName: '',
   encounterType: '',
   isSecret: 'any',
@@ -236,17 +238,21 @@ const applyTrainerFiltersAndSort = (
   sort: ShowcaseSort
 ): Trainer[] => {
   const trainerNameFilter = filters.trainerName.trim().toLowerCase();
-  const minPoints = Number(filters.points);
+  const minPoints = Number(filters.minPoints);
+  const maxPoints = Number(filters.maxPoints);
 
   const filtered = trainers.filter((trainer) => {
     const matchesTrainerName = trainerNameFilter
       ? trainer.name.toLowerCase().includes(trainerNameFilter)
       : true;
-    const matchesPoints = Number.isFinite(minPoints) && filters.points.trim() !== ''
+    const matchesMinPoints = Number.isFinite(minPoints) && filters.minPoints.trim() !== ''
       ? trainer.totalPoints >= minPoints
       : true;
+    const matchesMaxPoints = Number.isFinite(maxPoints) && filters.maxPoints.trim() !== ''
+      ? trainer.totalPoints <= maxPoints
+      : true;
 
-    return matchesTrainerName && matchesPoints;
+    return matchesTrainerName && matchesMinPoints && matchesMaxPoints;
   });
 
   return sortTrainers(filtered, sort.sortBy, sort.sortOrder);
@@ -333,7 +339,8 @@ const ShinyShowcase = ({
 
   const activeFilterCount = [
     filters.trainerName,
-    filters.points,
+    filters.minPoints,
+    filters.maxPoints,
     filters.pokemonName,
     filters.encounterType,
     filters.catchDateAfter,
@@ -437,12 +444,22 @@ const ShinyShowcase = ({
                     />
                   </label>
                   <label className="text-sm text-gray-700 dark:text-gray-300">
-                    Points (minimum)
+                    Minimum Points
                     <input
                       type="number"
                       min="0"
-                      value={draftFilters.points}
-                      onChange={(e) => setDraftFilters({ ...draftFilters, points: e.target.value })}
+                      value={draftFilters.minPoints}
+                      onChange={(e) => setDraftFilters({ ...draftFilters, minPoints: e.target.value })}
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    />
+                  </label>
+                  <label className="text-sm text-gray-700 dark:text-gray-300">
+                    Maximum Points
+                    <input
+                      type="number"
+                      min="0"
+                      value={draftFilters.maxPoints}
+                      onChange={(e) => setDraftFilters({ ...draftFilters, maxPoints: e.target.value })}
                       className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   </label>
