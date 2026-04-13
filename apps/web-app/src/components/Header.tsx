@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
-import { getLocaleParamPath, getTranslations } from '../i18n';
+import { getLocaleParamPath, getRuntimeLocale, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 const toolsLinks = [
@@ -18,15 +18,16 @@ type Props = {
 const Header = ({ locale = 'en' }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const messages = getTranslations(locale);
-  const homeHref = getLocaleParamPath('/', locale);
-  const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', locale);
-  const eventsHref = getLocaleParamPath('/events', locale);
-  const toolsHref = getLocaleParamPath('/tools', locale);
-  const discordHref = getLocaleParamPath('/discord', locale);
+  const activeLocale = getRuntimeLocale(locale);
+  const messages = getTranslations(activeLocale);
+  const homeHref = getLocaleParamPath('/', activeLocale);
+  const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', activeLocale);
+  const eventsHref = getLocaleParamPath('/events', activeLocale);
+  const toolsHref = getLocaleParamPath('/tools', activeLocale);
+  const discordHref = getLocaleParamPath('/discord', activeLocale);
   const localizedToolLinks = toolsLinks.map((link) => ({
     ...link,
-    href: getLocaleParamPath(link.href, locale),
+    href: getLocaleParamPath(link.href, activeLocale),
   }));
 
   useEffect(() => {

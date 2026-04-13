@@ -1,5 +1,5 @@
 import React from 'react';
-import { getLocaleParamPath, getTranslations } from '../i18n';
+import { getLocaleParamPath, getRuntimeLocale, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 type Props = {
@@ -8,12 +8,13 @@ type Props = {
 
 const Footer = ({ locale = 'en' }: Props) => {
   const currentYear = new Date().getFullYear();
-  const messages = getTranslations(locale);
-  const homeHref = getLocaleParamPath('/', locale);
-  const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', locale);
-  const eventsHref = getLocaleParamPath('/events', locale);
-  const toolsHref = getLocaleParamPath('/tools', locale);
-  const discordHref = getLocaleParamPath('/discord', locale);
+  const activeLocale = getRuntimeLocale(locale);
+  const messages = getTranslations(activeLocale);
+  const homeHref = getLocaleParamPath('/', activeLocale);
+  const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', activeLocale);
+  const eventsHref = getLocaleParamPath('/events', activeLocale);
+  const toolsHref = getLocaleParamPath('/tools', activeLocale);
+  const discordHref = getLocaleParamPath('/discord', activeLocale);
   
   return (
     <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-8">
