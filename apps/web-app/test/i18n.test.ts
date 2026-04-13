@@ -1,4 +1,9 @@
-import { getTranslations, resolveLocale } from '../src/i18n';
+import {
+  detectBrowserLocale,
+  getLocaleParamPath,
+  getTranslations,
+  resolveLocale,
+} from '../src/i18n';
 
 describe('i18n helpers', () => {
   it('resolves locale aliases to supported locales', () => {
@@ -15,5 +20,20 @@ describe('i18n helpers', () => {
   it('returns translated copy for supported locales', () => {
     expect(getTranslations('es').nav.home).toBe('Inicio');
     expect(getTranslations('zh').footer.joinTitle).toBe('加入我们');
+  });
+
+  it('builds localized internal paths for non-default locales', () => {
+    expect(getLocaleParamPath('/tools', 'en')).toBe('/tools');
+    expect(getLocaleParamPath('/tools', 'es')).toBe('/tools?lang=es');
+    expect(getLocaleParamPath('/discord?foo=bar', 'zh')).toBe('/discord?foo=bar&lang=zh');
+  });
+
+  it('prefers a saved non-default locale when detecting browser language', () => {
+    expect(detectBrowserLocale(['en-US'], 'zh')).toBe('zh');
+  });
+
+  it('detects a supported browser locale and otherwise falls back to English', () => {
+    expect(detectBrowserLocale(['es-419', 'en-US'])).toBe('es');
+    expect(detectBrowserLocale(['fr-FR'])).toBe('en');
   });
 });

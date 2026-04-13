@@ -59,5 +59,35 @@ export function getTranslations(localeInput?: string | null): Translations {
   return merged;
 }
 
+export function getLocaleParamPath(pathname: string, localeInput?: string | null) {
+  const locale = resolveLocale(localeInput);
+
+  if (locale === DEFAULT_LOCALE) {
+    return pathname;
+  }
+
+  const separator = pathname.includes('?') ? '&' : '?';
+  return `${pathname}${separator}lang=${encodeURIComponent(locale)}`;
+}
+
+export function detectBrowserLocale(
+  preferredLanguages: readonly string[] | undefined | null,
+  storedLocale?: string | null
+): Locale {
+  const resolvedStoredLocale = resolveLocale(storedLocale);
+  if (storedLocale && resolvedStoredLocale !== DEFAULT_LOCALE) {
+    return resolvedStoredLocale;
+  }
+
+  for (const language of preferredLanguages || []) {
+    const resolved = resolveLocale(language);
+    if (resolved !== DEFAULT_LOCALE || language.toLowerCase().startsWith(DEFAULT_LOCALE)) {
+      return resolved;
+    }
+  }
+
+  return DEFAULT_LOCALE;
+}
+
 export { DEFAULT_LOCALE, resolveLocale };
 export type { Locale };
