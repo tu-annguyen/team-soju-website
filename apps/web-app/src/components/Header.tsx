@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
-import { getTranslations } from '../i18n';
+import { getLocaleParamPath, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 const toolsLinks = [
@@ -19,6 +19,15 @@ const Header = ({ locale = 'en' }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const messages = getTranslations(locale);
+  const homeHref = getLocaleParamPath('/', locale);
+  const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', locale);
+  const eventsHref = getLocaleParamPath('/events', locale);
+  const toolsHref = getLocaleParamPath('/tools', locale);
+  const discordHref = getLocaleParamPath('/discord', locale);
+  const localizedToolLinks = toolsLinks.map((link) => ({
+    ...link,
+    href: getLocaleParamPath(link.href, locale),
+  }));
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,7 +47,7 @@ const Header = ({ locale = 'en' }: Props) => {
       }`}
     >
       <div className="container flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
+        <a href={homeHref} className="flex items-center gap-2">
           <img 
             src="/images/team-soju-icon.png" 
             alt="Team Soju Logo" 
@@ -52,26 +61,26 @@ const Header = ({ locale = 'en' }: Props) => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
           <a 
-            href="/" 
+            href={homeHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
             {messages.nav.home}
           </a>
           <a 
-            href="/shiny-showcase" 
+            href={shinyShowcaseHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
             {messages.nav.shinyShowcase}
           </a>
           <a 
-            href="/events" 
+            href={eventsHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
             {messages.nav.events}
           </a>
           <div className="group relative">
             <a
-              href="/tools"
+              href={toolsHref}
               className="flex items-center gap-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
               aria-haspopup="true"
             >
@@ -89,7 +98,7 @@ const Header = ({ locale = 'en' }: Props) => {
             </a>
             <div className="pointer-events-none absolute left-0 top-full pt-3 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
               <div className="min-w-56 rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/95">
-                {toolsLinks.map((link) => (
+                {localizedToolLinks.map((link) => (
                   <a
                     key={link.href}
                     href={link.href}
@@ -110,7 +119,7 @@ const Header = ({ locale = 'en' }: Props) => {
             {messages.nav.forum}
           </a>
           <a 
-            href="/discord" 
+            href={discordHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
             {messages.nav.discord}
@@ -158,35 +167,35 @@ const Header = ({ locale = 'en' }: Props) => {
           >
             <nav className="container py-4 flex flex-col gap-4">
               <a 
-                href="/" 
+                href={homeHref} 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 {messages.nav.home}
               </a>
               <a 
-                href="/shiny-showcase" 
+                href={shinyShowcaseHref} 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 {messages.nav.shinyShowcase}
               </a>
              <a 
-                href="/events" 
+                href={eventsHref} 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 {messages.nav.events}
               </a>
               <a
-                href="/tools"
+                href={toolsHref}
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 {messages.nav.tools}
               </a>
               <div className="pl-4 -mt-2 flex flex-col gap-2">
-                {toolsLinks.map((link) => (
+                {localizedToolLinks.map((link) => (
                   <a
                     key={link.href}
                     href={link.href}
@@ -207,7 +216,7 @@ const Header = ({ locale = 'en' }: Props) => {
                 {messages.nav.forum}
               </a>
               <a 
-                href="/discord" 
+                href={discordHref} 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >

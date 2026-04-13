@@ -35,3 +35,10 @@ Locale routing is not enabled yet. During the scaffold phase, you can preview tr
 - `?lang=zh`
 
 Example: `/tools?lang=es`
+
+If the URL has no `?lang=` value, the site now checks the browser language and any saved locale preference in local storage:
+
+- English stays on the normal URL with no redirect.
+- Spanish redirects to `?lang=es`.
+- Chinese redirects to `?lang=zh`.
+- An explicit `?lang=` in the URL always takes priority.

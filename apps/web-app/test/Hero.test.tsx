@@ -29,6 +29,6 @@ describe('Hero', () => {
       'href',
       'https://forums.pokemmo.com/index.php?/topic/182111-team-soju-is-recruiting/#comment-2123917'
     );
-    expect(screen.getByRole('link', { name: '加入 Discord' })).toHaveAttribute('href', '/discord');
+    expect(screen.getByRole('link', { name: '加入 Discord' })).toHaveAttribute('href', '/discord?lang=zh');
   });
 });

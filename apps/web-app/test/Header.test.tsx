@@ -27,7 +27,7 @@ describe('Header', () => {
   it('renders translated navigation labels when a locale is provided', () => {
     render(<Header locale="es" />);
 
-    expect(screen.getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('link', { name: 'Herramientas' })).toHaveAttribute('href', '/tools');
+    expect(screen.getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/?lang=es');
+    expect(screen.getByRole('link', { name: 'Herramientas' })).toHaveAttribute('href', '/tools?lang=es');
   });
 });

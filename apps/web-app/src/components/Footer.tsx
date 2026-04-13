@@ -1,5 +1,5 @@
 import React from 'react';
-import { getTranslations } from '../i18n';
+import { getLocaleParamPath, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 type Props = {
@@ -9,6 +9,11 @@ type Props = {
 const Footer = ({ locale = 'en' }: Props) => {
   const currentYear = new Date().getFullYear();
   const messages = getTranslations(locale);
+  const homeHref = getLocaleParamPath('/', locale);
+  const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', locale);
+  const eventsHref = getLocaleParamPath('/events', locale);
+  const toolsHref = getLocaleParamPath('/tools', locale);
+  const discordHref = getLocaleParamPath('/discord', locale);
   
   return (
     <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-8">
@@ -35,7 +40,7 @@ const Footer = ({ locale = 'en' }: Props) => {
             <ul className="space-y-2">
               <li>
                 <a 
-                  href="/" 
+                  href={homeHref} 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
                   {messages.nav.home}
@@ -43,7 +48,7 @@ const Footer = ({ locale = 'en' }: Props) => {
               </li>
               <li>
                 <a 
-                  href="/shiny-showcase" 
+                  href={shinyShowcaseHref} 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
                   {messages.nav.shinyShowcase}
@@ -51,7 +56,7 @@ const Footer = ({ locale = 'en' }: Props) => {
               </li>
               <li>
                 <a 
-                  href="/events" 
+                  href={eventsHref} 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
                   {messages.nav.events}
@@ -59,7 +64,7 @@ const Footer = ({ locale = 'en' }: Props) => {
               </li>
               <li>
                 <a
-                  href="/tools"
+                  href={toolsHref}
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
                   {messages.nav.tools}
@@ -77,7 +82,7 @@ const Footer = ({ locale = 'en' }: Props) => {
               </li>
               <li>
                 <a 
-                  href="/discord" 
+                  href={discordHref} 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
                   {messages.nav.discord}

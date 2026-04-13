@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Analytics from '@vercel/analytics/astro'
 import SpeedInsights from '@vercel/speed-insights/astro'
-import { getTranslations, resolveLocale } from '../i18n';
+import { DEFAULT_LOCALE, getTranslations, resolveLocale } from '../i18n';
 
 interface Props {
   title?: string;
@@ -22,6 +22,7 @@ const locale = resolveLocale(localeProp ?? Astro.url.searchParams.get('lang'));
 const messages = getTranslations(locale);
 const resolvedTitle = title ?? messages.meta.defaultTitle;
 const resolvedDescription = description ?? messages.meta.defaultDescription;
+const localeStorageKey = 'team-soju-locale';
 ---
 
 <!doctype html>
@@ -39,6 +40,62 @@ const resolvedDescription = description ?? messages.meta.defaultDescription;
       const theme = localStorage.getItem('theme') || 
         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       document.documentElement.classList.toggle('dark', theme === 'dark');
+    </script>
+    <script is:inline>
+      (() => {
+        const defaultLocale = 'en';
+        const supportedLocales = ['en', 'es', 'zh'];
+        const localeStorageKey = 'team-soju-locale';
+        const url = new URL(window.location.href);
+        const queryLocale = (url.searchParams.get('lang') || '').trim().toLowerCase();
+        const aliases = {
+          en: 'en',
+          'en-us': 'en',
+          'en-gb': 'en',
+          es: 'es',
+          'es-es': 'es',
+          'es-419': 'es',
+          zh: 'zh',
+          'zh-cn': 'zh',
+          'zh-sg': 'zh',
+          'zh-hans': 'zh',
+          'zh-tw': 'zh',
+          'zh-hk': 'zh',
+          'zh-hant': 'zh',
+        };
+        const resolveLocale = (value) => aliases[value] || defaultLocale;
+
+        if (supportedLocales.includes(queryLocale)) {
+          localStorage.setItem(localeStorageKey, queryLocale);
+          return;
+        }
+
+        const storedLocale = resolveLocale((localStorage.getItem(localeStorageKey) || '').trim().toLowerCase());
+        let detectedLocale = storedLocale !== defaultLocale ? storedLocale : defaultLocale;
+
+        if (detectedLocale === defaultLocale) {
+          const browserLanguages = Array.isArray(navigator.languages) && navigator.languages.length > 0
+            ? navigator.languages
+            : [navigator.language];
+
+          for (const language of browserLanguages) {
+            const resolved = resolveLocale((language || '').trim().toLowerCase());
+            if (resolved !== defaultLocale || (language || '').toLowerCase().startsWith(defaultLocale)) {
+              detectedLocale = resolved;
+              break;
+            }
+          }
+        }
+
+        localStorage.setItem(localeStorageKey, detectedLocale);
+
+        if (queryLocale || detectedLocale === defaultLocale) {
+          return;
+        }
+
+        url.searchParams.set('lang', detectedLocale);
+        window.location.replace(url.toString());
+      })();
     </script>
   </head>
   <body>
