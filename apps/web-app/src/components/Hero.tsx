@@ -1,7 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { getTranslations } from '../i18n';
+import type { Locale } from '../i18n';
 
-const Hero = () => {
+type Props = {
+  locale?: Locale | string;
+};
+
+const Hero = ({ locale = 'en' }: Props) => {
+  const messages = getTranslations(locale);
+
   return (
     <section className="relative min-h-[60vh] flex items-center overflow-hidden">
       {/* Background pattern */}
@@ -18,10 +26,13 @@ const Hero = () => {
             transition={{ duration: 0.8 }}
           >
             <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white">
-              Welcome to <span className="text-primary-500 dark:text-primary-400">Team Soju</span>
+              {messages.home.hero.headingPrefix}{' '}
+              <span className="text-primary-500 dark:text-primary-400">
+                {messages.home.hero.headingHighlight}
+              </span>
             </h1>
             <p className="text-xl text-gray-700 dark:text-gray-300 mb-8">
-              Team Soju is a budding PokeMMO team dedicated to fostering a growing community of rag tag friends with a good mix of veteran and new players. We are a PvE team mainly focused in shiny hunting but have some dedicated PvPers! 건배!
+              {messages.home.hero.body}
             </p>
             <div className="flex flex-wrap gap-4">
               <a 
@@ -30,13 +41,13 @@ const Hero = () => {
                 rel="noopener noreferrer"
                 className="btn btn-primary"
               >
-                Apply Now
+                {messages.home.hero.primaryCta}
               </a>
               <a 
                 href="/discord"
                 className="btn btn-secondary"
               >
-                Join Discord
+                {messages.home.hero.secondaryCta}
               </a>
             </div>
           </motion.div>
@@ -49,7 +60,7 @@ const Hero = () => {
           >
             <img 
               src="/images/team-soju-logo.png" 
-              alt="Team Soju Logo" 
+              alt={messages.home.hero.logoAlt}
               className="w-64 h-64 object-contain"
             />
           </motion.div>
