@@ -20,4 +20,11 @@ describe('Footer', () => {
       screen.getByText(/This website is not affiliated with Nintendo/i)
     ).toBeInTheDocument();
   });
+
+  it('falls back to English for missing or unknown locale values', () => {
+    render(<Footer locale="unknown-locale" />);
+
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+    expect(screen.getByText(/All rights reserved/i)).toBeInTheDocument();
+  });
 });

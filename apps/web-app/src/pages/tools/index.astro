@@ -1,19 +1,24 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { getTranslations, resolveLocale } from '../../i18n';
+
+const locale = resolveLocale(Astro.url.searchParams.get('lang'));
+const messages = getTranslations(locale);
 ---
 
 <Layout
-  title="Tools - Team Soju"
-  description="Explore Team Soju's community tools and utilities."
+  locale={locale}
+  title={messages.tools.index.title}
+  description={messages.tools.index.description}
 >
   <div class="py-16 bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-gray-900 dark:to-gray-800">
     <div class="container">
       <div class="mb-12">
         <h1 class="text-center text-4xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white">
-          Tools
+          {messages.tools.index.heading}
         </h1>
         <p class="text-center text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
-          Handy utilities built for the PokeMMO community to coordinate faster and play smarter.
+          {messages.tools.index.intro}
         </p>
       </div>
     </div>
@@ -22,24 +27,24 @@ import Layout from '../../layouts/Layout.astro';
   <section class="py-16">
     <div class="container">
       <div class="mb-12">
-        <h2 class="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Available Tools</h2>
+        <h2 class="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{messages.tools.index.availableTitle}</h2>
         <p class="text-gray-700 dark:text-gray-300 mb-8">
-          Jump into the tools we use to organize hunts, share progress, and keep everyone on the same page.
+          {messages.tools.index.availableDescription}
         </p>
         <div class="grid gap-6 md:grid-cols-2">
           <a
             href="/feebas-tile-checker"
             class="group rounded-3xl border border-cyan-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-cyan-900 dark:bg-gray-900"
           >
-            <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-sky-700 dark:text-sky-300">Live Coordination</p>
+            <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-sky-700 dark:text-sky-300">{messages.tools.index.categories.liveCoordination}</p>
             <h3 class="text-2xl font-bold text-gray-900 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
-              Feebas Tile Tracker
+              {messages.tools.index.feebasCard.title}
             </h3>
             <p class="mt-4 text-gray-700 dark:text-gray-300">
-              Coordinate Feebas tile checks in real time with a shared tile board for checked, found, or confirmed calls. Each call has a translucent color so the board behaves like a live heatmap of group opinion.
+              {messages.tools.index.feebasCard.description}
             </p>
             <span class="mt-6 inline-flex items-center text-sm font-semibold text-primary-600 dark:text-primary-400">
-              Open tool
+              {messages.tools.index.openTool}
             </span>
           </a>
         </div>

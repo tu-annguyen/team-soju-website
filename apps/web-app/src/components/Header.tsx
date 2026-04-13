@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
+import { getTranslations } from '../i18n';
+import type { Locale } from '../i18n';
 
 const toolsLinks = [
   {
@@ -9,9 +11,14 @@ const toolsLinks = [
   },
 ];
 
-const Header = () => {
+type Props = {
+  locale?: Locale | string;
+};
+
+const Header = ({ locale = 'en' }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const messages = getTranslations(locale);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,19 +55,19 @@ const Header = () => {
             href="/" 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Home
+            {messages.nav.home}
           </a>
           <a 
             href="/shiny-showcase" 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Shiny Showcase
+            {messages.nav.shinyShowcase}
           </a>
           <a 
             href="/events" 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Events
+            {messages.nav.events}
           </a>
           <div className="group relative">
             <a
@@ -68,7 +75,7 @@ const Header = () => {
               className="flex items-center gap-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
               aria-haspopup="true"
             >
-              Tools
+              {messages.nav.tools}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -100,13 +107,13 @@ const Header = () => {
             rel="noopener noreferrer"
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Forum
+            {messages.nav.forum}
           </a>
           <a 
             href="/discord" 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Discord
+            {messages.nav.discord}
           </a>
           <div className="ml-4">
             <ThemeToggle />
@@ -119,7 +126,7 @@ const Header = () => {
           <button 
             onClick={() => setIsOpen(!isOpen)}
             className="text-gray-800 dark:text-gray-200 focus:outline-none"
-            aria-label="Toggle menu"
+            aria-label={messages.nav.toggleMenu}
           >
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
@@ -155,28 +162,28 @@ const Header = () => {
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Home
+                {messages.nav.home}
               </a>
               <a 
                 href="/shiny-showcase" 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Shiny Showcase
+                {messages.nav.shinyShowcase}
               </a>
              <a 
                 href="/events" 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Events
+                {messages.nav.events}
               </a>
               <a
                 href="/tools"
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Tools
+                {messages.nav.tools}
               </a>
               <div className="pl-4 -mt-2 flex flex-col gap-2">
                 {toolsLinks.map((link) => (
@@ -197,14 +204,14 @@ const Header = () => {
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Forum
+                {messages.nav.forum}
               </a>
               <a 
                 href="/discord" 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Discord
+                {messages.nav.discord}
               </a>
             </nav>
           </motion.div>

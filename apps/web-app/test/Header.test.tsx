@@ -23,4 +23,11 @@ describe('Header', () => {
     const header = container.querySelector('header');
     expect(header).not.toBeNull();
   });
+
+  it('renders translated navigation labels when a locale is provided', () => {
+    render(<Header locale="es" />);
+
+    expect(screen.getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Herramientas' })).toHaveAttribute('href', '/tools');
+  });
 });
