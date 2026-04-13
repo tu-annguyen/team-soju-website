@@ -89,5 +89,31 @@ export function detectBrowserLocale(
   return DEFAULT_LOCALE;
 }
 
+export function getRuntimeLocale(localeInput?: string | null): Locale {
+  const resolvedInput = resolveLocale(localeInput);
+  if (localeInput && (resolvedInput !== DEFAULT_LOCALE || localeInput.toLowerCase().startsWith(DEFAULT_LOCALE))) {
+    return resolvedInput;
+  }
+
+  if (typeof window === 'undefined') {
+    return DEFAULT_LOCALE;
+  }
+
+  const queryLocale = window.location ? new URLSearchParams(window.location.search).get('lang') : null;
+  const resolvedQueryLocale = resolveLocale(queryLocale);
+  if (queryLocale && (resolvedQueryLocale !== DEFAULT_LOCALE || queryLocale.toLowerCase().startsWith(DEFAULT_LOCALE))) {
+    return resolvedQueryLocale;
+  }
+
+  let storedLocale: string | null = null;
+  try {
+    storedLocale = window.localStorage.getItem('team-soju-locale');
+  } catch {
+    storedLocale = null;
+  }
+
+  return detectBrowserLocale(window.navigator?.languages, storedLocale);
+}
+
 export { DEFAULT_LOCALE, resolveLocale };
 export type { Locale };

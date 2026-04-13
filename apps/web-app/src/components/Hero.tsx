@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { getLocaleParamPath, getTranslations } from '../i18n';
+import { getLocaleParamPath, getRuntimeLocale, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 type Props = {
@@ -8,8 +8,9 @@ type Props = {
 };
 
 const Hero = ({ locale = 'en' }: Props) => {
-  const messages = getTranslations(locale);
-  const discordHref = getLocaleParamPath('/discord', locale);
+  const activeLocale = getRuntimeLocale(locale);
+  const messages = getTranslations(activeLocale);
+  const discordHref = getLocaleParamPath('/discord', activeLocale);
 
   return (
     <section className="relative min-h-[60vh] flex items-center overflow-hidden">

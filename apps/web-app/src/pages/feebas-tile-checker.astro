@@ -1,29 +1,16 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import FeebasTileChecker from '../components/FeebasTileChecker.tsx';
-import { getTranslations, resolveLocale } from '../i18n';
+import FeebasPageIntro from '../components/FeebasPageIntro';
 
 const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
-const locale = resolveLocale(Astro.url.searchParams.get('lang'));
-const messages = getTranslations(locale);
 ---
 
 <Layout
-  locale={locale}
-  title={messages.tools.feebas.title}
-  description={messages.tools.feebas.description}
+  title="Feebas Tile Checker - Team Soju"
+  description="Coordinate Feebas tile checks live with a shared board."
 >
-  <section class="bg-gradient-to-br from-cyan-100 via-sky-100 to-teal-100 py-16 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-    <div class="container">
-      <div class="max-w-4xl">
-        <p class="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-sky-700 dark:text-sky-300">{messages.tools.feebas.eyebrow}</p>
-        <h1 class="text-gray-900 dark:text-white">{messages.tools.feebas.heading}</h1>
-        <p class="mt-4 text-lg text-slate-700 dark:text-slate-300">
-          {messages.tools.feebas.intro}
-        </p>
-      </div>
-    </div>
-  </section>
+  <FeebasPageIntro client:load />
 
   <section class="py-12">
     <div class="container">
