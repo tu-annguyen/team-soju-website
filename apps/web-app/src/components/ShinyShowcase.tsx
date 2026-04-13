@@ -77,7 +77,7 @@ interface ShowcaseFilters {
 }
 
 interface ShowcaseSort {
-  sortBy: 'number_ot' | 'points';
+  sortBy: 'number_ot' | 'points' | 'points_per_num_ot';
   sortOrder: 'asc' | 'desc';
 }
 
@@ -132,9 +132,27 @@ const sortTrainers = (
 ): Trainer[] => {
   const direction = sortOrder === 'asc' ? 1 : -1;
   const sorted = [...trainers];
+  const getPointsPerNumOT = (trainer: Trainer) => (
+    trainer.numOT > 0 ? trainer.totalPoints / trainer.numOT : 0
+  );
 
   sorted.sort((a, b) => {
-    if (sortBy === 'points') {
+    if (sortBy === 'points_per_num_ot') {
+      const pointsPerNumOTA = getPointsPerNumOT(a);
+      const pointsPerNumOTB = getPointsPerNumOT(b);
+
+      if (pointsPerNumOTA !== pointsPerNumOTB) {
+        return (pointsPerNumOTA - pointsPerNumOTB) * direction;
+      }
+
+      if (a.totalPoints !== b.totalPoints) {
+        return (a.totalPoints - b.totalPoints) * direction;
+      }
+
+      if (a.numOT !== b.numOT) {
+        return (a.numOT - b.numOT) * direction;
+      }
+    } else if (sortBy === 'points') {
       if (a.totalPoints !== b.totalPoints) {
         return (a.totalPoints - b.totalPoints) * direction;
       }
@@ -566,6 +584,7 @@ const ShinyShowcase = ({
                     >
                       <option value="number_ot">Number OT</option>
                       <option value="points">Points</option>
+                      <option value="points_per_num_ot">Average Points/Shiny</option>
                     </select>
                   </label>
                   <label className="text-sm text-gray-700 dark:text-gray-300">
