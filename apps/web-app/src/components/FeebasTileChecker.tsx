@@ -246,6 +246,15 @@ function getBoardMinWidth(cols: number) {
   return `${Math.max(cols * BOARD_MIN_TILE_SIZE_PX, BOARD_MIN_WIDTH_PX)}px`;
 }
 
+function LoadingPlaceholder({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`block animate-pulse rounded-full bg-slate-200/90 dark:bg-slate-700/80 ${className}`}
+    />
+  );
+}
+
 const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) => {
   const [activeLocation, setActiveLocation] = useState(resolveLocationId(location));
   const [board, setBoard] = useState<FeebasBoard | null>(null);
@@ -409,7 +418,9 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
   const selectedTileHasPending = Boolean(selectedTile && selectedTile.voteCounts.pending > 0);
   const selectedTileIsPendingOwner = selectedTileCurrentVote === 'pending';
   const selectedTileHasNoVote = selectedTileCurrentVote === 'unchecked';
-  const boardMinWidth = getBoardMinWidth(board?.layout.cols || 1);
+  const layoutRows = board?.layout.rows || activeTerrain.length;
+  const layoutCols = board?.layout.cols || activeTerrain[0]?.length || 1;
+  const boardMinWidth = getBoardMinWidth(layoutCols);
   const canConfirmSelectedTile = Boolean(
     selectedTile &&
     selectedTileHasPending &&
@@ -464,14 +475,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
     updateTile(tile.tileId, 'checked');
   };
 
-  if (loading) {
-    return (
-      <div className="card p-8 text-center">
-        <span className="text-gray-600 dark:text-gray-300">Loading the Feebas board...</span>
-      </div>
-    );
-  }
-
   if (error && !board) {
     return (
       <div className="card p-8 text-center">
@@ -508,7 +511,11 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
           </div>
 
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {board?.displayName || activeLocationOption.displayName}
+            {loading && !board ? (
+              <LoadingPlaceholder className="h-10 w-56 max-w-full rounded-xl" />
+            ) : (
+              board?.displayName || activeLocationOption.displayName
+            )}
           </h2>
 
           <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
@@ -516,14 +523,31 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               <span className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
                 Next Reset
               </span>
-              <span className="font-display text-3xl text-slate-900 dark:text-white">{countdown}</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Resets every {board?.resetIntervalMinutes || 45} real-time minutes
-              </span>
+              {loading && !board ? (
+                <>
+                  <LoadingPlaceholder className="h-10 w-28 rounded-xl" />
+                  <LoadingPlaceholder className="h-4 w-48 max-w-full rounded-md" />
+                </>
+              ) : (
+                <>
+                  <span className="font-display text-3xl text-slate-900 dark:text-white">{countdown}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Resets every {board?.resetIntervalMinutes || 45} real-time minutes
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-              Each browser can keep one active vote per tile. Only one pending nomination can exist at a time per tile, and the player who marked it pending cannot confirm it.
+              {loading && !board ? (
+                <div className="space-y-2">
+                  <LoadingPlaceholder className="h-4 w-full rounded-md" />
+                  <LoadingPlaceholder className="h-4 w-11/12 rounded-md" />
+                  <LoadingPlaceholder className="h-4 w-8/12 rounded-md" />
+                </div>
+              ) : (
+                'Each browser can keep one active vote per tile. Only one pending nomination can exist at a time per tile, and the player who marked it pending cannot confirm it.'
+              )}
             </div>
           </div>
         </div>
@@ -536,6 +560,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               onChange={(event) => setDisplayName(event.target.value.slice(0, 40))}
               placeholder="Anonymous Feebas Hunter"
               className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-primary-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              disabled={loading && !board}
             />
           </label>
         </div>
@@ -560,16 +585,28 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
               className="grid gap-1 rounded-2xl border border-sky-100/50 bg-sky-950/10 p-2 shadow-[0_18px_45px_rgba(20,55,107,0.24)] backdrop-blur-sm"
               style={{
                 minWidth: boardMinWidth,
-                gridTemplateColumns: `repeat(${board?.layout.cols || 1}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${layoutCols}, minmax(0, 1fr))`,
               }}
             >
-              {Array.from({ length: (board?.layout.rows || 0) * (board?.layout.cols || 0) }, (_, index) => {
-                const cols = board?.layout.cols || 1;
+              {Array.from({ length: layoutRows * layoutCols }, (_, index) => {
+                const cols = layoutCols;
                 const row = Math.floor(index / cols);
                 const col = index % cols;
                 const tile = tileByPosition.get(`${row}-${col}`) || null;
                 const terrain = activeTerrain[row]?.[col] || 'water';
                 const terrainClasses = getTerrainClasses(terrain);
+
+                if (loading && !board) {
+                  return (
+                    <div
+                      key={`placeholder-${row}-${col}`}
+                      className={`relative aspect-square rounded-[0.35rem] border border-white/10 ${terrainClasses}`}
+                    >
+                      <div className="absolute inset-[8%] rounded-[0.3rem] bg-[linear-gradient(180deg,_rgba(255,255,255,0.18),_rgba(255,255,255,0.03))]" />
+                      <div className="absolute inset-[8%] animate-pulse rounded-[0.3rem] bg-slate-100/20" />
+                    </div>
+                  );
+                }
 
                 if (!tile) {
                   return (
@@ -644,18 +681,25 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
             <div className="mt-4 grid gap-3 text-sm text-slate-700 dark:text-slate-200">
               <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
                 <span>Checked tiles</span>
-                <span className="font-semibold">{totalCheckedVotes}</span>
+                {loading && !board ? <LoadingPlaceholder className="h-5 w-10 rounded-md" /> : <span className="font-semibold">{totalCheckedVotes}</span>}
               </div>
               <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
                 <span>Pending Feebas tiles</span>
-                <span className="font-semibold">{totalPendingVotes}</span>
+                {loading && !board ? <LoadingPlaceholder className="h-5 w-10 rounded-md" /> : <span className="font-semibold">{totalPendingVotes}</span>}
               </div>
               <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
                 <span>Confirmed Feebas tiles</span>
-                <span className="font-semibold">{totalConfirmedVotes}</span>
+                {loading && !board ? <LoadingPlaceholder className="h-5 w-10 rounded-md" /> : <span className="font-semibold">{totalConfirmedVotes}</span>}
               </div>
               <div className="rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-                <p>Mixed colors mean mixed opinions. More votes make a tile’s overlay stronger.</p>
+                {loading && !board ? (
+                  <div className="space-y-2">
+                    <LoadingPlaceholder className="h-4 w-full rounded-md" />
+                    <LoadingPlaceholder className="h-4 w-8/12 rounded-md" />
+                  </div>
+                ) : (
+                  <p>Mixed colors mean mixed opinions. More votes make a tile’s overlay stronger.</p>
+                )}
               </div>
               {error ? (
                 <p className="rounded-xl bg-rose-50 px-4 py-3 text-rose-700 dark:bg-rose-950/50 dark:text-rose-200">
@@ -667,7 +711,27 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
 
           <div className="card p-5">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Selected Tile</h3>
-            {selectedTile ? (
+            {loading && !board ? (
+              <div className="mt-4 space-y-4">
+                <div className="space-y-2">
+                  <LoadingPlaceholder className="h-4 w-12 rounded-md" />
+                  <LoadingPlaceholder className="h-8 w-20 rounded-lg" />
+                  <LoadingPlaceholder className="h-4 w-40 rounded-md" />
+                </div>
+                <div className="space-y-2">
+                  <LoadingPlaceholder className="h-4 w-32 rounded-md" />
+                  <LoadingPlaceholder className="h-4 w-36 rounded-md" />
+                  <LoadingPlaceholder className="h-4 w-40 rounded-md" />
+                  <LoadingPlaceholder className="h-4 w-28 rounded-md" />
+                </div>
+                <div className="grid gap-3">
+                  <LoadingPlaceholder className="h-10 w-full rounded-xl" />
+                  <LoadingPlaceholder className="h-10 w-full rounded-xl" />
+                  <LoadingPlaceholder className="h-10 w-full rounded-xl" />
+                  <LoadingPlaceholder className="h-10 w-full rounded-xl" />
+                </div>
+              </div>
+            ) : selectedTile ? (
               <div className="mt-4 space-y-4">
                 <div>
                   <p className="text-sm uppercase tracking-wide text-slate-500 dark:text-slate-400">Tile</p>
@@ -744,7 +808,21 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION }: Props) =
 
           <div className="card p-5">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Activity</h3>
-            {board?.activity.length ? (
+            {loading && !board ? (
+              <div className="mt-4 space-y-3">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <div
+                    key={`activity-placeholder-${index}`}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70"
+                  >
+                    <div className="space-y-2">
+                      <LoadingPlaceholder className="h-4 w-full rounded-md" />
+                      <LoadingPlaceholder className="h-3 w-16 rounded-md" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : board?.activity.length ? (
               <div className="mt-4 space-y-3">
                 {board.activity.map((entry) => (
                   <div
