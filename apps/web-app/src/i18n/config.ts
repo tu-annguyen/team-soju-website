@@ -30,5 +30,18 @@ export function resolveLocale(input?: string | null): Locale {
   }
 
   const normalized = input.trim().toLowerCase();
-  return LOCALE_ALIASES[normalized] || DEFAULT_LOCALE;
+  if (LOCALE_ALIASES[normalized]) {
+    return LOCALE_ALIASES[normalized];
+  }
+
+  const parts = normalized.split('-');
+  while (parts.length > 1) {
+    parts.pop();
+    const candidate = parts.join('-');
+    if (LOCALE_ALIASES[candidate]) {
+      return LOCALE_ALIASES[candidate];
+    }
+  }
+
+  return DEFAULT_LOCALE;
 }

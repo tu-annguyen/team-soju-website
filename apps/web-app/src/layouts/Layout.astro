@@ -63,7 +63,22 @@ const localeStorageKey = 'team-soju-locale';
           'zh-hk': 'zh',
           'zh-hant': 'zh',
         };
-        const resolveLocale = (value) => aliases[value] || defaultLocale;
+        const resolveLocale = (value) => {
+          if (aliases[value]) {
+            return aliases[value];
+          }
+
+          const parts = value.split('-');
+          while (parts.length > 1) {
+            parts.pop();
+            const candidate = parts.join('-');
+            if (aliases[candidate]) {
+              return aliases[candidate];
+            }
+          }
+
+          return defaultLocale;
+        };
 
         if (supportedLocales.includes(queryLocale)) {
           localStorage.setItem(localeStorageKey, queryLocale);

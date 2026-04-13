@@ -1,6 +1,7 @@
 import {
   detectBrowserLocale,
   getLocaleParamPath,
+  getRuntimeLocale,
   getTranslations,
   resolveLocale,
 } from '../src/i18n';
@@ -10,6 +11,7 @@ describe('i18n helpers', () => {
     expect(resolveLocale('en-US')).toBe('en');
     expect(resolveLocale('es-419')).toBe('es');
     expect(resolveLocale('zh-TW')).toBe('zh');
+    expect(resolveLocale('zh-Hans-CN')).toBe('zh');
   });
 
   it('falls back to English when the locale is unsupported', () => {
@@ -34,6 +36,17 @@ describe('i18n helpers', () => {
 
   it('detects a supported browser locale and otherwise falls back to English', () => {
     expect(detectBrowserLocale(['es-419', 'en-US'])).toBe('es');
+    expect(detectBrowserLocale(['zh-Hans-CN'])).toBe('zh');
     expect(detectBrowserLocale(['fr-FR'])).toBe('en');
+  });
+
+  it('does not let the default English prop block browser locale detection', () => {
+    window.history.replaceState({}, '', '/feebas-tile-checker');
+    Object.defineProperty(window.navigator, 'languages', {
+      configurable: true,
+      value: ['zh-Hans-CN', 'en-US'],
+    });
+
+    expect(getRuntimeLocale('en')).toBe('zh');
   });
 });

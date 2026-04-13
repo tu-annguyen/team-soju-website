@@ -91,7 +91,7 @@ export function detectBrowserLocale(
 
 export function getRuntimeLocale(localeInput?: string | null): Locale {
   const resolvedInput = resolveLocale(localeInput);
-  if (localeInput && (resolvedInput !== DEFAULT_LOCALE || localeInput.toLowerCase().startsWith(DEFAULT_LOCALE))) {
+  if (localeInput && resolvedInput !== DEFAULT_LOCALE) {
     return resolvedInput;
   }
 
