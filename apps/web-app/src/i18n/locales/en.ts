@@ -67,6 +67,82 @@ const en = {
       intro:
         'Coordinate Feebas tile checks in real time. Vote tiles as checked, pending, or confirmed. Colors stack at 25% opacity per vote so the board behaves like a live heatmap of group opinion.',
     },
+    feebasChecker: {
+      locationsTabLabel: 'Feebas locations',
+      locations: {
+        route119: {
+          tabLabel: 'Route 119',
+          displayName: 'Route 119, Hoenn',
+        },
+        mtCoronet: {
+          tabLabel: 'Mt. Coronet',
+          displayName: 'Mt. Coronet, Sinnoh',
+        },
+      },
+      status: {
+        unchecked: 'Unchecked',
+        checked: 'Checked',
+        pending: 'Feebas Found',
+        confirmed: 'Feebas Confirmed',
+      },
+      voteSummary: {
+        checked: 'checked',
+        pending: 'pending',
+        confirmed: 'confirmed',
+      },
+      actions: {
+        clearedVote: 'cleared their vote on',
+        statusSuffix: 'on',
+      },
+      general: {
+        anonymousName: 'Anonymous',
+        optionalDisplayName: 'Optional display name',
+        displayNamePlaceholder: 'Anonymous Feebas Hunter',
+        nextReset: 'Next Reset',
+        resetsEvery: 'Resets every {minutes} real-time minutes',
+        rules:
+          'Each browser can keep one active vote per tile. Only one pending nomination can exist at a time per tile, and the player who marked it pending cannot confirm it.',
+        scrollHint: 'Scroll sideways to view the full board.',
+        mixedVotesHint: 'Mixed colors mean mixed opinions. More votes make a tile overlay stronger.',
+        loadingBoard: 'Loading the Feebas board...',
+      },
+      boardStatus: {
+        heading: 'Board Status',
+        checkedTiles: 'Checked tiles',
+        pendingTiles: 'Pending Feebas tiles',
+        confirmedTiles: 'Confirmed Feebas tiles',
+      },
+      selectedTile: {
+        heading: 'Selected Tile',
+        tileLabel: 'Tile',
+        leadingStatus: 'Leading status: {status}',
+        checkedVotes: '{count} checked vote(s)',
+        pendingVotes: '{count} pending vote(s)',
+        confirmedVotes: '{count} confirmed vote(s)',
+        yourVote: 'Your vote: {status}',
+        noFeebas: 'No Feebas',
+        feebasFound: 'Feebas Found',
+        feebasConfirmed: 'Feebas Confirmed',
+        clearVote: 'Clear My Vote',
+        needsPendingBeforeConfirm:
+          'This tile needs at least one pending vote before confirmed votes are allowed.',
+        pendingOwnerHint:
+          'You placed the active pending vote, so another player can confirm it, or you can clear your pending mark.',
+        otherPendingHint:
+          'Another player already has the pending nomination on this tile, so you can only resolve it as checked or confirmed.',
+        emptyState: 'Select a tile to cast your vote or clear it.',
+      },
+      activity: {
+        heading: 'Activity',
+        emptyState: 'Tile changes will appear here as players shape the board together.',
+      },
+      errors: {
+        loadBoard: 'Unable to load the Feebas board',
+        refreshBoard: 'Unable to refresh the Feebas board',
+        updateTile: 'Unable to update the Feebas tile',
+        liveUpdatesDisconnected: 'Live updates disconnected. The board will refresh again shortly.',
+      },
+    },
   },
 } as const;
 

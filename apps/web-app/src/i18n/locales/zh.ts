@@ -63,6 +63,79 @@ const zh = {
       intro:
         '实时协调 Feebas 格子检查。你可以将格子投票为已检查、待确认或已确认。每一票都会以 25% 不透明度叠加颜色，让棋盘呈现团队判断的实时热力图。',
     },
+    feebasChecker: {
+      locationsTabLabel: '丑丑鱼地点',
+      locations: {
+        route119: {
+          tabLabel: '119 号道路',
+          displayName: '119 号道路，豐緣',
+        },
+        mtCoronet: {
+          tabLabel: '天冠山',
+          displayName: '天冠山，神奧',
+        },
+      },
+      status: {
+        unchecked: '未检查',
+        checked: '已检查',
+        pending: '发现丑丑鱼',
+        confirmed: '确认丑丑鱼',
+      },
+      voteSummary: {
+        checked: '已检查',
+        pending: '待确认',
+        confirmed: '已确认',
+      },
+      actions: {
+        clearedVote: '清除了对以下格子的投票',
+        statusSuffix: '',
+      },
+      general: {
+        anonymousName: '匿名',
+        optionalDisplayName: '可选显示名称',
+        displayNamePlaceholder: '匿名丑丑鱼猎人',
+        nextReset: '下次重置',
+        resetsEvery: '每 {minutes} 分钟实时重置一次',
+        rules:
+          '每个浏览器在每个格子上只能保留一个有效投票。每个格子同一时间只能有一个待确认提名，发起待确认标记的玩家不能自己确认它。',
+        scrollHint: '左右滚动可查看完整棋盘。',
+        mixedVotesHint: '颜色混合表示团队意见不一致。投票越多，格子的覆盖色就越明显。',
+        loadingBoard: '正在加载丑丑鱼棋盘...',
+      },
+      boardStatus: {
+        heading: '棋盘状态',
+        checkedTiles: '已检查格子',
+        pendingTiles: '待确认丑丑鱼格子',
+        confirmedTiles: '已确认丑丑鱼格子',
+      },
+      selectedTile: {
+        heading: '已选格子',
+        tileLabel: '格子',
+        leadingStatus: '当前主状态：{status}',
+        checkedVotes: '{count} 个已检查投票',
+        pendingVotes: '{count} 个待确认投票',
+        confirmedVotes: '{count} 个已确认投票',
+        yourVote: '你的投票：{status}',
+        noFeebas: '没有丑丑鱼',
+        feebasFound: '发现丑丑鱼',
+        feebasConfirmed: '确认丑丑鱼',
+        clearVote: '清除我的投票',
+        needsPendingBeforeConfirm: '该格子至少需要一个待确认投票后，才能进行确认投票。',
+        pendingOwnerHint: '当前待确认投票是你发起的，因此需要其他玩家来确认，或者你可以清除自己的待确认标记。',
+        otherPendingHint: '该格子已经有其他玩家发起待确认提名，所以你只能将其处理为已检查或已确认。',
+        emptyState: '请选择一个格子来投票或清除投票。',
+      },
+      activity: {
+        heading: '活动记录',
+        emptyState: '当玩家共同更新棋盘时，格子变更会显示在这里。',
+      },
+      errors: {
+        loadBoard: '无法加载丑丑鱼棋盘',
+        refreshBoard: '无法刷新丑丑鱼棋盘',
+        updateTile: '无法更新丑丑鱼格子',
+        liveUpdatesDisconnected: '实时更新已断开。棋盘稍后会再次刷新。',
+      },
+    },
   },
 } as const;
 

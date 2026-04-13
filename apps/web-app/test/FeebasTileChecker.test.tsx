@@ -100,7 +100,7 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/Each browser can keep one active vote per tile/i)).toBeInTheDocument();
     expect(screen.getByText(/Scroll sideways to view the full board/i)).toBeInTheDocument();
     expect(screen.getAllByText('May').length).toBeGreaterThan(0);
-    expect(screen.getByText(/voted pending on/i)).toBeInTheDocument();
+    expect(screen.getByText(/Feebas Found on/i)).toBeInTheDocument();
   });
 
   it('allows a second client to confirm a pending tile', async () => {
@@ -316,7 +316,7 @@ describe('FeebasTileChecker', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i }));
 
-    expect(screen.getByText(/Your vote: Confirmed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your vote: Feebas Confirmed/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -358,7 +358,7 @@ describe('FeebasTileChecker', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i }));
 
-    expect(screen.getByText(/Your vote: Pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your vote: Feebas Found/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Feebas Confirmed/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /No Feebas/i })).toBeEnabled();
@@ -446,7 +446,7 @@ describe('FeebasTileChecker', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i }));
 
-    expect(screen.getByText(/Your vote: Confirmed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your vote: Feebas Confirmed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
     expect(screen.getByText(/Mixed colors mean mixed opinions/i)).toBeInTheDocument();
   });
@@ -480,5 +480,34 @@ describe('FeebasTileChecker', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self');
+  });
+
+  it('renders Simplified Chinese checker copy and localized location names', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" locale="zh" />);
+
+    expect(screen.getByText(/正在加载丑丑鱼棋盘/i)).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.getByText(/119 号道路，豐緣/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('tab', { name: /天冠山/i })).toBeInTheDocument();
+    expect(screen.getByText(/下次重置/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/发现丑丑鱼/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/确认丑丑鱼/i).length).toBeGreaterThan(0);
+  });
+
+  it('renders Spanish location names and action labels', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" locale="es" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Ruta 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 revisadas, 1 pendientes, 0 confirmadas/i }));
+
+    expect(screen.getByRole('tab', { name: /Monte Corona/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Feebas confirmado/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Quitar mi voto/i })).toBeDisabled();
   });
 });

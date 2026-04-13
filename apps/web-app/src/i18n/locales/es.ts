@@ -68,6 +68,84 @@ const es = {
       intro:
         'Coordina las comprobaciones de casillas de Feebas en tiempo real. Vota las casillas como revisadas, pendientes o confirmadas. Los colores se acumulan al 25% de opacidad por voto para que el tablero funcione como un mapa de calor de la opinion del grupo.',
     },
+    feebasChecker: {
+      locationsTabLabel: 'Ubicaciones de Feebas',
+      locations: {
+        route119: {
+          tabLabel: 'Ruta 119',
+          displayName: 'Ruta 119, Hoenn',
+        },
+        mtCoronet: {
+          tabLabel: 'Monte Corona',
+          displayName: 'Monte Corona, Sinnoh',
+        },
+      },
+      status: {
+        unchecked: 'Sin revisar',
+        checked: 'Revisada',
+        pending: 'Feebas encontrado',
+        confirmed: 'Feebas confirmado',
+      },
+      voteSummary: {
+        checked: 'revisadas',
+        pending: 'pendientes',
+        confirmed: 'confirmadas',
+      },
+      actions: {
+        clearedVote: 'quito su voto de',
+        statusSuffix: 'en',
+      },
+      general: {
+        anonymousName: 'Anonimo',
+        optionalDisplayName: 'Nombre visible opcional',
+        displayNamePlaceholder: 'Cazador anonimo de Feebas',
+        nextReset: 'Siguiente reinicio',
+        resetsEvery: 'Se reinicia cada {minutes} minutos en tiempo real',
+        rules:
+          'Cada navegador puede mantener un voto activo por casilla. Solo puede existir una nominacion pendiente por casilla, y quien la marco como pendiente no puede confirmarla.',
+        scrollHint: 'Desplazate lateralmente para ver todo el tablero.',
+        mixedVotesHint:
+          'Los colores mezclados significan opiniones mezcladas. Mas votos hacen que la capa de una casilla se vea mas fuerte.',
+        loadingBoard: 'Cargando el tablero de Feebas...',
+      },
+      boardStatus: {
+        heading: 'Estado del tablero',
+        checkedTiles: 'Casillas revisadas',
+        pendingTiles: 'Casillas de Feebas pendientes',
+        confirmedTiles: 'Casillas de Feebas confirmadas',
+      },
+      selectedTile: {
+        heading: 'Casilla seleccionada',
+        tileLabel: 'Casilla',
+        leadingStatus: 'Estado principal: {status}',
+        checkedVotes: '{count} voto(s) revisada(s)',
+        pendingVotes: '{count} voto(s) pendiente(s)',
+        confirmedVotes: '{count} voto(s) confirmada(s)',
+        yourVote: 'Tu voto: {status}',
+        noFeebas: 'No hay Feebas',
+        feebasFound: 'Feebas encontrado',
+        feebasConfirmed: 'Feebas confirmado',
+        clearVote: 'Quitar mi voto',
+        needsPendingBeforeConfirm:
+          'Esta casilla necesita al menos un voto pendiente antes de permitir votos confirmados.',
+        pendingOwnerHint:
+          'Tu colocaste el voto pendiente activo, asi que otro jugador puede confirmarlo, o puedes quitar tu marca pendiente.',
+        otherPendingHint:
+          'Otro jugador ya tiene la nominacion pendiente en esta casilla, asi que solo puedes resolverla como revisada o confirmada.',
+        emptyState: 'Selecciona una casilla para votar o quitar tu voto.',
+      },
+      activity: {
+        heading: 'Actividad',
+        emptyState: 'Los cambios de casillas apareceran aqui mientras los jugadores dan forma al tablero juntos.',
+      },
+      errors: {
+        loadBoard: 'No se pudo cargar el tablero de Feebas',
+        refreshBoard: 'No se pudo actualizar el tablero de Feebas',
+        updateTile: 'No se pudo actualizar la casilla de Feebas',
+        liveUpdatesDisconnected:
+          'Las actualizaciones en vivo se desconectaron. El tablero volvera a refrescarse pronto.',
+      },
+    },
   },
 } as const;
 
