@@ -50,18 +50,18 @@ const zh = {
         liveCoordination: '实时协作',
       },
       feebasCard: {
-        title: 'Feebas 格子追踪器',
+        title: '丑丑鱼格子追踪器',
         description:
-          '通过共享棋盘实时协调 Feebas 格子检查，可标记为已检查、发现或已确认。每次标记都会叠加半透明颜色，让棋盘像团队判断的实时热力图。',
+          '通过共享棋盘实时协调 丑丑鱼 格子检查，可标记为已检查、发现或已确认。每次标记都会叠加半透明颜色，让棋盘像团队判断的实时热力图。',
       },
     },
     feebas: {
-      title: 'Feebas 格子检查器 - Team Soju',
-      description: '使用共享棋盘实时协调 Feebas 格子检查。',
+      title: '丑丑鱼 格子检查器 - Team Soju',
+      description: '使用共享棋盘实时协调 丑丑鱼 格子检查。',
       eyebrow: '实时协作工具',
-      heading: 'Feebas 格子检查器',
+      heading: '丑丑鱼 格子检查器',
       intro:
-        '实时协调 Feebas 格子检查。你可以将格子投票为已检查、待确认或已确认。每一票都会以 25% 不透明度叠加颜色，让棋盘呈现团队判断的实时热力图。',
+        '实时协调 丑丑鱼 格子检查。你可以将格子投票为已检查、待确认或已确认。每一票都会以 25% 不透明度叠加颜色，让棋盘呈现团队判断的实时热力图。',
     },
     feebasChecker: {
       locationsTabLabel: '丑丑鱼地点',
