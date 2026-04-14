@@ -177,14 +177,25 @@ function getVoteActionMessage(
   actionType: string,
   nextStatus: TileStatus | null,
   labels: Record<TileStatus, string>,
-  actionsCopy: { clearedVote: string; statusSuffix: string }
+  actionsCopy: {
+    clearedVote: string;
+    checkedVote: string;
+    pendingVote: string;
+    confirmedVote: string;
+  }
 ) {
   if (actionType === 'cleared_vote') {
     return actionsCopy.clearedVote;
   }
 
-  const suffix = actionsCopy.statusSuffix ? ` ${actionsCopy.statusSuffix}` : '';
-  return `${getStatusLabel(nextStatus || 'unchecked', labels)}${suffix}`;
+  return (
+    {
+      checked: actionsCopy.checkedVote,
+      pending: actionsCopy.pendingVote,
+      confirmed: actionsCopy.confirmedVote,
+      unchecked: getStatusLabel('unchecked', labels),
+    }[nextStatus || 'unchecked']
+  );
 }
 
 function getVoteLayerOpacity(voteCount: number) {

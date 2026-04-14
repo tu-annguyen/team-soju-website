@@ -88,7 +88,9 @@ const zh = {
       },
       actions: {
         clearedVote: '清除了对以下格子的投票',
-        statusSuffix: '',
+        checkedVote: '检查了',
+        pendingVote: '在以下格子发现了丑丑鱼',
+        confirmedVote: '确认以下格子有丑丑鱼',
       },
       general: {
         anonymousName: '匿名',

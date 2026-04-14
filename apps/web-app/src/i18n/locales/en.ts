@@ -92,7 +92,9 @@ const en = {
       },
       actions: {
         clearedVote: 'cleared their vote on',
-        statusSuffix: 'on',
+        checkedVote: 'checked',
+        pendingVote: 'found Feebas on',
+        confirmedVote: 'confirmed Feebas on',
       },
       general: {
         anonymousName: 'Anonymous',

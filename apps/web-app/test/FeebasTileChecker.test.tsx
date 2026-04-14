@@ -100,7 +100,9 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/Each browser can keep one active vote per tile/i)).toBeInTheDocument();
     expect(screen.getByText(/Scroll sideways to view the full board/i)).toBeInTheDocument();
     expect(screen.getAllByText('May').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Feebas Found on/i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) => element?.textContent === 'May found Feebas on A1.')
+    ).toBeInTheDocument();
   });
 
   it('allows a second client to confirm a pending tile', async () => {

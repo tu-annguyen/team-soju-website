@@ -93,7 +93,9 @@ const es = {
       },
       actions: {
         clearedVote: 'quito su voto de',
-        statusSuffix: 'en',
+        checkedVote: 'reviso',
+        pendingVote: 'encontro a Feebas en',
+        confirmedVote: 'confirmo a Feebas en',
       },
       general: {
         anonymousName: 'Anonimo',
