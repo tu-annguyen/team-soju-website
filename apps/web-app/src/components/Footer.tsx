@@ -1,6 +1,7 @@
 import React from 'react';
 import { getLocaleParamPath, getRuntimeLocale, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
+import LanguagePicker from './LanguagePicker';
 
 type Props = {
   locale?: Locale | string;
@@ -31,9 +32,16 @@ const Footer = ({ locale = 'en' }: Props) => {
                 Team Soju
               </span>
             </div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">
+            <p className="mb-4 text-gray-600 dark:text-gray-400 text-sm">
               {messages.footer.blurb}
             </p>
+            <div className="mb-4">
+              <LanguagePicker
+                locale={activeLocale}
+                className="block"
+                selectClassName="min-w-[8.5rem] appearance-none rounded-full border border-gray-300 bg-white py-2 pl-4 pr-11 text-sm font-medium text-gray-800 shadow-sm transition-colors focus:border-primary-500 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </div>
           </div>
           
           <div>

@@ -120,6 +120,6 @@ const localeStorageKey = 'team-soju-locale';
     <main class="pt-16">
       <slot />
     </main>
-    <Footer locale={locale} />
+    <Footer client:load locale={locale} />
   </body>
 </html>
