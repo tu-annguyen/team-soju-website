@@ -1,5 +1,5 @@
 import React from 'react';
-import { getLocaleParamPath, getRuntimeLocale, getTranslations } from '../i18n';
+import { getClientLocale, getLocaleParamPath, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 type Props = {
@@ -7,7 +7,7 @@ type Props = {
 };
 
 const ToolsIndexContent = ({ locale }: Props) => {
-  const activeLocale = getRuntimeLocale(locale);
+  const activeLocale = getClientLocale(locale);
   const messages = getTranslations(activeLocale);
   const feebasHref = getLocaleParamPath('/feebas-tile-checker', activeLocale);
 

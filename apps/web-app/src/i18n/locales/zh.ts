@@ -10,6 +10,7 @@ const zh = {
     tools: '工具',
     forum: '论坛',
     discord: 'Discord',
+    language: '语言',
     toggleMenu: '切换菜单',
   },
   footer: {

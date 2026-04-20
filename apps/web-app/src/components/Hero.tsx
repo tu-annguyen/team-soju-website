@@ -1,14 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { getLocaleParamPath, getRuntimeLocale, getTranslations } from '../i18n';
+import { getClientLocale, getLocaleParamPath, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 type Props = {
   locale?: Locale | string;
 };
 
-const Hero = ({ locale = 'en' }: Props) => {
-  const activeLocale = getRuntimeLocale(locale);
+const Hero = ({ locale }: Props) => {
+  const activeLocale = getClientLocale(locale);
   const messages = getTranslations(activeLocale);
   const discordHref = getLocaleParamPath('/discord', activeLocale);
 

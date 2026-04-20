@@ -85,10 +85,10 @@ const localeStorageKey = 'team-soju-locale';
           return;
         }
 
-        const storedLocale = resolveLocale((localStorage.getItem(localeStorageKey) || '').trim().toLowerCase());
-        let detectedLocale = storedLocale !== defaultLocale ? storedLocale : defaultLocale;
+        const rawStoredLocale = (localStorage.getItem(localeStorageKey) || '').trim().toLowerCase();
+        let detectedLocale = rawStoredLocale ? resolveLocale(rawStoredLocale) : defaultLocale;
 
-        if (detectedLocale === defaultLocale) {
+        if (!rawStoredLocale) {
           const browserLanguages = Array.isArray(navigator.languages) && navigator.languages.length > 0
             ? navigator.languages
             : [navigator.language];

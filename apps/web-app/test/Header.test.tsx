@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import Header from '../src/components/Header';
+import * as i18n from '../src/i18n';
 
 jest.mock('../src/components/ThemeToggle', () => () => (
   <button aria-label="theme-toggle-mock" />
@@ -29,5 +31,33 @@ describe('Header', () => {
 
     expect(screen.getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/?lang=es');
     expect(screen.getByRole('link', { name: 'Herramientas' })).toHaveAttribute('href', '/tools?lang=es');
+  });
+
+  it('renders a language picker with the active locale selected', () => {
+    render(<Header locale="zh" />);
+
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('zh');
+  });
+
+  it('prefers the current URL locale when no locale prop is provided', () => {
+    window.history.replaceState({}, '', '/feebas-tile-checker?lang=zh');
+
+    render(<Header />);
+
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('zh');
+  });
+
+  it('stores the selected locale when the language picker changes', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, '', '/tools?foo=bar');
+    const navigateSpy = jest.spyOn(i18n, 'navigateToLocaleOverride').mockImplementation(() => {});
+    render(<Header locale="en" />);
+
+    await user.selectOptions(screen.getAllByRole('combobox')[0], 'es');
+
+    expect(window.localStorage.getItem('team-soju-locale')).toBe('es');
+    expect(navigateSpy).toHaveBeenCalledWith('http://localhost/tools?foo=bar&lang=es');
+
+    navigateSpy.mockRestore();
   });
 });

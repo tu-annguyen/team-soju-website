@@ -11,6 +11,7 @@ const en = {
     tools: 'Tools',
     forum: 'Forum',
     discord: 'Discord',
+    language: 'Language',
     toggleMenu: 'Toggle menu',
   },
   footer: {

@@ -31,4 +31,13 @@ describe('Hero', () => {
     );
     expect(screen.getByRole('link', { name: '加入 Discord' })).toHaveAttribute('href', '/discord?lang=zh');
   });
+
+  it('prefers the current URL locale over a stale English prop', () => {
+    window.history.replaceState({}, '', '/?lang=zh');
+
+    render(<Hero locale="en" />);
+
+    expect(screen.getByRole('link', { name: '立即申请' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '加入 Discord' })).toHaveAttribute('href', '/discord?lang=zh');
+  });
 });

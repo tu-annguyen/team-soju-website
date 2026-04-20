@@ -1,5 +1,5 @@
 import React from 'react';
-import { getRuntimeLocale, getTranslations } from '../i18n';
+import { getClientLocale, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 type Props = {
@@ -7,7 +7,7 @@ type Props = {
 };
 
 const FeebasPageIntro = ({ locale }: Props) => {
-  const activeLocale = getRuntimeLocale(locale);
+  const activeLocale = getClientLocale(locale);
   const messages = getTranslations(activeLocale);
 
   return (

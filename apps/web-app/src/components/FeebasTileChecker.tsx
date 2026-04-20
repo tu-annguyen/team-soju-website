@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { getRuntimeLocale, getTranslations } from '../i18n';
+import { getClientLocale, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 type TileStatus = 'unchecked' | 'checked' | 'pending' | 'confirmed';
@@ -279,7 +279,7 @@ function LoadingPlaceholder({ className }: { className: string }) {
 }
 
 const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: Props) => {
-  const activeLocale = getRuntimeLocale(locale);
+  const activeLocale = getClientLocale(locale);
   const messages = getTranslations(activeLocale).tools.feebasChecker;
   const localizedLocationOptions: readonly LocationOption[] = [
     {

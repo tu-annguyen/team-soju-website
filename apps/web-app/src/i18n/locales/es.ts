@@ -11,6 +11,7 @@ const es = {
     tools: 'Herramientas',
     forum: 'Foro',
     discord: 'Discord',
+    language: 'Idioma',
     toggleMenu: 'Abrir o cerrar menu',
   },
   footer: {
