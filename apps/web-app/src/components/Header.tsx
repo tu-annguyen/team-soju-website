@@ -30,6 +30,7 @@ type Props = {
 
 const Header = ({ locale }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeLocale, setActiveLocale] = useState<Locale>(() => getClientLocale(locale));
   const messages = getTranslations(activeLocale);
@@ -69,6 +70,7 @@ const Header = ({ locale }: Props) => {
 
     setActiveLocale(nextLocale);
     setIsOpen(false);
+    setIsMobileToolsOpen(false);
     navigateToLocaleOverride(getLocaleOverrideUrl(window.location.href, nextLocale));
   };
 
@@ -126,7 +128,7 @@ const Header = ({ locale }: Props) => {
         </a>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden min-[1010px]:flex items-center gap-8">
           <a 
             href={homeHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
@@ -198,10 +200,15 @@ const Header = ({ locale }: Props) => {
         </nav>
 
         {/* Mobile Menu Button */}
-        <div className="flex items-center gap-4 md:hidden">
+        <div className="flex items-center gap-4 min-[1010px]:hidden">
           <ThemeToggle />
           <button 
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              setIsOpen(!isOpen);
+              if (isOpen) {
+                setIsMobileToolsOpen(false);
+              }
+            }}
             className="text-gray-800 dark:text-gray-200 focus:outline-none"
             aria-label={messages.nav.toggleMenu}
           >
@@ -231,7 +238,7 @@ const Header = ({ locale }: Props) => {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
-            className="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
+            className="min-[1010px]:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
           >
             <nav className="container py-4 flex flex-col gap-4">
               <a 
@@ -255,25 +262,54 @@ const Header = ({ locale }: Props) => {
               >
                 {messages.nav.events}
               </a>
-              <a
-                href={toolsHref}
-                className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
-                onClick={() => setIsOpen(false)}
+              <button
+                type="button"
+                className="flex items-center justify-between py-2 font-medium text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                onClick={() => setIsMobileToolsOpen((current) => !current)}
+                aria-expanded={isMobileToolsOpen}
+                aria-controls="mobile-tools-menu"
               >
-                {messages.nav.tools}
-              </a>
-              <div className="pl-4 -mt-2 flex flex-col gap-2">
-                {localizedToolLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className="py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
-                    onClick={() => setIsOpen(false)}
+                <span>{messages.nav.tools}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className={`h-4 w-4 transition-transform duration-200 ${isMobileToolsOpen ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              <AnimatePresence initial={false}>
+                {isMobileToolsOpen && (
+                  <motion.div
+                    id="mobile-tools-menu"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
                   >
-                    {link.label}
-                  </a>
-                ))}
-              </div>
+                    <div className="pl-4 -mt-2 flex flex-col gap-2">
+                      {localizedToolLinks.map((link) => (
+                        <a
+                          key={link.href}
+                          href={link.href}
+                          className="py-1 text-sm font-medium text-gray-700 transition-colors hover:text-primary-500 dark:text-gray-300 dark:hover:text-primary-400"
+                          onClick={() => {
+                            setIsMobileToolsOpen(false);
+                            setIsOpen(false);
+                          }}
+                        >
+                          {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <a 
                 href="https://forums.pokemmo.com/index.php?/clubs/261-soj%C3%BC-sojusanctuary/" 
                 target="_blank" 
