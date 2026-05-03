@@ -124,7 +124,7 @@ const ShinyDetails = ({
       label: 'Encounter Type',
       value: encounterType ? formatLabel(encounterType) : null,
     },
-    { label: 'Nature', value: nature || null },
+    { label: 'Nature', value: nature ? nature.charAt(0).toUpperCase() + nature.slice(1) : null },
     {
       label: 'IVs',
       value: hasIvs
