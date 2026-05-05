@@ -41,6 +41,10 @@ type FeebasBoard = {
   requiresDistinctConfirmation: boolean;
   confirmedTileId: string | null;
   isLocked: boolean;
+  previousConfirmedTiles?: {
+    tileId: string;
+    confirmations: number;
+  }[];
   layout: {
     rows: number;
     cols: number;
@@ -67,6 +71,8 @@ type LocationOption = {
   displayName: string;
   terrain: readonly (readonly string[])[];
 };
+
+type BoardDisplayMode = 'voting' | 'heatmap';
 
 const DEFAULT_LOCATION = 'route-119-main';
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
@@ -210,6 +216,19 @@ function getVoteLayerColor(status: Exclude<TileStatus, 'unchecked'>) {
   }[status]);
 }
 
+function getHeatmapOpacity(confirmations: number, maxConfirmations: number) {
+  if (confirmations <= 0) {
+    return 0;
+  }
+
+  if (maxConfirmations <= 1) {
+    return 0.2;
+  }
+
+  const ratio = (confirmations - 1) / (maxConfirmations - 1);
+  return 0.2 + (ratio * 0.8);
+}
+
 function getVoteSummary(
   tile: FeebasTile,
   summaryLabels: { checked: string; pending: string; confirmed: string }
@@ -304,6 +323,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
   const [displayName, setDisplayName] = useState('');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<BoardDisplayMode>('voting');
   const [countdown, setCountdown] = useState('--:--');
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
@@ -447,6 +467,26 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
     }
 
     return new Map(board.tiles.map((tile) => [`${tile.row}-${tile.col}`, tile]));
+  }, [board]);
+
+  const previousConfirmedTileCounts = useMemo(() => {
+    if (!board) {
+      return new Map<string, number>();
+    }
+
+    return new Map(
+      (board.previousConfirmedTiles || []).map((tile) => [tile.tileId, tile.confirmations])
+    );
+  }, [board]);
+
+  const maxPreviousConfirmations = useMemo(() => {
+    const previousConfirmedTiles = board?.previousConfirmedTiles || [];
+
+    if (!previousConfirmedTiles.length) {
+      return 0;
+    }
+
+    return Math.max(...previousConfirmedTiles.map((tile) => tile.confirmations));
   }, [board]);
 
   const selectedTile = selectedTileId ? tileMap.get(selectedTileId) || null : null;
@@ -612,15 +652,65 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="card overflow-hidden">
           <div className="border-b border-slate-200 bg-gradient-to-br from-sky-100 via-cyan-100 to-teal-100 p-4 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
-            <div className="flex flex-wrap gap-3 text-sm">
-              <span className="rounded-full bg-slate-500 px-3 py-1 text-white">{messages.status.unchecked}</span>
-              <span className="rounded-full bg-rose-600 px-3 py-1 text-white">{messages.status.checked}</span>
-              <span className="rounded-full bg-amber-400 px-3 py-1 text-slate-950">{messages.status.pending}</span>
-              <span className="rounded-full bg-emerald-500 px-3 py-1 text-slate-950">{messages.status.confirmed}</span>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-3 text-sm">
+                {displayMode === 'voting' ? (
+                  <>
+                    <span className="rounded-full bg-slate-500 px-3 py-1 text-white">{messages.status.unchecked}</span>
+                    <span className="rounded-full bg-rose-600 px-3 py-1 text-white">{messages.status.checked}</span>
+                    <span className="rounded-full bg-amber-400 px-3 py-1 text-slate-950">{messages.status.pending}</span>
+                    <span className="rounded-full bg-emerald-500 px-3 py-1 text-slate-950">{messages.status.confirmed}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-slate-900 ring-1 ring-emerald-500/40 dark:text-white dark:ring-emerald-300/40">
+                      {messages.heatmap.lowLegend}
+                    </span>
+                    <span className="rounded-full bg-emerald-500 px-3 py-1 text-slate-950">
+                      {messages.heatmap.highLegend}
+                    </span>
+                  </>
+                )}
+              </div>
+              <div
+                className="inline-flex rounded-full border border-slate-300 bg-white/80 p-1 text-sm shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80"
+                role="group"
+                aria-label={messages.heatmap.toggleLabel}
+              >
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('voting')}
+                  aria-pressed={displayMode === 'voting'}
+                  className={`rounded-full px-3 py-1.5 font-semibold transition ${
+                    displayMode === 'voting'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                      : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {messages.heatmap.votingMode}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('heatmap')}
+                  aria-pressed={displayMode === 'heatmap'}
+                  className={`rounded-full px-3 py-1.5 font-semibold transition ${
+                    displayMode === 'heatmap'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                      : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {messages.heatmap.heatmapMode}
+                </button>
+              </div>
             </div>
             <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-300 sm:hidden">
               {messages.general.scrollHint}
             </p>
+            {displayMode === 'heatmap' ? (
+              <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-300">
+                {messages.heatmap.description}
+              </p>
+            ) : null}
           </div>
 
           <div className="overflow-x-auto overscroll-x-contain bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.35),_transparent_30%),linear-gradient(180deg,_#d6f2f4_0%,_#8fd4e8_45%,_#4d8bc6_100%)] p-4">
@@ -662,6 +752,9 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
 
                 const isSelected = selectedTileId === tile.tileId;
                 const tileLabel = getTileLabel(tile.row, tile.col, board?.layout.rows || activeTerrain.length);
+                const previousConfirmations = previousConfirmedTileCounts.get(tile.tileId) || 0;
+                const heatmapOpacity = getHeatmapOpacity(previousConfirmations, maxPreviousConfirmations);
+                const isHeatmapMode = displayMode === 'heatmap';
 
                 return (
                   <div
@@ -669,7 +762,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                     className={`relative aspect-square rounded-[0.35rem] border border-white/10 ${terrainClasses}`}
                   >
                     <div className="absolute inset-[8%] rounded-[0.3rem] bg-[linear-gradient(180deg,_rgba(255,255,255,0.18),_rgba(255,255,255,0.03))]" />
-                    {tile.voteCounts.checked > 0 ? (
+                    {!isHeatmapMode && tile.voteCounts.checked > 0 ? (
                       <div
                         className="absolute inset-[8%] rounded-[0.3rem]"
                         style={{
@@ -678,7 +771,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                         }}
                       />
                     ) : null}
-                    {tile.voteCounts.pending > 0 ? (
+                    {!isHeatmapMode && tile.voteCounts.pending > 0 ? (
                       <div
                         className="absolute inset-[8%] rounded-[0.3rem]"
                         style={{
@@ -687,7 +780,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                         }}
                       />
                     ) : null}
-                    {tile.voteCounts.confirmed > 0 ? (
+                    {!isHeatmapMode && tile.voteCounts.confirmed > 0 ? (
                       <div
                         className="absolute inset-[8%] rounded-[0.3rem]"
                         style={{
@@ -696,16 +789,27 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                         }}
                       />
                     ) : null}
+                    {isHeatmapMode && heatmapOpacity > 0 ? (
+                      <div
+                        className="absolute inset-[8%] rounded-[0.3rem]"
+                        style={{
+                          backgroundColor: '#10b981',
+                          opacity: heatmapOpacity,
+                        }}
+                      />
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => handleTilePress(tile)}
-                      className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${getStatusClasses(tile.status)} ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${pendingAction === tile.tileId ? 'cursor-wait' : 'cursor-pointer'}`}
+                      className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${
+                        isHeatmapMode ? 'bg-slate-950/20 text-white' : getStatusClasses(tile.status)
+                      } ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${pendingAction === tile.tileId ? 'cursor-wait' : 'cursor-pointer'}`}
                       aria-pressed={isSelected}
                       aria-label={`${tileLabel} ${getVoteSummary(tile, messages.voteSummary)}`}
                       disabled={pendingAction === tile.tileId}
                     >
                       <span>{tileLabel}</span>
-                      {tile.totalVotes > 0 ? (
+                      {!isHeatmapMode && tile.totalVotes > 0 ? (
                         <span className="mt-1 rounded bg-black/25 px-1.5 py-0.5 text-[0.54rem] tracking-normal text-white">
                           {tile.totalVotes}
                         </span>

@@ -111,6 +111,14 @@ const zh = {
         pendingTiles: '待确认丑丑鱼格子',
         confirmedTiles: '已确认丑丑鱼格子',
       },
+      heatmap: {
+        toggleLabel: '棋盘显示模式',
+        votingMode: '投票',
+        heatmapMode: '热力图',
+        lowLegend: '较少历史',
+        highLegend: '较多历史',
+        description: '历史上确认过丑丑鱼的格子会随着累计确认次数增加而显示得更明显。',
+      },
       selectedTile: {
         heading: '已选格子',
         tileLabel: '格子',

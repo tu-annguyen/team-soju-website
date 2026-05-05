@@ -117,6 +117,14 @@ const es = {
         pendingTiles: 'Casillas de Feebas pendientes',
         confirmedTiles: 'Casillas de Feebas confirmadas',
       },
+      heatmap: {
+        toggleLabel: 'Modo de visualizacion del tablero',
+        votingMode: 'Votacion',
+        heatmapMode: 'Mapa de calor',
+        lowLegend: 'Poco historial',
+        highLegend: 'Mucho historial',
+        description: 'Las casillas confirmadas historicamente brillan mas fuerte mientras se acumulan confirmaciones pasadas.',
+      },
       selectedTile: {
         heading: 'Casilla seleccionada',
         tileLabel: 'Casilla',

@@ -115,6 +115,14 @@ const en = {
         pendingTiles: 'Pending Feebas tiles',
         confirmedTiles: 'Confirmed Feebas tiles',
       },
+      heatmap: {
+        toggleLabel: 'Board display mode',
+        votingMode: 'Voting',
+        heatmapMode: 'Heatmap',
+        lowLegend: 'Low history',
+        highLegend: 'High history',
+        description: 'Historical confirmed Feebas tiles glow brighter as more past confirmations stack up.',
+      },
       selectedTile: {
         heading: 'Selected Tile',
         tileLabel: 'Tile',

@@ -373,6 +373,12 @@ class FeebasBoard {
       FROM feebas_tile_votes
       WHERE cycle_id = $1
     `, [cycle.id]);
+    const previousConfirmedTilesResult = await client.query(`
+      SELECT tile_id, SUM(confirmed_vote_count)::INT AS confirmations
+      FROM feebas_confirmed_tile_snapshots
+      WHERE location = $1
+      GROUP BY tile_id
+    `, [location]);
     const activityResult = await client.query(`
       SELECT *
       FROM feebas_activity_logs
@@ -399,6 +405,10 @@ class FeebasBoard {
       requiresDistinctConfirmation: false,
       confirmedTileId: null,
       isLocked: false,
+      previousConfirmedTiles: previousConfirmedTilesResult.rows.map((entry) => ({
+        tileId: entry.tile_id,
+        confirmations: Number(entry.confirmations) || 0,
+      })),
       layout: {
         rows: locationConfig.rows,
         cols: locationConfig.cols,
