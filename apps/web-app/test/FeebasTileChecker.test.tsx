@@ -13,6 +13,16 @@ const boardFixture = {
   requiresDistinctConfirmation: false,
   confirmedTileId: null,
   isLocked: false,
+  previousConfirmedTiles: [
+    {
+      tileId: 'r1c1',
+      confirmations: 1,
+    },
+    {
+      tileId: 'r1c2',
+      confirmations: 5,
+    },
+  ],
   layout: {
     rows: 2,
     cols: 2,
@@ -482,6 +492,28 @@ describe('FeebasTileChecker', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self');
+  });
+
+  it('toggles the grid between voting and historical heatmap modes', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByText(/Unchecked/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Historical confirmed Feebas tiles glow brighter/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Heatmap/i }));
+
+    expect(screen.getByText(/Low history/i)).toBeInTheDocument();
+    expect(screen.getByText(/High history/i)).toBeInTheDocument();
+    expect(screen.getByText(/Historical confirmed Feebas tiles glow brighter as more past confirmations stack up/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Unchecked/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Voting/i }));
+
+    expect(screen.getByText(/Unchecked/i)).toBeInTheDocument();
   });
 
   it('renders Simplified Chinese checker copy and localized location names', async () => {
