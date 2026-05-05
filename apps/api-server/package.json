@@ -9,6 +9,7 @@
     "dev": "nodemon src/server.js",
     "migrate": "node src/config/migrate.js",
     "clear-shinies": "node src/config/clear-shinies.js",
+    "seed:feebas-heatmap": "node src/config/seed-feebas-heatmap.js",
     "seed": "node src/config/seed.js",
     "test": "jest --runInBand --coverage"
   },
