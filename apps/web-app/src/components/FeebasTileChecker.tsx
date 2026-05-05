@@ -174,7 +174,7 @@ function getTerrainClasses(terrain: string) {
   return ({
     grass: 'bg-[linear-gradient(180deg,_#c4e2ab_0%,_#8fbd72_100%)]',
     bank: 'bg-[linear-gradient(180deg,_#f0dfaa_0%,_#cfb479_100%)]',
-    water: 'bg-[linear-gradient(180deg,_#496dd1_0%,_#2d488f_100%)]',
+    water: 'bg-[linear-gradient(180deg,_#5f7fa6_0%,_#435b79_100%)]',
     rock: 'bg-[linear-gradient(180deg,_#62666f_0%,_#3b3f48_100%)]',
   }[terrain] || 'bg-transparent');
 }
@@ -226,7 +226,7 @@ function getHeatmapOpacity(confirmations: number, maxConfirmations: number) {
   }
 
   const ratio = (confirmations - 1) / (maxConfirmations - 1);
-  return 0.2 + (ratio * 0.8);
+  return 0.3 + (ratio * 0.7);
 }
 
 function getVoteSummary(
