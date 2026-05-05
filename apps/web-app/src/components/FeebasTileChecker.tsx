@@ -501,6 +501,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
   const layoutRows = board?.layout.rows || activeTerrain.length;
   const layoutCols = board?.layout.cols || activeTerrain[0]?.length || 1;
   const boardMinWidth = getBoardMinWidth(layoutCols);
+  const isHeatmapMode = displayMode === 'heatmap';
   const canConfirmSelectedTile = Boolean(
     selectedTile &&
     selectedTileHasPending &&
@@ -509,7 +510,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
   );
 
   const updateTile = async (tileId: string, status: TileStatus) => {
-    if (!clientId) {
+    if (!clientId || isHeatmapMode) {
       return;
     }
 
@@ -546,6 +547,10 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
   };
 
   const handleTilePress = (tile: FeebasTile) => {
+    if (isHeatmapMode) {
+      return;
+    }
+
     setSelectedTileId(tile.tileId);
 
     if (pendingAction || tile.currentUserVote !== 'unchecked' || tile.voteCounts.pending > 0 || tile.voteCounts.confirmed > 0) {
@@ -754,8 +759,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                 const tileLabel = getTileLabel(tile.row, tile.col, board?.layout.rows || activeTerrain.length);
                 const previousConfirmations = previousConfirmedTileCounts.get(tile.tileId) || 0;
                 const heatmapOpacity = getHeatmapOpacity(previousConfirmations, maxPreviousConfirmations);
-                const isHeatmapMode = displayMode === 'heatmap';
-
                 return (
                   <div
                     key={tile.tileId}
@@ -803,10 +806,12 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                       onClick={() => handleTilePress(tile)}
                       className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${
                         isHeatmapMode ? 'bg-slate-950/20 text-white' : getStatusClasses(tile.status)
-                      } ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${pendingAction === tile.tileId ? 'cursor-wait' : 'cursor-pointer'}`}
+                      } ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${
+                        pendingAction === tile.tileId ? 'cursor-wait' : isHeatmapMode ? 'cursor-not-allowed' : 'cursor-pointer'
+                      }`}
                       aria-pressed={isSelected}
                       aria-label={`${tileLabel} ${getVoteSummary(tile, messages.voteSummary)}`}
-                      disabled={pendingAction === tile.tileId}
+                      disabled={pendingAction === tile.tileId || isHeatmapMode}
                     >
                       <span>{tileLabel}</span>
                       {!isHeatmapMode && tile.totalVotes > 0 ? (
@@ -904,7 +909,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'checked')}
                     className="btn bg-rose-600 text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'checked'}
+                    disabled={isHeatmapMode || pendingAction === selectedTile.tileId || selectedTile.currentUserVote === 'checked'}
                   >
                     {messages.selectedTile.noFeebas}
                   </button>
@@ -912,7 +917,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'pending')}
                     className="btn bg-amber-400 text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={pendingAction === selectedTile.tileId || selectedTileIsPendingOwner || (selectedTileHasPending && !selectedTileIsPendingOwner)}
+                    disabled={isHeatmapMode || pendingAction === selectedTile.tileId || selectedTileIsPendingOwner || (selectedTileHasPending && !selectedTileIsPendingOwner)}
                   >
                     {messages.selectedTile.feebasFound}
                   </button>
@@ -920,7 +925,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'confirmed')}
                     className="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={pendingAction === selectedTile.tileId || !canConfirmSelectedTile}
+                    disabled={isHeatmapMode || pendingAction === selectedTile.tileId || !canConfirmSelectedTile}
                   >
                     {messages.selectedTile.feebasConfirmed}
                   </button>
@@ -928,7 +933,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                     type="button"
                     onClick={() => updateTile(selectedTile.tileId, 'unchecked')}
                     className="btn bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-700"
-                    disabled={pendingAction === selectedTile.tileId || selectedTileHasNoVote}
+                    disabled={isHeatmapMode || pendingAction === selectedTile.tileId || selectedTileHasNoVote}
                   >
                     {messages.selectedTile.clearVote}
                   </button>

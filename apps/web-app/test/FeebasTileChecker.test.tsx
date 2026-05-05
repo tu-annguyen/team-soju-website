@@ -516,6 +516,34 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/Unchecked/i)).toBeInTheDocument();
   });
 
+  it('disables voting interactions in heatmap mode', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        success: true,
+        data: boardFixture,
+      }),
+    });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Heatmap/i }));
+
+    const tileButton = screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i });
+    expect(tileButton).toBeDisabled();
+
+    fireEvent.click(tileButton);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/Select a tile to cast your vote or clear it/i)).toBeInTheDocument();
+  });
+
   it('renders Simplified Chinese checker copy and localized location names', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" locale="zh" />);
 
