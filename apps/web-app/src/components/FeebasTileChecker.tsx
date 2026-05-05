@@ -222,7 +222,7 @@ function getHeatmapOpacity(confirmations: number, maxConfirmations: number) {
   }
 
   if (maxConfirmations <= 1) {
-    return 0.2;
+    return 1;
   }
 
   const ratio = (confirmations - 1) / (maxConfirmations - 1);
@@ -668,10 +668,10 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                   </>
                 ) : (
                   <>
-                    <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-slate-900 ring-1 ring-emerald-500/40 dark:text-white dark:ring-emerald-300/40">
+                    <span className="rounded-full bg-amber-500/25 px-3 py-1 text-slate-900 ring-1 ring-amber-500/50 dark:text-white dark:ring-amber-300/50">
                       {messages.heatmap.lowLegend}
                     </span>
-                    <span className="rounded-full bg-emerald-500 px-3 py-1 text-slate-950">
+                    <span className="rounded-full bg-amber-500 px-3 py-1 text-slate-950">
                       {messages.heatmap.highLegend}
                     </span>
                   </>
@@ -796,7 +796,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
                       <div
                         className="absolute inset-[8%] rounded-[0.3rem]"
                         style={{
-                          backgroundColor: '#10b981',
+                          backgroundColor: '#f59e0b',
                           opacity: heatmapOpacity,
                         }}
                       />
