@@ -84,18 +84,43 @@ const mtCoronetBoardFixture = {
   },
 };
 
+const authUserFixture = {
+  id: 'user-id',
+  email: 'trainer@example.com',
+  ign: 'Trainer',
+};
+
+function jsonResponse(data: unknown) {
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(data),
+  });
+}
+
+function mockFeebasFetch(authUser: typeof authUserFixture | null = null) {
+  return jest.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+
+    if (url.includes('/auth/me')) {
+      return jsonResponse({
+        success: true,
+        data: authUser,
+      });
+    }
+
+    return jsonResponse({
+      success: true,
+      data: boardFixture,
+    });
+  });
+}
+
 describe('FeebasTileChecker', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('feebas-tile-checker-client-id', 'client-self');
 
-    (global as any).fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        success: true,
-        data: boardFixture,
-      }),
-    });
+    (global as any).fetch = mockFeebasFetch();
   });
 
   it('renders the live board after loading', async () => {
@@ -115,6 +140,45 @@ describe('FeebasTileChecker', () => {
     expect(
       screen.getByText((_, element) => element?.textContent === 'May found Feebas on A1.')
     ).toBeInTheDocument();
+  });
+
+  it('shows the optional display name field and sign in link when signed out', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Optional display name/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('link', { name: /Sign in/i })).toHaveAttribute('href', '/auth');
+  });
+
+  it('uses the signed-in user IGN as the Feebas display name', async () => {
+    const fetchMock = mockFeebasFetch(authUserFixture);
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Currently signed in as Trainer/i)).toBeInTheDocument()
+    );
+
+    expect(screen.queryByLabelText(/Optional display name/i)).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3001/api/feebas/route-119-main/tiles/r1c2',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            status: 'checked',
+            actorFingerprint: 'account-user-id',
+            actorName: 'Trainer',
+          }),
+        }),
+      )
+    );
   });
 
   it('allows a second client to confirm a pending tile', async () => {
@@ -522,7 +586,8 @@ describe('FeebasTileChecker', () => {
     );
 
     expect(screen.getByRole('tab', { name: /Mt. Coronet/i })).toHaveAttribute('aria-selected', 'true');
-    expect(fetchMock.mock.calls.every(([input]) => String(input).includes('/mt-coronet'))).toBe(true);
+    const feebasCalls = fetchMock.mock.calls.filter(([input]) => String(input).includes('/feebas/'));
+    expect(feebasCalls.every(([input]) => String(input).includes('/mt-coronet'))).toBe(true);
   });
 
   it('toggles the grid between voting and historical heatmap modes', async () => {

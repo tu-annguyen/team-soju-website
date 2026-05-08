@@ -102,6 +102,7 @@ const es = {
         anonymousName: 'Anonimo',
         optionalDisplayName: 'Nombre visible opcional',
         displayNamePlaceholder: 'Cazador anonimo de Feebas',
+        signedInAs: 'Sesion iniciada como {ign}',
         nextReset: 'Siguiente reinicio',
         resetsEvery: 'Se reinicia cada {minutes} minutos en tiempo real',
         rules:
