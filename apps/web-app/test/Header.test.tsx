@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Header from '../src/components/Header';
 import * as i18n from '../src/i18n';
@@ -38,10 +38,10 @@ describe('Header', () => {
     expect(screen.getByRole('link', { name: 'Herramientas' })).toHaveAttribute('href', '/tools?lang=es');
   });
 
-  it('renders a language picker with the active locale selected', () => {
+  it('renders the compact language menu with the active locale code', () => {
     render(<Header locale="zh" />);
 
-    expect(screen.getAllByRole('combobox')[0]).toHaveValue('zh');
+    expect(screen.getByRole('button', { name: /language|idioma|语言/i })).toHaveTextContent('ZH');
   });
 
   it('prefers the current URL locale when no locale prop is provided', () => {
@@ -49,21 +49,42 @@ describe('Header', () => {
 
     render(<Header />);
 
-    expect(screen.getAllByRole('combobox')[0]).toHaveValue('zh');
+    expect(screen.getByRole('button', { name: /language|idioma|语言/i })).toHaveTextContent('ZH');
   });
 
-  it('stores the selected locale when the language picker changes', async () => {
+  it('stores the selected locale when the language menu changes', async () => {
     const user = userEvent.setup();
     window.history.replaceState({}, '', '/tools?foo=bar');
     const navigateSpy = jest.spyOn(i18n, 'navigateToLocaleOverride').mockImplementation(() => {});
     render(<Header locale="en" />);
 
-    await user.selectOptions(screen.getAllByRole('combobox')[0], 'es');
+    await user.click(screen.getByRole('button', { name: /language|idioma|语言/i }));
+    await user.click(screen.getByRole('button', { name: /Español ES/i }));
 
     expect(window.localStorage.getItem('team-soju-locale')).toBe('es');
     expect(navigateSpy).toHaveBeenCalledWith('http://localhost/tools?foo=bar&lang=es');
 
     navigateSpy.mockRestore();
+  });
+
+  it('shows the signed-in IGN and sign out action in the account menu', async () => {
+    const user = userEvent.setup();
+    render(<Header />);
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('team-soju-auth-updated', {
+        detail: {
+          id: 'user-id',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+        },
+      }));
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Account' }));
+
+    expect(screen.getByRole('link', { name: 'Trainer' })).toHaveAttribute('href', '/auth');
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
   it('toggles tool links inside the mobile tools menu', async () => {
