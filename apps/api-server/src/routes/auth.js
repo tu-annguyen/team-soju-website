@@ -90,6 +90,10 @@ function buildWebRedirect(pathname = '/auth', params = {}) {
   return url.toString();
 }
 
+function getDiscordScopeParam() {
+  return discordScopes.map(encodeURIComponent).join('%20');
+}
+
 function buildState(payload) {
   return jwt.sign(
     {
@@ -310,11 +314,10 @@ router.get('/discord', (req, res) => {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: discordScopes.join(' '),
       state: buildState(value),
     });
 
-    return res.redirect(`https://discord.com/oauth2/authorize?${params.toString()}`);
+    return res.redirect(`https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`);
   } catch (error) {
     console.error('Error starting Discord OAuth:', error);
     return res.redirect(buildWebRedirect('/auth', {

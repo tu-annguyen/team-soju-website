@@ -153,6 +153,7 @@ describe('Auth routes', () => {
       expect(redirectUrl.origin + redirectUrl.pathname).toBe('https://discord.com/oauth2/authorize');
       expect(redirectUrl.searchParams.get('client_id')).toBe('discord-client-id');
       expect(redirectUrl.searchParams.get('scope')).toBe('identify email');
+      expect(response.headers.location).toContain('scope=identify%20email');
       expect(redirectUrl.searchParams.get('state')).toBeTruthy();
     });
 
