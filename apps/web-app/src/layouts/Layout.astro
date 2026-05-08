@@ -23,6 +23,7 @@ const messages = getTranslations(locale);
 const resolvedTitle = title ?? messages.meta.defaultTitle;
 const resolvedDescription = description ?? messages.meta.defaultDescription;
 const localeStorageKey = 'team-soju-locale';
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
 ---
 
 <!doctype html>
@@ -116,7 +117,7 @@ const localeStorageKey = 'team-soju-locale';
   <body>
     <Analytics />
     <SpeedInsights />
-    <Header client:load locale={locale} />
+    <Header client:load locale={locale} apiBaseUrl={apiBaseUrl} />
     <main class="pt-16">
       <slot />
     </main>

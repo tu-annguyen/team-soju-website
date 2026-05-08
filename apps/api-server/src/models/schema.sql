@@ -118,6 +118,92 @@ ALTER TABLE team_shinies
 CREATE INDEX IF NOT EXISTS idx_team_shinies_trainer ON team_shinies(original_trainer);
 CREATE INDEX IF NOT EXISTS idx_team_shinies_natno ON team_shinies(national_number);
 
+-- Web app users
+CREATE TABLE IF NOT EXISTS app_users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT NOT NULL,
+  password_hash TEXT,
+  ign TEXT NOT NULL,
+  discord_id TEXT UNIQUE,
+  discord_username TEXT,
+  discord_global_name TEXT,
+  discord_avatar TEXT,
+  auth_provider TEXT NOT NULL DEFAULT 'password'
+    CHECK (auth_provider IN ('password', 'discord', 'password_discord')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  last_login_at TIMESTAMPTZ,
+  CONSTRAINT app_users_email_not_blank CHECK (btrim(email) <> ''),
+  CONSTRAINT app_users_ign_not_blank CHECK (btrim(ign) <> '')
+);
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS discord_username TEXT;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS discord_global_name TEXT;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS discord_avatar TEXT;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS auth_provider TEXT;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+
+ALTER TABLE app_users
+  ALTER COLUMN auth_provider SET DEFAULT 'password';
+
+UPDATE app_users
+SET auth_provider = CASE
+  WHEN password_hash IS NOT NULL AND discord_id IS NOT NULL THEN 'password_discord'
+  WHEN discord_id IS NOT NULL THEN 'discord'
+  ELSE 'password'
+END
+WHERE auth_provider IS NULL
+   OR auth_provider NOT IN ('password', 'discord', 'password_discord');
+
+ALTER TABLE app_users
+  ALTER COLUMN auth_provider SET NOT NULL;
+
+ALTER TABLE app_users
+  DROP CONSTRAINT IF EXISTS app_users_auth_provider_check;
+
+ALTER TABLE app_users
+  ADD CONSTRAINT app_users_auth_provider_check
+  CHECK (auth_provider IN ('password', 'discord', 'password_discord'));
+
+ALTER TABLE app_users
+  DROP CONSTRAINT IF EXISTS app_users_email_not_blank;
+
+ALTER TABLE app_users
+  ADD CONSTRAINT app_users_email_not_blank CHECK (btrim(email) <> '');
+
+ALTER TABLE app_users
+  DROP CONSTRAINT IF EXISTS app_users_ign_not_blank;
+
+ALTER TABLE app_users
+  ADD CONSTRAINT app_users_ign_not_blank CHECK (btrim(ign) <> '');
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_app_users_email_lower
+  ON app_users (LOWER(email));
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_app_users_ign_lower
+  ON app_users (LOWER(ign));
+
+CREATE INDEX IF NOT EXISTS idx_app_users_discord_id
+  ON app_users(discord_id);
+
 -- Feebas tile coordination cycles
 CREATE TABLE IF NOT EXISTS feebas_cycles (
   id BIGSERIAL PRIMARY KEY,

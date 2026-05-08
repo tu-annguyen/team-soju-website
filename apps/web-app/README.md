@@ -34,3 +34,14 @@ A dynamic, content-driven frontend built with React.js and Astro components.
   ```bash
   npm run test:web
   ```
+
+## Authentication
+
+- The account UI is available at `/auth`.
+- Set `PUBLIC_API_BASE_URL` for the frontend so the auth page and header can reach the API:
+
+  ```env
+  PUBLIC_API_BASE_URL=http://localhost:3001/api
+  ```
+
+- Discord registration uses the IGN entered on the create-account tab before redirecting to Discord.

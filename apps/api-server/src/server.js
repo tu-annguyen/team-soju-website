@@ -9,6 +9,7 @@ if (process.env.NODE_ENV !== 'production') {
 const membersRoutes = require('./routes/members');
 const shiniesRoutes = require('./routes/shinies');
 const feebasRoutes = require('./routes/feebas');
+const authRoutes = require('./routes/auth');
 const { generateBotToken } = require('./middleware/auth');
 
 const app = express();
@@ -98,6 +99,7 @@ app.get('/generate-bot-token', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/members', membersRoutes);
 app.use('/api/shinies', shiniesRoutes); 
 app.use('/api/feebas', feebasRoutes);
@@ -136,8 +138,10 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
 // Trust proxy settings for secure cookies in production
 app.set("trust proxy", 1);
 
-// Start the cron job to keep the server alive
-const job = require('./cron').job;
-job.start();
+// Start the cron job to keep the server alive outside tests
+if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
+  const job = require('./cron').job;
+  job.start();
+}
 
 module.exports = app;

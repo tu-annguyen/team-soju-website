@@ -1,10 +1,11 @@
 jest.mock('pg', () => {
   const mockOn = jest.fn();
+  const mockSetTypeParser = jest.fn();
   const Pool = jest.fn(() => ({ on: mockOn }));
-  return { Pool, __mockOn: mockOn };
+  return { Pool, types: { setTypeParser: mockSetTypeParser }, __mockOn: mockOn, __mockSetTypeParser: mockSetTypeParser };
 });
 
-const { Pool, __mockOn } = require('pg');
+const { Pool, __mockOn, __mockSetTypeParser } = require('pg');
 
 describe('DB connection config', () => {
   it('initializes pg Pool with environment variables and registers event handlers', () => {
@@ -14,6 +15,7 @@ describe('DB connection config', () => {
     const pool = require('../src/config/connection');
 
     expect(Pool).toHaveBeenCalledTimes(1);
+    expect(__mockSetTypeParser).toHaveBeenCalledWith(1082, expect.any(Function));
     const args = Pool.mock.calls[0][0];
     expect(args).toHaveProperty('connectionString', 'postgres://user:pass@localhost:5432/db');
     expect(args.ssl).toBeTruthy();
