@@ -18,19 +18,29 @@ const toolsLinks = [
 
 type Props = {
   locale?: Locale | string;
+  apiBaseUrl?: string;
 };
 
-const Header = ({ locale }: Props) => {
+type AuthUser = {
+  id: string;
+  email: string;
+  ign: string;
+};
+
+const Header = ({ locale, apiBaseUrl }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeLocale, setActiveLocale] = useState<Locale>(() => getClientLocale(locale));
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const normalizedApiBaseUrl = apiBaseUrl?.replace(/\/+$/, '');
   const messages = getTranslations(activeLocale);
   const homeHref = getLocaleParamPath('/', activeLocale);
   const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', activeLocale);
   const eventsHref = getLocaleParamPath('/events', activeLocale);
   const toolsHref = getLocaleParamPath('/tools', activeLocale);
   const discordHref = getLocaleParamPath('/discord', activeLocale);
+  const authHref = getLocaleParamPath('/auth', activeLocale);
   const localizedToolLinks = toolsLinks.map((link) => ({
     ...link,
     href: getLocaleParamPath(link.href, activeLocale),
@@ -49,10 +59,72 @@ const Header = ({ locale }: Props) => {
     setActiveLocale(getClientLocale(locale));
   }, [locale]);
 
+  useEffect(() => {
+    const handleAuthUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<AuthUser | null>;
+      setAuthUser(customEvent.detail || null);
+    };
+
+    window.addEventListener('team-soju-auth-updated', handleAuthUpdated);
+
+    return () => {
+      window.removeEventListener('team-soju-auth-updated', handleAuthUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!normalizedApiBaseUrl || typeof fetch !== 'function') {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadAuthUser() {
+      try {
+        const response = await fetch(`${normalizedApiBaseUrl}/auth/me`, {
+          credentials: 'include',
+        });
+        const body = await response.json();
+
+        if (isMounted && response.ok && body.success) {
+          setAuthUser(body.data || null);
+        }
+      } catch {
+        if (isMounted) {
+          setAuthUser(null);
+        }
+      }
+    }
+
+    loadAuthUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [normalizedApiBaseUrl]);
+
   const handleLocaleChange = (nextLocale: Locale) => {
     setActiveLocale(nextLocale);
     setIsOpen(false);
     setIsMobileToolsOpen(false);
+  };
+
+  const handleSignOut = async () => {
+    if (normalizedApiBaseUrl && typeof fetch === 'function') {
+      try {
+        await fetch(`${normalizedApiBaseUrl}/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch {
+        // The local header state can still clear even if the network request fails.
+      }
+    }
+
+    setAuthUser(null);
+    setIsOpen(false);
+    setIsMobileToolsOpen(false);
+    window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: null }));
   };
 
   return (
@@ -76,7 +148,7 @@ const Header = ({ locale }: Props) => {
         </a>
 
         {/* Desktop Navigation */}
-        <nav className="hidden min-[1010px]:flex items-center gap-8">
+        <nav className="hidden min-[1010px]:flex items-center gap-6">
           <a 
             href={homeHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
@@ -141,6 +213,31 @@ const Header = ({ locale }: Props) => {
           >
             {messages.nav.discord}
           </a>
+          {authUser ? (
+            <div className="flex items-center gap-3">
+              <a
+                href={authHref}
+                className="max-w-32 truncate rounded-lg bg-primary-50 px-3 py-2 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-100 dark:bg-gray-800 dark:text-primary-300 dark:hover:bg-gray-700"
+                title={messages.nav.account}
+              >
+                {authUser.ign}
+              </a>
+              <button
+                type="button"
+                className="text-sm font-semibold text-gray-700 transition-colors hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400"
+                onClick={handleSignOut}
+              >
+                {messages.nav.signOut}
+              </button>
+            </div>
+          ) : (
+            <a
+              href={authHref}
+              className="rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+            >
+              {messages.nav.signIn}
+            </a>
+          )}
           <LanguagePicker locale={activeLocale} className="ml-2" onLocaleChange={handleLocaleChange} />
           <div className="ml-4">
             <ThemeToggle />
@@ -274,6 +371,32 @@ const Header = ({ locale }: Props) => {
               >
                 {messages.nav.discord}
               </a>
+              {authUser ? (
+                <div className="flex flex-col gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <a
+                    href={authHref}
+                    className="py-2 font-medium text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {authUser.ign}
+                  </a>
+                  <button
+                    type="button"
+                    className="py-2 text-left font-medium text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                    onClick={handleSignOut}
+                  >
+                    {messages.nav.signOut}
+                  </button>
+                </div>
+              ) : (
+                <a
+                  href={authHref}
+                  className="py-2 font-medium text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {messages.nav.signIn}
+                </a>
+              )}
               <div className="pt-2">
                 <LanguagePicker locale={activeLocale} className="block" onLocaleChange={handleLocaleChange} />
               </div>
