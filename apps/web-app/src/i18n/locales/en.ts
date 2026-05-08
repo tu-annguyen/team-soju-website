@@ -130,6 +130,7 @@ const en = {
         anonymousName: 'Anonymous',
         optionalDisplayName: 'Optional display name',
         displayNamePlaceholder: 'Anonymous Feebas Hunter',
+        signedInAs: 'Currently signed in as {ign}',
         nextReset: 'Next Reset',
         resetsEvery: 'Resets every {minutes} real-time minutes',
         rules:

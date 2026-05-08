@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { getClientLocale, getTranslations } from '../i18n';
+import { getClientLocale, getLocaleParamPath, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
 type TileStatus = 'unchecked' | 'checked' | 'pending' | 'confirmed';
@@ -56,6 +56,18 @@ type FeebasBoard = {
 type BoardResponse = {
   success: boolean;
   data: FeebasBoard;
+  message?: string;
+};
+
+type AuthUser = {
+  id: string;
+  email: string;
+  ign: string;
+};
+
+type AuthResponse = {
+  success: boolean;
+  data?: AuthUser | null;
   message?: string;
 };
 
@@ -315,9 +327,17 @@ function LoadingPlaceholder({ className }: { className: string }) {
   );
 }
 
+function isAuthUser(value: AuthUser | null | undefined): value is AuthUser {
+  return Boolean(value && typeof value.id === 'string' && typeof value.ign === 'string');
+}
+
 const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
+  const normalizedApiBaseUrl = useMemo(() => apiBaseUrl.replace(/\/+$/, ''), [apiBaseUrl]);
   const activeLocale = getClientLocale(locale);
-  const messages = getTranslations(activeLocale).tools.feebasChecker;
+  const translations = getTranslations(activeLocale);
+  const messages = translations.tools.feebasChecker;
+  const authMessages = translations.auth;
+  const navMessages = translations.nav;
   const localizedLocationOptions: readonly LocationOption[] = [
     {
       id: 'route-119-main',
@@ -339,6 +359,8 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<BoardDisplayMode>('voting');
@@ -347,10 +369,17 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const resetRefreshInFlightRef = useRef(false);
   const activeLocationOption = localizedLocationOptionsById.get(activeLocation) || localizedLocationOptionsById.get(DEFAULT_LOCATION)!;
   const activeTerrain = activeLocationOption.terrain;
-  const querySuffix = clientId ? `?actorFingerprint=${encodeURIComponent(clientId)}` : '';
+  const actorFingerprint = authUser ? `account-${authUser.id}` : clientId;
+  const voteActorName = authUser?.ign.trim() || displayName.trim();
+  const authHref = getLocaleParamPath('/auth', activeLocale);
+  const querySuffix = actorFingerprint ? `?actorFingerprint=${encodeURIComponent(actorFingerprint)}` : '';
 
   const fetchBoard = async () => {
-    const response = await fetch(`${apiBaseUrl}/feebas/${activeLocation}${querySuffix}`);
+    if (!actorFingerprint) {
+      return;
+    }
+
+    const response = await fetch(`${normalizedApiBaseUrl}/feebas/${activeLocation}${querySuffix}`);
     const payload: BoardResponse = await response.json();
 
     if (!response.ok || !payload.success) {
@@ -377,6 +406,58 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   }, []);
 
   useEffect(() => {
+    const handleAuthUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<AuthUser | null>;
+      const nextUser = customEvent.detail;
+
+      setAuthUser(isAuthUser(nextUser) ? nextUser : null);
+      setIsAuthLoading(false);
+    };
+
+    window.addEventListener('team-soju-auth-updated', handleAuthUpdated);
+
+    return () => {
+      window.removeEventListener('team-soju-auth-updated', handleAuthUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadAuthUser() {
+      setIsAuthLoading(true);
+
+      try {
+        const response = await fetch(`${normalizedApiBaseUrl}/auth/me`, {
+          credentials: 'include',
+        });
+        const body = await response.json() as AuthResponse;
+        const nextUser = body.data;
+
+        if (mounted && response.ok && body.success && isAuthUser(nextUser)) {
+          setAuthUser(nextUser);
+        } else if (mounted) {
+          setAuthUser(null);
+        }
+      } catch {
+        if (mounted) {
+          setAuthUser(null);
+        }
+      } finally {
+        if (mounted) {
+          setIsAuthLoading(false);
+        }
+      }
+    }
+
+    loadAuthUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, [normalizedApiBaseUrl]);
+
+  useEffect(() => {
     if (location) {
       setActiveLocation(resolveLocationId(location));
     }
@@ -391,6 +472,10 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   }, [activeLocation]);
 
   useEffect(() => {
+    if (!actorFingerprint || isAuthLoading) {
+      return;
+    }
+
     let mounted = true;
 
     (async () => {
@@ -414,18 +499,18 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
     return () => {
       mounted = false;
     };
-  }, [activeLocation, apiBaseUrl, clientId]);
+  }, [activeLocation, normalizedApiBaseUrl, actorFingerprint, isAuthLoading]);
 
   useEffect(() => {
     if (typeof EventSource === 'undefined') {
       return undefined;
     }
 
-    if (!clientId) {
+    if (!actorFingerprint || isAuthLoading) {
       return undefined;
     }
 
-    const eventSource = new EventSource(`${apiBaseUrl}/feebas/${activeLocation}/stream?actorFingerprint=${encodeURIComponent(clientId)}`);
+    const eventSource = new EventSource(`${normalizedApiBaseUrl}/feebas/${activeLocation}/stream?actorFingerprint=${encodeURIComponent(actorFingerprint)}`);
 
     eventSource.onmessage = (event) => {
       try {
@@ -449,7 +534,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
     return () => {
       eventSource.close();
     };
-  }, [activeLocation, apiBaseUrl, clientId]);
+  }, [activeLocation, normalizedApiBaseUrl, actorFingerprint, isAuthLoading]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -538,7 +623,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   );
 
   const updateTile = async (tileId: string, status: TileStatus) => {
-    if (!clientId || isHeatmapMode) {
+    if (!actorFingerprint || isHeatmapMode) {
       return;
     }
 
@@ -546,15 +631,15 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
     setError(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/feebas/${activeLocation}/tiles/${tileId}`, {
+      const response = await fetch(`${normalizedApiBaseUrl}/feebas/${activeLocation}/tiles/${tileId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           status,
-          actorFingerprint: clientId,
-          actorName: displayName.trim() || undefined,
+          actorFingerprint,
+          actorName: voteActorName || undefined,
         }),
       });
       const payload: BoardResponse = await response.json();
@@ -669,16 +754,38 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
         </div>
 
         <div className="mt-6 grid gap-4">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{messages.general.optionalDisplayName}</span>
-            <input
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value.slice(0, 40))}
-              placeholder={messages.general.displayNamePlaceholder}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-primary-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-              disabled={loading && !board}
-            />
-          </label>
+          {isAuthLoading ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+              {authMessages.loading}
+            </div>
+          ) : authUser ? (
+            <p className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-medium text-primary-800 dark:border-primary-800/60 dark:bg-primary-950/40 dark:text-primary-200">
+              {formatCopy(messages.general.signedInAs, { ign: authUser.ign })}
+            </p>
+          ) : (
+            <div className="grid gap-2">
+              <label htmlFor="feebas-display-name" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                {messages.general.optionalDisplayName}
+              </label>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                <input
+                  id="feebas-display-name"
+                  type="text"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value.slice(0, 40))}
+                  placeholder={messages.general.displayNamePlaceholder}
+                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-primary-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  disabled={loading && !board}
+                />
+                <a
+                  href={authHref}
+                  className="inline-flex items-center justify-center rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+                >
+                  {navMessages.signIn}
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

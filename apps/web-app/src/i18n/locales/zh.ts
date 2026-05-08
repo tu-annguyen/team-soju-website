@@ -97,6 +97,7 @@ const zh = {
         anonymousName: '匿名',
         optionalDisplayName: '可选显示名称',
         displayNamePlaceholder: '匿名丑丑鱼猎人',
+        signedInAs: '当前登录为 {ign}',
         nextReset: '下次重置',
         resetsEvery: '每 {minutes} 分钟实时重置一次',
         rules:
