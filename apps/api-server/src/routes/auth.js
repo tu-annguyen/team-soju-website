@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const axios = require('axios');
 const Joi = require('joi');
 const jwt = require('jsonwebtoken');
@@ -13,11 +14,15 @@ const {
   signUserToken,
   verifyUserToken,
 } = require('../middleware/auth');
+const { sendPasswordResetEmail } = require('../services/email');
 
 const router = express.Router();
 
 const passwordRounds = 12;
 const discordScopes = ['identify', 'email'];
+const passwordResetExpiresInMinutes = 60;
+const passwordResetTokenBytes = 32;
+const passwordResetSentMessage = 'If an account uses that email, a reset link has been sent.';
 
 const ignSchema = Joi.string().trim().min(1).max(50).required();
 
@@ -30,6 +35,15 @@ const registerSchema = Joi.object({
 const loginSchema = Joi.object({
   email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
   password: Joi.string().min(1).max(128).required(),
+});
+
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
+});
+
+const resetPasswordSchema = Joi.object({
+  token: Joi.string().trim().min(32).max(256).required(),
+  password: Joi.string().min(8).max(128).required(),
 });
 
 const discordStartSchema = Joi.object({
@@ -88,6 +102,26 @@ function buildWebRedirect(pathname = '/auth', params = {}) {
   });
 
   return url.toString();
+}
+
+function generatePasswordResetToken() {
+  return crypto.randomBytes(passwordResetTokenBytes).toString('hex');
+}
+
+function hashPasswordResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function getPasswordResetUrl(token) {
+  const url = new URL('/auth', getWebAppUrl());
+  url.searchParams.set('resetToken', token);
+  return url.toString();
+}
+
+function isPasswordResetExpired(expiresAt) {
+  const expiresAtMs = new Date(expiresAt).getTime();
+
+  return !Number.isFinite(expiresAtMs) || expiresAtMs < Date.now();
 }
 
 function getDiscordScopeParam() {
@@ -250,6 +284,96 @@ router.post('/login', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to sign in',
+    });
+  }
+});
+
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { error, value } = forgotPasswordSchema.validate(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: error.details,
+      });
+    }
+
+    const user = await User.findByEmail(value.email);
+
+    if (user) {
+      const token = generatePasswordResetToken();
+      const expiresAt = new Date(Date.now() + (passwordResetExpiresInMinutes * 60 * 1000));
+
+      await User.setPasswordResetToken(user.id, {
+        tokenHash: hashPasswordResetToken(token),
+        expiresAt,
+      });
+
+      try {
+        await sendPasswordResetEmail({
+          to: user.email,
+          resetUrl: getPasswordResetUrl(token),
+          expiresInMinutes: passwordResetExpiresInMinutes,
+          ign: user.ign,
+        });
+      } catch (sendError) {
+        await User.clearPasswordResetToken(user.id).catch((clearError) => {
+          console.error('Error clearing failed password reset token:', clearError);
+        });
+        throw sendError;
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: passwordResetSentMessage,
+    });
+  } catch (error) {
+    console.error('Error requesting password reset:', error);
+    return res.status(error.publicMessage ? 503 : 500).json({
+      success: false,
+      message: error.publicMessage || 'Failed to request password reset',
+    });
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { error, value } = resetPasswordSchema.validate(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: error.details,
+      });
+    }
+
+    const tokenHash = hashPasswordResetToken(value.token);
+    const user = await User.findByPasswordResetTokenHash(tokenHash);
+
+    if (!user || isPasswordResetExpired(user.password_reset_expires_at)) {
+      if (user) {
+        await User.clearPasswordResetToken(user.id);
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: 'That password reset link is invalid or expired.',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(value.password, passwordRounds);
+    const updatedUser = await User.updatePassword(user.id, passwordHash);
+
+    return signInUser(res, updatedUser || user, 200, 'Password reset successfully.');
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to reset password',
     });
   }
 });

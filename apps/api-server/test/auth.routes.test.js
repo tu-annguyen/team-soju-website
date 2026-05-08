@@ -1,4 +1,5 @@
 const request = require('supertest');
+const crypto = require('crypto');
 
 process.env.JWT_SECRET = 'test-secret';
 process.env.DISCORD_CLIENT_ID = 'discord-client-id';
@@ -10,6 +11,7 @@ const app = require('../src/server');
 const User = require('../src/models/User');
 const bcrypt = require('bcrypt');
 const axios = require('axios');
+const { sendPasswordResetEmail } = require('../src/services/email');
 const { AUTH_COOKIE_NAME, signUserToken } = require('../src/middleware/auth');
 
 jest.mock('../src/models/User');
@@ -18,6 +20,9 @@ jest.mock('bcrypt', () => ({
   hash: jest.fn(),
 }));
 jest.mock('axios');
+jest.mock('../src/services/email', () => ({
+  sendPasswordResetEmail: jest.fn(),
+}));
 
 describe('Auth routes', () => {
   const userRow = {
@@ -39,6 +44,7 @@ describe('Auth routes', () => {
       auth_provider: row.auth_provider,
     }) : null);
     User.recordLogin.mockResolvedValue(userRow);
+    sendPasswordResetEmail.mockResolvedValue({ provider: 'test' });
   });
 
   describe('POST /api/auth/register', () => {
@@ -117,6 +123,99 @@ describe('Auth routes', () => {
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('Password resets', () => {
+    it('stores a reset token and sends a reset email for existing accounts', async () => {
+      User.findByEmail.mockResolvedValue(userRow);
+      User.setPasswordResetToken.mockResolvedValue(userRow);
+
+      const response = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: 'trainer@example.com' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        success: true,
+        message: 'If an account uses that email, a reset link has been sent.',
+      });
+      expect(User.findByEmail).toHaveBeenCalledWith('trainer@example.com');
+      expect(User.setPasswordResetToken).toHaveBeenCalledWith('user-id', {
+        tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        expiresAt: expect.any(Date),
+      });
+      expect(sendPasswordResetEmail).toHaveBeenCalledWith(expect.objectContaining({
+        to: 'trainer@example.com',
+        expiresInMinutes: 60,
+        ign: 'Trainer',
+      }));
+      expect(sendPasswordResetEmail.mock.calls[0][0].resetUrl)
+        .toMatch(/^http:\/\/localhost:4321\/auth\?resetToken=[a-f0-9]{64}$/);
+    });
+
+    it('returns a generic response when the reset email has no matching account', async () => {
+      User.findByEmail.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: 'missing@example.com' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe('If an account uses that email, a reset link has been sent.');
+      expect(User.setPasswordResetToken).not.toHaveBeenCalled();
+      expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+    });
+
+    it('resets a password from a valid token and signs the user in', async () => {
+      const token = 'valid-reset-token-00000000000000000000';
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      const resetUser = {
+        ...userRow,
+        password_reset_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      };
+      const updatedUser = {
+        ...userRow,
+        password_hash: 'new-hashed-password',
+      };
+
+      User.findByPasswordResetTokenHash.mockResolvedValue(resetUser);
+      User.updatePassword.mockResolvedValue(updatedUser);
+      User.recordLogin.mockResolvedValue(updatedUser);
+      bcrypt.hash.mockResolvedValue('new-hashed-password');
+
+      const response = await request(app)
+        .post('/api/auth/reset-password')
+        .send({
+          token,
+          password: 'newhunter42!',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.headers['set-cookie'][0]).toContain(`${AUTH_COOKIE_NAME}=`);
+      expect(User.findByPasswordResetTokenHash).toHaveBeenCalledWith(tokenHash);
+      expect(User.updatePassword).toHaveBeenCalledWith('user-id', 'new-hashed-password');
+    });
+
+    it('rejects expired reset tokens and clears them', async () => {
+      User.findByPasswordResetTokenHash.mockResolvedValue({
+        ...userRow,
+        password_reset_expires_at: new Date(Date.now() - 1000).toISOString(),
+      });
+      User.clearPasswordResetToken.mockResolvedValue(userRow);
+
+      const response = await request(app)
+        .post('/api/auth/reset-password')
+        .send({
+          token: 'expired-reset-token-0000000000000000',
+          password: 'newhunter42!',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe('That password reset link is invalid or expired.');
+      expect(User.clearPasswordResetToken).toHaveBeenCalledWith('user-id');
+      expect(User.updatePassword).not.toHaveBeenCalled();
     });
   });
 

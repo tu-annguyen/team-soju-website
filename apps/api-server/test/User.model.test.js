@@ -60,6 +60,47 @@ describe('User model', () => {
     expect(result).toEqual(updated);
   });
 
+  it('stores password reset token metadata', async () => {
+    const updated = { id: 'user-id', password_reset_token_hash: 'token-hash' };
+    const expiresAt = new Date('2026-05-08T12:00:00.000Z');
+    mockQuery.mockResolvedValue({ rows: [updated] });
+
+    const result = await User.setPasswordResetToken('user-id', {
+      tokenHash: 'token-hash',
+      expiresAt,
+    });
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [
+      'user-id',
+      'token-hash',
+      expiresAt,
+    ]);
+    expect(result).toEqual(updated);
+  });
+
+  it('finds a user by password reset token hash', async () => {
+    const row = { id: 'user-id', password_reset_token_hash: 'token-hash' };
+    mockQuery.mockResolvedValue({ rows: [row] });
+
+    const result = await User.findByPasswordResetTokenHash('token-hash');
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), ['token-hash']);
+    expect(result).toEqual(row);
+  });
+
+  it('updates the password and clears reset token metadata', async () => {
+    const updated = { id: 'user-id', password_hash: 'new-hash' };
+    mockQuery.mockResolvedValue({ rows: [updated] });
+
+    const result = await User.updatePassword('user-id', 'new-hash');
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [
+      'user-id',
+      'new-hash',
+    ]);
+    expect(result).toEqual(updated);
+  });
+
   it('removes password hashes from safe user objects', () => {
     expect(User.toSafeUser({
       id: 'user-id',

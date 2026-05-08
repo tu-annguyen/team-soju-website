@@ -100,7 +100,7 @@ const es = {
       },
       general: {
         anonymousName: 'Anonimo',
-        optionalDisplayName: 'Nombre visible opcional',
+        optionalDisplayName: 'Nombre visualización temporal',
         displayNamePlaceholder: 'Cazador anonimo de Feebas',
         signedInAs: 'Sesion iniciada como {ign}',
         nextReset: 'Siguiente reinicio',

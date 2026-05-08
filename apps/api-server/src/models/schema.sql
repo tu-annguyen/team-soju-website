@@ -130,6 +130,9 @@ CREATE TABLE IF NOT EXISTS app_users (
   discord_avatar TEXT,
   auth_provider TEXT NOT NULL DEFAULT 'password'
     CHECK (auth_provider IN ('password', 'discord', 'password_discord')),
+  password_reset_token_hash TEXT,
+  password_reset_expires_at TIMESTAMPTZ,
+  password_reset_requested_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   last_login_at TIMESTAMPTZ,
@@ -151,6 +154,15 @@ ALTER TABLE app_users
 
 ALTER TABLE app_users
   ADD COLUMN IF NOT EXISTS auth_provider TEXT;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS password_reset_token_hash TEXT;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS password_reset_requested_at TIMESTAMPTZ;
 
 ALTER TABLE app_users
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
@@ -203,6 +215,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_app_users_ign_lower
 
 CREATE INDEX IF NOT EXISTS idx_app_users_discord_id
   ON app_users(discord_id);
+
+CREATE INDEX IF NOT EXISTS idx_app_users_password_reset_token_hash
+  ON app_users(password_reset_token_hash)
+  WHERE password_reset_token_hash IS NOT NULL;
 
 -- Feebas tile coordination cycles
 CREATE TABLE IF NOT EXISTS feebas_cycles (

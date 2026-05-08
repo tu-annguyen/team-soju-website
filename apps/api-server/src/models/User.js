@@ -142,6 +142,64 @@ class User {
 
     return result.rows[0] || null;
   }
+
+  static async setPasswordResetToken(id, { tokenHash, expiresAt }) {
+    const result = await pool.query(`
+      UPDATE app_users
+      SET password_reset_token_hash = $2,
+          password_reset_expires_at = $3,
+          password_reset_requested_at = now(),
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `, [id, tokenHash, expiresAt]);
+
+    return result.rows[0] || null;
+  }
+
+  static async findByPasswordResetTokenHash(tokenHash) {
+    const result = await pool.query(`
+      SELECT *
+      FROM app_users
+      WHERE password_reset_token_hash = $1
+      LIMIT 1
+    `, [tokenHash]);
+
+    return result.rows[0] || null;
+  }
+
+  static async clearPasswordResetToken(id) {
+    const result = await pool.query(`
+      UPDATE app_users
+      SET password_reset_token_hash = NULL,
+          password_reset_expires_at = NULL,
+          password_reset_requested_at = NULL,
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+
+    return result.rows[0] || null;
+  }
+
+  static async updatePassword(id, passwordHash) {
+    const result = await pool.query(`
+      UPDATE app_users
+      SET password_hash = $2,
+          password_reset_token_hash = NULL,
+          password_reset_expires_at = NULL,
+          password_reset_requested_at = NULL,
+          auth_provider = CASE
+            WHEN discord_id IS NOT NULL THEN 'password_discord'
+            ELSE 'password'
+          END,
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `, [id, passwordHash]);
+
+    return result.rows[0] || null;
+  }
 }
 
 module.exports = User;

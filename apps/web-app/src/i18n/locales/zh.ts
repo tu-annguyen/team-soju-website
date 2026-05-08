@@ -95,7 +95,7 @@ const zh = {
       },
       general: {
         anonymousName: '匿名',
-        optionalDisplayName: '可选显示名称',
+        optionalDisplayName: '临时显示名称',
         displayNamePlaceholder: '匿名丑丑鱼猎人',
         signedInAs: '当前登录为 {ign}',
         nextReset: '下次重置',
