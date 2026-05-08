@@ -2,6 +2,8 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import FeebasTileChecker from '../src/components/FeebasTileChecker';
 
+const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
+
 const boardFixture = {
   location: 'route-119-main',
   displayName: 'Route 119, Hoenn',
@@ -492,6 +494,35 @@ describe('FeebasTileChecker', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self');
+    expect(localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY)).toBe('mt-coronet');
+  });
+
+  it('restores the saved Feebas location tab on load', async () => {
+    localStorage.setItem(ACTIVE_LOCATION_STORAGE_KEY, 'mt-coronet');
+
+    const fetchMock = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const data = url.includes('/mt-coronet') ? mtCoronetBoardFixture : boardFixture;
+
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data,
+        }),
+      });
+    });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('tab', { name: /Mt. Coronet/i })).toHaveAttribute('aria-selected', 'true');
+    expect(fetchMock.mock.calls.every(([input]) => String(input).includes('/mt-coronet'))).toBe(true);
   });
 
   it('toggles the grid between voting and historical heatmap modes', async () => {

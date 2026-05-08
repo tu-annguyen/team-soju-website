@@ -77,6 +77,7 @@ type BoardDisplayMode = 'voting' | 'heatmap';
 const DEFAULT_LOCATION = 'route-119-main';
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
+const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
 const BOARD_MIN_TILE_SIZE_PX = 40;
 const BOARD_MIN_WIDTH_PX = 768;
 const ROUTE_119_MAIN_TERRAIN = [
@@ -284,6 +285,23 @@ function resolveLocationId(location?: string) {
   return location && LOCATION_OPTIONS_BY_ID.has(location) ? location : DEFAULT_LOCATION;
 }
 
+function getStoredLocationId() {
+  try {
+    const storedLocation = localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY) || undefined;
+    return storedLocation && LOCATION_OPTIONS_BY_ID.has(storedLocation) ? storedLocation : null;
+  } catch {
+    return null;
+  }
+}
+
+function getInitialLocationId(location?: string) {
+  if (location) {
+    return resolveLocationId(location);
+  }
+
+  return getStoredLocationId() || DEFAULT_LOCATION;
+}
+
 function getBoardMinWidth(cols: number) {
   return `${Math.max(cols * BOARD_MIN_TILE_SIZE_PX, BOARD_MIN_WIDTH_PX)}px`;
 }
@@ -297,7 +315,7 @@ function LoadingPlaceholder({ className }: { className: string }) {
   );
 }
 
-const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: Props) => {
+const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const activeLocale = getClientLocale(locale);
   const messages = getTranslations(activeLocale).tools.feebasChecker;
   const localizedLocationOptions: readonly LocationOption[] = [
@@ -315,7 +333,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
     },
   ] as const;
   const localizedLocationOptionsById = new Map(localizedLocationOptions.map((option) => [option.id, option]));
-  const [activeLocation, setActiveLocation] = useState(resolveLocationId(location));
+  const [activeLocation, setActiveLocation] = useState(() => getInitialLocationId(location));
   const [board, setBoard] = useState<FeebasBoard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -359,8 +377,18 @@ const FeebasTileChecker = ({ apiBaseUrl, location = DEFAULT_LOCATION, locale }: 
   }, []);
 
   useEffect(() => {
-    setActiveLocation(resolveLocationId(location));
+    if (location) {
+      setActiveLocation(resolveLocationId(location));
+    }
   }, [location]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_LOCATION_STORAGE_KEY, activeLocation);
+    } catch {
+      // Ignore storage write failures.
+    }
+  }, [activeLocation]);
 
   useEffect(() => {
     let mounted = true;
