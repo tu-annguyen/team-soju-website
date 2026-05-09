@@ -3,13 +3,18 @@ import Layout from '../layouts/Layout.astro';
 import Hero from '../components/Hero';
 import TeamLinks from '../components/TeamLinks';
 import TeamStaff from '../components/TeamStaff';
+import { getTranslations, resolveLocale } from '../i18n';
+
+const locale = resolveLocale(Astro.url.searchParams.get('lang'));
+const messages = getTranslations(locale);
 ---
 
 <Layout 
-  title="Team Soju - PokeMMO Team" 
-  description="Team Soju is a budding PokeMMO team dedicated to fostering a growing community of rag tag friends with a good mix of veteran and new players. We are a PvE team mainly focused in shiny hunting but have some dedicated PvPers! 건배!"
+  locale={locale}
+  title={messages.home.title}
+  description={messages.home.description}
 >
-  <Hero client:load />
+  <Hero client:load locale={locale} />
   <TeamLinks client:load />
   <TeamStaff client:load />
 </Layout>

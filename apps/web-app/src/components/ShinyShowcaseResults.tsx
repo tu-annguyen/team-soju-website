@@ -11,6 +11,7 @@ interface ShinyShowcaseResultsProps {
 export interface ShinyPokemon {
   name: string;
   variantName: string | null;
+  status: string | null;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -37,6 +38,19 @@ interface Trainer {
   shinies: ShinyPokemon[];
 }
 
+const LoadingPlaceholder = ({ className }: { className: string }) => (
+  <div
+    className={`animate-pulse rounded-xl bg-gray-200/80 dark:bg-gray-800/80 ${className}`}
+    aria-hidden="true"
+  />
+);
+
+const SKELETON_SECTIONS = [
+  { id: 'trainer-1', cards: 10 },
+  { id: 'trainer-2', cards: 8 },
+  { id: 'trainer-3', cards: 6 },
+] as const;
+
 const ShinyShowcaseResults = ({
   searchTerm,
   shinyData,
@@ -53,11 +67,34 @@ const ShinyShowcaseResults = ({
   
   if (loading) {
     return (
-      <section className="py-16">
-        <div className="container">
-          <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">Loading shiny collection...</p>
-          </div>
+      <section aria-busy="true" aria-label="Loading shiny collection">
+        <div className="space-y-12">
+          {SKELETON_SECTIONS.map((section) => (
+            <div key={section.id} className="space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <LoadingPlaceholder className="h-8 w-40 max-w-full" />
+                <div className="flex flex-wrap gap-2">
+                  <LoadingPlaceholder className="h-8 w-28 rounded-full" />
+                  <LoadingPlaceholder className="h-8 w-24 rounded-full" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+                {Array.from({ length: section.cards }).map((_, index) => (
+                  <div
+                    key={`${section.id}-${index}`}
+                    className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700"
+                    aria-hidden="true"
+                  >
+                    <LoadingPlaceholder className="aspect-square w-full rounded-none" />
+                    <div className="space-y-2 bg-white p-2 dark:bg-gray-700">
+                      <LoadingPlaceholder className="mx-auto h-4 w-3/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     );
@@ -102,6 +139,7 @@ const ShinyShowcaseResults = ({
                     pokemonName={shiny.name}
                     variantName={shiny.variantName}
                     trainerName={trainer.name}
+                    status={shiny.status}
                     imageUrl={shiny.imageUrl}
                     isFailed={shiny.isFailed}
                     isSecret={shiny.isSecret}

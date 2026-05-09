@@ -150,6 +150,30 @@ describe('ShinyShowcase', () => {
     });
   });
 
+  it('can sort trainers by points per num ot', async () => {
+    render(<ShinyShowcase />);
+
+    expect(await screen.findByText('TrainerOne')).toBeInTheDocument();
+    expect(screen.getByText('TrainerTwo')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /open sorting/i }));
+    fireEvent.change(screen.getByLabelText(/sort by/i), {
+      target: { value: 'points_per_num_ot' },
+    });
+    fireEvent.change(screen.getByLabelText(/^order$/i), {
+      target: { value: 'desc' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() => {
+      const trainerOne = screen.getByText('TrainerOne');
+      const trainerTwo = screen.getByText('TrainerTwo');
+      expect(
+        trainerTwo.compareDocumentPosition(trainerOne) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+  });
+
   it('filters trainers by search term', async () => {
     render(<ShinyShowcase />);
 
@@ -195,7 +219,7 @@ describe('ShinyShowcase', () => {
     fireEvent.change(screen.getByLabelText(/secret shinies/i), {
       target: { value: 'true' },
     });
-    fireEvent.change(screen.getByLabelText(/points/i), {
+    fireEvent.change(screen.getByLabelText(/minimum points/i), {
       target: { value: '40' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));

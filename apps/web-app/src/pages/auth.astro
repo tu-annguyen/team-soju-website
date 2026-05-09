@@ -1,0 +1,17 @@
+---
+import Layout from '../layouts/Layout.astro';
+import AuthPage from '../components/AuthPage';
+import { getTranslations, resolveLocale } from '../i18n';
+
+const locale = resolveLocale(Astro.url.searchParams.get('lang'));
+const messages = getTranslations(locale);
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+---
+
+<Layout
+  locale={locale}
+  title={messages.auth.title}
+  description={messages.auth.description}
+>
+  <AuthPage client:load apiBaseUrl={apiBaseUrl} locale={locale} />
+</Layout>

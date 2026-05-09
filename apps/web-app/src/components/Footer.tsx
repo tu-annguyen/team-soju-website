@@ -1,7 +1,21 @@
 import React from 'react';
+import { getLocaleParamPath, getRuntimeLocale, getTranslations } from '../i18n';
+import type { Locale } from '../i18n';
+import LanguagePicker from './LanguagePicker';
 
-const Footer = () => {
+type Props = {
+  locale?: Locale | string;
+};
+
+const Footer = ({ locale = 'en' }: Props) => {
   const currentYear = new Date().getFullYear();
+  const activeLocale = getRuntimeLocale(locale);
+  const messages = getTranslations(activeLocale);
+  const homeHref = getLocaleParamPath('/', activeLocale);
+  const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', activeLocale);
+  const eventsHref = getLocaleParamPath('/events', activeLocale);
+  const toolsHref = getLocaleParamPath('/tools', activeLocale);
+  const discordHref = getLocaleParamPath('/discord', activeLocale);
   
   return (
     <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-8">
@@ -18,36 +32,51 @@ const Footer = () => {
                 Team Soju
               </span>
             </div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">
-              A budding PokeMMO team dedicated to fostering a growing community of rag tag friends with a good mix of veteran and new players. 
+            <p className="mb-4 text-gray-600 dark:text-gray-400 text-sm">
+              {messages.footer.blurb}
             </p>
+            <div className="mb-4">
+              <LanguagePicker
+                locale={activeLocale}
+                className="block"
+                selectClassName="min-w-[8.5rem] appearance-none rounded-full border border-gray-300 bg-white py-2 pl-4 pr-11 text-sm font-medium text-gray-800 shadow-sm transition-colors focus:border-primary-500 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </div>
           </div>
           
           <div>
-            <h3 className="text-lg font-semibold mb-4">Links</h3>
+            <h3 className="text-lg font-semibold mb-4">{messages.footer.linksTitle}</h3>
             <ul className="space-y-2">
               <li>
                 <a 
-                  href="/" 
+                  href={homeHref} 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
-                  Home
+                  {messages.nav.home}
                 </a>
               </li>
               <li>
                 <a 
-                  href="/shiny-showcase" 
+                  href={shinyShowcaseHref} 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
-                  Shiny Showcase
+                  {messages.nav.shinyShowcase}
                 </a>
               </li>
               <li>
                 <a 
-                  href="/events" 
+                  href={eventsHref} 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
-                  Events
+                  {messages.nav.events}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={toolsHref}
+                  className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+                >
+                  {messages.nav.tools}
                 </a>
               </li>
               <li>
@@ -57,24 +86,24 @@ const Footer = () => {
                   rel="noopener noreferrer"
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
-                  Forum
+                  {messages.nav.forum}
                 </a>
               </li>
               <li>
                 <a 
-                  href="/discord" 
+                  href={discordHref} 
                   className="text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 >
-                  Discord
+                  {messages.nav.discord}
                 </a>
               </li>
             </ul>
           </div>
           
           <div>
-            <h3 className="text-lg font-semibold mb-4">Join Us</h3>
+            <h3 className="text-lg font-semibold mb-4">{messages.footer.joinTitle}</h3>
             <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
-              Interested in joining Team Soju? We're always looking for talented trainers!
+              {messages.footer.joinDescription}
             </p>
             <a 
               href="https://forums.pokemmo.com/index.php?/topic/182111-team-soju-is-recruiting/#comment-2123917" 
@@ -82,17 +111,15 @@ const Footer = () => {
               rel="noopener noreferrer"
               className="btn btn-primary text-sm px-4 py-2"
             >
-              Apply Now
+              {messages.footer.applyNow}
             </a>
           </div>
         </div>
         
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400 text-sm">
-          <p>© {currentYear} Team Soju. All rights reserved.</p>
+          <p>© {currentYear} Team Soju. {messages.footer.rightsReserved}</p>
           <p className="mt-2">
-            Pokémon is a registered trademark of Nintendo, Creatures, Inc. and GAME FREAK inc. 
-            This website is not affiliated with Nintendo, Creatures, Inc., GAME FREAK inc., 
-            or PokeMMO.
+            {messages.footer.legal}
           </p>
         </div>
       </div>

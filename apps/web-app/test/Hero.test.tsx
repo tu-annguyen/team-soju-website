@@ -21,4 +21,23 @@ describe('Hero', () => {
 
     expect(screen.getByAltText(/Team Soju Logo/i)).toBeInTheDocument();
   });
+
+  it('renders translated CTA labels when requested', () => {
+    render(<Hero locale="zh" />);
+
+    expect(screen.getByRole('link', { name: '立即申请' })).toHaveAttribute(
+      'href',
+      'https://forums.pokemmo.com/index.php?/topic/182111-team-soju-is-recruiting/#comment-2123917'
+    );
+    expect(screen.getByRole('link', { name: '加入 Discord' })).toHaveAttribute('href', '/discord?lang=zh');
+  });
+
+  it('prefers the current URL locale over a stale English prop', () => {
+    window.history.replaceState({}, '', '/?lang=zh');
+
+    render(<Hero locale="en" />);
+
+    expect(screen.getByRole('link', { name: '立即申请' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '加入 Discord' })).toHaveAttribute('href', '/discord?lang=zh');
+  });
 });

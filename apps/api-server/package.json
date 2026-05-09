@@ -7,11 +7,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "import:mt-coronet-feebas-tally": "node src/config/import-mt-coronet-feebas-tally.js",
     "dev:worker": "wrangler dev --config wrangler.jsonc",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\"",
     "deploy:cf:staging": "wrangler deploy --config wrangler.jsonc --env staging",
     "migrate": "node src/config/migrate.js",
     "clear-shinies": "node src/config/clear-shinies.js",
+    "seed:feebas-heatmap": "node src/config/seed-feebas-heatmap.js",
     "seed": "node src/config/seed.js",
     "test": "jest --runInBand --coverage"
   },

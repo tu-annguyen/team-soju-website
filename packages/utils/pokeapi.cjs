@@ -19,4 +19,9 @@ async function getPokemonVariants(nameOrId) {
   return mod.getPokemonVariants(nameOrId);
 }
 
-module.exports = { getNationalNumber, getSpriteUrl, getPokemonVariants };
+async function getPokemonEvolutionLine(nameOrId) {
+  const mod = await load();
+  return mod.getPokemonEvolutionLine(nameOrId);
+}
+
+module.exports = { getNationalNumber, getSpriteUrl, getPokemonVariants, getPokemonEvolutionLine };

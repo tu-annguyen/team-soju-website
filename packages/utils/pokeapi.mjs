@@ -15,6 +15,19 @@ function normalizePokemonName(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function extractEvolutionSpecies(chainNode, collected = []) {
+  const speciesName = normalizePokemonName(chainNode?.species?.name);
+  if (speciesName) {
+    collected.push(speciesName);
+  }
+
+  for (const evolvesTo of chainNode?.evolves_to || []) {
+    extractEvolutionSpecies(evolvesTo, collected);
+  }
+
+  return collected;
+}
+
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
 
 function isNidoranRouteName(value) {
@@ -65,6 +78,34 @@ function dedupeVariantEntries(entries) {
   }
 
   return deduped;
+}
+
+function hasGenerationVAnimatedSprite(pokemonData) {
+  const animatedSprites = pokemonData?.sprites?.versions?.['generation-v']?.['black-white']?.animated;
+  if (!animatedSprites) return false;
+
+  return Object.values(animatedSprites).some(Boolean);
+}
+
+async function filterEntriesToGenerationV(entries) {
+  const spriteAvailabilityCache = new Map();
+
+  const filteredEntries = await Promise.all(entries.map(async (entry) => {
+    if (!entry?.value) return null;
+
+    if (!spriteAvailabilityCache.has(entry.value)) {
+      const hasGen5Sprite = await getPokedex()
+        .getPokemonByName(entry.value)
+        .then(hasGenerationVAnimatedSprite)
+        .catch(() => false);
+
+      spriteAvailabilityCache.set(entry.value, hasGen5Sprite);
+    }
+
+    return spriteAvailabilityCache.get(entry.value) ? entry : null;
+  }));
+
+  return filteredEntries.filter(Boolean);
 }
 
 function collapseBaseSpeciesEntry(entries, speciesName) {
@@ -144,6 +185,24 @@ export async function getNationalNumber(pokemon) {
   }
 }
 
+export async function getPokemonEvolutionLine(pokemon) {
+  try {
+    const { species } = await resolveSpeciesContext(pokemon);
+    const chainUrl = species?.evolution_chain?.url;
+    if (!chainUrl) {
+      const speciesName = normalizePokemonName(species?.name || pokemon);
+      return speciesName ? [speciesName] : [];
+    }
+
+    const evolutionChain = await getPokedex().resource(chainUrl);
+    return [...new Set(extractEvolutionSpecies(evolutionChain?.chain, []))];
+  } catch (err) {
+    console.error(`Error fetching evolution line for Pokémon "${pokemon}":`, err.message || err);
+    const normalizedPokemon = normalizePokemonName(pokemon);
+    return normalizedPokemon ? [normalizedPokemon] : [];
+  }
+}
+
 /**
  * @param {*} pokemonId national pokedex number of the pokemon
  * @returns a URL to the Gen V animated shiny sprite associated with the pokemonId
@@ -218,12 +277,16 @@ export async function getPokemonVariants(pokemon) {
         isDefault: true,
       })];
 
-    const entries = collapseBaseSpeciesEntry(
+    const generationVEntries = await filterEntriesToGenerationV(
       dedupeVariantEntries([
         ...varietyEntries,
         ...formEntriesByVariety.flat().filter(Boolean),
         ...fallbackEntries.filter(Boolean),
-      ]),
+      ])
+    );
+
+    const entries = collapseBaseSpeciesEntry(
+      generationVEntries,
       species?.name || speciesName
     );
 

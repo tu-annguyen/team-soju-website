@@ -61,7 +61,17 @@ function getCommandHandler(commandName) {
   return handlers[handlerName];
 }
 
+function getAutocompleteHandler(commandName) {
+  const handlerMap = {
+    'addshiny': shinyHandlers.handlePokemonAutocomplete,
+    'editshiny': shinyHandlers.handlePokemonAutocomplete,
+  };
+
+  return handlerMap[commandName] || null;
+}
+
 module.exports = {
   getCommandHandlers,
   getCommandHandler,
+  getAutocompleteHandler,
 };

@@ -121,7 +121,37 @@ This app now also includes a Cloudflare Worker runtime under [src/cloudflare/wor
 
 ## Authentication
 
-The API uses JWT tokens for Discord bot authentication. Generate a token for development:
+The API supports two authentication paths:
+
+- Web users can create accounts with email, password, and IGN.
+- Web users can sign in or register with Discord OAuth2.
+- Discord bot mutations still use bot-scoped JWT bearer tokens.
+
+### Web User Endpoints
+
+- `POST /api/auth/register` - Create an email/password account and set the session cookie
+- `POST /api/auth/login` - Sign in with email/password
+- `POST /api/auth/logout` - Clear the session cookie
+- `GET /api/auth/me` - Return the current signed-in user, or `null`
+- `GET /api/auth/discord` - Start Discord OAuth2
+- `GET /api/auth/discord/callback` - Discord OAuth2 callback
+
+Required environment variables:
+
+```env
+JWT_SECRET=your-session-signing-secret
+WEB_APP_URL=http://localhost:4321
+API_ORIGIN=http://localhost:3001
+DISCORD_CLIENT_ID=your-discord-client-id
+DISCORD_CLIENT_SECRET=your-discord-client-secret
+DISCORD_REDIRECT_URI=http://localhost:3001/api/auth/discord/callback
+```
+
+In the Discord Developer Portal, add the exact redirect URI above for local development and the production callback URL for deployed environments.
+
+### Bot Tokens
+
+Generate a bot token for development:
 
 ```bash
 # Visit http://localhost:3001/generate-bot-token (development only)
@@ -142,6 +172,7 @@ BOT_API_TOKEN=your-bot-token
 ```bash
 curl -X POST http://localhost:3001/api/members \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $BOT_API_TOKEN" \
   -d '{
     "ign": "TrainerName",
     "discord_id": "123456789012345678",
@@ -154,6 +185,7 @@ curl -X POST http://localhost:3001/api/members \
 ```bash
 curl -X POST http://localhost:3001/api/shinies \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $BOT_API_TOKEN" \
   -d '{
     "national_number": 25,
     "pokemon": "pikachu",

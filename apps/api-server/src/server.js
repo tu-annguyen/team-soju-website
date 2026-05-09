@@ -8,20 +8,58 @@ if (process.env.NODE_ENV !== 'production') {
 
 const membersRoutes = require('./routes/members');
 const shiniesRoutes = require('./routes/shinies');
+const feebasRoutes = require('./routes/feebas');
+const authRoutes = require('./routes/auth');
 const { generateBotToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const explicitProductionOrigins = new Set([
+  'https://team-soju.netlify.app',
+  'https://teamsoju.com',
+  'https://www.teamsoju.com',
+  'https://soju.team',
+  'https://www.soju.team',
+  'https://team-soju-hpzrujm4n-tu-annguyens-projects.vercel.app',
+]);
+
+const allowedPreviewOriginPatterns = [
+  /^https:\/\/[a-z0-9-]+\.netlify\.app$/i,
+  /^https:\/\/[a-z0-9-]+\.vercel\.app$/i,
+];
+
+function isAllowedProductionOrigin(origin) {
+  if (!origin) {
+    return true;
+  }
+
+  if (explicitProductionOrigins.has(origin)) {
+    return true;
+  }
+
+  return allowedPreviewOriginPatterns.some((pattern) => pattern.test(origin));
+}
+
+function isAllowedDevelopmentOrigin(origin) {
+  return !origin || origin === 'http://localhost:3000' || origin === 'http://localhost:4321';
+}
+
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://team-soju.netlify.app',
-      'https://teamsoju.com', 'https://www.teamsoju.com',
-      'https://soju.team', 'https://www.soju.team',
-      'https://team-soju-hpzrujm4n-tu-annguyens-projects.vercel.app']
-    : ['http://localhost:3000', 'http://localhost:4321'],
+  origin(origin, callback) {
+    const isAllowed = process.env.NODE_ENV === 'production'
+      ? isAllowedProductionOrigin(origin)
+      : isAllowedDevelopmentOrigin(origin);
+
+    if (isAllowed) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`Origin not allowed by CORS: ${origin}`));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -61,8 +99,10 @@ app.get('/generate-bot-token', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/members', membersRoutes);
 app.use('/api/shinies', shiniesRoutes); 
+app.use('/api/feebas', feebasRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -83,7 +123,7 @@ app.use((error, req, res, next) => {
 });
 
 // Start server (skipped during tests)
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Team Soju API server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);

@@ -7,6 +7,7 @@ const DEFAULT_RETRY_DELAY_MS = 250;
 const InteractionResponseType = {
   Pong: 1,
   ChannelMessageWithSource: 4,
+  ApplicationCommandAutocompleteResult: 8,
   DeferredChannelMessageWithSource: 5,
   DeferredUpdateMessage: 6,
   UpdateMessage: 7,
@@ -34,6 +35,21 @@ function buildOptionsAccessor(data, resolved) {
   const options = data?.options || [];
   const optionsByName = new Map(options.map(option => [option.name, option]));
 
+  function findFocusedOption(entries = []) {
+    for (const entry of entries) {
+      if (entry?.focused) {
+        return entry;
+      }
+      if (Array.isArray(entry?.options)) {
+        const nested = findFocusedOption(entry.options);
+        if (nested) return nested;
+      }
+    }
+    return null;
+  }
+
+  const focusedOption = findFocusedOption(options);
+
   return {
     getString(name) {
       return optionsByName.get(name)?.value ?? null;
@@ -55,6 +71,15 @@ function buildOptionsAccessor(data, resolved) {
       const option = optionsByName.get(name);
       if (!option?.value) return null;
       return resolved?.attachments?.[option.value] || null;
+    },
+    getFocused(required = false) {
+      if (!focusedOption) {
+        return required ? '' : null;
+      }
+      return focusedOption.value ?? '';
+    },
+    getFocusedOption() {
+      return focusedOption ? { ...focusedOption } : null;
     },
   };
 }
@@ -130,6 +155,10 @@ class DiscordInteractionContext {
 
   isChatInputCommand() {
     return this.raw.type === 2;
+  }
+
+  isAutocomplete() {
+    return this.raw.type === 4;
   }
 
   isModalSubmit() {
@@ -215,6 +244,16 @@ class DiscordInteractionContext {
     this.setInitialResponse({
       type: InteractionResponseType.Modal,
       data: toJSON(modal),
+    });
+  }
+
+  async respondAutocomplete(choices = []) {
+    this.replied = true;
+    this.setInitialResponse({
+      type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+      data: {
+        choices: choices.map(choice => ({ ...choice })),
+      },
     });
   }
 

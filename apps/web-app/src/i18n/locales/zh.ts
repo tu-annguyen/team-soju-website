@@ -1,0 +1,207 @@
+const zh = {
+  meta: {
+    defaultTitle: 'Team Soju - PokeMMO 团队',
+    defaultDescription: 'Team Soju 是一个重视社区、实力与对 Pokemon 对战热情的 PokeMMO 团队。',
+  },
+  nav: {
+    home: '首页',
+    shinyShowcase: '闪光展示',
+    events: '活动',
+    tools: '工具',
+    forum: '论坛',
+    discord: 'Discord',
+    language: '语言',
+    toggleMenu: '切换菜单',
+  },
+  footer: {
+    blurb: '一个不断成长的 PokeMMO 团队，由新老玩家共同组成，致力于建立友好活跃的社区。',
+    linksTitle: '链接',
+    joinTitle: '加入我们',
+    joinDescription: '想加入 Team Soju 吗？我们一直在寻找优秀的训练家。',
+    applyNow: '立即申请',
+    rightsReserved: '保留所有权利。',
+    legal:
+      'Pokemon 是 Nintendo、Creatures, Inc. 和 GAME FREAK inc. 的注册商标。本网站与 Nintendo、Creatures, Inc.、GAME FREAK inc. 或 PokeMMO 无任何隶属关系。',
+  },
+  home: {
+    title: 'Team Soju - PokeMMO 团队',
+    description:
+      'Team Soju 是一个不断成长的 PokeMMO 团队，致力于建立由新老玩家共同组成的友好社区。我们主要专注于 PvE 和闪光狩猎，同时也有热衷 PvP 的成员。건배!',
+    hero: {
+      headingPrefix: '欢迎来到',
+      headingHighlight: 'Team Soju',
+      body:
+        'Team Soju 是一个不断成长的 PokeMMO 团队，致力于建立由新老玩家共同组成的友好社区。我们主要专注于 PvE 和闪光狩猎，同时也有热衷 PvP 的成员。건배!',
+      primaryCta: '立即申请',
+      secondaryCta: '加入 Discord',
+      logoAlt: 'Team Soju 标志',
+    },
+  },
+  tools: {
+    index: {
+      title: '工具 - Team Soju',
+      description: '探索 Team Soju 为社区制作的工具与实用程序。',
+      eyebrow: '工具',
+      heading: '工具',
+      intro: '为 PokeMMO 社区打造的实用工具，帮助大家更快协作、更聪明地游玩。',
+      availableTitle: '可用工具',
+      availableDescription: '进入我们用来组织狩猎、分享进度并让大家保持同步的工具。',
+      openTool: '打开工具',
+      categories: {
+        liveCoordination: '实时协作',
+      },
+      feebasCard: {
+        title: '丑丑鱼格子追踪器',
+        description:
+          '通过共享棋盘实时协调 丑丑鱼 格子检查，可标记为已检查、发现或已确认。每次标记都会叠加半透明颜色，让棋盘像团队判断的实时热力图。',
+      },
+    },
+    feebas: {
+      title: '丑丑鱼 格子检查器 - Team Soju',
+      description: '使用共享棋盘实时协调 丑丑鱼 格子检查。',
+      eyebrow: '实时协作工具',
+      heading: '丑丑鱼 格子检查器',
+      intro:
+        '实时协调 丑丑鱼 格子检查。你可以将格子投票为已检查、待确认或已确认。每一票都会以 25% 不透明度叠加颜色，让棋盘呈现团队判断的实时热力图。',
+    },
+    feebasChecker: {
+      locationsTabLabel: '丑丑鱼地点',
+      locations: {
+        route119: {
+          tabLabel: '119 号道路',
+          displayName: '119 号道路，豐緣',
+        },
+        mtCoronet: {
+          tabLabel: '天冠山',
+          displayName: '天冠山，神奧',
+        },
+      },
+      status: {
+        unchecked: '未检查',
+        checked: '已检查',
+        pending: '发现丑丑鱼',
+        confirmed: '确认丑丑鱼',
+      },
+      voteSummary: {
+        checked: '已检查',
+        pending: '待确认',
+        confirmed: '已确认',
+      },
+      actions: {
+        clearedVote: '清除了对以下格子的投票',
+        checkedVote: '检查了',
+        pendingVote: '在以下格子发现了丑丑鱼',
+        confirmedVote: '确认以下格子有丑丑鱼',
+      },
+      general: {
+        anonymousName: '匿名',
+        optionalDisplayName: '临时显示名称',
+        displayNamePlaceholder: '匿名丑丑鱼猎人',
+        signedInAs: '当前登录为 {ign}',
+        signInToTrackLeaderboardStats: '登录以追踪排行榜统计',
+        nextReset: '下次重置',
+        resetsEvery: '每 {minutes} 分钟实时重置一次',
+        rules:
+          '每个浏览器在每个格子上只能保留一个有效投票。每个格子同一时间只能有一个待确认提名，发起待确认标记的玩家不能自己确认它。',
+        scrollHint: '左右滚动可查看完整棋盘。',
+        mixedVotesHint: '颜色混合表示团队意见不一致。投票越多，格子的覆盖色就越明显。',
+        loadingBoard: '正在加载丑丑鱼棋盘...',
+      },
+      boardStatus: {
+        heading: '棋盘状态',
+        checkedTiles: '已检查格子',
+        pendingTiles: '待确认丑丑鱼格子',
+        confirmedTiles: '已确认丑丑鱼格子',
+      },
+      heatmap: {
+        toggleLabel: '棋盘显示模式',
+        votingMode: '投票',
+        heatmapMode: '热力图',
+        lowLegend: '较少历史',
+        highLegend: '较多历史',
+        description: '历史上确认过丑丑鱼的格子会随着累计确认次数增加而显示得更明显。',
+      },
+      selectedTile: {
+        heading: '已选格子',
+        tileLabel: '格子',
+        leadingStatus: '当前主状态：{status}',
+        checkedVotes: '{count} 个已检查投票',
+        pendingVotes: '{count} 个待确认投票',
+        confirmedVotes: '{count} 个已确认投票',
+        yourVote: '你的投票：{status}',
+        noFeebas: '没有丑丑鱼',
+        feebasFound: '发现丑丑鱼',
+        feebasConfirmed: '确认丑丑鱼',
+        clearVote: '清除我的投票',
+        needsPendingBeforeConfirm: '该格子至少需要一个待确认投票后，才能进行确认投票。',
+        pendingOwnerHint: '当前待确认投票是你发起的，因此需要其他玩家来确认，或者你可以清除自己的待确认标记。',
+        otherPendingHint: '该格子已经有其他玩家发起待确认提名，所以你只能将其处理为已检查或已确认。',
+        emptyState: '请选择一个格子来投票或清除投票。',
+      },
+      activity: {
+        heading: '活动记录',
+        previousPage: '上一页',
+        nextPage: '下一页',
+        pageStatus: '第 {current} / {total} 页',
+        emptyState: '当玩家共同更新棋盘时，格子变更会显示在这里。',
+      },
+      leaderboard: {
+        heading: '丑丑鱼排行榜',
+        description: '已登录贡献者会按已验证发现、创造的有效时间、确认次数和搜索覆盖量排名。',
+        emptyState: '已登录玩家参与已验证的丑丑鱼周期后，排行榜统计会显示在这里。',
+        columns: {
+          rank: '排名',
+          trainer: '训练家',
+          weeklyScore: '本周',
+          allTimeScore: '总计',
+          discoveries: '发现',
+          uptime: '有效时间',
+          confirmations: '确认',
+          coverage: '覆盖',
+          accuracy: '准确率',
+          efficiency: '效率',
+          streak: '连续',
+        },
+        tooltips: {
+          rank: '应用当前排行榜排序后的名次。',
+          trainer: '已登录账号的 IGN。只统计登录后提交的活动。',
+          weeklyScore:
+            '最近 7 天得分：已验证发现 x100、有效时间小时数、确认 x25、搜索覆盖量 x2。',
+          allTimeScore:
+            '总得分：已验证发现 x100、有效时间小时数、确认 x25、搜索覆盖量 x2。',
+          discoveries:
+            '该玩家作为已登录用户第一个提交待确认报告，并且之后被确认的唯一格子数量。',
+          uptime:
+            '已验证发现创造的社区有效时间：报告后该周期剩余分钟数乘以该周期内活跃的已登录贡献者数量。',
+          confirmations:
+            '该已登录玩家提交的唯一周期/格子确认数。',
+          coverage:
+            '该已登录玩家提交的唯一周期/格子检查或待确认报告数。',
+          accuracy:
+            '已验证待确认报告数除以之后被解决为确认或没有丑丑鱼的待确认报告数。',
+          efficiency:
+            '已验证发现数除以搜索覆盖量。',
+          streak:
+            '该玩家连续在最近多少个丑丑鱼周期中至少进行了一次已登录贡献。',
+        },
+        notables: {
+          heading: '记录统计',
+          fastestFinder: '最快发现者',
+          earlyScout: '早期侦察者',
+          mostPersistent: '最坚持者',
+          noData: '还没有已验证发现',
+          fastestValue: '{ign} 用时 {value}',
+          checksValue: '{ign} 在 {value} 个格子后发现',
+        },
+      },
+      errors: {
+        loadBoard: '无法加载丑丑鱼棋盘',
+        refreshBoard: '无法刷新丑丑鱼棋盘',
+        updateTile: '无法更新丑丑鱼格子',
+        liveUpdatesDisconnected: '实时更新已断开。棋盘稍后会再次刷新。',
+      },
+    },
+  },
+} as const;
+
+export default zh;

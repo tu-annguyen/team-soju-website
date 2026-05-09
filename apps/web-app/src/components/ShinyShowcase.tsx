@@ -8,6 +8,7 @@ export interface ShinyPokemon {
   id: string;
   name: string;
   variantName: string | null;
+  status: string | null;
   imageUrl: string;
   isFailed: boolean;
   isSecret: boolean;
@@ -65,7 +66,8 @@ type BooleanFilter = 'any' | 'true' | 'false';
 
 interface ShowcaseFilters {
   trainerName: string;
-  points: string;
+  minPoints: string;
+  maxPoints: string;
   pokemonName: string;
   encounterType: string;
   isSecret: BooleanFilter;
@@ -75,7 +77,7 @@ interface ShowcaseFilters {
 }
 
 interface ShowcaseSort {
-  sortBy: 'number_ot' | 'points';
+  sortBy: 'number_ot' | 'points' | 'points_per_num_ot';
   sortOrder: 'asc' | 'desc';
 }
 
@@ -100,7 +102,8 @@ const ENCOUNTER_TYPE_CHOICES = [
 
 const defaultFilters: ShowcaseFilters = {
   trainerName: '',
-  points: '',
+  minPoints: '',
+  maxPoints: '',
   pokemonName: '',
   encounterType: '',
   isSecret: 'any',
@@ -129,9 +132,27 @@ const sortTrainers = (
 ): Trainer[] => {
   const direction = sortOrder === 'asc' ? 1 : -1;
   const sorted = [...trainers];
+  const getPointsPerNumOT = (trainer: Trainer) => (
+    trainer.numOT > 0 ? trainer.totalPoints / trainer.numOT : 0
+  );
 
   sorted.sort((a, b) => {
-    if (sortBy === 'points') {
+    if (sortBy === 'points_per_num_ot') {
+      const pointsPerNumOTA = getPointsPerNumOT(a);
+      const pointsPerNumOTB = getPointsPerNumOT(b);
+
+      if (pointsPerNumOTA !== pointsPerNumOTB) {
+        return (pointsPerNumOTA - pointsPerNumOTB) * direction;
+      }
+
+      if (a.totalPoints !== b.totalPoints) {
+        return (a.totalPoints - b.totalPoints) * direction;
+      }
+
+      if (a.numOT !== b.numOT) {
+        return (a.numOT - b.numOT) * direction;
+      }
+    } else if (sortBy === 'points') {
       if (a.totalPoints !== b.totalPoints) {
         return (a.totalPoints - b.totalPoints) * direction;
       }
@@ -193,6 +214,7 @@ const transformAPIDataToShowcase = async (
             id: shiny.id,
             name: capitalize(shiny.pokemon_name),
             variantName: shiny.variants ?? null,
+            status: shiny.status ?? null,
             imageUrl: getShinySpriteUrl(shiny.national_number, shiny.variants),
             isFailed,
             isSecret,
@@ -234,17 +256,21 @@ const applyTrainerFiltersAndSort = (
   sort: ShowcaseSort
 ): Trainer[] => {
   const trainerNameFilter = filters.trainerName.trim().toLowerCase();
-  const minPoints = Number(filters.points);
+  const minPoints = Number(filters.minPoints);
+  const maxPoints = Number(filters.maxPoints);
 
   const filtered = trainers.filter((trainer) => {
     const matchesTrainerName = trainerNameFilter
       ? trainer.name.toLowerCase().includes(trainerNameFilter)
       : true;
-    const matchesPoints = Number.isFinite(minPoints) && filters.points.trim() !== ''
+    const matchesMinPoints = Number.isFinite(minPoints) && filters.minPoints.trim() !== ''
       ? trainer.totalPoints >= minPoints
       : true;
+    const matchesMaxPoints = Number.isFinite(maxPoints) && filters.maxPoints.trim() !== ''
+      ? trainer.totalPoints <= maxPoints
+      : true;
 
-    return matchesTrainerName && matchesPoints;
+    return matchesTrainerName && matchesMinPoints && matchesMaxPoints;
   });
 
   return sortTrainers(filtered, sort.sortBy, sort.sortOrder);
@@ -331,7 +357,8 @@ const ShinyShowcase = ({
 
   const activeFilterCount = [
     filters.trainerName,
-    filters.points,
+    filters.minPoints,
+    filters.maxPoints,
     filters.pokemonName,
     filters.encounterType,
     filters.catchDateAfter,
@@ -435,12 +462,22 @@ const ShinyShowcase = ({
                     />
                   </label>
                   <label className="text-sm text-gray-700 dark:text-gray-300">
-                    Points (minimum)
+                    Minimum Points
                     <input
                       type="number"
                       min="0"
-                      value={draftFilters.points}
-                      onChange={(e) => setDraftFilters({ ...draftFilters, points: e.target.value })}
+                      value={draftFilters.minPoints}
+                      onChange={(e) => setDraftFilters({ ...draftFilters, minPoints: e.target.value })}
+                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    />
+                  </label>
+                  <label className="text-sm text-gray-700 dark:text-gray-300">
+                    Maximum Points
+                    <input
+                      type="number"
+                      min="0"
+                      value={draftFilters.maxPoints}
+                      onChange={(e) => setDraftFilters({ ...draftFilters, maxPoints: e.target.value })}
                       className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   </label>
@@ -547,6 +584,7 @@ const ShinyShowcase = ({
                     >
                       <option value="number_ot">Number OT</option>
                       <option value="points">Points</option>
+                      <option value="points_per_num_ot">Average Points/Shiny</option>
                     </select>
                   </label>
                   <label className="text-sm text-gray-700 dark:text-gray-300">

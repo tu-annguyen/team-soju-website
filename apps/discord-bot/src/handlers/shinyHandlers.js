@@ -17,7 +17,14 @@ const {
 const fetchClient = require('../fetchClient');
 const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, SHINY_STATUS_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
-const { capitalize, getNationalNumber, getSpriteUrl, getPokemonVariants } = require('@team-soju/utils');
+const {
+  capitalize,
+  getKnownPokemonNames,
+  getPokemonEvolutionLine,
+  getNationalNumber,
+  getSpriteUrl,
+  getPokemonVariants,
+} = require('@team-soju/utils');
 
 const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
 const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL || apiBaseUrl;
@@ -39,9 +46,44 @@ const SPECIAL_CHOICES = [
 ];
 const STATUS_CHOICES = SHINY_STATUS_CHOICES;
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
+const MAX_AUTOCOMPLETE_CHOICES = 25;
+const KNOWN_POKEMON_NAMES = getKnownPokemonNames();
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${botToken}` } };
+}
+
+function formatPokemonAutocompleteLabel(name) {
+  return String(name || '')
+    .trim()
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function getPokemonAutocompleteChoices(query) {
+  const normalizedQuery = String(query || '').trim().toLowerCase();
+  const matches = KNOWN_POKEMON_NAMES.filter(name => {
+    if (!normalizedQuery) return true;
+    return name.includes(normalizedQuery);
+  }).slice(0, MAX_AUTOCOMPLETE_CHOICES);
+
+  return matches.map(name => ({
+    name: formatPokemonAutocompleteLabel(name).slice(0, 100),
+    value: name,
+  }));
+}
+
+async function handlePokemonAutocomplete(interaction) {
+  const focusedOption = interaction.options.getFocusedOption();
+
+  if (focusedOption?.name !== 'pokemon') {
+    await interaction.respondAutocomplete([]);
+    return;
+  }
+
+  await interaction.respondAutocomplete(getPokemonAutocompleteChoices(interaction.options.getFocused(true)));
 }
 
 function normalizeVariantSlug(value) {
@@ -111,6 +153,15 @@ function getVariantValue(shiny) {
 
 function getStatusValue(shiny) {
   return shiny?.status || 'Owned';
+}
+
+function normalizePageSize(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue < 1) {
+    return PAGE_SIZE_FALLBACK;
+  }
+
+  return Math.min(Math.floor(numericValue), MAX_SHINY_SELECT_OPTIONS);
 }
 
 function getMemberRoles(interaction) {
@@ -303,7 +354,7 @@ function buildCustomId(kind, action, state = {}) {
   const scope = encodeScope(state.scope);
   const trainerId = state.trainerId || '_';
   const page = state.page || 1;
-  const pageSize = state.pageSize || PAGE_SIZE_FALLBACK;
+  const pageSize = normalizePageSize(state.pageSize);
   const shinyId = state.shinyId || '_';
   return [COMPONENT_PREFIX, kind, action, scope, trainerId, page, pageSize, shinyId].join(':');
 }
@@ -320,7 +371,7 @@ function parseCustomId(customId) {
     scope: decodeScope(scopeCode),
     trainerId: trainerId === '_' ? null : trainerId,
     page: Number(page) || 1,
-    pageSize: Number(pageSize) || PAGE_SIZE_FALLBACK,
+    pageSize: normalizePageSize(pageSize),
     shinyId: shinyId === '_' ? null : shinyId,
   };
 }
@@ -570,57 +621,45 @@ function buildChoiceOptions(choices, currentValue) {
   });
 }
 
-function parseBooleanSelection(value) {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return undefined;
-}
+function buildAdvancedFieldModal(shiny, field) {
+  const fieldConfigs = {
+    catch_date: {
+      label: 'Catch date (YYYY-MM-DD)',
+      value: shiny.catch_date || '',
+      customId: 'catch_date',
+      title: 'Advanced Text Fields',
+    },
+    encounters: {
+      label: 'Encounters (total,species)',
+      value: `${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`,
+      customId: 'encounters',
+      title: 'Advanced Text Fields',
+    },
+    ivs: {
+      label: 'IVs (hp,atk,def,spa,spd,spe)',
+      value: buildIvString(shiny),
+      customId: 'ivs',
+      title: 'Advanced Text Fields',
+    },
+  };
 
-function buildEditModal(shiny) {
+  const config = fieldConfigs[field];
+  if (!config) {
+    throw new Error('Unknown advanced text field.');
+  }
+
   const modal = new ModalBuilder()
-    .setCustomId([MODAL_PREFIX, 'edit', shiny.id].join(':'))
-    .setTitle(`Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
+    .setCustomId([MODAL_PREFIX, 'advanced', field, shiny.id].join(':'))
+    .setTitle(config.title);
 
   const rows = [
     new ActionRowBuilder().addComponents(
       new TextInputBuilder()
-        .setCustomId('pokemon')
-        .setLabel('Pokemon')
+        .setCustomId(config.customId)
+        .setLabel(config.label)
         .setStyle(TextInputStyle.Short)
         .setRequired(false)
-        .setValue(shiny.pokemon || '')
-    ),
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId('catch_date')
-        .setLabel('Catch date (YYYY-MM-DD)')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(false)
-        .setValue(shiny.catch_date || '')
-    ),
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId('nature')
-        .setLabel('Nature')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(false)
-        .setValue(shiny.nature || '')
-    ),
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId('ivs')
-        .setLabel('IVs (hp,atk,def,spa,spd,spe)')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(false)
-        .setValue(buildIvString(shiny))
-    ),
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId('encounters')
-        .setLabel('Encounters (total,species)')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(false)
-        .setValue(`${shiny.total_encounters ?? ''},${shiny.species_encounters ?? ''}`)
+        .setValue(config.value)
     ),
   ];
 
@@ -629,67 +668,227 @@ function buildEditModal(shiny) {
   return modal;
 }
 
+function buildPickerButton(customId, label, {
+  style = ButtonStyle.Secondary,
+  disabled = false,
+} = {}) {
+  return new ButtonBuilder()
+    .setCustomId(customId)
+    .setLabel(label)
+    .setStyle(style)
+    .setDisabled(disabled);
+}
+
+function buildPokemonPickerSelectCustomId(shinyId) {
+  return `${COMPONENT_PREFIX}:pk:pick:${shinyId}`;
+}
+
+function parsePokemonPickerCustomId(customId) {
+  const [, kind, action, shinyId] = String(customId || '').split(':');
+  if (kind !== 'pk') {
+    throw new Error('Unknown Pokemon picker interaction.');
+  }
+
+  return {
+    action,
+    shinyId,
+  };
+}
+
+function buildFieldPickerCustomId(field, action, shinyId) {
+  return `${COMPONENT_PREFIX}:fp:${field}:${action}:${shinyId}`;
+}
+
+function parseFieldPickerCustomId(customId) {
+  const [, kind, field, action, shinyId] = String(customId || '').split(':');
+  if (kind !== 'fp') {
+    throw new Error('Unknown field picker interaction.');
+  }
+
+  return { field, action, shinyId };
+}
+
+function buildVariantPickerCustomId(action, shinyId) {
+  return `${COMPONENT_PREFIX}:vp:${action}:${shinyId}`;
+}
+
+function parseVariantPickerCustomId(customId) {
+  const [, kind, action, shinyId] = String(customId || '').split(':');
+  if (kind !== 'vp') {
+    throw new Error('Unknown variant picker interaction.');
+  }
+
+  return { action, shinyId };
+}
+
+function buildAdvancedFieldButtonCustomId(field, shinyId) {
+  return `${COMPONENT_PREFIX}:tm:${field}:${shinyId}`;
+}
+
 async function buildEditControlsPayload(interaction, state, content = null) {
   const shiny = await fetchShinyById(state.shinyId);
-  const payload = await buildShinyDisplayPayload(shiny, `Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
   const variantSelection = await getVariantSelectionConfig(shiny.pokemon || shiny.pokemon_name);
-  payload.content = content || [
-    variantSelection
-      ? 'Use "Edit Text Fields" for pokemon, catch date, nature, encounters, and IVs.'
-      : 'Use "Edit Text Fields" for pokemon, catch date, encounters, and IVs.',
-  ].join('\n');
-  const components = [
+  const payload = await buildShinyDisplayPayload(shiny, `Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
+  payload.content = content || 'Choose a field to edit.';
+  payload.components = [
     new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(buildCustomId('e', 't', state))
-        .setPlaceholder('Encounter Type')
-        .setMinValues(1)
-        .setMaxValues(1)
-        .addOptions(buildChoiceOptions(ENCOUNTER_TYPE_CHOICES, shiny.encounter_type))
-    ),
-    ...(!variantSelection ? [new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(buildCustomId('e', 'n', state))
-        .setPlaceholder('Nature')
-        .setMinValues(1)
-        .setMaxValues(1)
-        .addOptions(buildChoiceOptions(NATURE_CHOICES, shiny.nature))
-    )] : []),
-    ...(variantSelection ? [buildVariantSelectorRow(
-      shiny.id,
-      variantSelection,
-      shiny.variants,
-      state
-    )] : []),
-    new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(buildCustomId('e', 'v', state))
-        .setPlaceholder('Variant')
-        .setMinValues(1)
-        .setMaxValues(1)
-        .addOptions(buildChoiceOptions(SPECIAL_CHOICES, getVariantValue(shiny)))
+      buildPickerButton(buildFieldPickerCustomId('pokemon', 'open', shiny.id), 'Pokemon', { style: ButtonStyle.Primary }),
+      buildPickerButton(buildVariantPickerCustomId('open', shiny.id), 'Variant', {
+        style: ButtonStyle.Primary,
+        disabled: !variantSelection,
+      })
     ),
     new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(buildCustomId('e', 'f', state))
-        .setPlaceholder('Status')
-        .setMinValues(1)
-        .setMaxValues(1)
-        .addOptions(buildChoiceOptions(STATUS_CHOICES, getStatusValue(shiny)))
+      buildPickerButton(buildFieldPickerCustomId('encounter_type', 'open', shiny.id), 'Encounter Type'),
+      buildPickerButton(buildFieldPickerCustomId('status', 'open', shiny.id), 'Status'),
+      buildPickerButton(buildFieldPickerCustomId('nature', 'open', shiny.id), 'Nature')
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(buildCustomId('m', 'o', state))
-        .setLabel('Edit Text Fields')
-        .setStyle(ButtonStyle.Primary),
+      buildPickerButton(buildAdvancedFieldButtonCustomId('catch_date', shiny.id), 'Catch Date'),
+      buildPickerButton(buildAdvancedFieldButtonCustomId('encounters', shiny.id), 'Encounters'),
+      buildPickerButton(buildAdvancedFieldButtonCustomId('ivs', shiny.id), 'IVs')
+    ),
+    new ActionRowBuilder().addComponents(
+      buildPickerButton(buildFieldPickerCustomId('special', 'open', shiny.id), 'Secret/Alpha'),
       new ButtonBuilder()
         .setCustomId(buildCustomId('d', 'b', state))
         .setLabel('Back')
         .setStyle(ButtonStyle.Secondary)
     ),
   ];
-  payload.components = components;
   return payload;
+}
+
+async function buildPokemonPickerPayload(shinyId, content = null) {
+  const shiny = await fetchShinyById(shinyId);
+  const evolutionLine = await getPokemonEvolutionLine(shiny.pokemon || shiny.pokemon_name);
+  const normalizedCurrentPokemon = String(shiny.pokemon || shiny.pokemon_name || '').trim().toLowerCase();
+  const options = [...new Set((evolutionLine || []).filter(Boolean))];
+
+  if (!options.includes(normalizedCurrentPokemon) && normalizedCurrentPokemon) {
+    options.unshift(normalizedCurrentPokemon);
+  }
+
+  return {
+    content: content || `Choose a Pokemon from the ${capitalize(shiny.pokemon_name || shiny.pokemon)} evolution line.`,
+    embeds: (await buildShinyDisplayPayload(shiny, 'Choose Pokemon')).embeds,
+    components: [
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(buildPokemonPickerSelectCustomId(shinyId))
+          .setPlaceholder('Select Pokemon')
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addOptions(options.map(name => ({
+            label: formatPokemonAutocompleteLabel(name).slice(0, 100),
+            value: name,
+            default: name === String(shiny.pokemon || '').trim().toLowerCase(),
+          })))
+      ),
+      new ActionRowBuilder().addComponents(
+        buildPickerButton(buildCustomId('a', 'e', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }), 'Back')
+      ),
+    ],
+  };
+}
+
+async function buildVariantPickerPayload(shinyId, content = null) {
+  const shiny = await fetchShinyById(shinyId);
+  const variantSelection = await getVariantSelectionConfig(shiny.pokemon || shiny.pokemon_name);
+  if (!variantSelection) {
+    return buildEditControlsPayload(null, { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }, 'This Pokemon has no alternate variants.');
+  }
+
+  return {
+    content: content || 'Choose a variant.',
+    embeds: (await buildShinyDisplayPayload(shiny, 'Choose Variant')).embeds,
+    components: [
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(buildVariantPickerCustomId('pick', shiny.id))
+          .setPlaceholder('Select Variant')
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addOptions(variantSelection.entries.map(entry => ({
+            label: humanizeVariantLabel(entry.label || entry.value).slice(0, 100),
+            value: entry.value,
+            default: entry.value === (normalizeVariantSlug(shiny.variants) || variantSelection.defaultEntry.value),
+            ...(entry.is_default ? { description: 'Default form' } : {}),
+          })))
+      ),
+      new ActionRowBuilder().addComponents(
+        buildPickerButton(buildCustomId('a', 'e', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }), 'Back')
+      ),
+    ],
+  };
+}
+
+function getFieldPickerConfig(field, shiny) {
+  const configs = {
+    encounter_type: {
+      title: 'Choose Encounter Type',
+      placeholder: 'Encounter Type',
+      currentValue: shiny.encounter_type,
+      choices: ENCOUNTER_TYPE_CHOICES,
+      toUpdates: (value) => ({ encounter_type: normalizeEncounterType(value) }),
+    },
+    status: {
+      title: 'Choose Status',
+      placeholder: 'Status',
+      currentValue: getStatusValue(shiny),
+      choices: STATUS_CHOICES,
+      toUpdates: (value) => ({ status: value }),
+    },
+    nature: {
+      title: 'Choose Nature',
+      placeholder: 'Nature',
+      currentValue: shiny.nature,
+      choices: NATURE_CHOICES,
+      toUpdates: (value) => ({ nature: String(value || '').toLowerCase() }),
+    },
+    special: {
+      title: 'Choose Secret/Alpha',
+      placeholder: 'Secret/Alpha',
+      currentValue: getVariantValue(shiny),
+      choices: SPECIAL_CHOICES,
+      toUpdates: (value) => ({
+        is_secret: value === 'secret' || value === 'secret_alpha',
+        is_alpha: value === 'alpha' || value === 'secret_alpha',
+      }),
+    },
+  };
+
+  return configs[field] || null;
+}
+
+async function buildFieldPickerPayload(field, shinyId, content = null) {
+  if (field === 'pokemon') {
+    return buildPokemonPickerPayload(shinyId, content);
+  }
+
+  const shiny = await fetchShinyById(shinyId);
+  const config = getFieldPickerConfig(field, shiny);
+  if (!config) {
+    throw new Error('Unknown field picker.');
+  }
+
+  return {
+    content: content || 'Choose a value.',
+    embeds: (await buildShinyDisplayPayload(shiny, config.title)).embeds,
+    components: [
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(buildFieldPickerCustomId(field, 'pick', shinyId))
+          .setPlaceholder(config.placeholder)
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addOptions(buildChoiceOptions(config.choices, config.currentValue))
+      ),
+      new ActionRowBuilder().addComponents(
+        buildPickerButton(buildCustomId('a', 'e', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }), 'Back')
+      ),
+    ],
+  };
 }
 
 async function updateShinyRecord(shinyId, updates) {
@@ -858,17 +1057,18 @@ async function buildListPayload(interaction, state, content = null) {
     return { content: content || 'No shinies found', embeds: [], components: [] };
   }
 
-  const page = clampPage(state.page, state.pageSize, shinies);
-  const selectedId = getSelectedShinyForPage(shinies, page, state.pageSize, state.shinyId);
-  const totalPages = Math.ceil(shinies.length / state.pageSize) || 1;
-  const startIndex = (page - 1) * state.pageSize;
-  const pageItems = shinies.slice(startIndex, startIndex + state.pageSize);
-  const normalizedState = { ...state, trainerId, page, shinyId: selectedId };
+  const pageSize = normalizePageSize(state.pageSize);
+  const page = clampPage(state.page, pageSize, shinies);
+  const selectedId = getSelectedShinyForPage(shinies, page, pageSize, state.shinyId);
+  const totalPages = Math.ceil(shinies.length / pageSize) || 1;
+  const startIndex = (page - 1) * pageSize;
+  const pageItems = shinies.slice(startIndex, startIndex + pageSize);
+  const normalizedState = { ...state, trainerId, page, pageSize, shinyId: selectedId };
   const allowMutation = hasAnyRole(interaction, SHINY_MANAGER_ROLES);
 
   return {
     content,
-    embeds: [buildShiniesEmbed(shinies, page, state.pageSize, title)],
+    embeds: [buildShiniesEmbed(shinies, page, pageSize, title)],
     components: [
       buildPaginationRow(page, totalPages, normalizedState),
       buildSelectRow(pageItems, normalizedState),
@@ -1159,7 +1359,7 @@ async function handleGetShinies(interaction) {
   await interaction.deferReply();
 
   const trainerIgn = interaction.options.getString('trainer');
-  const pageSize = interaction.options.getInteger('limit') || PAGE_SIZE_FALLBACK;
+  const pageSize = normalizePageSize(interaction.options.getInteger('limit'));
 
   try {
     const state = { scope: trainerIgn ? 'trainer' : 'all', page: 1, pageSize };
@@ -1178,7 +1378,7 @@ async function handleGetShinies(interaction) {
 async function handleGetMyShinies(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const pageSize = interaction.options.getInteger('limit') || PAGE_SIZE_FALLBACK;
+  const pageSize = normalizePageSize(interaction.options.getInteger('limit'));
 
   try {
     await interaction.editReply(await buildListPayload(interaction, {
@@ -1195,9 +1395,98 @@ async function handleGetMyShinies(interaction) {
 }
 
 async function handleShinyComponent(interaction) {
-  const state = parseCustomId(interaction.customId);
-
   try {
+    if (String(interaction.customId || '').startsWith(`${COMPONENT_PREFIX}:pk:`)) {
+      const pokemonPicker = parsePokemonPickerCustomId(interaction.customId);
+      await requireOwnedShiny(interaction, pokemonPicker.shinyId);
+
+      if (pokemonPicker.action === 'pick') {
+        const pokemon = String(interaction.values[0] || '').trim().toLowerCase();
+        const nationalNumber = await getNationalNumber(pokemon);
+        if (!nationalNumber) {
+          throw new Error(`Could not find national number for Pokemon "${pokemon}"`);
+        }
+
+        await updateShinyRecord(pokemonPicker.shinyId, {
+          pokemon,
+          national_number: nationalNumber,
+        });
+        await interaction.update(await buildEditControlsPayload(interaction, {
+          scope: 'all',
+          page: 1,
+          pageSize: PAGE_SIZE_FALLBACK,
+          shinyId: pokemonPicker.shinyId,
+        }, 'Pokemon updated.'));
+        return;
+      }
+    }
+
+    if (String(interaction.customId || '').startsWith(`${COMPONENT_PREFIX}:vp:`)) {
+      const variantPicker = parseVariantPickerCustomId(interaction.customId);
+      await requireOwnedShiny(interaction, variantPicker.shinyId);
+
+      if (variantPicker.action === 'open') {
+        await interaction.update(await buildVariantPickerPayload(variantPicker.shinyId));
+        return;
+      }
+
+      if (variantPicker.action === 'pick') {
+        const selectedVariant = normalizeVariantSlug(interaction.values[0]);
+        if (!selectedVariant) {
+          throw new Error('Select a variant first.');
+        }
+
+        await updateShinyRecord(variantPicker.shinyId, { variants: selectedVariant });
+        await interaction.update(await buildEditControlsPayload(interaction, {
+          scope: 'all',
+          page: 1,
+          pageSize: PAGE_SIZE_FALLBACK,
+          shinyId: variantPicker.shinyId,
+        }, 'Variant updated.'));
+        return;
+      }
+    }
+
+    if (String(interaction.customId || '').startsWith(`${COMPONENT_PREFIX}:fp:`)) {
+      const fieldPicker = parseFieldPickerCustomId(interaction.customId);
+      await requireOwnedShiny(interaction, fieldPicker.shinyId);
+
+      if (fieldPicker.action === 'open') {
+        await interaction.update(await buildFieldPickerPayload(fieldPicker.field, fieldPicker.shinyId));
+        return;
+      }
+
+      if (fieldPicker.action === 'pick') {
+        if (fieldPicker.field === 'pokemon') {
+          throw new Error('Pokemon picker must use the Pokemon browser.');
+        }
+
+        const shiny = await fetchShinyById(fieldPicker.shinyId);
+        const config = getFieldPickerConfig(fieldPicker.field, shiny);
+        if (!config) {
+          throw new Error('Unknown field picker.');
+        }
+
+        await updateShinyRecord(fieldPicker.shinyId, config.toUpdates(interaction.values[0]));
+        await interaction.update(await buildEditControlsPayload(interaction, {
+          scope: 'all',
+          page: 1,
+          pageSize: PAGE_SIZE_FALLBACK,
+          shinyId: fieldPicker.shinyId,
+        }, 'Shiny updated.'));
+        return;
+      }
+    }
+
+    if (String(interaction.customId || '').startsWith(`${COMPONENT_PREFIX}:tm:`)) {
+      const [, , field, shinyId] = String(interaction.customId || '').split(':');
+      const shiny = await requireOwnedShiny(interaction, shinyId);
+      await interaction.showModal(buildAdvancedFieldModal(shiny, field));
+      return;
+    }
+
+    const state = parseCustomId(interaction.customId);
+
     if (state.kind === 's') {
       state.shinyId = interaction.values[0];
       await interaction.update(await buildListPayload(interaction, state));
@@ -1260,7 +1549,7 @@ async function handleShinyComponent(interaction) {
 
     if (state.kind === 'm' && state.action === 'o') {
       const shiny = await requireOwnedShiny(interaction, state.shinyId);
-      await interaction.showModal(buildEditModal(shiny));
+      await interaction.showModal(buildAdvancedFieldModal(shiny, 'catch_date'));
       return;
     }
 
@@ -1310,36 +1599,20 @@ function isShinyComponent(customId) {
 }
 
 async function handleShinyEditModal(interaction) {
-  const [, action, shinyId] = String(interaction.customId || '').split(':');
-  if (action !== 'edit') {
+  const [, action, field, shinyId] = String(interaction.customId || '').split(':');
+  if (action !== 'advanced') {
     throw new Error('Unknown shiny modal.');
   }
 
   try {
     await requireOwnedShiny(interaction, shinyId);
 
-    const pokemon = interaction.fields.getTextInputValue('pokemon')?.trim();
-    const catchDate = interaction.fields.getTextInputValue('catch_date')?.trim();
-  const nature = interaction.fields.getTextInputValue('nature')?.trim();
-  const ivs = interaction.fields.getTextInputValue('ivs')?.trim();
-  const encounters = interaction.fields.getTextInputValue('encounters')?.trim();
-
     const updates = {};
+    const value = interaction.fields.getTextInputValue(field)?.trim();
 
-    if (pokemon) {
-      updates.pokemon = pokemon;
-      const nationalNumber = await getNationalNumber(pokemon);
-      if (!nationalNumber) {
-        await interaction.reply({ content: `Error: Could not find national number for Pokemon "${pokemon}"`, flags: MessageFlags.Ephemeral });
-        return;
-      }
-      updates.national_number = nationalNumber;
-    }
-
-    if (catchDate) updates.catch_date = catchDate;
-    if (nature) updates.nature = normalizeNatureInput(nature);
-    if (ivs) Object.assign(updates, parseIvInput(ivs));
-    if (encounters) Object.assign(updates, parseEncounterInput(encounters));
+    if (field === 'catch_date' && value) updates.catch_date = value;
+    if (field === 'ivs' && value) Object.assign(updates, parseIvInput(value));
+    if (field === 'encounters' && value) Object.assign(updates, parseEncounterInput(value));
 
     if (Object.keys(updates).length === 0) {
       await interaction.reply({ content: 'No updates provided.', flags: MessageFlags.Ephemeral });
@@ -1355,7 +1628,7 @@ async function handleShinyEditModal(interaction) {
 }
 
 function isShinyEditModal(customId) {
-  return String(customId || '').startsWith(`${MODAL_PREFIX}:edit:`);
+  return String(customId || '').startsWith(`${MODAL_PREFIX}:advanced:`);
 }
 
 module.exports = {
@@ -1366,6 +1639,7 @@ module.exports = {
   handleEditShiny,
   handleFailShiny,
   handleGetMyShinies,
+  handlePokemonAutocomplete,
   handleGetShinies,
   handleGetShiny,
   handleShinyComponent,

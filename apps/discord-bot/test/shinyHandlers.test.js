@@ -10,13 +10,22 @@ jest.mock('@team-soju/utils', () => ({
     const normalized = String(value || '').trim();
     return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
   }),
+  getKnownPokemonNames: jest.fn(() => [
+    'charizard',
+    'charmander',
+    'charmeleon',
+    'chimchar',
+    'nidoran-f',
+    'nidoran-m',
+  ]),
   getNationalNumber: jest.fn().mockResolvedValue(1),
+  getPokemonEvolutionLine: jest.fn().mockResolvedValue(['charmander', 'charmeleon', 'charizard']),
   getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
   getPokemonVariants: jest.fn(),
 }));
 
 const fetchClient = require('../src/fetchClient');
-const { getPokemonVariants, getSpriteUrl } = require('@team-soju/utils');
+const { getPokemonEvolutionLine, getPokemonVariants, getSpriteUrl } = require('@team-soju/utils');
 const localUtils = require('../src/utils');
 const {
   enhanceAsyncScreenshotPayload,
@@ -27,6 +36,7 @@ const {
   handleGetShiny,
   handleGetShinies,
   handleGetMyShinies,
+  handlePokemonAutocomplete,
   handleShinyComponent,
   handleShinyEditModal,
 } = require('../src/handlers/shinyHandlers');
@@ -43,6 +53,7 @@ describe('shinyHandlers', () => {
     fetchClient.put.mockReset();
     fetchClient.delete.mockReset();
     getSpriteUrl.mockResolvedValue('https://example.com/sprite.gif');
+    getPokemonEvolutionLine.mockResolvedValue(['charmander', 'charmeleon', 'charizard']);
     getPokemonVariants.mockResolvedValue({
       variants: ['dratini'],
       entries: [{ value: 'dratini', label: 'dratini', is_default: true }],
@@ -78,6 +89,30 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('returns pokemon autocomplete suggestions from the known list', async () => {
+    const interaction = createMockInteraction({
+      isChatInputCommand: jest.fn().mockReturnValue(false),
+      isAutocomplete: jest.fn().mockReturnValue(true),
+      respondAutocomplete: jest.fn().mockResolvedValue(undefined),
+    });
+
+    interaction.options.getFocused = jest.fn().mockReturnValue('char');
+    interaction.options.getFocusedOption = jest.fn().mockReturnValue({
+      name: 'pokemon',
+      value: 'char',
+      focused: true,
+    });
+
+    await handlePokemonAutocomplete(interaction);
+
+    expect(interaction.respondAutocomplete).toHaveBeenCalledWith([
+      { name: 'Charizard', value: 'charizard' },
+      { name: 'Charmander', value: 'charmander' },
+      { name: 'Charmeleon', value: 'charmeleon' },
+      { name: 'Chimchar', value: 'chimchar' },
+    ]);
+  });
+
   it('renders linked member shinies for myshinies as ephemeral', async () => {
     const interaction = createMockInteraction({
       user: { id: 'discord-user' },
@@ -101,6 +136,32 @@ describe('shinyHandlers', () => {
         components: expect.any(Array),
       })
     );
+  });
+
+  it('clamps oversized shiny list limits to 25 select options', async () => {
+    const interaction = createMockInteraction({
+      options: { trainer: 'tester', limit: 30 },
+    });
+
+    const shinyRows = Array.from({ length: 30 }, (_, index) => ({
+      id: String(index + 1),
+      pokemon_name: `Pokemon ${index + 1}`,
+      trainer_name: 'Tester',
+      catch_date: `2026-01-${String(30 - index).padStart(2, '0')}`,
+      total_encounters: index + 1,
+    }));
+
+    fetchClient.get
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id' } } })
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id', ign: 'tester' } } })
+      .mockResolvedValueOnce({ data: { data: shinyRows } });
+
+    await handleGetShinies(interaction);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+
+    expect(payload.components[1].components[0].options).toHaveLength(25);
+    expect(payload.embeds[0].data.footer.text).toBe('Page 1 of 2');
   });
 
   it('updates the list when a shiny is selected', async () => {
@@ -169,27 +230,41 @@ describe('shinyHandlers', () => {
 
     expect(interaction.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        content: 'Use "Edit Text Fields" for pokemon, catch date, nature, encounters, and IVs.',
+        content: 'Choose a field to edit.',
         embeds: expect.any(Array),
         components: expect.arrayContaining([
           expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:t:a:_:1:10:selected-id' })]),
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: 'sh:fp:pokemon:open:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:vp:open:selected-id' }),
+            ]),
           }),
           expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:r:v:a:_:1:10:selected-id' })]),
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: 'sh:fp:encounter_type:open:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:fp:status:open:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:fp:nature:open:selected-id' }),
+            ]),
           }),
           expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:v:a:_:1:10:selected-id' })]),
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: 'sh:tm:catch_date:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:tm:encounters:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:tm:ivs:selected-id' }),
+            ]),
           }),
           expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:f:a:_:1:10:selected-id' })]),
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: 'sh:fp:special:open:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:d:b:a:_:1:10:selected-id' }),
+            ]),
           }),
         ]),
       })
     );
   });
 
-  it('keeps the nature dropdown in edit controls when the pokemon has no variants', async () => {
+  it('disables the variant button when the pokemon has no variants', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:a:e:a:_:1:10:selected-id',
       member: { roles: { cache: [{ name: 'Champion' }] } },
@@ -216,20 +291,14 @@ describe('shinyHandlers', () => {
 
     await handleShinyComponent(interaction);
 
-    expect(interaction.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        components: expect.arrayContaining([
-          expect.objectContaining({
-            components: expect.arrayContaining([expect.objectContaining({ custom_id: 'sh:e:n:a:_:1:10:selected-id' })]),
-          }),
-        ]),
-      })
-    );
+    const payload = interaction.update.mock.calls[0][0];
+    const variantButton = payload.components[0].components.find(component => component.custom_id === 'sh:vp:open:selected-id');
+    expect(variantButton.disabled).toBe(true);
   });
 
-  it('opens the text edit modal from the edit controls', async () => {
+  it('opens the catch date advanced modal from the edit controls', async () => {
     const interaction = createMockInteraction({
-      customId: 'sh:m:o:a:_:1:10:selected-id',
+      customId: 'sh:tm:catch_date:selected-id',
       member: { roles: { cache: [{ name: 'Champion' }] } },
       showModal: jest.fn().mockResolvedValue(undefined),
     });
@@ -258,23 +327,72 @@ describe('shinyHandlers', () => {
 
     expect(interaction.showModal).toHaveBeenCalled();
     const modal = interaction.showModal.mock.calls[0][0].toJSON();
-    expect(modal.components).toHaveLength(5);
-    expect(modal.components.some(row => row.components.some(component => component.custom_id === 'pokemon'))).toBe(true);
-    expect(modal.components.some(row => row.components.some(component => component.custom_id === 'encounters'))).toBe(true);
-    expect(modal.components.some(row => row.components.some(component => component.custom_id === 'nature'))).toBe(true);
-    expect(modal.components.find(row => row.components[0].custom_id === 'encounters').components[0].value).toBe('1234,567');
-    expect(modal.components.find(row => row.components[0].custom_id === 'ivs').components[0].value).toBe('1,2,3,4,5,6');
+    expect(modal.title).toBe('Advanced Text Fields');
+    expect(modal.components).toHaveLength(1);
+    expect(modal.components[0].components[0].custom_id).toBe('catch_date');
   });
 
-  it('updates a shiny from edit dropdown selection', async () => {
+  it('opens the encounter type picker from the edit controls', async () => {
     const interaction = createMockInteraction({
-      customId: 'sh:e:t:a:_:1:10:selected-id',
+      customId: 'sh:fp:encounter_type:open:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          trainer_name: 'T1',
+          encounter_type: 'single',
+          nature: 'Bold',
+          is_secret: false,
+          is_alpha: false,
+        },
+      },
+    });
+
+    await handleShinyComponent(interaction);
+
+    expect(interaction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeds: expect.any(Array),
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: 'sh:fp:encounter_type:pick:selected-id' }),
+            ]),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it('updates a shiny from edit picker selection', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:fp:encounter_type:pick:selected-id',
       member: { roles: { cache: [{ name: 'Champion' }] } },
       values: ['x5_horde'],
       update: jest.fn().mockResolvedValue(undefined),
     });
 
     fetchClient.get
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            pokemon: 'pikachu',
+            pokemon_name: 'Pikachu',
+            trainer_name: 'T1',
+            encounter_type: 'single',
+            nature: 'Bold',
+            is_secret: false,
+            is_alpha: false,
+          },
+        },
+      })
       .mockResolvedValueOnce({
         data: {
           data: {
@@ -333,16 +451,111 @@ describe('shinyHandlers', () => {
     );
   });
 
-  it('updates a shiny from modal submission', async () => {
+  it('opens the pokemon picker from the edit controls', async () => {
     const interaction = createMockInteraction({
-      customId: 'shm:edit:selected-id',
+      customId: 'sh:fp:pokemon:open:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+    getPokemonEvolutionLine.mockResolvedValue(['chimchar', 'monferno', 'infernape']);
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'chimchar',
+          pokemon_name: 'Chimchar',
+          trainer_name: 'T1',
+          national_number: 390,
+        },
+      },
+    });
+
+    await handleShinyComponent(interaction);
+
+    const payload = interaction.update.mock.calls[0][0];
+    expect(payload.content).toBe('Choose a Pokemon from the Chimchar evolution line.');
+    expect(payload.components[0].components[0].custom_id).toBe('sh:pk:pick:selected-id');
+    expect(payload.components[0].components[0].options).toEqual(expect.arrayContaining([
+      expect.objectContaining({ value: 'chimchar', default: true }),
+      expect.objectContaining({ value: 'infernape', default: false }),
+    ]));
+  });
+
+  it('updates a shiny from pokemon picker selection', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:pk:pick:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      values: ['charizard'],
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            pokemon: 'pikachu',
+            pokemon_name: 'Pikachu',
+            trainer_name: 'T1',
+            national_number: 25,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            pokemon: 'charizard',
+            pokemon_name: 'Charizard',
+            trainer_name: 'T1',
+            national_number: 6,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            id: 'selected-id',
+            pokemon: 'charizard',
+            pokemon_name: 'Charizard',
+            trainer_name: 'T1',
+            national_number: 6,
+          },
+        },
+      });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'charizard',
+          pokemon_name: 'Charizard',
+          trainer_name: 'T1',
+          national_number: 6,
+        },
+      },
+    });
+
+    await handleShinyComponent(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({ pokemon: 'charizard', national_number: 1 }),
+      expect.any(Object)
+    );
+    expect(interaction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'Pokemon updated.',
+      })
+    );
+  });
+
+  it('updates a shiny from advanced text modal submission', async () => {
+    const interaction = createMockInteraction({
+      customId: 'shm:advanced:encounters:selected-id',
       reply: jest.fn().mockResolvedValue(undefined),
       fields: {
         getTextInputValue: jest.fn((name) => ({
-          pokemon: 'pikachu',
-          catch_date: '2026-01-01',
-          nature: ' bold ',
-          ivs: '1,2,3,4,5,6',
           encounters: '10,5',
         }[name] || '')),
       },
@@ -381,12 +594,8 @@ describe('shinyHandlers', () => {
     expect(fetchClient.put).toHaveBeenCalledWith(
       expect.stringContaining('/shinies/selected-id'),
       expect.objectContaining({
-        catch_date: '2026-01-01',
         total_encounters: 10,
         species_encounters: 5,
-        iv_hp: 1,
-        iv_speed: 6,
-        nature: 'bold',
       }),
       expect.any(Object)
     );

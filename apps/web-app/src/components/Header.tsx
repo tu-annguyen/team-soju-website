@@ -1,10 +1,62 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
+import {
+  getClientLocale,
+  getLocaleOverrideUrl,
+  getLocaleParamPath,
+  getTranslations,
+  navigateToLocaleOverride,
+  type Locale,
+} from '../i18n';
 
-const Header = () => {
+const toolsLinks = [
+  {
+    href: '/feebas-tile-checker',
+    label: 'Feebas Tile Tracker',
+  },
+];
+
+const localeStorageKey = 'team-soju-locale';
+
+const languageOptions: Array<{ value: Locale; label: string; code: string }> = [
+  { value: 'en', label: 'English', code: 'EN' },
+  { value: 'es', label: 'Español', code: 'ES' },
+  { value: 'zh', label: '中文', code: 'ZH' },
+];
+
+type Props = {
+  locale?: Locale | string;
+  apiBaseUrl?: string;
+};
+
+type AuthUser = {
+  id: string;
+  email: string;
+  ign: string;
+};
+
+const Header = ({ locale, apiBaseUrl }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeLocale, setActiveLocale] = useState<Locale>(() => getClientLocale(locale));
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const normalizedApiBaseUrl = apiBaseUrl?.replace(/\/+$/, '');
+  const messages = getTranslations(activeLocale);
+  const homeHref = getLocaleParamPath('/', activeLocale);
+  const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', activeLocale);
+  const eventsHref = getLocaleParamPath('/events', activeLocale);
+  const toolsHref = getLocaleParamPath('/tools', activeLocale);
+  const discordHref = getLocaleParamPath('/discord', activeLocale);
+  const authHref = getLocaleParamPath('/auth', activeLocale);
+  const localizedToolLinks = toolsLinks.map((link) => ({
+    ...link,
+    href: getLocaleParamPath(link.href, activeLocale),
+  }));
+  const activeLanguageOption = languageOptions.find((option) => option.value === activeLocale) || languageOptions[0];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,6 +67,108 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    setActiveLocale(getClientLocale(locale));
+  }, [locale]);
+
+  useEffect(() => {
+    const handleAuthUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<AuthUser | null>;
+      setAuthUser(customEvent.detail || null);
+    };
+
+    window.addEventListener('team-soju-auth-updated', handleAuthUpdated);
+
+    return () => {
+      window.removeEventListener('team-soju-auth-updated', handleAuthUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!normalizedApiBaseUrl || typeof fetch !== 'function') {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadAuthUser() {
+      try {
+        const response = await fetch(`${normalizedApiBaseUrl}/auth/me`, {
+          credentials: 'include',
+        });
+        const body = await response.json();
+
+        if (isMounted && response.ok && body.success) {
+          setAuthUser(body.data || null);
+        }
+      } catch {
+        if (isMounted) {
+          setAuthUser(null);
+        }
+      }
+    }
+
+    loadAuthUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [normalizedApiBaseUrl]);
+
+  const handleLocaleChange = (nextLocale: Locale) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(localeStorageKey, nextLocale);
+    } catch {
+      // Ignore storage failures so navigation still works.
+    }
+
+    setActiveLocale(nextLocale);
+    setIsOpen(false);
+    setIsMobileToolsOpen(false);
+    setIsAccountMenuOpen(false);
+    setIsLanguageMenuOpen(false);
+    navigateToLocaleOverride(getLocaleOverrideUrl(window.location.href, nextLocale));
+  };
+
+  const handleSignOut = async () => {
+    if (normalizedApiBaseUrl && typeof fetch === 'function') {
+      try {
+        await fetch(`${normalizedApiBaseUrl}/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch {
+        // The local header state can still clear even if the network request fails.
+      }
+    }
+
+    setAuthUser(null);
+    setIsOpen(false);
+    setIsMobileToolsOpen(false);
+    setIsAccountMenuOpen(false);
+    window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: null }));
+  };
+
+  const UserIcon = () => (
+    <i className="fa-solid fa-user flex h-5 w-5 items-center justify-center" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-3.31 0-6 2.02-6 4.5 0 .83.67 1.5 1.5 1.5h9c.83 0 1.5-.67 1.5-1.5 0-2.48-2.69-4.5-6-4.5Z" />
+      </svg>
+    </i>
+  );
+
+  const LanguageIcon = () => (
+    <i className="fa-solid fa-language flex h-5 w-5 items-center justify-center" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+        <path d="M12.87 15.07 10.33 12.56l.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v1.99h11.17A15.7 15.7 0 0 1 9 11.35 15.58 15.58 0 0 1 6.69 8H4.69a17.52 17.52 0 0 0 2.98 4.55l-5.08 5.02L4 19l5-5 3.11 3.11.76-2.04ZM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12Zm-2.62 7 1.62-4.33L19.12 17h-3.24Z" />
+      </svg>
+    </i>
+  );
+
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -23,8 +177,8 @@ const Header = () => {
           : 'bg-transparent py-4'
       }`}
     >
-      <div className="container flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
+      <div className="container flex items-center justify-between min-[1010px]:grid min-[1010px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <a href={homeHref} className="flex items-center gap-2 min-[1010px]:justify-self-start">
           <img 
             src="/images/team-soju-icon.png" 
             alt="Team Soju Logo" 
@@ -36,51 +190,192 @@ const Header = () => {
         </a>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden min-[1010px]:flex min-[1010px]:justify-self-center items-center justify-center gap-6">
           <a 
-            href="/" 
+            href={homeHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Home
+            {messages.nav.home}
           </a>
           <a 
-            href="/shiny-showcase" 
+            href={shinyShowcaseHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Shiny Showcase
+            {messages.nav.shinyShowcase}
           </a>
           <a 
-            href="/events" 
+            href={eventsHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Events
+            {messages.nav.events}
           </a>
+          <div className="group relative">
+            <a
+              href={toolsHref}
+              className="flex items-center gap-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+              aria-haspopup="true"
+            >
+              {messages.nav.tools}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </a>
+            <div className="pointer-events-none absolute left-0 top-full pt-3 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+              <div className="min-w-56 rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/95">
+                {localizedToolLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="block rounded-xl px-4 py-3 text-sm font-medium text-gray-800 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-400"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
           <a 
             href="https://forums.pokemmo.com/index.php?/clubs/261-soj%C3%BC-sojusanctuary/" 
             target="_blank" 
             rel="noopener noreferrer"
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Forum
+            {messages.nav.forum}
           </a>
           <a 
-            href="/discord" 
+            href={discordHref} 
             className="font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
           >
-            Discord
+            {messages.nav.discord}
           </a>
-          <div className="ml-4">
-            <ThemeToggle />
-          </div>
         </nav>
 
+        <div className="hidden min-[1010px]:flex min-[1010px]:justify-self-end items-center gap-3">
+          {authUser ? (
+            <div className="relative">
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white/80 text-gray-800 transition-colors hover:border-primary-300 hover:text-primary-600 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-400"
+                aria-label={messages.nav.account}
+                aria-haspopup="menu"
+                aria-expanded={isAccountMenuOpen}
+                onClick={() => {
+                  setIsAccountMenuOpen((current) => !current);
+                  setIsLanguageMenuOpen(false);
+                }}
+              >
+                <UserIcon />
+              </button>
+              <AnimatePresence>
+                {isAccountMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.16 }}
+                    className="absolute right-0 top-full pt-3"
+                  >
+                    <div className="min-w-52 rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/95">
+                      <a
+                        href={authHref}
+                        className="block truncate rounded-xl px-4 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:text-gray-100 dark:hover:bg-gray-800 dark:hover:text-primary-400"
+                        onClick={() => setIsAccountMenuOpen(false)}
+                      >
+                        {authUser.ign}
+                      </a>
+                      <button
+                        type="button"
+                        className="block w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-gray-800 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-400"
+                        onClick={handleSignOut}
+                      >
+                        {messages.nav.signOut}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <a
+              href={authHref}
+              className="rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+            >
+              {messages.nav.signIn}
+            </a>
+          )}
+          <div className="relative">
+            <button
+              type="button"
+              className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white/80 px-3 text-sm font-semibold uppercase text-gray-800 transition-colors hover:border-primary-300 hover:text-primary-600 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-400"
+              aria-label={messages.nav.language}
+              aria-haspopup="menu"
+              aria-expanded={isLanguageMenuOpen}
+              onClick={() => {
+                setIsLanguageMenuOpen((current) => !current);
+                setIsAccountMenuOpen(false);
+              }}
+            >
+              <LanguageIcon />
+              <span>{activeLanguageOption.code}</span>
+            </button>
+            <AnimatePresence>
+              {isLanguageMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.16 }}
+                  className="absolute right-0 top-full pt-3"
+                >
+                  <div className="min-w-44 rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/95">
+                    {languageOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-medium transition-colors ${
+                          option.value === activeLocale
+                            ? 'bg-primary-50 text-primary-700 dark:bg-gray-800 dark:text-primary-300'
+                            : 'text-gray-800 hover:bg-primary-50 hover:text-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-400'
+                        }`}
+                        onClick={() => handleLocaleChange(option.value)}
+                      >
+                        <span>{option.label}</span>
+                        <span className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                          {option.code}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div className="ml-1">
+            <ThemeToggle />
+          </div>
+        </div>
+
         {/* Mobile Menu Button */}
-        <div className="flex items-center gap-4 md:hidden">
+        <div className="flex items-center gap-4 min-[1010px]:hidden">
           <ThemeToggle />
           <button 
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              setIsOpen(!isOpen);
+              if (isOpen) {
+                setIsMobileToolsOpen(false);
+                setIsAccountMenuOpen(false);
+                setIsLanguageMenuOpen(false);
+              }
+            }}
             className="text-gray-800 dark:text-gray-200 focus:outline-none"
-            aria-label="Toggle menu"
+            aria-label={messages.nav.toggleMenu}
           >
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
@@ -108,30 +403,78 @@ const Header = () => {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
-            className="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
+            className="min-[1010px]:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
           >
             <nav className="container py-4 flex flex-col gap-4">
               <a 
-                href="/" 
+                href={homeHref} 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Home
+                {messages.nav.home}
               </a>
               <a 
-                href="/shiny-showcase" 
+                href={shinyShowcaseHref} 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Shiny Showcase
+                {messages.nav.shinyShowcase}
               </a>
              <a 
-                href="/events" 
+                href={eventsHref} 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Events
+                {messages.nav.events}
               </a>
+              <button
+                type="button"
+                className="flex items-center justify-between py-2 font-medium text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                onClick={() => setIsMobileToolsOpen((current) => !current)}
+                aria-expanded={isMobileToolsOpen}
+                aria-controls="mobile-tools-menu"
+              >
+                <span>{messages.nav.tools}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className={`h-4 w-4 transition-transform duration-200 ${isMobileToolsOpen ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              <AnimatePresence initial={false}>
+                {isMobileToolsOpen && (
+                  <motion.div
+                    id="mobile-tools-menu"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pl-4 -mt-2 flex flex-col gap-2">
+                      {localizedToolLinks.map((link) => (
+                        <a
+                          key={link.href}
+                          href={link.href}
+                          className="py-1 text-sm font-medium text-gray-700 transition-colors hover:text-primary-500 dark:text-gray-300 dark:hover:text-primary-400"
+                          onClick={() => {
+                            setIsMobileToolsOpen(false);
+                            setIsOpen(false);
+                          }}
+                        >
+                          {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <a 
                 href="https://forums.pokemmo.com/index.php?/clubs/261-soj%C3%BC-sojusanctuary/" 
                 target="_blank" 
@@ -139,15 +482,142 @@ const Header = () => {
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Forum
+                {messages.nav.forum}
               </a>
               <a 
-                href="/discord" 
+                href={discordHref} 
                 className="py-2 font-medium text-gray-800 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Discord
+                {messages.nav.discord}
               </a>
+              {authUser ? (
+                <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between py-2 font-medium text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                    onClick={() => {
+                      setIsAccountMenuOpen((current) => !current);
+                      setIsLanguageMenuOpen(false);
+                    }}
+                    aria-expanded={isAccountMenuOpen}
+                    aria-controls="mobile-account-menu"
+                  >
+                    <span className="flex items-center gap-2">
+                      <UserIcon />
+                      {messages.nav.account}
+                    </span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className={`h-4 w-4 transition-transform duration-200 ${isAccountMenuOpen ? 'rotate-180' : ''}`}
+                      aria-hidden="true"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isAccountMenuOpen && (
+                      <motion.div
+                        id="mobile-account-menu"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="flex flex-col gap-2 pl-4">
+                          <a
+                            href={authHref}
+                            className="py-1 text-sm font-semibold text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                            onClick={() => {
+                              setIsAccountMenuOpen(false);
+                              setIsOpen(false);
+                            }}
+                          >
+                            {authUser.ign}
+                          </a>
+                          <button
+                            type="button"
+                            className="py-1 text-left text-sm font-medium text-gray-700 transition-colors hover:text-primary-500 dark:text-gray-300 dark:hover:text-primary-400"
+                            onClick={handleSignOut}
+                          >
+                            {messages.nav.signOut}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <a
+                  href={authHref}
+                  className="py-2 font-medium text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {messages.nav.signIn}
+                </a>
+              )}
+              <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between py-2 font-medium text-gray-800 transition-colors hover:text-primary-500 dark:text-gray-200 dark:hover:text-primary-400"
+                  onClick={() => {
+                    setIsLanguageMenuOpen((current) => !current);
+                    setIsAccountMenuOpen(false);
+                  }}
+                  aria-expanded={isLanguageMenuOpen}
+                  aria-controls="mobile-language-menu"
+                >
+                  <span className="flex items-center gap-2">
+                    <LanguageIcon />
+                    <span className="uppercase">{activeLanguageOption.code}</span>
+                  </span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className={`h-4 w-4 transition-transform duration-200 ${isLanguageMenuOpen ? 'rotate-180' : ''}`}
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isLanguageMenuOpen && (
+                    <motion.div
+                      id="mobile-language-menu"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex flex-col gap-2 pl-4">
+                        {languageOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={`py-1 text-left text-sm font-medium transition-colors ${
+                              option.value === activeLocale
+                                ? 'text-primary-600 dark:text-primary-400'
+                                : 'text-gray-700 hover:text-primary-500 dark:text-gray-300 dark:hover:text-primary-400'
+                            }`}
+                            onClick={() => handleLocaleChange(option.value)}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </nav>
           </motion.div>
         )}

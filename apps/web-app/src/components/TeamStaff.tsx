@@ -6,7 +6,7 @@ const staffData = [
   {
     id: 1,
     name: 'Buddhalicious',
-    role: 'Co-Leader',
+    role: 'Leader',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2023_11/IMG_1764.thumb.webp.269359ff75c30518e5afdb5c5da5b60b.webp',
     discord: 'https://discordapp.com/users/189168387824418816',
     forum: 'https://forums.pokemmo.com/index.php?/profile/483720-buddhalicious/'

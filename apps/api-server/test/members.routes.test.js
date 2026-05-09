@@ -65,7 +65,7 @@ describe('Members routes', () => {
 
   describe('POST /api/members', () => {
     it('validates body and returns 400 on invalid payload', async () => {
-      const res = await request(app)
+      const res = await withBotAuth(request(app)
         .post('/api/members')
         .set('Authorization', `Bearer ${BOT_TOKEN}`)
         .send({}); // missing ign

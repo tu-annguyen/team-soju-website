@@ -60,6 +60,21 @@ class SlashCommandOptionBuilder {
     return this;
   }
 
+  setAutocomplete(autocomplete) {
+    this.data.autocomplete = autocomplete;
+    return this;
+  }
+
+  setMinValue(minValue) {
+    this.data.min_value = minValue;
+    return this;
+  }
+
+  setMaxValue(maxValue) {
+    this.data.max_value = maxValue;
+    return this;
+  }
+
   toJSON() {
     return { ...this.data };
   }

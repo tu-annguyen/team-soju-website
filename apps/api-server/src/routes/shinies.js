@@ -37,6 +37,7 @@ const ENCOUNTER_TYPE_CHOICES = [
 
 const SHINY_STATUS_CHOICES = ['Owned', 'Sold', 'Fled', 'Died', 'Bred'];
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
+const SHINY_WARS_2025_RELEASE_DATE = '2025-07-11';
 
 function normalizePokemonRouteName(value) {
   return String(value || '').trim().toLowerCase();
@@ -201,24 +202,46 @@ function buildShinyActionComponents(shinyId) {
   }];
 }
 
-function buildAsyncScreenshotSuccessPayload(shiny, notes = []) {
+function buildScreenshotNotesEmbed(notes = []) {
   const normalizedNotes = notes.filter(Boolean);
+  if (normalizedNotes.length === 0) return null;
 
   return {
-    ...(normalizedNotes.length > 0 ? { content: normalizedNotes.join('\n') } : {}),
-    embeds: [{
-      color: shiny.is_secret ? 0xFFD700 : 0x4CAF50,
-      title: `${shiny.is_secret ? 'Secret ' : ''}Shiny Added!`,
-      image: shiny.screenshot_url ? { url: shiny.screenshot_url } : undefined,
-      fields: [
-        { name: 'Trainer', value: shiny.trainer_name, inline: true },
-        { name: 'Pokemon', value: `${capitalize(shiny.pokemon)} (#${shiny.national_number})`, inline: true },
-        { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true },
-        { name: 'Encounters', value: String(shiny.total_encounters || 0), inline: true },
-      ],
-      footer: { text: `Shiny ID: ${shiny.id}` },
-      timestamp: new Date().toISOString(),
-    }],
+    color: 0xFFB300,
+    title: 'Screenshot Parsing Warnings',
+    description: normalizedNotes.map((note) => `- ${note}`).join('\n').slice(0, 4096),
+  };
+}
+
+function buildAsyncScreenshotSuccessPayload(shiny, notes = [], extractedFields = []) {
+  const notesEmbed = buildScreenshotNotesEmbed(notes);
+  const embeds = [{
+    color: shiny.is_secret ? 0xFFD700 : 0x4CAF50,
+    title: `${shiny.is_secret ? 'Secret ' : ''}Shiny Added!`,
+    image: shiny.screenshot_url ? { url: shiny.screenshot_url } : undefined,
+    fields: [
+      { name: 'Trainer', value: shiny.trainer_name, inline: true },
+      { name: 'Pokemon', value: `${capitalize(shiny.pokemon)} (#${shiny.national_number})`, inline: true },
+      { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true },
+      ...extractedFields
+        .filter(field => field?.name && field?.value)
+        .slice(0, 21)
+        .map((field) => ({
+          name: `${field.name}`,
+          value: field.value,
+          inline: field.inline !== false,
+        })),
+    ],
+    footer: { text: `Shiny ID: ${shiny.id}` },
+    timestamp: new Date().toISOString(),
+  }];
+
+  if (notesEmbed) {
+    embeds.unshift(notesEmbed);
+  }
+
+  return {
+    embeds,
     components: buildShinyActionComponents(shiny.id),
   };
 }
@@ -357,6 +380,25 @@ function formatIsoDate(year, month, day) {
     String(month).padStart(2, '0'),
     String(day).padStart(2, '0'),
   ].join('-');
+}
+
+function isBeforeIsoDate(value, minimum) {
+  if (!value || !minimum) return false;
+  return value < minimum;
+}
+
+function isAfterIsoDate(value, maximum) {
+  if (!value || !maximum) return false;
+  return value > maximum;
+}
+
+function getLatestPossibleTodayIso(now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Pacific/Kiritimati',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
 }
 
 function scoreDateCandidate({ format, first, second, third, separator, index, text }) {
@@ -913,6 +955,66 @@ function mergeParsedStats(parsed, stats) {
   };
 }
 
+function formatExtractedEncounterValue(value) {
+  if (!Number.isInteger(value)) return null;
+  return value.toLocaleString();
+}
+
+function buildOcrExtractedFieldsSummary({ parsed, mergedParsed, trainer }) {
+  const extractedFields = [];
+
+  if (parsed.date) {
+    extractedFields.push({
+      name: 'Catch Date',
+      value: parsed.date,
+      inline: true,
+    });
+  }
+
+  if (mergedParsed.nature) {
+    extractedFields.push({
+      name: 'Nature',
+      value: mergedParsed.nature,
+      inline: true,
+    });
+  }
+
+  const totalEncounters = formatExtractedEncounterValue(mergedParsed.totalEncounters);
+  const speciesEncounters = formatExtractedEncounterValue(mergedParsed.speciesEncounters);
+  if (totalEncounters) {
+    if (speciesEncounters && parsed.name) {
+      extractedFields.push({
+        name: 'Encounters',
+        value: `${totalEncounters} Total (${speciesEncounters} ${parsed.name})`
+      })
+    } else {
+      extractedFields.push({
+        name: 'Encounters',
+        value: totalEncounters,
+        inline: true,
+      });
+    }
+  }
+
+  const ivs = [
+    mergedParsed.hp,
+    mergedParsed.atk,
+    mergedParsed.def,
+    mergedParsed.spa,
+    mergedParsed.spd,
+    mergedParsed.spe,
+  ];
+  if (ivs.every(value => Number.isInteger(value))) {
+    extractedFields.push({
+      name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)',
+      value: ivs.join('/'),
+      inline: false,
+    });
+  }
+
+  return extractedFields;
+}
+
 async function createShinyFromScreenshotValue(value) {
   let ocrWorker = null;
 
@@ -949,7 +1051,7 @@ async function createShinyFromScreenshotValue(value) {
       .join('\n');
     console.log('OCR Layout: ', layout);
     console.log('OCR Result: ', ocrText);
-
+   
     const parsed = parseDataFromOcr(ocrText);
     let mobileStats = null;
 
@@ -970,7 +1072,17 @@ async function createShinyFromScreenshotValue(value) {
     if (mergedParsed.dateWasAmbiguous) {
       const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
       mergedParsed.date = fallbackDate;
-      notes.push(`Note: ambiguous date in screenshot. Used today's date ${fallbackDate}. Press **Edit** > **Edit Text Fields** to change.`);
+      notes.push(`Ambiguous date was found in screenshot. The caught date was set to today's date (${fallbackDate}), instead. Select **Edit** > **Edit Text Fields** to change.`);
+    }
+
+    if (isBeforeIsoDate(mergedParsed.date, SHINY_WARS_2025_RELEASE_DATE)) {
+      notes.push(`The date was read as ${mergedParsed.date}, which is before ${SHINY_WARS_2025_RELEASE_DATE}. Screenshots from the Encounter Tracker should only exist after the Shiny Wars 2025 update, so please double-check the date. Select **Edit** > **Edit Text Fields** to change.`);
+    }
+
+    if (isAfterIsoDate(mergedParsed.date, getLatestPossibleTodayIso())) {
+      const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
+      notes.push(`The date was read as ${mergedParsed.date}, which is in the future. The caught date was set to today's date (${fallbackDate}), instead. Please double-check the date. Select **Edit** > **Edit Text Fields** to change.`);
+      mergedParsed.date = fallbackDate;
     }
 
     const validation = validateParsedData(mergedParsed);
@@ -1037,6 +1149,7 @@ async function createShinyFromScreenshotValue(value) {
       ...(Number.isInteger(mergedParsed.spd) ? { iv_sp_defense: mergedParsed.spd } : {}),
       ...(Number.isInteger(mergedParsed.spe) ? { iv_speed: mergedParsed.spe } : {}),
     });
+    const extractedFields = buildOcrExtractedFieldsSummary({ parsed, mergedParsed, trainer });
 
     console.log('Saved Shiny Encounters', {
       parsed: {
@@ -1062,7 +1175,7 @@ async function createShinyFromScreenshotValue(value) {
       },
     });
 
-    return { shiny, ocrText, notes };
+    return { shiny, ocrText, notes, extractedFields };
   } finally {
     if (ocrWorker) {
       await ocrWorker.terminate().catch((terminateError) => {
@@ -1101,11 +1214,11 @@ async function processAsyncScreenshotQueue() {
       job.startedAt = new Date().toISOString();
 
       try {
-        const { shiny, notes } = await createShinyFromScreenshotValue(job.payload);
+        const { shiny, notes, extractedFields } = await createShinyFromScreenshotValue(job.payload);
         await notifyScreenshotCallback(job.payload.callback_url, {
           application_id: job.payload.discord_application_id,
           interaction_token: job.payload.discord_interaction_token,
-          payload: buildAsyncScreenshotSuccessPayload(shiny, notes),
+          payload: buildAsyncScreenshotSuccessPayload(shiny, notes, extractedFields),
         });
 
         job.status = SCREENSHOT_JOB_STATUS.completed;

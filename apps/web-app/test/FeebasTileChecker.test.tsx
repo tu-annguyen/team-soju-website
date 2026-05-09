@@ -1,0 +1,854 @@
+import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import FeebasTileChecker from '../src/components/FeebasTileChecker';
+
+const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
+
+const boardFixture = {
+  location: 'route-119-main',
+  displayName: 'Route 119, Hoenn',
+  description: 'Main Route 119 pond tiles for live Feebas coordination.',
+  cycleStart: '2026-04-09T20:15:00.000Z',
+  cycleEnd: '2099-04-09T21:00:00.000Z',
+  serverTime: '2026-04-09T20:20:00.000Z',
+  resetIntervalMinutes: 45,
+  requiresDistinctConfirmation: false,
+  confirmedTileId: null,
+  isLocked: false,
+  previousConfirmedTiles: [
+    {
+      tileId: 'r1c1',
+      confirmations: 1,
+    },
+    {
+      tileId: 'r1c2',
+      confirmations: 5,
+    },
+  ],
+  layout: {
+    rows: 2,
+    cols: 2,
+  },
+  activity: [
+    {
+      id: 1,
+      tileId: 'r1c1',
+      tileLabel: 'A1',
+      actionType: 'voted',
+      previousStatus: 'checked',
+      nextStatus: 'pending',
+      actorName: 'May',
+      createdAt: '2026-04-09T20:18:00.000Z',
+    },
+  ],
+  leaderboard: {
+    location: 'route-119-main',
+    generatedAt: '2026-04-09T20:20:00.000Z',
+    weeklySince: '2026-04-02T20:20:00.000Z',
+    entries: [
+      {
+        rank: 1,
+        userId: 'user-id',
+        ign: 'May',
+        verifiedDiscoveries: 2,
+        feebasUptimeCreatedMinutes: 180,
+        confirmations: 4,
+        searchCoverage: 30,
+        weeklyContributionScore: 212,
+        allTimeContributionScore: 363,
+        fastestFindSeconds: 90,
+        earlyScoutSeconds: 30,
+        efficiency: 0.067,
+        reportAccuracy: 0.8,
+        currentStreak: 3,
+        mostPersistentChecks: 17,
+      },
+      {
+        rank: 2,
+        userId: 'user-id-2',
+        ign: 'Brendan',
+        verifiedDiscoveries: 1,
+        feebasUptimeCreatedMinutes: 60,
+        confirmations: 10,
+        searchCoverage: 8,
+        weeklyContributionScore: 64,
+        allTimeContributionScore: 226,
+        fastestFindSeconds: 120,
+        earlyScoutSeconds: 75,
+        efficiency: 0.125,
+        reportAccuracy: 1,
+        currentStreak: 1,
+        mostPersistentChecks: 4,
+      },
+    ],
+  },
+  tiles: [
+    {
+      tileId: 'r1c1',
+      label: 'A1',
+      row: 0,
+      col: 0,
+      status: 'pending',
+      voteCounts: {
+        checked: 0,
+        pending: 1,
+        confirmed: 0,
+      },
+      totalVotes: 1,
+      currentUserVote: 'unchecked',
+    },
+    {
+      tileId: 'r1c2',
+      label: 'A2',
+      row: 0,
+      col: 1,
+      status: 'unchecked',
+      voteCounts: {
+        checked: 0,
+        pending: 0,
+        confirmed: 0,
+      },
+      totalVotes: 0,
+      currentUserVote: 'unchecked',
+    },
+  ],
+};
+
+const mtCoronetBoardFixture = {
+  ...boardFixture,
+  location: 'mt-coronet',
+  displayName: 'Mt. Coronet, Sinnoh',
+  description: 'Mt. Coronet pond tiles for live Feebas coordination.',
+  layout: {
+    rows: 34,
+    cols: 18,
+  },
+};
+
+const authUserFixture = {
+  id: 'user-id',
+  email: 'trainer@example.com',
+  ign: 'Trainer',
+};
+
+function jsonResponse(data: unknown) {
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(data),
+  });
+}
+
+function mockFeebasFetch(authUser: typeof authUserFixture | null = null) {
+  return jest.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+
+    if (url.includes('/auth/me')) {
+      return jsonResponse({
+        success: true,
+        data: authUser,
+      });
+    }
+
+    return jsonResponse({
+      success: true,
+      data: boardFixture,
+    });
+  });
+}
+
+describe('FeebasTileChecker', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('feebas-tile-checker-client-id', 'client-self');
+
+    (global as any).fetch = mockFeebasFetch();
+  });
+
+  it('renders the live board after loading', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    expect(screen.getByText(/Loading the Feebas board/i)).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument();
+    expect(screen.getByText(/Each browser can keep one active vote per tile/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scroll sideways to view the full board/i)).toBeInTheDocument();
+    expect(screen.getAllByText('May').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText((_, element) => element?.textContent === 'May found Feebas on A1.')
+    ).toBeInTheDocument();
+  });
+
+  it('shows the optional display name field and leaderboard sign-in links when signed out', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Temporary display name/i)).toBeInTheDocument()
+    );
+
+    const signInLinks = screen.getAllByRole('link', { name: /Sign in to track leaderboard statistics/i });
+    expect(signInLinks).toHaveLength(2);
+    expect(signInLinks.every((link) => link.getAttribute('href') === '/auth')).toBe(true);
+  });
+
+  it('renders the Feebas leaderboard metrics and tracked records', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText('All-time')).toBeInTheDocument()
+    );
+
+    expect(screen.getByText(/Feebas Leaderboard/i)).toBeInTheDocument();
+    expect(screen.getByText('Weekly')).toBeInTheDocument();
+    expect(screen.getByText('363')).toBeInTheDocument();
+    expect(screen.getByText('3h')).toBeInTheDocument();
+    expect(screen.getByText('80%')).toBeInTheDocument();
+    expect(screen.getByText(/May in 1m 30s/i)).toBeInTheDocument();
+    expect(screen.getByText(/May in 30s/i)).toBeInTheDocument();
+    expect(screen.getByText(/May after 17 tile\(s\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current position after applying the selected leaderboard sort/i)).toBeInTheDocument();
+    expect(screen.getByText(/Score from the last 7 days/i)).toBeInTheDocument();
+    expect(screen.getByText(/Verified pending reports divided by pending reports that were later resolved/i)).toBeInTheDocument();
+  });
+
+  it('paginates the activity log at five entries per page', async () => {
+    const boardWithActivity = {
+      ...boardFixture,
+      activity: Array.from({ length: 7 }, (_, index) => ({
+        id: index + 1,
+        tileId: `r${index + 1}c1`,
+        tileLabel: `A${index + 1}`,
+        actionType: 'voted',
+        previousStatus: 'unchecked',
+        nextStatus: 'checked',
+        actorName: `Hunter ${index + 1}`,
+        createdAt: `2026-04-09T20:${String(10 + index).padStart(2, '0')}:00.000Z`,
+      })),
+    };
+    (global as any).fetch = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/auth/me')) {
+        return jsonResponse({
+          success: true,
+          data: null,
+        });
+      }
+
+      return jsonResponse({
+        success: true,
+        data: boardWithActivity,
+      });
+    });
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Hunter 1')).toBeInTheDocument()
+    );
+
+    expect(screen.getByText('Hunter 5')).toBeInTheDocument();
+    expect(screen.queryByText('Hunter 6')).not.toBeInTheDocument();
+    expect(screen.getByText(/Page 1 of 2/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+
+    expect(screen.getByText('Hunter 6')).toBeInTheDocument();
+    expect(screen.getByText('Hunter 7')).toBeInTheDocument();
+    expect(screen.queryByText('Hunter 1')).not.toBeInTheDocument();
+    expect(screen.getByText(/Page 2 of 2/i)).toBeInTheDocument();
+  });
+
+  it('sorts the Feebas leaderboard columns with the expected sort icons', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    const trainerSortButton = await screen.findByRole('button', { name: /Trainer/i });
+
+    expect(trainerSortButton.querySelector('svg')).toHaveAttribute('data-sort-icon', 'sort');
+
+    fireEvent.click(trainerSortButton);
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]).toHaveTextContent(/#1\s*Brendan/);
+    });
+    expect(trainerSortButton.querySelector('svg')).toHaveAttribute('data-sort-icon', 'sort-up');
+
+    fireEvent.click(trainerSortButton);
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]).toHaveTextContent(/#1\s*May/);
+    });
+    expect(trainerSortButton.querySelector('svg')).toHaveAttribute('data-sort-icon', 'sort-down');
+  });
+
+  it('keeps leaderboard header tooltips inside the viewport near an edge', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    const trainerSortButton = await screen.findByRole('button', { name: /Trainer/i });
+    const tooltipTrigger = trainerSortButton.parentElement as HTMLElement;
+    const originalInnerWidth = window.innerWidth;
+
+    tooltipTrigger.getBoundingClientRect = jest.fn(() => ({
+      bottom: 44,
+      height: 20,
+      left: 2,
+      right: 70,
+      top: 24,
+      width: 68,
+      x: 2,
+      y: 24,
+      toJSON: () => ({}),
+    }));
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: 320,
+    });
+
+    fireEvent.mouseEnter(tooltipTrigger);
+
+    await waitFor(() => {
+      const tooltip = screen.getByText(/Signed-in account IGN/i).parentElement;
+      expect(tooltip).toHaveStyle({
+        left: '8px',
+        top: '52px',
+        width: '288px',
+      });
+    });
+
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: originalInnerWidth,
+    });
+  });
+
+  it('uses the signed-in user IGN as the Feebas display name', async () => {
+    const fetchMock = mockFeebasFetch(authUserFixture);
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Currently signed in as Trainer/i)).toBeInTheDocument()
+    );
+
+    expect(screen.queryByLabelText(/Optional display name/i)).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3001/api/feebas/route-119-main/tiles/r1c2',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            status: 'checked',
+            actorFingerprint: 'account-user-id',
+            actorName: 'Trainer',
+          }),
+        }),
+      )
+    );
+  });
+
+  it('allows a second client to confirm a pending tile', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i }));
+
+    expect(screen.getByText(/Your vote: Unchecked/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Feebas Confirmed/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Feebas Found/i })).toBeDisabled();
+  });
+
+  it('casts a checked vote when a tile is clicked', async () => {
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: boardFixture,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: boardFixture,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              boardFixture.tiles[0],
+              {
+                ...boardFixture.tiles[1],
+                status: 'checked',
+                voteCounts: {
+                  checked: 1,
+                  pending: 0,
+                  confirmed: 0,
+                },
+                totalVotes: 1,
+                currentUserVote: 'checked',
+              },
+            ],
+          },
+        }),
+      });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Your vote: Checked/i)).toBeInTheDocument()
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'http://localhost:3001/api/feebas/route-119-main/tiles/r1c2',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          status: 'checked',
+          actorFingerprint: 'client-self',
+          actorName: undefined,
+        }),
+      }),
+    );
+  });
+
+  it('casts a checked vote when another player already voted checked', async () => {
+    const boardWithOtherCheckedVote = {
+      ...boardFixture,
+      tiles: [
+        boardFixture.tiles[0],
+        {
+          ...boardFixture.tiles[1],
+          status: 'checked',
+          voteCounts: {
+            checked: 1,
+            pending: 0,
+            confirmed: 0,
+          },
+          totalVotes: 1,
+          currentUserVote: 'unchecked',
+        },
+      ],
+    };
+
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: boardWithOtherCheckedVote,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: boardWithOtherCheckedVote,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              boardFixture.tiles[0],
+              {
+                ...boardFixture.tiles[1],
+                status: 'checked',
+                voteCounts: {
+                  checked: 2,
+                  pending: 0,
+                  confirmed: 0,
+                },
+                totalVotes: 2,
+                currentUserVote: 'checked',
+              },
+            ],
+          },
+        }),
+      });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /B2 1 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /B2 1 checked, 0 pending, 0 confirmed/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Your vote: Checked/i)).toBeInTheDocument()
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'http://localhost:3001/api/feebas/route-119-main/tiles/r1c2',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          status: 'checked',
+          actorFingerprint: 'client-self',
+          actorName: undefined,
+        }),
+      }),
+    );
+  });
+
+  it('does not overwrite an existing vote to checked when selecting a tile', async () => {
+    const votedBoard = {
+      ...boardFixture,
+      tiles: [
+        {
+          ...boardFixture.tiles[0],
+          status: 'confirmed',
+          voteCounts: {
+            checked: 0,
+            pending: 1,
+            confirmed: 1,
+          },
+          totalVotes: 2,
+          currentUserVote: 'confirmed',
+        },
+        boardFixture.tiles[1],
+      ],
+    };
+
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: votedBoard,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: votedBoard,
+        }),
+      });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i }));
+
+    expect(screen.getByText(/Your vote: Feebas Confirmed/i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not let the pending voter confirm the same tile, but still lets them clear it', async () => {
+    const pendingOwnerBoard = {
+      ...boardFixture,
+      tiles: [
+        {
+          ...boardFixture.tiles[0],
+          currentUserVote: 'pending',
+        },
+        boardFixture.tiles[1],
+      ],
+    };
+
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: pendingOwnerBoard,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: pendingOwnerBoard,
+        }),
+      });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i }));
+
+    expect(screen.getByText(/Your vote: Feebas Found/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Feebas Confirmed/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /No Feebas/i })).toBeEnabled();
+    expect(screen.getByText(/another player can confirm it, or you can clear your pending mark/i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets a user clear their vote after selecting a tile', async () => {
+    (global as any).fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              {
+                ...boardFixture.tiles[0],
+                status: 'confirmed',
+                voteCounts: {
+                  checked: 0,
+                  pending: 1,
+                  confirmed: 1,
+                },
+                totalVotes: 2,
+                currentUserVote: 'confirmed',
+              },
+              boardFixture.tiles[1],
+            ],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              {
+                ...boardFixture.tiles[0],
+                status: 'confirmed',
+                voteCounts: {
+                  checked: 0,
+                  pending: 1,
+                  confirmed: 1,
+                },
+                totalVotes: 2,
+                currentUserVote: 'confirmed',
+              },
+              boardFixture.tiles[1],
+            ],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            ...boardFixture,
+            tiles: [
+              {
+                ...boardFixture.tiles[0],
+                status: 'checked',
+                voteCounts: {
+                  checked: 1,
+                  pending: 1,
+                  confirmed: 0,
+                },
+                totalVotes: 2,
+                currentUserVote: 'checked',
+              },
+              boardFixture.tiles[1],
+            ],
+          },
+        }),
+      });
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 1 confirmed/i }));
+
+    expect(screen.getByText(/Your vote: Feebas Confirmed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Clear My Vote/i })).toBeEnabled();
+    expect(screen.getByText(/Mixed colors mean mixed opinions/i)).toBeInTheDocument();
+  });
+
+  it('switches to the Mt. Coronet tab and fetches that board', async () => {
+    const fetchMock = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const data = url.includes('/mt-coronet') ? mtCoronetBoardFixture : boardFixture;
+
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data,
+        }),
+      });
+    });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /Mt. Coronet/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self');
+    expect(localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY)).toBe('mt-coronet');
+  });
+
+  it('restores the saved Feebas location tab on load', async () => {
+    localStorage.setItem(ACTIVE_LOCATION_STORAGE_KEY, 'mt-coronet');
+
+    const fetchMock = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const data = url.includes('/mt-coronet') ? mtCoronetBoardFixture : boardFixture;
+
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data,
+        }),
+      });
+    });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('tab', { name: /Mt. Coronet/i })).toHaveAttribute('aria-selected', 'true');
+    const feebasCalls = fetchMock.mock.calls.filter(([input]) => String(input).includes('/feebas/'));
+    expect(feebasCalls.every(([input]) => String(input).includes('/mt-coronet'))).toBe(true);
+  });
+
+  it('toggles the grid between voting and historical heatmap modes', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByText(/Unchecked/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Historical confirmed Feebas tiles glow brighter/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Heatmap/i }));
+
+    expect(screen.getByText(/Low history/i)).toBeInTheDocument();
+    expect(screen.getByText(/High history/i)).toBeInTheDocument();
+    expect(screen.getByText(/Historical confirmed Feebas tiles glow brighter as more past confirmations stack up/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Unchecked/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Voting/i }));
+
+    expect(screen.getByText(/Unchecked/i)).toBeInTheDocument();
+  });
+
+  it('disables voting interactions in heatmap mode', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        success: true,
+        data: boardFixture,
+      }),
+    });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Heatmap/i }));
+
+    const tileButton = screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i });
+    expect(tileButton).toBeDisabled();
+
+    fireEvent.click(tileButton);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/Select a tile to cast your vote or clear it/i)).toBeInTheDocument();
+  });
+
+  it('renders Simplified Chinese checker copy and localized location names', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" locale="zh" />);
+
+    expect(screen.getByText(/正在加载丑丑鱼棋盘/i)).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.getByText(/119 号道路，豐緣/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('tab', { name: /天冠山/i })).toBeInTheDocument();
+    expect(screen.getByText(/下次重置/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/发现丑丑鱼/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/确认丑丑鱼/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/丑丑鱼排行榜/i)).toBeInTheDocument();
+    expect(screen.getByText(/本周/i)).toBeInTheDocument();
+    expect(screen.getByText(/已登录账号的 IGN/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /登录以追踪排行榜统计/i })).toHaveLength(2);
+  });
+
+  it('renders Spanish location names and action labels', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" locale="es" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Ruta 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /A2 0 revisadas, 1 pendientes, 0 confirmadas/i }));
+
+    expect(screen.getByRole('tab', { name: /Monte Corona/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Feebas confirmado/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Quitar mi voto/i })).toBeDisabled();
+    expect(screen.getByText(/Clasificacion de Feebas/i)).toBeInTheDocument();
+    expect(screen.getByText(/Semanal/i)).toBeInTheDocument();
+    expect(screen.getByText(/IGN de la cuenta con sesion iniciada/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Inicia sesion para registrar estadisticas de clasificacion/i })).toHaveLength(2);
+  });
+});

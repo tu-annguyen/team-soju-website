@@ -4,27 +4,37 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Analytics from '@vercel/analytics/astro'
 import SpeedInsights from '@vercel/speed-insights/astro'
+import { DEFAULT_LOCALE, getTranslations, resolveLocale } from '../i18n';
 
 interface Props {
   title?: string;
   description?: string;
+  locale?: string;
 }
 
 const { 
-  title = 'Team Soju - PokeMMO Team',
-  description = 'Team Soju is a premier PokeMMO team dedicated to excellence, community, and the thrill of competitive Pokémon battles.'
+  title,
+  description,
+  locale: localeProp,
 } = Astro.props;
+
+const locale = resolveLocale(localeProp ?? Astro.url.searchParams.get('lang'));
+const messages = getTranslations(locale);
+const resolvedTitle = title ?? messages.meta.defaultTitle;
+const resolvedDescription = description ?? messages.meta.defaultDescription;
+const localeStorageKey = 'team-soju-locale';
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={locale}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="description" content={description} />
-    <title>{title}</title>
+    <meta name="description" content={resolvedDescription} />
+    <title>{resolvedTitle}</title>
     
     <!-- Prevent flash of unstyled content -->
     <script is:inline>
@@ -32,14 +42,85 @@ const {
         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       document.documentElement.classList.toggle('dark', theme === 'dark');
     </script>
+    <script is:inline>
+      (() => {
+        const defaultLocale = 'en';
+        const supportedLocales = ['en', 'es', 'zh'];
+        const localeStorageKey = 'team-soju-locale';
+        const url = new URL(window.location.href);
+        const queryLocale = (url.searchParams.get('lang') || '').trim().toLowerCase();
+        const aliases = {
+          en: 'en',
+          'en-us': 'en',
+          'en-gb': 'en',
+          es: 'es',
+          'es-es': 'es',
+          'es-419': 'es',
+          zh: 'zh',
+          'zh-cn': 'zh',
+          'zh-sg': 'zh',
+          'zh-hans': 'zh',
+          'zh-tw': 'zh',
+          'zh-hk': 'zh',
+          'zh-hant': 'zh',
+        };
+        const resolveLocale = (value) => {
+          if (aliases[value]) {
+            return aliases[value];
+          }
+
+          const parts = value.split('-');
+          while (parts.length > 1) {
+            parts.pop();
+            const candidate = parts.join('-');
+            if (aliases[candidate]) {
+              return aliases[candidate];
+            }
+          }
+
+          return defaultLocale;
+        };
+
+        if (supportedLocales.includes(queryLocale)) {
+          localStorage.setItem(localeStorageKey, queryLocale);
+          return;
+        }
+
+        const rawStoredLocale = (localStorage.getItem(localeStorageKey) || '').trim().toLowerCase();
+        let detectedLocale = rawStoredLocale ? resolveLocale(rawStoredLocale) : defaultLocale;
+
+        if (!rawStoredLocale) {
+          const browserLanguages = Array.isArray(navigator.languages) && navigator.languages.length > 0
+            ? navigator.languages
+            : [navigator.language];
+
+          for (const language of browserLanguages) {
+            const resolved = resolveLocale((language || '').trim().toLowerCase());
+            if (resolved !== defaultLocale || (language || '').toLowerCase().startsWith(defaultLocale)) {
+              detectedLocale = resolved;
+              break;
+            }
+          }
+        }
+
+        localStorage.setItem(localeStorageKey, detectedLocale);
+
+        if (queryLocale || detectedLocale === defaultLocale) {
+          return;
+        }
+
+        url.searchParams.set('lang', detectedLocale);
+        window.location.replace(url.toString());
+      })();
+    </script>
   </head>
   <body>
     <Analytics />
     <SpeedInsights />
-    <Header client:load />
+    <Header client:load locale={locale} apiBaseUrl={apiBaseUrl} />
     <main class="pt-16">
       <slot />
     </main>
-    <Footer />
+    <Footer client:load locale={locale} />
   </body>
 </html>
