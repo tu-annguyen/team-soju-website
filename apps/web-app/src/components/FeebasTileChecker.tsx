@@ -30,6 +30,31 @@ type FeebasActivityEntry = {
   createdAt: string;
 };
 
+type FeebasLeaderboardEntry = {
+  rank: number;
+  userId: string;
+  ign: string;
+  verifiedDiscoveries: number;
+  feebasUptimeCreatedMinutes: number;
+  confirmations: number;
+  searchCoverage: number;
+  weeklyContributionScore: number;
+  allTimeContributionScore: number;
+  fastestFindSeconds: number | null;
+  efficiency: number;
+  reportAccuracy: number;
+  currentStreak: number;
+  luckyFindChecks: number | null;
+  mostPersistentChecks: number | null;
+};
+
+type FeebasLeaderboard = {
+  location: string;
+  generatedAt: string;
+  weeklySince: string;
+  entries: FeebasLeaderboardEntry[];
+};
+
 type FeebasBoard = {
   location: string;
   displayName: string;
@@ -50,6 +75,7 @@ type FeebasBoard = {
     cols: number;
   };
   activity: FeebasActivityEntry[];
+  leaderboard?: FeebasLeaderboard;
   tiles: FeebasTile[];
 };
 
@@ -287,6 +313,69 @@ function formatTimestamp(isoTimestamp: string, locale: string) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(isoTimestamp));
+}
+
+function formatScore(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function formatUptime(minutes: number, locale: string) {
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    return '0m';
+  }
+
+  if (minutes < 60) {
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(minutes)}m`;
+  }
+
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(minutes / 60)}h`;
+}
+
+function formatPercent(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, {
+    style: 'percent',
+    maximumFractionDigits: 0,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+function formatDuration(seconds: number | null, fallback: string) {
+  if (!Number.isFinite(seconds || NaN) || !seconds || seconds <= 0) {
+    return fallback;
+  }
+
+  if (seconds < 60) {
+    return `${Math.round(seconds)}s`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+
+  return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+}
+
+function formatNullableCount(value: number | null, fallback: string) {
+  return Number.isFinite(value || NaN) && value ? String(value) : fallback;
+}
+
+function getLeaderboardNotables(entries: FeebasLeaderboardEntry[]) {
+  const entriesWithFinds = entries.filter((entry) => entry.verifiedDiscoveries > 0);
+  const fastestFinder = [...entriesWithFinds]
+    .filter((entry) => Number.isFinite(entry.fastestFindSeconds || NaN) && (entry.fastestFindSeconds || 0) > 0)
+    .sort((left, right) => (left.fastestFindSeconds || 0) - (right.fastestFindSeconds || 0))[0] || null;
+  const luckyFinder = [...entriesWithFinds]
+    .filter((entry) => Number.isFinite(entry.luckyFindChecks || NaN) && (entry.luckyFindChecks || 0) > 0)
+    .sort((left, right) => (left.luckyFindChecks || 0) - (right.luckyFindChecks || 0))[0] || null;
+  const mostPersistent = [...entriesWithFinds]
+    .filter((entry) => Number.isFinite(entry.mostPersistentChecks || NaN) && (entry.mostPersistentChecks || 0) > 0)
+    .sort((left, right) => (right.mostPersistentChecks || 0) - (left.mostPersistentChecks || 0))[0] || null;
+
+  return {
+    fastestFinder,
+    luckyFinder,
+    mostPersistent,
+  };
 }
 
 function getTileLabel(row: number, col: number, totalRows: number) {
@@ -606,6 +695,8 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const totalCheckedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.checked, 0) || 0;
   const totalPendingVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.pending, 0) || 0;
   const totalConfirmedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.confirmed, 0) || 0;
+  const leaderboardEntries = board?.leaderboard?.entries || [];
+  const leaderboardNotables = useMemo(() => getLeaderboardNotables(leaderboardEntries), [leaderboardEntries]);
   const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || activeTerrain.length) : null;
   const selectedTileCurrentVote = selectedTile?.currentUserVote || 'unchecked';
   const selectedTileHasPending = Boolean(selectedTile && selectedTile.voteCounts.pending > 0);
@@ -1138,6 +1229,115 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
             )}
           </div>
         </aside>
+      </section>
+
+      <section className="card p-5">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{messages.leaderboard.heading}</h3>
+            <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+              {messages.leaderboard.description}
+            </p>
+          </div>
+        </div>
+
+        {loading && !board ? (
+          <div className="mt-5 space-y-3">
+            {Array.from({ length: 4 }, (_, index) => (
+              <LoadingPlaceholder key={`leaderboard-placeholder-${index}`} className="h-10 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : leaderboardEntries.length ? (
+          <>
+            <div className="mt-5 overflow-x-auto">
+              <table className="min-w-[980px] text-left text-sm">
+                <thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.rank}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.trainer}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.weeklyScore}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.allTimeScore}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.discoveries}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.uptime}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.confirmations}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.coverage}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.accuracy}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.efficiency}</th>
+                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.streak}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {leaderboardEntries.map((entry) => (
+                    <tr key={entry.userId} className="text-slate-700 dark:text-slate-200">
+                      <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">#{entry.rank}</td>
+                      <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">{entry.ign}</td>
+                      <td className="px-3 py-3">{formatScore(entry.weeklyContributionScore, activeLocale)}</td>
+                      <td className="px-3 py-3">{formatScore(entry.allTimeContributionScore, activeLocale)}</td>
+                      <td className="px-3 py-3">{entry.verifiedDiscoveries}</td>
+                      <td className="px-3 py-3">{formatUptime(entry.feebasUptimeCreatedMinutes, activeLocale)}</td>
+                      <td className="px-3 py-3">{entry.confirmations}</td>
+                      <td className="px-3 py-3">{entry.searchCoverage}</td>
+                      <td className="px-3 py-3">{formatPercent(entry.reportAccuracy, activeLocale)}</td>
+                      <td className="px-3 py-3">{formatPercent(entry.efficiency, activeLocale)}</td>
+                      <td className="px-3 py-3">{entry.currentStreak}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-5">
+              <h4 className="text-sm font-semibold uppercase text-slate-500 dark:text-slate-400">
+                {messages.leaderboard.notables.heading}
+              </h4>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                  <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    {messages.leaderboard.notables.fastestFinder}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    {leaderboardNotables.fastestFinder
+                      ? formatCopy(messages.leaderboard.notables.fastestValue, {
+                        ign: leaderboardNotables.fastestFinder.ign,
+                        value: formatDuration(leaderboardNotables.fastestFinder.fastestFindSeconds, messages.leaderboard.notables.noData),
+                      })
+                      : messages.leaderboard.notables.noData}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                  <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    {messages.leaderboard.notables.luckyFinder}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    {leaderboardNotables.luckyFinder
+                      ? formatCopy(messages.leaderboard.notables.checksValue, {
+                        ign: leaderboardNotables.luckyFinder.ign,
+                        value: formatNullableCount(leaderboardNotables.luckyFinder.luckyFindChecks, messages.leaderboard.notables.noData),
+                      })
+                      : messages.leaderboard.notables.noData}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                  <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    {messages.leaderboard.notables.mostPersistent}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    {leaderboardNotables.mostPersistent
+                      ? formatCopy(messages.leaderboard.notables.checksValue, {
+                        ign: leaderboardNotables.mostPersistent.ign,
+                        value: formatNullableCount(leaderboardNotables.mostPersistent.mostPersistentChecks, messages.leaderboard.notables.noData),
+                      })
+                      : messages.leaderboard.notables.noData}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+            {messages.leaderboard.emptyState}
+          </p>
+        )}
       </section>
     </div>
   );

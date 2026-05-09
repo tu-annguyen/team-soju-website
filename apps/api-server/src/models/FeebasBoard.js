@@ -9,6 +9,59 @@ const {
   validateStatus,
 } = require('../utils/feebas');
 
+const DEFAULT_LEADERBOARD_LIMIT = 10;
+const MAX_LEADERBOARD_LIMIT = 50;
+const LEADERBOARD_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function normalizeLeaderboardLimit(limit) {
+  const parsed = Number.parseInt(limit, 10);
+
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_LEADERBOARD_LIMIT;
+  }
+
+  return Math.min(Math.max(parsed, 1), MAX_LEADERBOARD_LIMIT);
+}
+
+function toFiniteNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function buildCurrentStreaks(rows) {
+  const cycleKeysByMostRecent = [];
+  const seenCycles = new Set();
+  const userCycleKeys = new Map();
+
+  rows.forEach((row) => {
+    const cycleKey = String(row.cycle_id);
+
+    if (!seenCycles.has(cycleKey)) {
+      seenCycles.add(cycleKey);
+      cycleKeysByMostRecent.push(cycleKey);
+    }
+
+    const userKey = String(row.user_id);
+    const cycles = userCycleKeys.get(userKey) || new Set();
+    cycles.add(cycleKey);
+    userCycleKeys.set(userKey, cycles);
+  });
+
+  return new Map(Array.from(userCycleKeys.entries()).map(([userId, cycles]) => {
+    let streak = 0;
+
+    for (const cycleKey of cycleKeysByMostRecent) {
+      if (!cycles.has(cycleKey)) {
+        break;
+      }
+
+      streak += 1;
+    }
+
+    return [userId, streak];
+  }));
+}
+
 class FeebasBoard {
   static async getBoard(location, options = {}) {
     const client = options.client || pool;
@@ -366,6 +419,285 @@ class FeebasBoard {
     return voteCounts[ranked[0]] > 0 ? ranked[0] : 'unchecked';
   }
 
+  static async getLeaderboard(location, options = {}) {
+    getLocationConfig(location);
+
+    const client = options.client || pool;
+    const now = options.now ? new Date(options.now) : new Date();
+    const weeklySince = options.weeklySince
+      ? new Date(options.weeklySince)
+      : new Date(now.getTime() - LEADERBOARD_WEEK_MS);
+    const limit = normalizeLeaderboardLimit(options.limit);
+    const queryParams = [location, weeklySince.toISOString(), limit];
+
+    const leaderboardResult = await client.query(`
+      WITH all_activity AS (
+        SELECT
+          logs.id,
+          logs.location,
+          logs.cycle_id,
+          logs.tile_id,
+          logs.tile_label,
+          logs.next_status,
+          logs.actor_fingerprint,
+          logs.created_at,
+          cycles.cycle_start,
+          cycles.cycle_end
+        FROM feebas_activity_logs logs
+        JOIN feebas_cycles cycles ON cycles.id = logs.cycle_id
+        WHERE logs.location = $1
+      ),
+      logged_activity AS (
+        SELECT
+          all_activity.*,
+          users.id AS user_id,
+          users.ign
+        FROM all_activity
+        JOIN app_users users ON all_activity.actor_fingerprint = CONCAT('account-', users.id::TEXT)
+      ),
+      pending_reports AS (
+        SELECT
+          location,
+          cycle_id,
+          tile_id,
+          user_id,
+          ign,
+          MIN(created_at) AS reported_at
+        FROM logged_activity
+        WHERE next_status = 'pending'
+        GROUP BY location, cycle_id, tile_id, user_id, ign
+      ),
+      confirmed_tiles AS (
+        SELECT
+          location,
+          cycle_id,
+          tile_id,
+          MIN(created_at) AS first_confirmed_at
+        FROM all_activity
+        WHERE next_status = 'confirmed'
+        GROUP BY location, cycle_id, tile_id
+      ),
+      active_users_by_cycle AS (
+        SELECT
+          cycle_id,
+          COUNT(DISTINCT user_id)::INT AS active_user_count
+        FROM logged_activity
+        GROUP BY cycle_id
+      ),
+      first_reports AS (
+        SELECT DISTINCT ON (location, cycle_id, tile_id)
+          location,
+          cycle_id,
+          tile_id,
+          user_id,
+          ign,
+          reported_at
+        FROM pending_reports
+        ORDER BY location, cycle_id, tile_id, reported_at ASC, user_id ASC
+      ),
+      verified_discoveries AS (
+        SELECT
+          reports.location,
+          reports.cycle_id,
+          reports.tile_id,
+          reports.user_id,
+          reports.ign,
+          reports.reported_at,
+          cycles.cycle_start,
+          cycles.cycle_end,
+          confirmed_tiles.first_confirmed_at,
+          COALESCE(active_users_by_cycle.active_user_count, 1) AS active_user_count,
+          (
+            GREATEST(EXTRACT(EPOCH FROM (cycles.cycle_end - reports.reported_at)), 0)
+            / 60
+            * COALESCE(active_users_by_cycle.active_user_count, 1)
+          ) AS uptime_minutes
+        FROM first_reports reports
+        JOIN confirmed_tiles
+          ON confirmed_tiles.location = reports.location
+         AND confirmed_tiles.cycle_id = reports.cycle_id
+         AND confirmed_tiles.tile_id = reports.tile_id
+        JOIN feebas_cycles cycles ON cycles.id = reports.cycle_id
+        LEFT JOIN active_users_by_cycle ON active_users_by_cycle.cycle_id = reports.cycle_id
+      ),
+      discovery_check_counts AS (
+        SELECT
+          discoveries.user_id,
+          discoveries.location,
+          discoveries.cycle_id,
+          discoveries.tile_id,
+          COUNT(DISTINCT activity.tile_id)::INT AS checks_to_find
+        FROM verified_discoveries discoveries
+        LEFT JOIN logged_activity activity
+          ON activity.user_id = discoveries.user_id
+         AND activity.cycle_id = discoveries.cycle_id
+         AND activity.created_at <= discoveries.reported_at
+         AND activity.next_status IN ('checked', 'pending')
+        GROUP BY discoveries.user_id, discoveries.location, discoveries.cycle_id, discoveries.tile_id
+      ),
+      discovery_stats AS (
+        SELECT
+          user_id,
+          COUNT(*)::INT AS verified_discoveries,
+          COALESCE(SUM(uptime_minutes), 0) AS feebas_uptime_created_minutes,
+          (COUNT(*) FILTER (WHERE reported_at >= $2))::INT AS weekly_verified_discoveries,
+          COALESCE(SUM(uptime_minutes) FILTER (WHERE reported_at >= $2), 0) AS weekly_feebas_uptime_created_minutes,
+          MIN(EXTRACT(EPOCH FROM (reported_at - cycle_start)))::INT AS fastest_find_seconds
+        FROM verified_discoveries
+        GROUP BY user_id
+      ),
+      report_stats AS (
+        SELECT
+          reports.user_id,
+          COUNT(*)::INT AS pending_reports,
+          (COUNT(*) FILTER (WHERE confirmed_tiles.cycle_id IS NOT NULL))::INT AS verified_reports,
+          (COUNT(*) FILTER (WHERE reports.reported_at >= $2))::INT AS weekly_pending_reports,
+          (COUNT(*) FILTER (
+            WHERE reports.reported_at >= $2
+              AND confirmed_tiles.cycle_id IS NOT NULL
+          ))::INT AS weekly_verified_reports
+        FROM pending_reports reports
+        LEFT JOIN confirmed_tiles
+          ON confirmed_tiles.location = reports.location
+         AND confirmed_tiles.cycle_id = reports.cycle_id
+         AND confirmed_tiles.tile_id = reports.tile_id
+        GROUP BY reports.user_id
+      ),
+      activity_stats AS (
+        SELECT
+          user_id,
+          ign,
+          (COUNT(DISTINCT (cycle_id, tile_id)) FILTER (
+            WHERE next_status IN ('checked', 'pending')
+          ))::INT AS search_coverage,
+          (COUNT(DISTINCT (cycle_id, tile_id)) FILTER (
+            WHERE next_status = 'confirmed'
+          ))::INT AS confirmations,
+          (COUNT(DISTINCT (cycle_id, tile_id)) FILTER (
+            WHERE next_status IN ('checked', 'pending')
+              AND created_at >= $2
+          ))::INT AS weekly_search_coverage,
+          (COUNT(DISTINCT (cycle_id, tile_id)) FILTER (
+            WHERE next_status = 'confirmed'
+              AND created_at >= $2
+          ))::INT AS weekly_confirmations
+        FROM logged_activity
+        GROUP BY user_id, ign
+      ),
+      persistence_stats AS (
+        SELECT
+          user_id,
+          MIN(checks_to_find)::INT AS lucky_find_checks,
+          MAX(checks_to_find)::INT AS most_persistent_checks
+        FROM discovery_check_counts
+        GROUP BY user_id
+      ),
+      combined AS (
+        SELECT
+          activity_stats.user_id,
+          activity_stats.ign,
+          COALESCE(discovery_stats.verified_discoveries, 0) AS verified_discoveries,
+          COALESCE(discovery_stats.feebas_uptime_created_minutes, 0) AS feebas_uptime_created_minutes,
+          COALESCE(discovery_stats.weekly_verified_discoveries, 0) AS weekly_verified_discoveries,
+          COALESCE(discovery_stats.weekly_feebas_uptime_created_minutes, 0) AS weekly_feebas_uptime_created_minutes,
+          COALESCE(discovery_stats.fastest_find_seconds, 0) AS fastest_find_seconds,
+          COALESCE(activity_stats.confirmations, 0) AS confirmations,
+          COALESCE(activity_stats.search_coverage, 0) AS search_coverage,
+          COALESCE(activity_stats.weekly_confirmations, 0) AS weekly_confirmations,
+          COALESCE(activity_stats.weekly_search_coverage, 0) AS weekly_search_coverage,
+          COALESCE(report_stats.pending_reports, 0) AS pending_reports,
+          COALESCE(report_stats.verified_reports, 0) AS verified_reports,
+          COALESCE(report_stats.weekly_pending_reports, 0) AS weekly_pending_reports,
+          COALESCE(report_stats.weekly_verified_reports, 0) AS weekly_verified_reports,
+          COALESCE(persistence_stats.lucky_find_checks, 0) AS lucky_find_checks,
+          COALESCE(persistence_stats.most_persistent_checks, 0) AS most_persistent_checks
+        FROM activity_stats
+        LEFT JOIN discovery_stats ON discovery_stats.user_id = activity_stats.user_id
+        LEFT JOIN report_stats ON report_stats.user_id = activity_stats.user_id
+        LEFT JOIN persistence_stats ON persistence_stats.user_id = activity_stats.user_id
+      ),
+      scored AS (
+        SELECT
+          *,
+          CASE
+            WHEN search_coverage > 0 THEN verified_discoveries::NUMERIC / search_coverage
+            ELSE 0
+          END AS efficiency,
+          CASE
+            WHEN pending_reports > 0 THEN verified_reports::NUMERIC / pending_reports
+            ELSE 0
+          END AS report_accuracy,
+          (
+            verified_discoveries * 100
+            + (feebas_uptime_created_minutes / 60)
+            + confirmations * 25
+            + search_coverage * 2
+          ) AS all_time_contribution_score,
+          (
+            weekly_verified_discoveries * 100
+            + (weekly_feebas_uptime_created_minutes / 60)
+            + weekly_confirmations * 25
+            + weekly_search_coverage * 2
+          ) AS weekly_contribution_score
+        FROM combined
+      )
+      SELECT *
+      FROM scored
+      ORDER BY
+        all_time_contribution_score DESC,
+        verified_discoveries DESC,
+        feebas_uptime_created_minutes DESC,
+        confirmations DESC,
+        search_coverage DESC,
+        ign ASC
+      LIMIT $3
+    `, queryParams);
+
+    const streakResult = await client.query(`
+      WITH logged_activity AS (
+        SELECT
+          logs.cycle_id,
+          users.id AS user_id,
+          cycles.cycle_start
+        FROM feebas_activity_logs logs
+        JOIN feebas_cycles cycles ON cycles.id = logs.cycle_id
+        JOIN app_users users ON logs.actor_fingerprint = CONCAT('account-', users.id::TEXT)
+        WHERE logs.location = $1
+      )
+      SELECT user_id, cycle_id, cycle_start
+      FROM logged_activity
+      GROUP BY user_id, cycle_id, cycle_start
+      ORDER BY cycle_start DESC, cycle_id DESC
+    `, [location]);
+
+    const streaksByUser = buildCurrentStreaks(streakResult.rows);
+
+    return {
+      location,
+      generatedAt: now.toISOString(),
+      weeklySince: weeklySince.toISOString(),
+      entries: leaderboardResult.rows.map((row, index) => ({
+        rank: index + 1,
+        userId: row.user_id,
+        ign: row.ign,
+        verifiedDiscoveries: toFiniteNumber(row.verified_discoveries),
+        feebasUptimeCreatedMinutes: toFiniteNumber(row.feebas_uptime_created_minutes),
+        confirmations: toFiniteNumber(row.confirmations),
+        searchCoverage: toFiniteNumber(row.search_coverage),
+        weeklyContributionScore: toFiniteNumber(row.weekly_contribution_score),
+        allTimeContributionScore: toFiniteNumber(row.all_time_contribution_score),
+        fastestFindSeconds: toFiniteNumber(row.fastest_find_seconds, null),
+        efficiency: toFiniteNumber(row.efficiency),
+        reportAccuracy: toFiniteNumber(row.report_accuracy),
+        currentStreak: streaksByUser.get(String(row.user_id)) || 0,
+        luckyFindChecks: toFiniteNumber(row.lucky_find_checks, null),
+        mostPersistentChecks: toFiniteNumber(row.most_persistent_checks, null),
+        pendingReports: toFiniteNumber(row.pending_reports),
+        verifiedReports: toFiniteNumber(row.verified_reports),
+      })),
+    };
+  }
+
   static async getBoardForCycle(client, location, cycle, now = new Date(), actorFingerprint = null) {
     const locationConfig = getLocationConfig(location);
     const votesResult = await client.query(`
@@ -386,6 +718,7 @@ class FeebasBoard {
       ORDER BY created_at DESC, id DESC
       LIMIT 20
     `, [cycle.id]);
+    const leaderboard = await this.getLeaderboard(location, { client, now });
 
     const votesByTile = votesResult.rows.reduce((map, row) => {
       const existing = map.get(row.tile_id) || [];
@@ -423,6 +756,7 @@ class FeebasBoard {
         actorName: entry.actor_name,
         createdAt: new Date(entry.created_at).toISOString(),
       })),
+      leaderboard,
       tiles: locationConfig.tiles.map((tileDefinition) => {
         const tileVotes = votesByTile.get(tileDefinition.tileId) || [];
         const voteCounts = {

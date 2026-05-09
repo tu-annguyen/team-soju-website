@@ -12,6 +12,7 @@ const updateTileSchema = Joi.object({
   actorName: Joi.string().trim().allow('', null).max(40).optional(),
 });
 const actorFingerprintQuerySchema = Joi.string().trim().min(8).max(120).optional();
+const leaderboardLimitQuerySchema = Joi.number().integer().min(1).max(50).optional();
 
 async function broadcastBoard(location) {
   const subscribers = subscribersByLocation.get(location);
@@ -27,6 +28,41 @@ async function broadcastBoard(location) {
     subscriber.response.write(payload);
   }));
 }
+
+router.get('/:location/leaderboard', async (req, res) => {
+  try {
+    getLocationConfig(req.params.location);
+    const { error, value: limit } = leaderboardLimitQuerySchema.validate(req.query.limit);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: error.details,
+      });
+    }
+
+    const leaderboard = await FeebasBoard.getLeaderboard(req.params.location, { limit });
+
+    res.json({
+      success: true,
+      data: leaderboard,
+    });
+  } catch (error) {
+    if (error instanceof FeebasRuleError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    console.error('Error fetching Feebas leaderboard:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch Feebas leaderboard',
+    });
+  }
+});
 
 router.get('/:location', async (req, res) => {
   try {
