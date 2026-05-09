@@ -226,7 +226,7 @@ const en = {
           coverage:
             'Unique cycle/tile checks or pending reports submitted by this logged-in player.',
           accuracy:
-            'Verified pending reports divided by all pending reports submitted by this logged-in player.',
+            'Verified pending reports divided by pending reports that were later resolved as confirmed or no Feebas.',
           efficiency:
             'Verified discoveries divided by search coverage.',
           streak:

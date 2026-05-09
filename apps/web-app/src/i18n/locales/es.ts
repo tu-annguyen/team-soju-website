@@ -189,7 +189,7 @@ const es = {
           coverage:
             'Comprobaciones de ciclo/casilla o reportes pendientes unicos enviados por este jugador con sesion iniciada.',
           accuracy:
-            'Reportes pendientes verificados divididos por todos los reportes pendientes enviados por este jugador con sesion iniciada.',
+            'Reportes pendientes verificados divididos por reportes pendientes que luego se resolvieron como confirmados o sin Feebas.',
           efficiency:
             'Descubrimientos verificados divididos por cobertura de busqueda.',
           streak:

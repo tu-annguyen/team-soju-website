@@ -546,6 +546,31 @@ class FeebasBoard {
         WHERE next_status = 'confirmed'
         GROUP BY location, cycle_id, tile_id
       ),
+      resolved_pending_reports AS (
+        SELECT
+          reports.location,
+          reports.cycle_id,
+          reports.tile_id,
+          reports.user_id,
+          reports.ign,
+          reports.reported_at,
+          resolution.resolved_status,
+          resolution.resolved_at
+        FROM pending_reports reports
+        JOIN LATERAL (
+          SELECT
+            activity.next_status AS resolved_status,
+            activity.created_at AS resolved_at
+          FROM all_activity activity
+          WHERE activity.location = reports.location
+            AND activity.cycle_id = reports.cycle_id
+            AND activity.tile_id = reports.tile_id
+            AND activity.created_at > reports.reported_at
+            AND activity.next_status IN ('checked', 'confirmed')
+          ORDER BY activity.created_at ASC, activity.id ASC
+          LIMIT 1
+        ) resolution ON true
+      ),
       active_users_by_cycle AS (
         SELECT
           cycle_id,
@@ -619,17 +644,13 @@ class FeebasBoard {
         SELECT
           reports.user_id,
           COUNT(*)::INT AS pending_reports,
-          (COUNT(*) FILTER (WHERE confirmed_tiles.cycle_id IS NOT NULL))::INT AS verified_reports,
+          (COUNT(*) FILTER (WHERE reports.resolved_status = 'confirmed'))::INT AS verified_reports,
           (COUNT(*) FILTER (WHERE reports.reported_at >= $2))::INT AS weekly_pending_reports,
           (COUNT(*) FILTER (
             WHERE reports.reported_at >= $2
-              AND confirmed_tiles.cycle_id IS NOT NULL
+              AND reports.resolved_status = 'confirmed'
           ))::INT AS weekly_verified_reports
-        FROM pending_reports reports
-        LEFT JOIN confirmed_tiles
-          ON confirmed_tiles.location = reports.location
-         AND confirmed_tiles.cycle_id = reports.cycle_id
-         AND confirmed_tiles.tile_id = reports.tile_id
+        FROM resolved_pending_reports reports
         GROUP BY reports.user_id
       ),
       activity_stats AS (

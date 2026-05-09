@@ -182,6 +182,11 @@ describe('FeebasBoard model', () => {
       'route-119-main',
       '2026-04-03T01:00:00.000Z',
     ]);
+    const leaderboardSql = pool.query.mock.calls[0][0];
+    expect(leaderboardSql).toContain('resolved_pending_reports AS');
+    expect(leaderboardSql).toContain("activity.next_status IN ('checked', 'confirmed')");
+    expect(leaderboardSql).toContain('FROM resolved_pending_reports reports');
+    expect(leaderboardSql).toContain("reports.resolved_status = 'confirmed'");
     expect(pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('GROUP BY user_id, cycle_id, cycle_start'), [
       'route-119-main',
     ]);

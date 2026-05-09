@@ -212,7 +212,7 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/May after 17 tile\(s\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Current position after applying the selected leaderboard sort/i)).toBeInTheDocument();
     expect(screen.getByText(/Score from the last 7 days/i)).toBeInTheDocument();
-    expect(screen.getByText(/Verified pending reports divided by all pending reports/i)).toBeInTheDocument();
+    expect(screen.getByText(/Verified pending reports divided by pending reports that were later resolved/i)).toBeInTheDocument();
   });
 
   it('paginates the activity log at five entries per page', async () => {
