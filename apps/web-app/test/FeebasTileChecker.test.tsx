@@ -183,14 +183,16 @@ describe('FeebasTileChecker', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows the optional display name field and sign in link when signed out', async () => {
+  it('shows the optional display name field and leaderboard sign-in links when signed out', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
     await waitFor(() =>
       expect(screen.getByLabelText(/Temporary display name/i)).toBeInTheDocument()
     );
 
-    expect(screen.getByRole('link', { name: /Sign in/i })).toHaveAttribute('href', '/auth');
+    const signInLinks = screen.getAllByRole('link', { name: /Sign in to track leaderboard statistics/i });
+    expect(signInLinks).toHaveLength(2);
+    expect(signInLinks.every((link) => link.getAttribute('href') === '/auth')).toBe(true);
   });
 
   it('renders the Feebas leaderboard metrics and tracked records', async () => {
@@ -778,6 +780,10 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/下次重置/i)).toBeInTheDocument();
     expect(screen.getAllByText(/发现丑丑鱼/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/确认丑丑鱼/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/丑丑鱼排行榜/i)).toBeInTheDocument();
+    expect(screen.getByText(/本周/i)).toBeInTheDocument();
+    expect(screen.getByText(/已登录账号的 IGN/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /登录以追踪排行榜统计/i })).toHaveLength(2);
   });
 
   it('renders Spanish location names and action labels', async () => {
@@ -792,5 +798,9 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByRole('tab', { name: /Monte Corona/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Feebas confirmado/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Quitar mi voto/i })).toBeDisabled();
+    expect(screen.getByText(/Clasificacion de Feebas/i)).toBeInTheDocument();
+    expect(screen.getByText(/Semanal/i)).toBeInTheDocument();
+    expect(screen.getByText(/IGN de la cuenta con sesion iniciada/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Inicia sesion para registrar estadisticas de clasificacion/i })).toHaveLength(2);
   });
 });

@@ -163,6 +163,8 @@ const BOARD_MIN_WIDTH_PX = 768;
 const TOOLTIP_MAX_WIDTH_PX = 288;
 const TOOLTIP_VIEWPORT_MARGIN_PX = 8;
 const TOOLTIP_ARROW_MARGIN_PX = 16;
+const LEADERBOARD_SIGN_IN_CTA_CLASSES =
+  'inline-flex items-center justify-center rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600';
 const ROUTE_119_MAIN_TERRAIN = [
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'grass'],
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'grass'],
@@ -676,7 +678,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const translations = getTranslations(activeLocale);
   const messages = translations.tools.feebasChecker;
   const authMessages = translations.auth;
-  const navMessages = translations.nav;
   const localizedLocationOptions: readonly LocationOption[] = [
     {
       id: 'route-119-main',
@@ -1125,7 +1126,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
               <label htmlFor="feebas-display-name" className="text-sm font-medium text-gray-700 dark:text-gray-200">
                 {messages.general.optionalDisplayName}
               </label>
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <input
                   id="feebas-display-name"
                   type="text"
@@ -1137,9 +1138,9 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
                 />
                 <a
                   href={authHref}
-                  className="inline-flex items-center justify-center rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+                  className={LEADERBOARD_SIGN_IN_CTA_CLASSES}
                 >
-                  {navMessages.signIn}
+                  {messages.general.signInToTrackLeaderboardStats}
                 </a>
               </div>
             </div>
@@ -1499,13 +1500,18 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
       </section>
 
       <section className="card p-5">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">{messages.leaderboard.heading}</h3>
             <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
               {messages.leaderboard.description}
             </p>
           </div>
+          {!isAuthLoading && !authUser ? (
+            <a href={authHref} className={`${LEADERBOARD_SIGN_IN_CTA_CLASSES} sm:shrink-0`}>
+              {messages.general.signInToTrackLeaderboardStats}
+            </a>
+          ) : null}
         </div>
 
         {loading && !board ? (
