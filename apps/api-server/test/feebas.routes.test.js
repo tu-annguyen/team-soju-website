@@ -3,6 +3,18 @@ const request = require('supertest');
 jest.mock('../src/models/FeebasBoard', () => ({
   getBoard: jest.fn(),
   getLeaderboard: jest.fn(),
+  getLeaderboardSortOptions: jest.fn(() => [
+    { key: 'ign', defaultDirection: 'asc' },
+    { key: 'weeklyContributionScore', defaultDirection: 'desc' },
+    { key: 'allTimeContributionScore', defaultDirection: 'desc' },
+    { key: 'verifiedDiscoveries', defaultDirection: 'desc' },
+    { key: 'feebasUptimeCreatedMinutes', defaultDirection: 'desc' },
+    { key: 'confirmations', defaultDirection: 'desc' },
+    { key: 'searchCoverage', defaultDirection: 'desc' },
+    { key: 'reportAccuracy', defaultDirection: 'desc' },
+    { key: 'efficiency', defaultDirection: 'desc' },
+    { key: 'currentStreak', defaultDirection: 'desc' },
+  ]),
   resetBoard: jest.fn(),
   updateTile: jest.fn(),
 }));
@@ -44,6 +56,13 @@ const leaderboardFixture = {
   location: 'route-119-main',
   generatedAt: '2026-04-09T20:20:00.000Z',
   weeklySince: '2026-04-02T20:20:00.000Z',
+  sort: {
+    by: 'rank',
+    direction: 'asc',
+  },
+  sortOptions: [
+    { key: 'ign', defaultDirection: 'asc' },
+  ],
   entries: [
     {
       rank: 1,
@@ -93,12 +112,16 @@ describe('Feebas routes', () => {
   });
 
   it('returns the Feebas leaderboard', async () => {
-    const response = await request(app).get('/api/feebas/route-119-main/leaderboard?limit=5');
+    const response = await request(app).get('/api/feebas/route-119-main/leaderboard?limit=5&sortBy=ign&sortDirection=asc');
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data).toEqual(leaderboardFixture);
-    expect(FeebasBoard.getLeaderboard).toHaveBeenCalledWith('route-119-main', { limit: 5 });
+    expect(FeebasBoard.getLeaderboard).toHaveBeenCalledWith('route-119-main', {
+      limit: 5,
+      sortBy: 'ign',
+      sortDirection: 'asc',
+    });
   });
 
   it('validates tile update payloads', async () => {

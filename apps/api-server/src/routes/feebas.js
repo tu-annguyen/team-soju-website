@@ -5,6 +5,7 @@ const { FeebasRuleError, getLocationConfig } = require('../utils/feebas');
 
 const router = express.Router();
 const subscribersByLocation = new Map();
+const leaderboardSortKeys = FeebasBoard.getLeaderboardSortOptions().map((option) => option.key);
 
 const updateTileSchema = Joi.object({
   status: Joi.string().valid('unchecked', 'checked', 'pending', 'confirmed').required(),
@@ -12,7 +13,11 @@ const updateTileSchema = Joi.object({
   actorName: Joi.string().trim().allow('', null).max(40).optional(),
 });
 const actorFingerprintQuerySchema = Joi.string().trim().min(8).max(120).optional();
-const leaderboardLimitQuerySchema = Joi.number().integer().min(1).max(50).optional();
+const leaderboardQuerySchema = Joi.object({
+  limit: Joi.number().integer().min(1).max(50).optional(),
+  sortBy: Joi.string().valid(...leaderboardSortKeys).optional(),
+  sortDirection: Joi.string().valid('asc', 'desc').optional(),
+});
 
 async function broadcastBoard(location) {
   const subscribers = subscribersByLocation.get(location);
@@ -32,7 +37,7 @@ async function broadcastBoard(location) {
 router.get('/:location/leaderboard', async (req, res) => {
   try {
     getLocationConfig(req.params.location);
-    const { error, value: limit } = leaderboardLimitQuerySchema.validate(req.query.limit);
+    const { error, value } = leaderboardQuerySchema.validate(req.query);
 
     if (error) {
       return res.status(400).json({
@@ -42,7 +47,7 @@ router.get('/:location/leaderboard', async (req, res) => {
       });
     }
 
-    const leaderboard = await FeebasBoard.getLeaderboard(req.params.location, { limit });
+    const leaderboard = await FeebasBoard.getLeaderboard(req.params.location, value);
 
     res.json({
       success: true,
