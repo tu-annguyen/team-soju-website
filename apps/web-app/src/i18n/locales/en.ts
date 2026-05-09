@@ -143,6 +143,7 @@ const en = {
         optionalDisplayName: 'Temporary display name',
         displayNamePlaceholder: 'Anonymous Feebas Hunter',
         signedInAs: 'Currently signed in as {ign}',
+        signInToTrackLeaderboardStats: 'Sign in to track leaderboard statistics',
         nextReset: 'Next Reset',
         resetsEvery: 'Resets every {minutes} real-time minutes',
         rules:

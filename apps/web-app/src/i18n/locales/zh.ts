@@ -98,6 +98,7 @@ const zh = {
         optionalDisplayName: '临时显示名称',
         displayNamePlaceholder: '匿名丑丑鱼猎人',
         signedInAs: '当前登录为 {ign}',
+        signInToTrackLeaderboardStats: '登录以追踪排行榜统计',
         nextReset: '下次重置',
         resetsEvery: '每 {minutes} 分钟实时重置一次',
         rules:
@@ -140,6 +141,55 @@ const zh = {
       activity: {
         heading: '活动记录',
         emptyState: '当玩家共同更新棋盘时，格子变更会显示在这里。',
+      },
+      leaderboard: {
+        heading: '丑丑鱼排行榜',
+        description: '已登录贡献者会按已验证发现、创造的有效时间、确认次数和搜索覆盖量排名。',
+        emptyState: '已登录玩家参与已验证的丑丑鱼周期后，排行榜统计会显示在这里。',
+        columns: {
+          rank: '排名',
+          trainer: '训练家',
+          weeklyScore: '本周',
+          allTimeScore: '总计',
+          discoveries: '发现',
+          uptime: '有效时间',
+          confirmations: '确认',
+          coverage: '覆盖',
+          accuracy: '准确率',
+          efficiency: '效率',
+          streak: '连续',
+        },
+        tooltips: {
+          rank: '应用当前排行榜排序后的名次。',
+          trainer: '已登录账号的 IGN。只统计登录后提交的活动。',
+          weeklyScore:
+            '最近 7 天得分：已验证发现 x100、有效时间小时数、确认 x25、搜索覆盖量 x2。',
+          allTimeScore:
+            '总得分：已验证发现 x100、有效时间小时数、确认 x25、搜索覆盖量 x2。',
+          discoveries:
+            '该玩家作为已登录用户第一个提交待确认报告，并且之后被确认的唯一格子数量。',
+          uptime:
+            '已验证发现创造的社区有效时间：报告后该周期剩余分钟数乘以该周期内活跃的已登录贡献者数量。',
+          confirmations:
+            '该已登录玩家提交的唯一周期/格子确认数。',
+          coverage:
+            '该已登录玩家提交的唯一周期/格子检查或待确认报告数。',
+          accuracy:
+            '已验证待确认报告数除以该已登录玩家提交的所有待确认报告数。',
+          efficiency:
+            '已验证发现数除以搜索覆盖量。',
+          streak:
+            '该玩家连续在最近多少个丑丑鱼周期中至少进行了一次已登录贡献。',
+        },
+        notables: {
+          heading: '记录统计',
+          fastestFinder: '最快发现者',
+          luckyFinder: '幸运发现者',
+          mostPersistent: '最坚持者',
+          noData: '还没有已验证发现',
+          fastestValue: '{ign} 用时 {value}',
+          checksValue: '{ign} 在 {value} 个格子后发现',
+        },
       },
       errors: {
         loadBoard: '无法加载丑丑鱼棋盘',

@@ -103,6 +103,7 @@ const es = {
         optionalDisplayName: 'Nombre visualización temporal',
         displayNamePlaceholder: 'Cazador anonimo de Feebas',
         signedInAs: 'Sesion iniciada como {ign}',
+        signInToTrackLeaderboardStats: 'Inicia sesion para registrar estadisticas de clasificacion',
         nextReset: 'Siguiente reinicio',
         resetsEvery: 'Se reinicia cada {minutes} minutos en tiempo real',
         rules:
@@ -149,6 +150,57 @@ const es = {
       activity: {
         heading: 'Actividad',
         emptyState: 'Los cambios de casillas apareceran aqui mientras los jugadores dan forma al tablero juntos.',
+      },
+      leaderboard: {
+        heading: 'Clasificacion de Feebas',
+        description:
+          'Contribuidores con sesion iniciada ordenados por descubrimientos verificados, tiempo activo creado, confirmaciones y cobertura de busqueda.',
+        emptyState:
+          'Las estadisticas de la clasificacion apareceran despues de que jugadores con sesion iniciada contribuyan a ciclos verificados de Feebas.',
+        columns: {
+          rank: 'Puesto',
+          trainer: 'Entrenador',
+          weeklyScore: 'Semanal',
+          allTimeScore: 'Historico',
+          discoveries: 'Hallazgos',
+          uptime: 'Tiempo activo',
+          confirmations: 'Confirma',
+          coverage: 'Cobertura',
+          accuracy: 'Precision',
+          efficiency: 'Eficiencia',
+          streak: 'Racha',
+        },
+        tooltips: {
+          rank: 'Posicion actual despues de aplicar el orden seleccionado de la clasificacion.',
+          trainer: 'IGN de la cuenta con sesion iniciada. Solo cuenta la actividad enviada con sesion iniciada.',
+          weeklyScore:
+            'Puntuacion de los ultimos 7 dias: descubrimientos verificados x100, horas de tiempo activo, confirmaciones x25 y cobertura de busqueda x2.',
+          allTimeScore:
+            'Puntuacion historica: descubrimientos verificados x100, horas de tiempo activo, confirmaciones x25 y cobertura de busqueda x2.',
+          discoveries:
+            'Casillas unicas donde este jugador fue el primer reportero pendiente con sesion iniciada y la casilla luego fue confirmada.',
+          uptime:
+            'Tiempo activo comunitario creado por descubrimientos verificados: minutos restantes del ciclo despues del reporte multiplicados por contribuidores activos con sesion iniciada en ese ciclo.',
+          confirmations:
+            'Confirmaciones unicas de ciclo/casilla enviadas por este jugador con sesion iniciada.',
+          coverage:
+            'Comprobaciones de ciclo/casilla o reportes pendientes unicos enviados por este jugador con sesion iniciada.',
+          accuracy:
+            'Reportes pendientes verificados divididos por todos los reportes pendientes enviados por este jugador con sesion iniciada.',
+          efficiency:
+            'Descubrimientos verificados divididos por cobertura de busqueda.',
+          streak:
+            'Ciclos recientes consecutivos de Feebas en los que este jugador hizo al menos una contribucion con sesion iniciada.',
+        },
+        notables: {
+          heading: 'Records registrados',
+          fastestFinder: 'Buscador mas rapido',
+          luckyFinder: 'Buscador con mas suerte',
+          mostPersistent: 'Mas persistente',
+          noData: 'Aun no hay hallazgos verificados',
+          fastestValue: '{ign} en {value}',
+          checksValue: '{ign} despues de {value} casilla(s)',
+        },
       },
       errors: {
         loadBoard: 'No se pudo cargar el tablero de Feebas',
