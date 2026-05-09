@@ -100,6 +100,86 @@ describe('FeebasBoard model', () => {
     ]);
   });
 
+  it('returns ranked logged-in Feebas leaderboard stats', async () => {
+    pool.query
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            user_id: 'user-1',
+            ign: 'May',
+            verified_discoveries: '2',
+            feebas_uptime_created_minutes: '180',
+            confirmations: '4',
+            search_coverage: '30',
+            weekly_contribution_score: '212',
+            all_time_contribution_score: '363',
+            fastest_find_seconds: '90',
+            efficiency: '0.0666666667',
+            report_accuracy: '0.8',
+            lucky_find_checks: '2',
+            most_persistent_checks: '17',
+            pending_reports: '5',
+            verified_reports: '4',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            user_id: 'user-1',
+            cycle_id: 45,
+            cycle_start: '2026-04-10T00:45:00.000Z',
+          },
+          {
+            user_id: 'user-1',
+            cycle_id: 44,
+            cycle_start: '2026-04-10T00:00:00.000Z',
+          },
+        ],
+      });
+
+    const result = await FeebasBoard.getLeaderboard('route-119-main', {
+      now: '2026-04-10T01:00:00.000Z',
+      weeklySince: '2026-04-03T01:00:00.000Z',
+      limit: 5,
+    });
+
+    expect(result).toEqual({
+      location: 'route-119-main',
+      generatedAt: '2026-04-10T01:00:00.000Z',
+      weeklySince: '2026-04-03T01:00:00.000Z',
+      entries: [
+        {
+          rank: 1,
+          userId: 'user-1',
+          ign: 'May',
+          verifiedDiscoveries: 2,
+          feebasUptimeCreatedMinutes: 180,
+          confirmations: 4,
+          searchCoverage: 30,
+          weeklyContributionScore: 212,
+          allTimeContributionScore: 363,
+          fastestFindSeconds: 90,
+          efficiency: 0.0666666667,
+          reportAccuracy: 0.8,
+          currentStreak: 2,
+          luckyFindChecks: 2,
+          mostPersistentChecks: 17,
+          pendingReports: 5,
+          verifiedReports: 4,
+        },
+      ],
+    });
+    expect(pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('verified_discoveries'), [
+      'route-119-main',
+      '2026-04-03T01:00:00.000Z',
+      5,
+    ]);
+    expect(pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('GROUP BY user_id, cycle_id, cycle_start'), [
+      'route-119-main',
+    ]);
+  });
+
   it('archives confirmed tiles from the previous cycle before creating a new one', async () => {
     const previousCycle = {
       id: 41,

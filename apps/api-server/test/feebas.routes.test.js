@@ -2,6 +2,7 @@ const request = require('supertest');
 
 jest.mock('../src/models/FeebasBoard', () => ({
   getBoard: jest.fn(),
+  getLeaderboard: jest.fn(),
   resetBoard: jest.fn(),
   updateTile: jest.fn(),
 }));
@@ -39,6 +40,32 @@ const boardFixture = {
     },
   ],
 };
+const leaderboardFixture = {
+  location: 'route-119-main',
+  generatedAt: '2026-04-09T20:20:00.000Z',
+  weeklySince: '2026-04-02T20:20:00.000Z',
+  entries: [
+    {
+      rank: 1,
+      userId: 'user-id',
+      ign: 'May',
+      verifiedDiscoveries: 2,
+      feebasUptimeCreatedMinutes: 120,
+      confirmations: 4,
+      searchCoverage: 30,
+      weeklyContributionScore: 260,
+      allTimeContributionScore: 360,
+      fastestFindSeconds: 90,
+      efficiency: 0.067,
+      reportAccuracy: 0.8,
+      currentStreak: 3,
+      luckyFindChecks: 2,
+      mostPersistentChecks: 17,
+      pendingReports: 5,
+      verifiedReports: 4,
+    },
+  ],
+};
 
 describe('Feebas routes', () => {
   const originalNodeEnv = process.env.NODE_ENV;
@@ -47,6 +74,7 @@ describe('Feebas routes', () => {
     jest.clearAllMocks();
     process.env.NODE_ENV = 'test';
     FeebasBoard.getBoard.mockResolvedValue(boardFixture);
+    FeebasBoard.getLeaderboard.mockResolvedValue(leaderboardFixture);
     FeebasBoard.resetBoard.mockResolvedValue(boardFixture);
     FeebasBoard.updateTile.mockResolvedValue(boardFixture);
   });
@@ -62,6 +90,15 @@ describe('Feebas routes', () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data).toEqual(boardFixture);
     expect(FeebasBoard.getBoard).toHaveBeenCalledWith('route-119-main', { actorFingerprint: undefined });
+  });
+
+  it('returns the Feebas leaderboard', async () => {
+    const response = await request(app).get('/api/feebas/route-119-main/leaderboard?limit=5');
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toEqual(leaderboardFixture);
+    expect(FeebasBoard.getLeaderboard).toHaveBeenCalledWith('route-119-main', { limit: 5 });
   });
 
   it('validates tile update payloads', async () => {

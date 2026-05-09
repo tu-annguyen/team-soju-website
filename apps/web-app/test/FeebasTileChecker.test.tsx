@@ -41,6 +41,30 @@ const boardFixture = {
       createdAt: '2026-04-09T20:18:00.000Z',
     },
   ],
+  leaderboard: {
+    location: 'route-119-main',
+    generatedAt: '2026-04-09T20:20:00.000Z',
+    weeklySince: '2026-04-02T20:20:00.000Z',
+    entries: [
+      {
+        rank: 1,
+        userId: 'user-id',
+        ign: 'May',
+        verifiedDiscoveries: 2,
+        feebasUptimeCreatedMinutes: 180,
+        confirmations: 4,
+        searchCoverage: 30,
+        weeklyContributionScore: 212,
+        allTimeContributionScore: 363,
+        fastestFindSeconds: 90,
+        efficiency: 0.067,
+        reportAccuracy: 0.8,
+        currentStreak: 3,
+        luckyFindChecks: 2,
+        mostPersistentChecks: 17,
+      },
+    ],
+  },
   tiles: [
     {
       tileId: 'r1c1',
@@ -146,10 +170,27 @@ describe('FeebasTileChecker', () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
     await waitFor(() =>
-      expect(screen.getByLabelText(/Optional display name/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Temporary display name/i)).toBeInTheDocument()
     );
 
     expect(screen.getByRole('link', { name: /Sign in/i })).toHaveAttribute('href', '/auth');
+  });
+
+  it('renders the Feebas leaderboard metrics and tracked records', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText('All-time')).toBeInTheDocument()
+    );
+
+    expect(screen.getByText(/Feebas Leaderboard/i)).toBeInTheDocument();
+    expect(screen.getByText('Weekly')).toBeInTheDocument();
+    expect(screen.getByText('363')).toBeInTheDocument();
+    expect(screen.getByText('3h')).toBeInTheDocument();
+    expect(screen.getByText('80%')).toBeInTheDocument();
+    expect(screen.getByText(/May in 1m 30s/i)).toBeInTheDocument();
+    expect(screen.getByText(/May after 2 tile\(s\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/May after 17 tile\(s\)/i)).toBeInTheDocument();
   });
 
   it('uses the signed-in user IGN as the Feebas display name', async () => {

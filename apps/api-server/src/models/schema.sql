@@ -288,6 +288,13 @@ CREATE TABLE IF NOT EXISTS feebas_activity_logs (
 CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_cycle_id_created_at
   ON feebas_activity_logs(cycle_id, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_actor_created_at
+  ON feebas_activity_logs(actor_fingerprint, created_at DESC)
+  WHERE actor_fingerprint IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_location_status_created_at
+  ON feebas_activity_logs(location, next_status, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS feebas_confirmed_tile_snapshots (
   id BIGSERIAL PRIMARY KEY,
   location TEXT NOT NULL,
