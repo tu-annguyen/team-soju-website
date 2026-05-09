@@ -28,6 +28,7 @@ async function broadcastBoard(location) {
   await Promise.all(Array.from(subscribers).map(async (subscriber) => {
     const board = await FeebasBoard.getBoard(location, {
       actorFingerprint: subscriber.actorFingerprint,
+      includeLeaderboard: false,
     });
     const payload = `data: ${JSON.stringify({ success: true, data: board })}\n\n`;
     subscriber.response.write(payload);
@@ -99,7 +100,10 @@ router.get('/:location/stream', async (req, res) => {
   try {
     getLocationConfig(req.params.location);
     const actorFingerprint = actorFingerprintQuerySchema.validate(req.query.actorFingerprint).value;
-    const board = await FeebasBoard.getBoard(req.params.location, { actorFingerprint });
+    const board = await FeebasBoard.getBoard(req.params.location, {
+      actorFingerprint,
+      includeLeaderboard: false,
+    });
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -155,7 +159,9 @@ router.post('/:location/tiles/:tileId', async (req, res) => {
       });
     }
 
-    const board = await FeebasBoard.updateTile(req.params.location, req.params.tileId, value);
+    const board = await FeebasBoard.updateTile(req.params.location, req.params.tileId, value, {
+      includeLeaderboard: false,
+    });
     await broadcastBoard(req.params.location);
 
     res.json({

@@ -134,10 +134,11 @@ class FeebasBoard {
     const client = options.client || pool;
     const now = options.now ? new Date(options.now) : new Date();
     const actorFingerprint = sanitizeFingerprint(options.actorFingerprint);
+    const includeLeaderboard = options.includeLeaderboard !== false;
     const { cycleStart, cycleEnd } = getCycleWindow(now);
 
     const cycle = await this.ensureCycle(client, location, cycleStart, cycleEnd);
-    return this.getBoardForCycle(client, location, cycle, now, actorFingerprint);
+    return this.getBoardForCycle(client, location, cycle, now, actorFingerprint, { includeLeaderboard });
   }
 
   static async resetBoard(location, options = {}) {
@@ -207,6 +208,7 @@ class FeebasBoard {
           { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd },
           now,
           actorFingerprint,
+          { includeLeaderboard: options.includeLeaderboard !== false },
         );
 
         await client.query('COMMIT');
@@ -251,6 +253,7 @@ class FeebasBoard {
         { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd },
         now,
         actorFingerprint,
+        { includeLeaderboard: options.includeLeaderboard !== false },
       );
 
       await client.query('COMMIT');
@@ -799,8 +802,9 @@ class FeebasBoard {
     };
   }
 
-  static async getBoardForCycle(client, location, cycle, now = new Date(), actorFingerprint = null) {
+  static async getBoardForCycle(client, location, cycle, now = new Date(), actorFingerprint = null, options = {}) {
     const locationConfig = getLocationConfig(location);
+    const includeLeaderboard = options.includeLeaderboard !== false;
     const votesResult = await client.query(`
       SELECT tile_id, actor_fingerprint, actor_name, status
       FROM feebas_tile_votes
@@ -819,7 +823,9 @@ class FeebasBoard {
       ORDER BY created_at DESC, id DESC
       LIMIT 20
     `, [cycle.id]);
-    const leaderboard = await this.getLeaderboard(location, { client, now });
+    const leaderboard = includeLeaderboard
+      ? await this.getLeaderboard(location, { client, now })
+      : undefined;
 
     const votesByTile = votesResult.rows.reduce((map, row) => {
       const existing = map.get(row.tile_id) || [];
@@ -857,7 +863,7 @@ class FeebasBoard {
         actorName: entry.actor_name,
         createdAt: new Date(entry.created_at).toISOString(),
       })),
-      leaderboard,
+      ...(includeLeaderboard ? { leaderboard } : {}),
       tiles: locationConfig.tiles.map((tileDefinition) => {
         const tileVotes = votesByTile.get(tileDefinition.tileId) || [];
         const voteCounts = {

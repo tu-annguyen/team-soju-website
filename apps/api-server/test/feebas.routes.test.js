@@ -150,6 +150,8 @@ describe('Feebas routes', () => {
       status: 'pending',
       actorFingerprint: 'client-12345678',
       actorName: 'May',
+    }, {
+      includeLeaderboard: false,
     });
   });
 

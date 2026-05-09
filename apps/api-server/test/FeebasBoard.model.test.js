@@ -192,6 +192,35 @@ describe('FeebasBoard model', () => {
     ]);
   });
 
+  it('can build a board without recomputing leaderboard stats', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] }),
+    };
+    const cycle = {
+      id: 45,
+      cycle_start: '2026-04-10T00:00:00.000Z',
+      cycle_end: '2026-04-10T00:45:00.000Z',
+    };
+    const getLeaderboardSpy = jest.spyOn(FeebasBoard, 'getLeaderboard');
+
+    const result = await FeebasBoard.getBoardForCycle(
+      client,
+      'route-119-main',
+      cycle,
+      new Date('2026-04-10T00:20:00.000Z'),
+      'client-12345678',
+      { includeLeaderboard: false },
+    );
+
+    expect(result).not.toHaveProperty('leaderboard');
+    expect(result.tiles.length).toBeGreaterThan(0);
+    expect(getLeaderboardSpy).not.toHaveBeenCalled();
+    expect(client.query).toHaveBeenCalledTimes(3);
+  });
+
   it('archives confirmed tiles from the previous cycle before creating a new one', async () => {
     const previousCycle = {
       id: 41,
