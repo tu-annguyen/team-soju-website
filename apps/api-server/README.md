@@ -2,7 +2,7 @@
 
 A Node.js backend API with PostgreSQL database for managing Team Soju members and shiny Pokemon data, with Discord bot integration.
 
-This app now also includes a Cloudflare Worker runtime under [src/cloudflare/worker.js](/root/repos/team-soju-website/apps/api-server/src/cloudflare/worker.js) so the CRUD API can move to Workers first while the screenshot/OCR endpoints remain on the legacy Node server.
+This app now also includes a Cloudflare Worker runtime under [src/cloudflare/worker.js](/root/repos/team-soju-website/apps/api-server/src/cloudflare/worker.js) so the CRUD API can move to Workers first while screenshot/OCR, non-`/me` auth flows, and Feebas SSE remain on the legacy Node server during migration.
 
 ---
 
@@ -234,16 +234,18 @@ curl -X POST http://localhost:3001/api/shinies \
   ```
 
 - Default Worker database backend is Postgres via Hyperdrive or `DATABASE_URL`.
-- Set `DB_BACKEND=d1` and bind `DB` to switch the Worker to D1.
+- Set `DB_BACKEND=d1` and bind `DB` to switch the Worker to D1. The D1 schema covers team members, shinies, app users for `GET /api/auth/me`, and Feebas board REST tables.
 - Set `LEGACY_API_BASE_URL` during migration to proxy:
   - `POST /api/shinies/from-screenshot`
   - `POST /api/shinies/from-screenshot/async`
   - `GET /api/shinies/sprites/:nationalNumber/greyscale(.gif)`
+  - auth endpoints other than `GET /api/auth/me`
+  - `GET /api/feebas/:location/stream`
 
 ### D1 Compatibility
 
 - D1 schema lives in `src/models/schema.d1.sql`.
-- Postgres export conversion helper lives in `src/scripts/postgresToD1.js`.
+- Postgres export conversion helper lives in `src/scripts/postgresToD1.js` and supports members, shinies, app users, and Feebas board history.
 - The Worker repository layer supports both Postgres and D1 so the HTTP contract stays unchanged while the storage backend changes.
 
 ### Project Structure

@@ -6,9 +6,24 @@ const {
   updateMemberSchema,
   updateShinySchema,
 } = require('./contracts');
-const { authenticateBotRequest, generateBotToken } = require('./auth');
+const Joi = require('joi');
+const {
+  authenticateBotRequest,
+  clearAuthCookie,
+  generateBotToken,
+  getTokenFromRequest,
+  verifyUserToken,
+} = require('./auth');
 const { createRepositories } = require('./repositories');
 const { buildCorsHeaders, empty, json, readJson, withStandardHeaders } = require('./http');
+const { FeebasRuleError, getLocationConfig } = require('../utils/feebas');
+
+const updateFeebasTileSchema = Joi.object({
+  status: Joi.string().valid('unchecked', 'checked', 'pending', 'confirmed').required(),
+  actorFingerprint: Joi.string().trim().min(8).max(120).required(),
+  actorName: Joi.string().trim().allow('', null).max(40).optional(),
+});
+const feebasActorFingerprintSchema = Joi.string().trim().min(8).max(120).optional();
 
 function createWorkerApp(options = {}) {
   const createRepos = options.createRepositories || createRepositories;
@@ -36,7 +51,9 @@ function createWorkerApp(options = {}) {
   function isLegacyProxyPath(pathname) {
     return pathname === '/api/shinies/from-screenshot'
       || pathname === '/api/shinies/from-screenshot/async'
-      || pathname.startsWith('/api/shinies/sprites/');
+      || pathname.startsWith('/api/shinies/sprites/')
+      || (pathname.startsWith('/api/auth/') && pathname !== '/api/auth/me')
+      || /^\/api\/feebas\/[^/]+\/stream$/.test(pathname);
   }
 
   async function requireBotAuth(request, env) {
@@ -50,7 +67,11 @@ function createWorkerApp(options = {}) {
   async function routeRequest(request, env, ctx) {
     const url = new URL(request.url);
     const pathname = url.pathname;
-    const repositories = options.repositories || createRepos(env);
+    let repositories;
+    const getRepositories = () => {
+      repositories = repositories || options.repositories || createRepos(env);
+      return repositories;
+    };
 
     if (request.method === 'OPTIONS') {
       return empty(204, { headers: buildCorsHeaders(request, env) });
@@ -85,9 +106,51 @@ function createWorkerApp(options = {}) {
       });
     }
 
+    if (request.method === 'GET' && pathname === '/api/auth/me') {
+      const token = getTokenFromRequest(request, env);
+
+      if (!token) {
+        return json({
+          success: true,
+          data: null,
+        });
+      }
+
+      try {
+        const decoded = await verifyUserToken(token, env);
+        const user = await getRepositories().users.findById(decoded.sub);
+
+        if (!user) {
+          return json({
+            success: true,
+            data: null,
+          }, {
+            headers: {
+              'set-cookie': clearAuthCookie(env),
+            },
+          });
+        }
+
+        return json({
+          success: true,
+          data: getRepositories().users.toSafeUser(user),
+        });
+      } catch {
+        return json({
+          success: false,
+          message: 'Invalid or expired session.',
+        }, {
+          status: 401,
+          headers: {
+            'set-cookie': clearAuthCookie(env),
+          },
+        });
+      }
+    }
+
     if (request.method === 'GET' && pathname === '/api/members') {
       try {
-        const data = await repositories.members.findAll();
+        const data = await getRepositories().members.findAll();
         return json({ success: true, data });
       } catch (error) {
         console.error('Error fetching members:', error);
@@ -98,7 +161,7 @@ function createWorkerApp(options = {}) {
     let match = pathname.match(/^\/api\/members\/ign\/inactive\/(.+)$/);
     if (request.method === 'GET' && match) {
       try {
-        const member = await repositories.members.findByIgnIncludingInactive(decodeURIComponent(match[1]));
+        const member = await getRepositories().members.findByIgnIncludingInactive(decodeURIComponent(match[1]));
         if (!member) {
           return json({ success: false, message: 'Team member not found' }, { status: 404 });
         }
@@ -115,7 +178,7 @@ function createWorkerApp(options = {}) {
     match = pathname.match(/^\/api\/members\/ign\/(.+)$/);
     if (request.method === 'GET' && match) {
       try {
-        const member = await repositories.members.findByIgn(decodeURIComponent(match[1]));
+        const member = await getRepositories().members.findByIgn(decodeURIComponent(match[1]));
         if (!member) {
           return json({ success: false, message: 'Team member not found' }, { status: 404 });
         }
@@ -129,7 +192,7 @@ function createWorkerApp(options = {}) {
     match = pathname.match(/^\/api\/members\/discord\/(.+)$/);
     if (request.method === 'GET' && match) {
       try {
-        const member = await repositories.members.findByDiscordId(decodeURIComponent(match[1]));
+        const member = await getRepositories().members.findByDiscordId(decodeURIComponent(match[1]));
         if (!member) {
           return json({ success: false, message: 'Team member not found' }, { status: 404 });
         }
@@ -151,7 +214,7 @@ function createWorkerApp(options = {}) {
           return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
         }
 
-        const member = await repositories.members.create(value);
+        const member = await getRepositories().members.create(value);
         return json({
           success: true,
           data: member,
@@ -175,7 +238,7 @@ function createWorkerApp(options = {}) {
       if (unauthorized) return unauthorized;
 
       try {
-        const member = await repositories.members.reactivate(match[1]);
+        const member = await getRepositories().members.reactivate(match[1]);
         if (!member) {
           return json({ success: false, message: 'Team member not found' }, { status: 404 });
         }
@@ -193,7 +256,7 @@ function createWorkerApp(options = {}) {
     match = pathname.match(/^\/api\/members\/([^/]+)\/stats$/);
     if (request.method === 'GET' && match) {
       try {
-        const stats = await repositories.members.getShinyStats(match[1]);
+        const stats = await getRepositories().members.getShinyStats(match[1]);
         return json({ success: true, data: stats });
       } catch (error) {
         console.error('Error fetching member stats:', error);
@@ -204,7 +267,7 @@ function createWorkerApp(options = {}) {
     match = pathname.match(/^\/api\/members\/([^/]+)$/);
     if (request.method === 'GET' && match) {
       try {
-        const member = await repositories.members.findById(match[1]);
+        const member = await getRepositories().members.findById(match[1]);
         if (!member) {
           return json({ success: false, message: 'Team member not found' }, { status: 404 });
         }
@@ -226,7 +289,7 @@ function createWorkerApp(options = {}) {
           return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
         }
 
-        const member = await repositories.members.update(match[1], value);
+        const member = await getRepositories().members.update(match[1], value);
         if (!member) {
           return json({ success: false, message: 'Team member not found' }, { status: 404 });
         }
@@ -246,7 +309,7 @@ function createWorkerApp(options = {}) {
       if (unauthorized) return unauthorized;
 
       try {
-        const member = await repositories.members.delete(match[1]);
+        const member = await getRepositories().members.delete(match[1]);
         if (!member) {
           return json({ success: false, message: 'Team member not found' }, { status: 404 });
         }
@@ -262,7 +325,7 @@ function createWorkerApp(options = {}) {
 
     if (request.method === 'GET' && pathname === '/api/shinies') {
       try {
-        const data = await repositories.shinies.findAll(buildShinyFilters(url));
+        const data = await getRepositories().shinies.findAll(buildShinyFilters(url));
         return json({ success: true, data, count: data.length });
       } catch (error) {
         console.error('Error fetching shinies:', error);
@@ -272,7 +335,7 @@ function createWorkerApp(options = {}) {
 
     if (request.method === 'GET' && pathname === '/api/shinies/stats') {
       try {
-        const data = await repositories.shinies.getStats();
+        const data = await getRepositories().shinies.getStats();
         return json({ success: true, data });
       } catch (error) {
         console.error('Error fetching shiny stats:', error);
@@ -283,7 +346,7 @@ function createWorkerApp(options = {}) {
     if (request.method === 'GET' && pathname === '/api/shinies/leaderboard') {
       try {
         const limit = parseInt(url.searchParams.get('limit') || '10', 10);
-        const data = await repositories.shinies.getTopTrainers(limit);
+        const data = await getRepositories().shinies.getTopTrainers(limit);
         return json({ success: true, data });
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
@@ -294,7 +357,7 @@ function createWorkerApp(options = {}) {
     match = pathname.match(/^\/api\/shinies\/([^/]+)$/);
     if (request.method === 'GET' && match) {
       try {
-        const shiny = await repositories.shinies.findById(match[1]);
+        const shiny = await getRepositories().shinies.findById(match[1]);
         if (!shiny) {
           return json({ success: false, message: 'Shiny not found' }, { status: 404 });
         }
@@ -316,7 +379,7 @@ function createWorkerApp(options = {}) {
           return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
         }
 
-        const shiny = await repositories.shinies.create(await enrichShinyPayloadWithVariants(value));
+        const shiny = await getRepositories().shinies.create(await enrichShinyPayloadWithVariants(value));
         return json({
           success: true,
           data: shiny,
@@ -342,7 +405,7 @@ function createWorkerApp(options = {}) {
           return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
         }
 
-        const shiny = await repositories.shinies.update(match[1], await enrichShinyPayloadWithVariants(value));
+        const shiny = await getRepositories().shinies.update(match[1], await enrichShinyPayloadWithVariants(value));
         if (!shiny) {
           return json({ success: false, message: 'Shiny not found' }, { status: 404 });
         }
@@ -362,7 +425,7 @@ function createWorkerApp(options = {}) {
       if (unauthorized) return unauthorized;
 
       try {
-        const shiny = await repositories.shinies.delete(match[1]);
+        const shiny = await getRepositories().shinies.delete(match[1]);
         if (!shiny) {
           return json({ success: false, message: 'Shiny not found' }, { status: 404 });
         }
@@ -374,6 +437,122 @@ function createWorkerApp(options = {}) {
       } catch (error) {
         console.error('Error deleting shiny:', error);
         return json({ success: false, message: 'Failed to delete shiny entry' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/feebas\/([^/]+)\/leaderboard$/);
+    if (request.method === 'GET' && match) {
+      try {
+        getLocationConfig(match[1]);
+        const leaderboardSortKeys = getRepositories().feebas.getLeaderboardSortOptions().map((option) => option.key);
+        const leaderboardQuerySchema = Joi.object({
+          limit: Joi.number().integer().min(1).max(50).optional(),
+          sortBy: Joi.string().valid(...leaderboardSortKeys).optional(),
+          sortDirection: Joi.string().valid('asc', 'desc').optional(),
+        });
+        const { error, value } = leaderboardQuerySchema.validate(Object.fromEntries(url.searchParams.entries()));
+
+        if (error) {
+          return json({
+            success: false,
+            message: 'Validation error',
+            details: error.details,
+          }, { status: 400 });
+        }
+
+        const leaderboard = await getRepositories().feebas.getLeaderboard(match[1], value);
+        return json({
+          success: true,
+          data: leaderboard,
+        });
+      } catch (error) {
+        if (error instanceof FeebasRuleError) {
+          return json({ success: false, message: error.message }, { status: error.statusCode });
+        }
+
+        console.error('Error fetching Feebas leaderboard:', error);
+        return json({ success: false, message: 'Failed to fetch Feebas leaderboard' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/feebas\/([^/]+)\/tiles\/([^/]+)$/);
+    if (request.method === 'POST' && match) {
+      try {
+        getLocationConfig(match[1]);
+        const body = await readJson(request);
+        const { error, value } = updateFeebasTileSchema.validate(body);
+
+        if (error) {
+          return json({
+            success: false,
+            message: 'Validation error',
+            details: error.details,
+          }, { status: 400 });
+        }
+
+        const board = await getRepositories().feebas.updateTile(match[1], match[2], value, {
+          includeLeaderboard: false,
+        });
+        return json({
+          success: true,
+          data: board,
+          message: 'Feebas tile updated successfully',
+        });
+      } catch (error) {
+        if (error instanceof FeebasRuleError) {
+          return json({ success: false, message: error.message }, { status: error.statusCode });
+        }
+
+        console.error('Error updating Feebas tile:', error);
+        return json({ success: false, message: 'Failed to update Feebas tile' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/feebas\/([^/]+)\/reset$/);
+    if (request.method === 'POST' && match) {
+      if (env.NODE_ENV === 'production') {
+        return json({
+          success: false,
+          message: 'Feebas board reset is not available in production',
+        }, { status: 403 });
+      }
+
+      try {
+        getLocationConfig(match[1]);
+        const board = await getRepositories().feebas.resetBoard(match[1]);
+        return json({
+          success: true,
+          data: board,
+          message: 'Feebas board reset successfully',
+        });
+      } catch (error) {
+        if (error instanceof FeebasRuleError) {
+          return json({ success: false, message: error.message }, { status: error.statusCode });
+        }
+
+        console.error('Error resetting Feebas board:', error);
+        return json({ success: false, message: 'Failed to reset Feebas board' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/feebas\/([^/]+)$/);
+    if (request.method === 'GET' && match) {
+      try {
+        getLocationConfig(match[1]);
+        const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
+        const board = await getRepositories().feebas.getBoard(match[1], { actorFingerprint });
+
+        return json({
+          success: true,
+          data: board,
+        });
+      } catch (error) {
+        if (error instanceof FeebasRuleError) {
+          return json({ success: false, message: error.message }, { status: error.statusCode });
+        }
+
+        console.error('Error fetching Feebas board:', error);
+        return json({ success: false, message: 'Failed to fetch Feebas board' }, { status: 500 });
       }
     }
 

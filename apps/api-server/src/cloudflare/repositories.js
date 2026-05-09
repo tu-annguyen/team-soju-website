@@ -1,5 +1,6 @@
 const crypto = globalThis.crypto || require('crypto');
 const { Pool, types } = require('pg');
+const { createFeebasRepository } = require('./feebas-repository');
 
 types.setTypeParser(1082, (val) => val);
 
@@ -25,6 +26,26 @@ function normalizeMemberRow(row) {
   return {
     ...row,
     is_active: parseD1Boolean(row.is_active),
+  };
+}
+
+function toSafeUser(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    email: row.email,
+    ign: row.ign,
+    discord_id: row.discord_id,
+    discord_username: row.discord_username,
+    discord_global_name: row.discord_global_name,
+    discord_avatar: row.discord_avatar,
+    auth_provider: row.auth_provider,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    last_login_at: row.last_login_at,
   };
 }
 
@@ -76,6 +97,7 @@ function createPostgresRepositories(env = process.env, options = {}) {
       const rows = await query(text, params);
       return rows.rows[0] || null;
     },
+    runCommand: async (text, params) => query(text, params),
     dialect: 'postgres',
   });
 }
@@ -99,11 +121,12 @@ function createD1Repositories(env, options = {}) {
       const result = await (await execute(text, params)).first();
       return result || null;
     },
+    runCommand: async (text, params) => (await execute(text, params)).run(),
     dialect: 'd1',
   });
 }
 
-function createRepositoryBundle({ query, parameter, runSelect, runOne, dialect }) {
+function createRepositoryBundle({ query, parameter, runSelect, runOne, runCommand, dialect }) {
   function addParam(params, value) {
     params.push(value);
     return parameter(params.length);
@@ -534,7 +557,27 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, dialect }
     },
   };
 
-  return { members, shinies };
+  const users = {
+    async findById(id) {
+      return runOne(`
+        SELECT *
+        FROM app_users
+        WHERE id = ${parameter(1)}
+      `, [id]);
+    },
+
+    toSafeUser,
+  };
+
+  const feebas = createFeebasRepository({
+    dialect,
+    parameter,
+    runCommand,
+    runOne,
+    runSelect,
+  });
+
+  return { feebas, members, shinies, users };
 }
 
 function createRepositories(env = process.env, options = {}) {
@@ -553,4 +596,5 @@ module.exports = {
   normalizeMemberRow,
   normalizeShinyRow,
   resolveConnectionString,
+  toSafeUser,
 };

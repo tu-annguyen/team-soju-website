@@ -2,8 +2,9 @@ jest.mock('@team-soju/utils', () => ({
   getPokemonVariants: jest.fn(),
 }));
 
+const jwt = require('jsonwebtoken');
 const { getPokemonVariants } = require('@team-soju/utils');
-const { generateBotToken } = require('../src/cloudflare/auth');
+const { AUTH_COOKIE_NAME, generateBotToken } = require('../src/cloudflare/auth');
 const { createWorkerApp } = require('../src/cloudflare/worker');
 
 describe('Cloudflare Worker API', () => {
@@ -156,5 +157,142 @@ describe('Cloudflare Worker API', () => {
 
     expect(response.status).toBe(501);
     expect(body.message).toContain('legacy Node API');
+  });
+
+  it('serves auth/me from the Worker repository contract', async () => {
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+          password_hash: 'secret',
+          auth_provider: 'password',
+        }),
+        toSafeUser: jest.fn((user) => ({
+          id: user.id,
+          email: user.email,
+          ign: user.ign,
+          auth_provider: user.auth_provider,
+        })),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'user-1',
+      email: 'trainer@example.com',
+      ign: 'Trainer',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/auth/me', {
+      headers: {
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+    }), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(repositories.users.findById).toHaveBeenCalledWith('user-1');
+    expect(body).toEqual({
+      success: true,
+      data: {
+        id: 'user-1',
+        email: 'trainer@example.com',
+        ign: 'Trainer',
+        auth_provider: 'password',
+      },
+    });
+  });
+
+  it('serves Feebas board REST routes from the Worker repository contract', async () => {
+    const board = {
+      location: 'route-119-main',
+      tiles: [],
+      activity: [],
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        getBoard: jest.fn().mockResolvedValue(board),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main?actorFingerprint=client-12345678'), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(repositories.feebas.getBoard).toHaveBeenCalledWith('route-119-main', {
+      actorFingerprint: 'client-12345678',
+    });
+    expect(body).toEqual({
+      success: true,
+      data: board,
+    });
+  });
+
+  it('updates Feebas tiles through the Worker repository contract', async () => {
+    const board = {
+      location: 'route-119-main',
+      tiles: [],
+      activity: [],
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        updateTile: jest.fn().mockResolvedValue(board),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/tiles/r1c7', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        status: 'pending',
+        actorFingerprint: 'client-12345678',
+        actorName: 'Trainer',
+      }),
+    }), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(repositories.feebas.updateTile).toHaveBeenCalledWith('route-119-main', 'r1c7', {
+      status: 'pending',
+      actorFingerprint: 'client-12345678',
+      actorName: 'Trainer',
+    }, {
+      includeLeaderboard: false,
+    });
+    expect(body.message).toBe('Feebas tile updated successfully');
+  });
+
+  it('keeps Feebas SSE on the legacy API during migration', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(new Response('data: {}\n\n', {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    }));
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+      },
+      fetch: fetchMock,
+    });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv({
+      LEGACY_API_BASE_URL: 'https://legacy.example.com',
+    }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0].toString()).toBe('https://legacy.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678');
+    expect(response.status).toBe(200);
   });
 });

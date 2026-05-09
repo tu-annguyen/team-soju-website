@@ -1,5 +1,9 @@
 const crypto = globalThis.crypto || require('crypto').webcrypto;
 
+const AUTH_COOKIE_NAME = 'team_soju_session';
+const USER_TOKEN_TYPE = 'web_user';
+const BOT_TOKEN_TYPE = 'discord_bot';
+
 function base64UrlEncode(value) {
   return Buffer.from(value)
     .toString('base64')
@@ -101,7 +105,7 @@ async function verifyJwt(token, secret) {
 async function generateBotToken(secret) {
   return signJwt(
     {
-      type: 'discord_bot',
+      type: BOT_TOKEN_TYPE,
       permissions: ['read', 'write', 'delete'],
     },
     secret,
@@ -125,7 +129,7 @@ async function authenticateBotRequest(request, env) {
 
   try {
     const decoded = await verifyJwt(token, env.JWT_SECRET);
-    if (decoded?.type !== 'discord_bot') {
+    if (decoded?.type !== BOT_TOKEN_TYPE) {
       return {
         ok: false,
         response: {
@@ -147,9 +151,97 @@ async function authenticateBotRequest(request, env) {
   }
 }
 
+function getAuthCookieName(env = {}) {
+  return env.AUTH_COOKIE_NAME || AUTH_COOKIE_NAME;
+}
+
+function parseCookies(cookieHeader = '') {
+  return cookieHeader
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .reduce((cookies, entry) => {
+      const separatorIndex = entry.indexOf('=');
+      if (separatorIndex === -1) return cookies;
+
+      const key = decodeURIComponent(entry.slice(0, separatorIndex));
+      const value = decodeURIComponent(entry.slice(separatorIndex + 1));
+      cookies[key] = value;
+      return cookies;
+    }, {});
+}
+
+function serializeCookie(name, value, options = {}) {
+  const segments = [`${encodeURIComponent(name)}=${encodeURIComponent(value)}`];
+
+  if (typeof options.maxAge === 'number') {
+    segments.push(`Max-Age=${options.maxAge}`);
+  }
+  if (options.path) {
+    segments.push(`Path=${options.path}`);
+  }
+  if (options.httpOnly) {
+    segments.push('HttpOnly');
+  }
+  if (options.secure) {
+    segments.push('Secure');
+  }
+  if (options.sameSite) {
+    segments.push(`SameSite=${options.sameSite}`);
+  }
+
+  return segments.join('; ');
+}
+
+function getAuthCookieOptions(env = {}) {
+  const isProduction = env.NODE_ENV === 'production';
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'None' : 'Lax',
+    path: '/',
+  };
+}
+
+function clearAuthCookie(env = {}) {
+  return serializeCookie(getAuthCookieName(env), '', {
+    ...getAuthCookieOptions(env),
+    maxAge: 0,
+  });
+}
+
+function getTokenFromRequest(request, env = {}) {
+  const authorizationToken = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  if (authorizationToken) {
+    return authorizationToken;
+  }
+
+  const cookies = parseCookies(request.headers.get('cookie') || '');
+  return cookies[getAuthCookieName(env)];
+}
+
+async function verifyUserToken(token, env = {}) {
+  const decoded = await verifyJwt(token, env.JWT_SECRET);
+
+  if (decoded?.type !== USER_TOKEN_TYPE || !decoded?.sub) {
+    const error = new Error('Invalid user token.');
+    error.code = 'INVALID_USER_TOKEN';
+    throw error;
+  }
+
+  return decoded;
+}
+
 module.exports = {
+  AUTH_COOKIE_NAME,
   authenticateBotRequest,
+  clearAuthCookie,
   generateBotToken,
+  getTokenFromRequest,
+  parseCookies,
+  serializeCookie,
   signJwt,
   verifyJwt,
+  verifyUserToken,
 };
