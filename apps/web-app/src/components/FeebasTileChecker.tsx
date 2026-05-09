@@ -52,6 +52,14 @@ type FeebasLeaderboard = {
   location: string;
   generatedAt: string;
   weeklySince: string;
+  sort?: {
+    by: LeaderboardSortKey;
+    direction: LeaderboardSortDirection;
+  };
+  sortOptions?: {
+    key: LeaderboardSortKey;
+    defaultDirection: LeaderboardSortDirection;
+  }[];
   entries: FeebasLeaderboardEntry[];
 };
 
@@ -111,8 +119,35 @@ type LocationOption = {
 };
 
 type BoardDisplayMode = 'voting' | 'heatmap';
+type LeaderboardSortKey =
+  | 'rank'
+  | 'ign'
+  | 'weeklyContributionScore'
+  | 'allTimeContributionScore'
+  | 'verifiedDiscoveries'
+  | 'feebasUptimeCreatedMinutes'
+  | 'confirmations'
+  | 'searchCoverage'
+  | 'reportAccuracy'
+  | 'efficiency'
+  | 'currentStreak';
+type LeaderboardSortDirection = 'asc' | 'desc';
+type LeaderboardSortState = {
+  key: LeaderboardSortKey;
+  direction: LeaderboardSortDirection;
+};
+type LeaderboardColumn = {
+  key: LeaderboardSortKey;
+  label: string;
+  defaultDirection: LeaderboardSortDirection;
+};
+type SortIconVariant = 'sort' | 'sort-up' | 'sort-down';
 
 const DEFAULT_LOCATION = 'route-119-main';
+const DEFAULT_LEADERBOARD_SORT: LeaderboardSortState = {
+  key: 'rank',
+  direction: 'asc',
+};
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
 const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
@@ -359,6 +394,116 @@ function formatNullableCount(value: number | null, fallback: string) {
   return Number.isFinite(value || NaN) && value ? String(value) : fallback;
 }
 
+function compareLeaderboardNumbers(left: number | null, right: number | null) {
+  const leftValue = Number.isFinite(left || NaN) ? Number(left) : 0;
+  const rightValue = Number.isFinite(right || NaN) ? Number(right) : 0;
+
+  return leftValue - rightValue;
+}
+
+function compareLeaderboardDefault(left: FeebasLeaderboardEntry, right: FeebasLeaderboardEntry) {
+  return (
+    compareLeaderboardNumbers(right.allTimeContributionScore, left.allTimeContributionScore)
+    || compareLeaderboardNumbers(right.verifiedDiscoveries, left.verifiedDiscoveries)
+    || compareLeaderboardNumbers(right.feebasUptimeCreatedMinutes, left.feebasUptimeCreatedMinutes)
+    || compareLeaderboardNumbers(right.confirmations, left.confirmations)
+    || compareLeaderboardNumbers(right.searchCoverage, left.searchCoverage)
+    || left.ign.localeCompare(right.ign)
+  );
+}
+
+function compareLeaderboardEntries(
+  left: FeebasLeaderboardEntry,
+  right: FeebasLeaderboardEntry,
+  sortKey: LeaderboardSortKey
+) {
+  if (sortKey === 'rank') {
+    return compareLeaderboardDefault(left, right);
+  }
+
+  if (sortKey === 'ign') {
+    return left.ign.localeCompare(right.ign);
+  }
+
+  return (
+    compareLeaderboardNumbers(left[sortKey], right[sortKey])
+    || compareLeaderboardDefault(left, right)
+  );
+}
+
+function sortLeaderboardEntries(entries: FeebasLeaderboardEntry[], sort: LeaderboardSortState) {
+  const directionMultiplier = sort.direction === 'desc' ? -1 : 1;
+
+  return [...entries].sort((left, right) => (
+    compareLeaderboardEntries(left, right, sort.key) * directionMultiplier
+  ));
+}
+
+function getSortIconVariant(columnKey: LeaderboardSortKey, sort: LeaderboardSortState): SortIconVariant {
+  if (sort.key !== columnKey) {
+    return 'sort';
+  }
+
+  return sort.direction === 'desc' ? 'sort-down' : 'sort-up';
+}
+
+function SortIcon({ variant }: { variant: SortIconVariant }) {
+  if (variant === 'sort-up') {
+    return (
+      <svg
+        aria-hidden="true"
+        className="h-3 w-3 shrink-0 fill-current"
+        data-sort-icon={variant}
+        viewBox="0 0 16 16"
+      >
+        <path d="M4 10h8L8 4l-4 6z" />
+      </svg>
+    );
+  }
+
+  if (variant === 'sort-down') {
+    return (
+      <svg
+        aria-hidden="true"
+        className="h-3 w-3 shrink-0 fill-current"
+        data-sort-icon={variant}
+        viewBox="0 0 16 16"
+      >
+        <path d="M4 6h8l-4 6-4-6z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-3 w-3 shrink-0 fill-current"
+      data-sort-icon={variant}
+      viewBox="0 0 16 16"
+    >
+      <path d="M4 6h8L8 2 4 6z" />
+      <path d="M4 10h8l-4 4-4-4z" />
+    </svg>
+  );
+}
+
+function getNextLeaderboardSort(
+  column: LeaderboardColumn,
+  currentSort: LeaderboardSortState
+): LeaderboardSortState {
+  if (currentSort.key !== column.key) {
+    return {
+      key: column.key,
+      direction: column.defaultDirection,
+    };
+  }
+
+  return {
+    key: column.key,
+    direction: currentSort.direction === 'asc' ? 'desc' : 'asc',
+  };
+}
+
 function getLeaderboardNotables(entries: FeebasLeaderboardEntry[]) {
   const entriesWithFinds = entries.filter((entry) => entry.verifiedDiscoveries > 0);
   const fastestFinder = [...entriesWithFinds]
@@ -453,6 +598,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<BoardDisplayMode>('voting');
+  const [leaderboardSort, setLeaderboardSort] = useState<LeaderboardSortState>(DEFAULT_LEADERBOARD_SORT);
   const [countdown, setCountdown] = useState('--:--');
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
@@ -696,6 +842,22 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const totalPendingVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.pending, 0) || 0;
   const totalConfirmedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.confirmed, 0) || 0;
   const leaderboardEntries = board?.leaderboard?.entries || [];
+  const leaderboardColumns: LeaderboardColumn[] = [
+    { key: 'ign', label: messages.leaderboard.columns.trainer, defaultDirection: 'asc' },
+    { key: 'weeklyContributionScore', label: messages.leaderboard.columns.weeklyScore, defaultDirection: 'desc' },
+    { key: 'allTimeContributionScore', label: messages.leaderboard.columns.allTimeScore, defaultDirection: 'desc' },
+    { key: 'verifiedDiscoveries', label: messages.leaderboard.columns.discoveries, defaultDirection: 'desc' },
+    { key: 'feebasUptimeCreatedMinutes', label: messages.leaderboard.columns.uptime, defaultDirection: 'desc' },
+    { key: 'confirmations', label: messages.leaderboard.columns.confirmations, defaultDirection: 'desc' },
+    { key: 'searchCoverage', label: messages.leaderboard.columns.coverage, defaultDirection: 'desc' },
+    { key: 'reportAccuracy', label: messages.leaderboard.columns.accuracy, defaultDirection: 'desc' },
+    { key: 'efficiency', label: messages.leaderboard.columns.efficiency, defaultDirection: 'desc' },
+    { key: 'currentStreak', label: messages.leaderboard.columns.streak, defaultDirection: 'desc' },
+  ];
+  const sortedLeaderboardEntries = useMemo(
+    () => sortLeaderboardEntries(leaderboardEntries, leaderboardSort),
+    [leaderboardEntries, leaderboardSort]
+  );
   const leaderboardNotables = useMemo(() => getLeaderboardNotables(leaderboardEntries), [leaderboardEntries]);
   const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || activeTerrain.length) : null;
   const selectedTileCurrentVote = selectedTile?.currentUserVote || 'unchecked';
@@ -1253,23 +1415,25 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
               <table className="min-w-[980px] text-left text-sm">
                 <thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.rank}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.trainer}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.weeklyScore}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.allTimeScore}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.discoveries}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.uptime}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.confirmations}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.coverage}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.accuracy}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.efficiency}</th>
-                    <th className="px-3 py-2 font-semibold">{messages.leaderboard.columns.streak}</th>
+                    <th className="px-3 py-2 font-semibold uppercase">{messages.leaderboard.columns.rank}</th>
+                    {leaderboardColumns.map((column) => (
+                      <th key={column.key} className="px-3 py-2 font-semibold">
+                        <button
+                          type="button"
+                          onClick={() => setLeaderboardSort((currentSort) => getNextLeaderboardSort(column, currentSort))}
+                          className="inline-flex items-center gap-2 text-left font-semibold uppercase text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        >
+                          <span>{column.label}</span>
+                          <SortIcon variant={getSortIconVariant(column.key, leaderboardSort)} />
+                        </button>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {leaderboardEntries.map((entry) => (
+                  {sortedLeaderboardEntries.map((entry, index) => (
                     <tr key={entry.userId} className="text-slate-700 dark:text-slate-200">
-                      <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">#{entry.rank}</td>
+                      <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">#{index + 1}</td>
                       <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">{entry.ign}</td>
                       <td className="px-3 py-3">{formatScore(entry.weeklyContributionScore, activeLocale)}</td>
                       <td className="px-3 py-3">{formatScore(entry.allTimeContributionScore, activeLocale)}</td>

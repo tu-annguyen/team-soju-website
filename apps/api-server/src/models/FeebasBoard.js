@@ -12,6 +12,21 @@ const {
 const DEFAULT_LEADERBOARD_LIMIT = 10;
 const MAX_LEADERBOARD_LIMIT = 50;
 const LEADERBOARD_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const LEADERBOARD_SORT_OPTIONS = [
+  { key: 'ign', defaultDirection: 'asc' },
+  { key: 'weeklyContributionScore', defaultDirection: 'desc' },
+  { key: 'allTimeContributionScore', defaultDirection: 'desc' },
+  { key: 'verifiedDiscoveries', defaultDirection: 'desc' },
+  { key: 'feebasUptimeCreatedMinutes', defaultDirection: 'desc' },
+  { key: 'confirmations', defaultDirection: 'desc' },
+  { key: 'searchCoverage', defaultDirection: 'desc' },
+  { key: 'reportAccuracy', defaultDirection: 'desc' },
+  { key: 'efficiency', defaultDirection: 'desc' },
+  { key: 'currentStreak', defaultDirection: 'desc' },
+];
+const LEADERBOARD_SORT_OPTION_KEYS = new Set(LEADERBOARD_SORT_OPTIONS.map((option) => option.key));
+const DEFAULT_LEADERBOARD_SORT_BY = 'rank';
+const DEFAULT_LEADERBOARD_SORT_DIRECTION = 'asc';
 
 function normalizeLeaderboardLimit(limit) {
   const parsed = Number.parseInt(limit, 10);
@@ -26,6 +41,54 @@ function normalizeLeaderboardLimit(limit) {
 function toFiniteNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeLeaderboardSortBy(sortBy) {
+  return LEADERBOARD_SORT_OPTION_KEYS.has(sortBy) ? sortBy : DEFAULT_LEADERBOARD_SORT_BY;
+}
+
+function normalizeLeaderboardSortDirection(sortDirection) {
+  return sortDirection === 'desc' || sortDirection === 'asc'
+    ? sortDirection
+    : DEFAULT_LEADERBOARD_SORT_DIRECTION;
+}
+
+function compareNumbers(left, right) {
+  return (toFiniteNumber(left) - toFiniteNumber(right));
+}
+
+function compareLeaderboardDefault(left, right) {
+  return (
+    compareNumbers(right.allTimeContributionScore, left.allTimeContributionScore)
+    || compareNumbers(right.verifiedDiscoveries, left.verifiedDiscoveries)
+    || compareNumbers(right.feebasUptimeCreatedMinutes, left.feebasUptimeCreatedMinutes)
+    || compareNumbers(right.confirmations, left.confirmations)
+    || compareNumbers(right.searchCoverage, left.searchCoverage)
+    || left.ign.localeCompare(right.ign)
+  );
+}
+
+function compareLeaderboardEntries(left, right, sortBy) {
+  if (sortBy === 'rank') {
+    return compareLeaderboardDefault(left, right);
+  }
+
+  if (sortBy === 'ign') {
+    return left.ign.localeCompare(right.ign);
+  }
+
+  return (
+    compareNumbers(left[sortBy], right[sortBy])
+    || compareLeaderboardDefault(left, right)
+  );
+}
+
+function sortLeaderboardEntries(entries, sortBy, sortDirection) {
+  const directionMultiplier = sortDirection === 'desc' ? -1 : 1;
+
+  return [...entries].sort((left, right) => (
+    compareLeaderboardEntries(left, right, sortBy) * directionMultiplier
+  ));
 }
 
 function buildCurrentStreaks(rows) {
@@ -63,6 +126,10 @@ function buildCurrentStreaks(rows) {
 }
 
 class FeebasBoard {
+  static getLeaderboardSortOptions() {
+    return LEADERBOARD_SORT_OPTIONS.map((option) => ({ ...option }));
+  }
+
   static async getBoard(location, options = {}) {
     const client = options.client || pool;
     const now = options.now ? new Date(options.now) : new Date();
@@ -428,7 +495,9 @@ class FeebasBoard {
       ? new Date(options.weeklySince)
       : new Date(now.getTime() - LEADERBOARD_WEEK_MS);
     const limit = normalizeLeaderboardLimit(options.limit);
-    const queryParams = [location, weeklySince.toISOString(), limit];
+    const sortBy = normalizeLeaderboardSortBy(options.sortBy);
+    const sortDirection = normalizeLeaderboardSortDirection(options.sortDirection);
+    const queryParams = [location, weeklySince.toISOString()];
 
     const leaderboardResult = await client.query(`
       WITH all_activity AS (
@@ -650,7 +719,6 @@ class FeebasBoard {
         confirmations DESC,
         search_coverage DESC,
         ign ASC
-      LIMIT $3
     `, queryParams);
 
     const streakResult = await client.query(`
@@ -672,29 +740,41 @@ class FeebasBoard {
 
     const streaksByUser = buildCurrentStreaks(streakResult.rows);
 
+    const entries = leaderboardResult.rows.map((row) => ({
+      userId: row.user_id,
+      ign: row.ign,
+      verifiedDiscoveries: toFiniteNumber(row.verified_discoveries),
+      feebasUptimeCreatedMinutes: toFiniteNumber(row.feebas_uptime_created_minutes),
+      confirmations: toFiniteNumber(row.confirmations),
+      searchCoverage: toFiniteNumber(row.search_coverage),
+      weeklyContributionScore: toFiniteNumber(row.weekly_contribution_score),
+      allTimeContributionScore: toFiniteNumber(row.all_time_contribution_score),
+      fastestFindSeconds: toFiniteNumber(row.fastest_find_seconds, null),
+      efficiency: toFiniteNumber(row.efficiency),
+      reportAccuracy: toFiniteNumber(row.report_accuracy),
+      currentStreak: streaksByUser.get(String(row.user_id)) || 0,
+      luckyFindChecks: toFiniteNumber(row.lucky_find_checks, null),
+      mostPersistentChecks: toFiniteNumber(row.most_persistent_checks, null),
+      pendingReports: toFiniteNumber(row.pending_reports),
+      verifiedReports: toFiniteNumber(row.verified_reports),
+    }));
+    const sortedEntries = sortLeaderboardEntries(entries, sortBy, sortDirection)
+      .slice(0, limit)
+      .map((entry, index) => ({
+        rank: index + 1,
+        ...entry,
+      }));
+
     return {
       location,
       generatedAt: now.toISOString(),
       weeklySince: weeklySince.toISOString(),
-      entries: leaderboardResult.rows.map((row, index) => ({
-        rank: index + 1,
-        userId: row.user_id,
-        ign: row.ign,
-        verifiedDiscoveries: toFiniteNumber(row.verified_discoveries),
-        feebasUptimeCreatedMinutes: toFiniteNumber(row.feebas_uptime_created_minutes),
-        confirmations: toFiniteNumber(row.confirmations),
-        searchCoverage: toFiniteNumber(row.search_coverage),
-        weeklyContributionScore: toFiniteNumber(row.weekly_contribution_score),
-        allTimeContributionScore: toFiniteNumber(row.all_time_contribution_score),
-        fastestFindSeconds: toFiniteNumber(row.fastest_find_seconds, null),
-        efficiency: toFiniteNumber(row.efficiency),
-        reportAccuracy: toFiniteNumber(row.report_accuracy),
-        currentStreak: streaksByUser.get(String(row.user_id)) || 0,
-        luckyFindChecks: toFiniteNumber(row.lucky_find_checks, null),
-        mostPersistentChecks: toFiniteNumber(row.most_persistent_checks, null),
-        pendingReports: toFiniteNumber(row.pending_reports),
-        verifiedReports: toFiniteNumber(row.verified_reports),
-      })),
+      sort: {
+        by: sortBy,
+        direction: sortDirection,
+      },
+      sortOptions: this.getLeaderboardSortOptions(),
+      entries: sortedEntries,
     };
   }
 

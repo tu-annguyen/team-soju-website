@@ -144,10 +144,18 @@ describe('FeebasBoard model', () => {
       limit: 5,
     });
 
-    expect(result).toEqual({
+    expect(result).toEqual(expect.objectContaining({
       location: 'route-119-main',
       generatedAt: '2026-04-10T01:00:00.000Z',
       weeklySince: '2026-04-03T01:00:00.000Z',
+      sort: {
+        by: 'rank',
+        direction: 'asc',
+      },
+      sortOptions: expect.arrayContaining([
+        { key: 'ign', defaultDirection: 'asc' },
+        { key: 'currentStreak', defaultDirection: 'desc' },
+      ]),
       entries: [
         {
           rank: 1,
@@ -169,11 +177,10 @@ describe('FeebasBoard model', () => {
           verifiedReports: 4,
         },
       ],
-    });
+    }));
     expect(pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('verified_discoveries'), [
       'route-119-main',
       '2026-04-03T01:00:00.000Z',
-      5,
     ]);
     expect(pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('GROUP BY user_id, cycle_id, cycle_start'), [
       'route-119-main',

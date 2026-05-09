@@ -63,6 +63,23 @@ const boardFixture = {
         luckyFindChecks: 2,
         mostPersistentChecks: 17,
       },
+      {
+        rank: 2,
+        userId: 'user-id-2',
+        ign: 'Brendan',
+        verifiedDiscoveries: 1,
+        feebasUptimeCreatedMinutes: 60,
+        confirmations: 10,
+        searchCoverage: 8,
+        weeklyContributionScore: 64,
+        allTimeContributionScore: 226,
+        fastestFindSeconds: 120,
+        efficiency: 0.125,
+        reportAccuracy: 1,
+        currentStreak: 1,
+        luckyFindChecks: 4,
+        mostPersistentChecks: 4,
+      },
     ],
   },
   tiles: [
@@ -191,6 +208,30 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/May in 1m 30s/i)).toBeInTheDocument();
     expect(screen.getByText(/May after 2 tile\(s\)/i)).toBeInTheDocument();
     expect(screen.getByText(/May after 17 tile\(s\)/i)).toBeInTheDocument();
+  });
+
+  it('sorts the Feebas leaderboard columns with the expected sort icons', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    const trainerSortButton = await screen.findByRole('button', { name: /Trainer/i });
+
+    expect(trainerSortButton.querySelector('svg')).toHaveAttribute('data-sort-icon', 'sort');
+
+    fireEvent.click(trainerSortButton);
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]).toHaveTextContent(/#1\s*Brendan/);
+    });
+    expect(trainerSortButton.querySelector('svg')).toHaveAttribute('data-sort-icon', 'sort-up');
+
+    fireEvent.click(trainerSortButton);
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]).toHaveTextContent(/#1\s*May/);
+    });
+    expect(trainerSortButton.querySelector('svg')).toHaveAttribute('data-sort-icon', 'sort-down');
   });
 
   it('uses the signed-in user IGN as the Feebas display name', async () => {
