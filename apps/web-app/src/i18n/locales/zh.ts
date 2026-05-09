@@ -140,6 +140,9 @@ const zh = {
       },
       activity: {
         heading: '活动记录',
+        previousPage: '上一页',
+        nextPage: '下一页',
+        pageStatus: '第 {current} / {total} 页',
         emptyState: '当玩家共同更新棋盘时，格子变更会显示在这里。',
       },
       leaderboard: {
