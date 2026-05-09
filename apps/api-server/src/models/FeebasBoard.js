@@ -660,6 +660,7 @@ class FeebasBoard {
         SELECT
           user_id,
           ign,
+          MIN(GREATEST(EXTRACT(EPOCH FROM (created_at - cycle_start)), 0))::INT AS early_scout_seconds,
           (COUNT(DISTINCT (cycle_id, tile_id)) FILTER (
             WHERE next_status IN ('checked', 'pending')
           ))::INT AS search_coverage,
@@ -680,7 +681,6 @@ class FeebasBoard {
       persistence_stats AS (
         SELECT
           user_id,
-          MIN(checks_to_find)::INT AS lucky_find_checks,
           MAX(checks_to_find)::INT AS most_persistent_checks
         FROM discovery_check_counts
         GROUP BY user_id
@@ -694,6 +694,7 @@ class FeebasBoard {
           COALESCE(discovery_stats.weekly_verified_discoveries, 0) AS weekly_verified_discoveries,
           COALESCE(discovery_stats.weekly_feebas_uptime_created_minutes, 0) AS weekly_feebas_uptime_created_minutes,
           COALESCE(discovery_stats.fastest_find_seconds, 0) AS fastest_find_seconds,
+          COALESCE(activity_stats.early_scout_seconds, 0) AS early_scout_seconds,
           COALESCE(activity_stats.confirmations, 0) AS confirmations,
           COALESCE(activity_stats.search_coverage, 0) AS search_coverage,
           COALESCE(activity_stats.weekly_confirmations, 0) AS weekly_confirmations,
@@ -702,7 +703,6 @@ class FeebasBoard {
           COALESCE(report_stats.verified_reports, 0) AS verified_reports,
           COALESCE(report_stats.weekly_pending_reports, 0) AS weekly_pending_reports,
           COALESCE(report_stats.weekly_verified_reports, 0) AS weekly_verified_reports,
-          COALESCE(persistence_stats.lucky_find_checks, 0) AS lucky_find_checks,
           COALESCE(persistence_stats.most_persistent_checks, 0) AS most_persistent_checks
         FROM activity_stats
         LEFT JOIN discovery_stats ON discovery_stats.user_id = activity_stats.user_id
@@ -774,10 +774,10 @@ class FeebasBoard {
       weeklyContributionScore: toFiniteNumber(row.weekly_contribution_score),
       allTimeContributionScore: toFiniteNumber(row.all_time_contribution_score),
       fastestFindSeconds: toFiniteNumber(row.fastest_find_seconds, null),
+      earlyScoutSeconds: toFiniteNumber(row.early_scout_seconds, null),
       efficiency: toFiniteNumber(row.efficiency),
       reportAccuracy: toFiniteNumber(row.report_accuracy),
       currentStreak: streaksByUser.get(String(row.user_id)) || 0,
-      luckyFindChecks: toFiniteNumber(row.lucky_find_checks, null),
       mostPersistentChecks: toFiniteNumber(row.most_persistent_checks, null),
       pendingReports: toFiniteNumber(row.pending_reports),
       verifiedReports: toFiniteNumber(row.verified_reports),

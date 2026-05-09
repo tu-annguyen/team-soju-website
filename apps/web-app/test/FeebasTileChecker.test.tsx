@@ -57,10 +57,10 @@ const boardFixture = {
         weeklyContributionScore: 212,
         allTimeContributionScore: 363,
         fastestFindSeconds: 90,
+        earlyScoutSeconds: 30,
         efficiency: 0.067,
         reportAccuracy: 0.8,
         currentStreak: 3,
-        luckyFindChecks: 2,
         mostPersistentChecks: 17,
       },
       {
@@ -74,10 +74,10 @@ const boardFixture = {
         weeklyContributionScore: 64,
         allTimeContributionScore: 226,
         fastestFindSeconds: 120,
+        earlyScoutSeconds: 75,
         efficiency: 0.125,
         reportAccuracy: 1,
         currentStreak: 1,
-        luckyFindChecks: 4,
         mostPersistentChecks: 4,
       },
     ],
@@ -208,7 +208,7 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText('3h')).toBeInTheDocument();
     expect(screen.getByText('80%')).toBeInTheDocument();
     expect(screen.getByText(/May in 1m 30s/i)).toBeInTheDocument();
-    expect(screen.getByText(/May after 2 tile\(s\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/May in 30s/i)).toBeInTheDocument();
     expect(screen.getByText(/May after 17 tile\(s\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Current position after applying the selected leaderboard sort/i)).toBeInTheDocument();
     expect(screen.getByText(/Score from the last 7 days/i)).toBeInTheDocument();

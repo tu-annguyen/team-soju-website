@@ -41,10 +41,10 @@ type FeebasLeaderboardEntry = {
   weeklyContributionScore: number;
   allTimeContributionScore: number;
   fastestFindSeconds: number | null;
+  earlyScoutSeconds: number | null;
   efficiency: number;
   reportAccuracy: number;
   currentStreak: number;
-  luckyFindChecks: number | null;
   mostPersistentChecks: number | null;
 };
 
@@ -389,7 +389,7 @@ function formatPercent(value: number, locale: string) {
 }
 
 function formatDuration(seconds: number | null, fallback: string) {
-  if (!Number.isFinite(seconds || NaN) || !seconds || seconds <= 0) {
+  if (seconds === null || !Number.isFinite(seconds) || seconds < 0) {
     return fallback;
   }
 
@@ -617,16 +617,16 @@ function getLeaderboardNotables(entries: FeebasLeaderboardEntry[]) {
   const fastestFinder = [...entriesWithFinds]
     .filter((entry) => Number.isFinite(entry.fastestFindSeconds || NaN) && (entry.fastestFindSeconds || 0) > 0)
     .sort((left, right) => (left.fastestFindSeconds || 0) - (right.fastestFindSeconds || 0))[0] || null;
-  const luckyFinder = [...entriesWithFinds]
-    .filter((entry) => Number.isFinite(entry.luckyFindChecks || NaN) && (entry.luckyFindChecks || 0) > 0)
-    .sort((left, right) => (left.luckyFindChecks || 0) - (right.luckyFindChecks || 0))[0] || null;
+  const earlyScout = [...entries]
+    .filter((entry) => entry.earlyScoutSeconds !== null && Number.isFinite(entry.earlyScoutSeconds))
+    .sort((left, right) => (left.earlyScoutSeconds || 0) - (right.earlyScoutSeconds || 0))[0] || null;
   const mostPersistent = [...entriesWithFinds]
     .filter((entry) => Number.isFinite(entry.mostPersistentChecks || NaN) && (entry.mostPersistentChecks || 0) > 0)
     .sort((left, right) => (right.mostPersistentChecks || 0) - (left.mostPersistentChecks || 0))[0] || null;
 
   return {
     fastestFinder,
-    luckyFinder,
+    earlyScout,
     mostPersistent,
   };
 }
@@ -1639,13 +1639,13 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
                   <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                    {messages.leaderboard.notables.luckyFinder}
+                    {messages.leaderboard.notables.earlyScout}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
-                    {leaderboardNotables.luckyFinder
-                      ? formatCopy(messages.leaderboard.notables.checksValue, {
-                        ign: leaderboardNotables.luckyFinder.ign,
-                        value: formatNullableCount(leaderboardNotables.luckyFinder.luckyFindChecks, messages.leaderboard.notables.noData),
+                    {leaderboardNotables.earlyScout
+                      ? formatCopy(messages.leaderboard.notables.fastestValue, {
+                        ign: leaderboardNotables.earlyScout.ign,
+                        value: formatDuration(leaderboardNotables.earlyScout.earlyScoutSeconds, messages.leaderboard.notables.noData),
                       })
                       : messages.leaderboard.notables.noData}
                   </p>

@@ -198,7 +198,7 @@ const es = {
         notables: {
           heading: 'Records registrados',
           fastestFinder: 'Buscador mas rapido',
-          luckyFinder: 'Buscador con mas suerte',
+          earlyScout: 'Explorador temprano',
           mostPersistent: 'Mas persistente',
           noData: 'Aun no hay hallazgos verificados',
           fastestValue: '{ign} en {value}',

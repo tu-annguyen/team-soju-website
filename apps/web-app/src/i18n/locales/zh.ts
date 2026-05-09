@@ -187,7 +187,7 @@ const zh = {
         notables: {
           heading: '记录统计',
           fastestFinder: '最快发现者',
-          luckyFinder: '幸运发现者',
+          earlyScout: '早期侦察者',
           mostPersistent: '最坚持者',
           noData: '还没有已验证发现',
           fastestValue: '{ign} 用时 {value}',

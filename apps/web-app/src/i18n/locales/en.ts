@@ -235,7 +235,7 @@ const en = {
         notables: {
           heading: 'Tracked records',
           fastestFinder: 'Fastest finder',
-          luckyFinder: 'Lucky finder',
+          earlyScout: 'Early scout',
           mostPersistent: 'Most persistent',
           noData: 'No verified find yet',
           fastestValue: '{ign} in {value}',

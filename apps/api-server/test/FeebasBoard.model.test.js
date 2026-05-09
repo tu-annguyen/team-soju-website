@@ -114,9 +114,9 @@ describe('FeebasBoard model', () => {
             weekly_contribution_score: '212',
             all_time_contribution_score: '363',
             fastest_find_seconds: '90',
+            early_scout_seconds: '30',
             efficiency: '0.0666666667',
             report_accuracy: '0.8',
-            lucky_find_checks: '2',
             most_persistent_checks: '17',
             pending_reports: '5',
             verified_reports: '4',
@@ -168,10 +168,10 @@ describe('FeebasBoard model', () => {
           weeklyContributionScore: 212,
           allTimeContributionScore: 363,
           fastestFindSeconds: 90,
+          earlyScoutSeconds: 30,
           efficiency: 0.0666666667,
           reportAccuracy: 0.8,
           currentStreak: 2,
-          luckyFindChecks: 2,
           mostPersistentChecks: 17,
           pendingReports: 5,
           verifiedReports: 4,
@@ -184,6 +184,7 @@ describe('FeebasBoard model', () => {
     ]);
     const leaderboardSql = pool.query.mock.calls[0][0];
     expect(leaderboardSql).toContain('resolved_pending_reports AS');
+    expect(leaderboardSql).toContain('early_scout_seconds');
     expect(leaderboardSql).toContain("activity.next_status IN ('checked', 'confirmed')");
     expect(leaderboardSql).toContain('FROM resolved_pending_reports reports');
     expect(leaderboardSql).toContain("reports.resolved_status = 'confirmed'");
