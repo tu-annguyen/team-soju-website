@@ -717,6 +717,14 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const authHref = getLocaleParamPath('/auth', activeLocale);
   const querySuffix = actorFingerprint ? `?actorFingerprint=${encodeURIComponent(actorFingerprint)}` : '';
 
+  const applyBoardUpdate = (nextBoard: FeebasBoard) => {
+    setBoard((currentBoard) => ({
+      ...nextBoard,
+      leaderboard: nextBoard.leaderboard
+        || (currentBoard?.location === nextBoard.location ? currentBoard.leaderboard : undefined),
+    }));
+  };
+
   const fetchBoard = async () => {
     if (!actorFingerprint) {
       return;
@@ -729,7 +737,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
       throw new Error(payload.message || messages.errors.loadBoard);
     }
 
-    setBoard(payload.data);
+    applyBoardUpdate(payload.data);
     setCountdown(formatCountdown(payload.data.cycleEnd));
     lastFetchedCycleEndRef.current = payload.data.cycleEnd;
   };
@@ -860,7 +868,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
       try {
         const payload: BoardResponse = JSON.parse(event.data);
         if (payload.success) {
-          setBoard(payload.data);
+          applyBoardUpdate(payload.data);
           setCountdown(formatCountdown(payload.data.cycleEnd));
           lastFetchedCycleEndRef.current = payload.data.cycleEnd;
           resetRefreshInFlightRef.current = false;
@@ -1021,7 +1029,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
         throw new Error(payload.message || messages.errors.updateTile);
       }
 
-      setBoard(payload.data);
+      applyBoardUpdate(payload.data);
       setSelectedTileId(tileId);
       lastFetchedCycleEndRef.current = payload.data.cycleEnd;
       setCountdown(formatCountdown(payload.data.cycleEnd));
