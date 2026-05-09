@@ -155,6 +155,7 @@ const DEFAULT_LEADERBOARD_SORT: LeaderboardSortState = {
   key: 'rank',
   direction: 'asc',
 };
+const ACTIVITY_PAGE_SIZE = 5;
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
 const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
@@ -705,6 +706,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<BoardDisplayMode>('voting');
   const [leaderboardSort, setLeaderboardSort] = useState<LeaderboardSortState>(DEFAULT_LEADERBOARD_SORT);
+  const [activityPage, setActivityPage] = useState(1);
   const [countdown, setCountdown] = useState('--:--');
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
@@ -825,6 +827,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
         setError(null);
         setBoard(null);
         setSelectedTileId(null);
+        setActivityPage(1);
         await fetchBoard();
       } catch (nextError) {
         if (mounted) {
@@ -947,6 +950,11 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const totalCheckedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.checked, 0) || 0;
   const totalPendingVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.pending, 0) || 0;
   const totalConfirmedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.confirmed, 0) || 0;
+  const activityEntries = board?.activity || [];
+  const activityPageCount = Math.max(1, Math.ceil(activityEntries.length / ACTIVITY_PAGE_SIZE));
+  const activityCurrentPage = Math.min(activityPage, activityPageCount);
+  const activityStartIndex = (activityCurrentPage - 1) * ACTIVITY_PAGE_SIZE;
+  const paginatedActivityEntries = activityEntries.slice(activityStartIndex, activityStartIndex + ACTIVITY_PAGE_SIZE);
   const leaderboardEntries = board?.leaderboard?.entries || [];
   const leaderboardColumns: LeaderboardColumn[] = [
     { key: 'ign', label: messages.leaderboard.columns.trainer, tooltip: messages.leaderboard.tooltips.trainer, defaultDirection: 'asc' },
@@ -980,6 +988,12 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
     !selectedTileIsPendingOwner &&
     selectedTileCurrentVote !== 'confirmed'
   );
+
+  useEffect(() => {
+    if (activityPage > activityPageCount) {
+      setActivityPage(activityPageCount);
+    }
+  }, [activityPage, activityPageCount]);
 
   const updateTile = async (tileId: string, status: TileStatus) => {
     if (!actorFingerprint || isHeatmapMode) {
@@ -1472,24 +1486,52 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
                   </div>
                 ))}
               </div>
-            ) : board?.activity.length ? (
-              <div className="mt-4 space-y-3">
-                {board.activity.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950/70"
-                  >
-                    <p className="text-slate-800 dark:text-slate-100">
-                      <span className="font-semibold">{formatActorName(entry.actorName, messages.general.anonymousName)}</span>{' '}
-                      {getVoteActionMessage(entry.actionType, entry.nextStatus, messages.status, messages.actions)}{' '}
-                      <span className="font-semibold">{entry.tileLabel}</span>.
-                    </p>
-                    <p className="mt-1 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {formatTimestamp(entry.createdAt, activeLocale)}
-                    </p>
+            ) : activityEntries.length ? (
+              <>
+                <div className="mt-4 space-y-3">
+                  {paginatedActivityEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950/70"
+                    >
+                      <p className="text-slate-800 dark:text-slate-100">
+                        <span className="font-semibold">{formatActorName(entry.actorName, messages.general.anonymousName)}</span>{' '}
+                        {getVoteActionMessage(entry.actionType, entry.nextStatus, messages.status, messages.actions)}{' '}
+                        <span className="font-semibold">{entry.tileLabel}</span>.
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        {formatTimestamp(entry.createdAt, activeLocale)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {activityPageCount > 1 ? (
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setActivityPage((currentPage) => Math.max(1, currentPage - 1))}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900"
+                      disabled={activityCurrentPage === 1}
+                    >
+                      {messages.activity.previousPage}
+                    </button>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {formatCopy(messages.activity.pageStatus, {
+                        current: activityCurrentPage,
+                        total: activityPageCount,
+                      })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActivityPage((currentPage) => Math.min(activityPageCount, currentPage + 1))}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900"
+                      disabled={activityCurrentPage === activityPageCount}
+                    >
+                      {messages.activity.nextPage}
+                    </button>
                   </div>
-                ))}
-              </div>
+                ) : null}
+              </>
             ) : (
               <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
                 {messages.activity.emptyState}

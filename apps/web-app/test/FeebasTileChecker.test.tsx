@@ -215,6 +215,54 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/Verified pending reports divided by all pending reports/i)).toBeInTheDocument();
   });
 
+  it('paginates the activity log at five entries per page', async () => {
+    const boardWithActivity = {
+      ...boardFixture,
+      activity: Array.from({ length: 7 }, (_, index) => ({
+        id: index + 1,
+        tileId: `r${index + 1}c1`,
+        tileLabel: `A${index + 1}`,
+        actionType: 'voted',
+        previousStatus: 'unchecked',
+        nextStatus: 'checked',
+        actorName: `Hunter ${index + 1}`,
+        createdAt: `2026-04-09T20:${String(10 + index).padStart(2, '0')}:00.000Z`,
+      })),
+    };
+    (global as any).fetch = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/auth/me')) {
+        return jsonResponse({
+          success: true,
+          data: null,
+        });
+      }
+
+      return jsonResponse({
+        success: true,
+        data: boardWithActivity,
+      });
+    });
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Hunter 1')).toBeInTheDocument()
+    );
+
+    expect(screen.getByText('Hunter 5')).toBeInTheDocument();
+    expect(screen.queryByText('Hunter 6')).not.toBeInTheDocument();
+    expect(screen.getByText(/Page 1 of 2/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+
+    expect(screen.getByText('Hunter 6')).toBeInTheDocument();
+    expect(screen.getByText('Hunter 7')).toBeInTheDocument();
+    expect(screen.queryByText('Hunter 1')).not.toBeInTheDocument();
+    expect(screen.getByText(/Page 2 of 2/i)).toBeInTheDocument();
+  });
+
   it('sorts the Feebas leaderboard columns with the expected sort icons', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 

@@ -149,6 +149,9 @@ const es = {
       },
       activity: {
         heading: 'Actividad',
+        previousPage: 'Anterior',
+        nextPage: 'Siguiente',
+        pageStatus: 'Pagina {current} de {total}',
         emptyState: 'Los cambios de casillas apareceran aqui mientras los jugadores dan forma al tablero juntos.',
       },
       leaderboard: {

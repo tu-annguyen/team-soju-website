@@ -188,6 +188,9 @@ const en = {
       },
       activity: {
         heading: 'Activity',
+        previousPage: 'Previous',
+        nextPage: 'Next',
+        pageStatus: 'Page {current} of {total}',
         emptyState: 'Tile changes will appear here as players shape the board together.',
       },
       leaderboard: {
