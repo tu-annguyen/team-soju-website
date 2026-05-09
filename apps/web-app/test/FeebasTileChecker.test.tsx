@@ -208,6 +208,9 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/May in 1m 30s/i)).toBeInTheDocument();
     expect(screen.getByText(/May after 2 tile\(s\)/i)).toBeInTheDocument();
     expect(screen.getByText(/May after 17 tile\(s\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current position after applying the selected leaderboard sort/i)).toBeInTheDocument();
+    expect(screen.getByText(/Score from the last 7 days/i)).toBeInTheDocument();
+    expect(screen.getByText(/Verified pending reports divided by all pending reports/i)).toBeInTheDocument();
   });
 
   it('sorts the Feebas leaderboard columns with the expected sort icons', async () => {
@@ -232,6 +235,46 @@ describe('FeebasTileChecker', () => {
       expect(rows[1]).toHaveTextContent(/#1\s*May/);
     });
     expect(trainerSortButton.querySelector('svg')).toHaveAttribute('data-sort-icon', 'sort-down');
+  });
+
+  it('keeps leaderboard header tooltips inside the viewport near an edge', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    const trainerSortButton = await screen.findByRole('button', { name: /Trainer/i });
+    const tooltipTrigger = trainerSortButton.parentElement as HTMLElement;
+    const originalInnerWidth = window.innerWidth;
+
+    tooltipTrigger.getBoundingClientRect = jest.fn(() => ({
+      bottom: 44,
+      height: 20,
+      left: 2,
+      right: 70,
+      top: 24,
+      width: 68,
+      x: 2,
+      y: 24,
+      toJSON: () => ({}),
+    }));
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: 320,
+    });
+
+    fireEvent.mouseEnter(tooltipTrigger);
+
+    await waitFor(() => {
+      const tooltip = screen.getByText(/Signed-in account IGN/i).parentElement;
+      expect(tooltip).toHaveStyle({
+        left: '8px',
+        top: '52px',
+        width: '288px',
+      });
+    });
+
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: originalInnerWidth,
+    });
   });
 
   it('uses the signed-in user IGN as the Feebas display name', async () => {
