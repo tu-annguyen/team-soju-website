@@ -206,6 +206,28 @@ const en = {
           efficiency: 'Efficiency',
           streak: 'Streak',
         },
+        tooltips: {
+          rank: 'Current position after applying the selected leaderboard sort.',
+          trainer: 'Signed-in account IGN. Only activity submitted while logged in is counted.',
+          weeklyScore:
+            'Score from the last 7 days: verified discoveries x100, uptime hours, confirmations x25, and search coverage x2.',
+          allTimeScore:
+            'Lifetime score: verified discoveries x100, uptime hours, confirmations x25, and search coverage x2.',
+          discoveries:
+            'Unique tiles where this player was the first logged-in pending reporter and the tile was later confirmed.',
+          uptime:
+            'Community uptime created by verified discoveries: minutes remaining in the cycle after the report multiplied by active logged-in contributors in that cycle.',
+          confirmations:
+            'Unique cycle/tile confirmations submitted by this logged-in player.',
+          coverage:
+            'Unique cycle/tile checks or pending reports submitted by this logged-in player.',
+          accuracy:
+            'Verified pending reports divided by all pending reports submitted by this logged-in player.',
+          efficiency:
+            'Verified discoveries divided by search coverage.',
+          streak:
+            'Consecutive recent Feebas cycles where this player made at least one logged-in contribution.',
+        },
         notables: {
           heading: 'Tracked records',
           fastestFinder: 'Fastest finder',

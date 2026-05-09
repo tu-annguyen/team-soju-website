@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getClientLocale, getLocaleParamPath, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 
@@ -139,9 +139,16 @@ type LeaderboardSortState = {
 type LeaderboardColumn = {
   key: LeaderboardSortKey;
   label: string;
+  tooltip: string;
   defaultDirection: LeaderboardSortDirection;
 };
 type SortIconVariant = 'sort' | 'sort-up' | 'sort-down';
+type TooltipPosition = {
+  top: number;
+  left: number;
+  width: number;
+  arrowLeft: number;
+};
 
 const DEFAULT_LOCATION = 'route-119-main';
 const DEFAULT_LEADERBOARD_SORT: LeaderboardSortState = {
@@ -153,6 +160,9 @@ const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
 const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
 const BOARD_MIN_TILE_SIZE_PX = 40;
 const BOARD_MIN_WIDTH_PX = 768;
+const TOOLTIP_MAX_WIDTH_PX = 288;
+const TOOLTIP_VIEWPORT_MARGIN_PX = 8;
+const TOOLTIP_ARROW_MARGIN_PX = 16;
 const ROUTE_119_MAIN_TERRAIN = [
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'grass'],
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'rock', 'grass'],
@@ -484,6 +494,101 @@ function SortIcon({ variant }: { variant: SortIconVariant }) {
       <path d="M4 6h8L8 2 4 6z" />
       <path d="M4 10h8l-4 4-4-4z" />
     </svg>
+  );
+}
+
+function LeaderboardHeaderTooltip({
+  children,
+  tooltip,
+  align = 'center',
+}: {
+  children: React.ReactNode;
+  tooltip: string;
+  align?: 'left' | 'center' | 'right';
+}) {
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [position, setPosition] = useState<TooltipPosition | null>(null);
+
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current || typeof window === 'undefined') {
+      return;
+    }
+
+    const triggerRect = triggerRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const width = Math.min(
+      TOOLTIP_MAX_WIDTH_PX,
+      Math.max(0, viewportWidth - (TOOLTIP_VIEWPORT_MARGIN_PX * 2))
+    );
+    const triggerCenter = triggerRect.left + (triggerRect.width / 2);
+    const preferredLeft = align === 'left'
+      ? triggerRect.left
+      : align === 'right'
+        ? triggerRect.right - width
+        : triggerCenter - (width / 2);
+    const maxLeft = Math.max(TOOLTIP_VIEWPORT_MARGIN_PX, viewportWidth - width - TOOLTIP_VIEWPORT_MARGIN_PX);
+    const left = Math.min(Math.max(preferredLeft, TOOLTIP_VIEWPORT_MARGIN_PX), maxLeft);
+
+    setPosition({
+      top: triggerRect.bottom + TOOLTIP_VIEWPORT_MARGIN_PX,
+      left,
+      width,
+      arrowLeft: Math.min(
+        Math.max(triggerCenter - left, TOOLTIP_ARROW_MARGIN_PX),
+        Math.max(TOOLTIP_ARROW_MARGIN_PX, width - TOOLTIP_ARROW_MARGIN_PX)
+      ),
+    });
+  }, [align]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      return undefined;
+    }
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isVisible, updatePosition]);
+
+  const showTooltip = () => {
+    updatePosition();
+    setIsVisible(true);
+  };
+
+  return (
+    <span
+      ref={triggerRef}
+      className="relative inline-flex"
+      onBlur={() => setIsVisible(false)}
+      onFocus={showTooltip}
+      onMouseEnter={showTooltip}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      {children}
+      <span
+        aria-hidden={!isVisible}
+        className={`pointer-events-none fixed z-[70] transition-opacity ${isVisible && position ? 'visible opacity-100' : 'invisible opacity-0'}`}
+        style={{
+          left: position ? `${position.left}px` : undefined,
+          top: position ? `${position.top}px` : undefined,
+          width: position ? `${position.width}px` : undefined,
+        }}
+      >
+        <span className="relative block rounded bg-gray-800 px-3 py-2 text-left text-xs font-medium normal-case leading-snug text-white shadow-lg dark:bg-gray-100 dark:text-black">
+          <span
+            className="absolute -top-1 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-800 dark:bg-gray-100"
+            style={{ left: position ? `${position.arrowLeft}px` : undefined }}
+          />
+          {tooltip}
+        </span>
+      </span>
+    </span>
   );
 }
 
@@ -843,16 +948,16 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const totalConfirmedVotes = board?.tiles.reduce((sum, tile) => sum + tile.voteCounts.confirmed, 0) || 0;
   const leaderboardEntries = board?.leaderboard?.entries || [];
   const leaderboardColumns: LeaderboardColumn[] = [
-    { key: 'ign', label: messages.leaderboard.columns.trainer, defaultDirection: 'asc' },
-    { key: 'weeklyContributionScore', label: messages.leaderboard.columns.weeklyScore, defaultDirection: 'desc' },
-    { key: 'allTimeContributionScore', label: messages.leaderboard.columns.allTimeScore, defaultDirection: 'desc' },
-    { key: 'verifiedDiscoveries', label: messages.leaderboard.columns.discoveries, defaultDirection: 'desc' },
-    { key: 'feebasUptimeCreatedMinutes', label: messages.leaderboard.columns.uptime, defaultDirection: 'desc' },
-    { key: 'confirmations', label: messages.leaderboard.columns.confirmations, defaultDirection: 'desc' },
-    { key: 'searchCoverage', label: messages.leaderboard.columns.coverage, defaultDirection: 'desc' },
-    { key: 'reportAccuracy', label: messages.leaderboard.columns.accuracy, defaultDirection: 'desc' },
-    { key: 'efficiency', label: messages.leaderboard.columns.efficiency, defaultDirection: 'desc' },
-    { key: 'currentStreak', label: messages.leaderboard.columns.streak, defaultDirection: 'desc' },
+    { key: 'ign', label: messages.leaderboard.columns.trainer, tooltip: messages.leaderboard.tooltips.trainer, defaultDirection: 'asc' },
+    { key: 'weeklyContributionScore', label: messages.leaderboard.columns.weeklyScore, tooltip: messages.leaderboard.tooltips.weeklyScore, defaultDirection: 'desc' },
+    { key: 'allTimeContributionScore', label: messages.leaderboard.columns.allTimeScore, tooltip: messages.leaderboard.tooltips.allTimeScore, defaultDirection: 'desc' },
+    { key: 'verifiedDiscoveries', label: messages.leaderboard.columns.discoveries, tooltip: messages.leaderboard.tooltips.discoveries, defaultDirection: 'desc' },
+    { key: 'feebasUptimeCreatedMinutes', label: messages.leaderboard.columns.uptime, tooltip: messages.leaderboard.tooltips.uptime, defaultDirection: 'desc' },
+    { key: 'confirmations', label: messages.leaderboard.columns.confirmations, tooltip: messages.leaderboard.tooltips.confirmations, defaultDirection: 'desc' },
+    { key: 'searchCoverage', label: messages.leaderboard.columns.coverage, tooltip: messages.leaderboard.tooltips.coverage, defaultDirection: 'desc' },
+    { key: 'reportAccuracy', label: messages.leaderboard.columns.accuracy, tooltip: messages.leaderboard.tooltips.accuracy, defaultDirection: 'desc' },
+    { key: 'efficiency', label: messages.leaderboard.columns.efficiency, tooltip: messages.leaderboard.tooltips.efficiency, defaultDirection: 'desc' },
+    { key: 'currentStreak', label: messages.leaderboard.columns.streak, tooltip: messages.leaderboard.tooltips.streak, defaultDirection: 'desc' },
   ];
   const sortedLeaderboardEntries = useMemo(
     () => sortLeaderboardEntries(leaderboardEntries, leaderboardSort),
@@ -1415,17 +1520,25 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
               <table className="min-w-[980px] text-left text-sm">
                 <thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
                   <tr>
-                    <th className="px-3 py-2 font-semibold uppercase">{messages.leaderboard.columns.rank}</th>
+                    <th className="px-3 py-2 font-semibold uppercase">
+                      <LeaderboardHeaderTooltip tooltip={messages.leaderboard.tooltips.rank} align="left">
+                        <span tabIndex={0} className="inline-flex cursor-help outline-none">
+                          {messages.leaderboard.columns.rank}
+                        </span>
+                      </LeaderboardHeaderTooltip>
+                    </th>
                     {leaderboardColumns.map((column) => (
                       <th key={column.key} className="px-3 py-2 font-semibold">
-                        <button
-                          type="button"
-                          onClick={() => setLeaderboardSort((currentSort) => getNextLeaderboardSort(column, currentSort))}
-                          className="inline-flex items-center gap-2 text-left font-semibold uppercase text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                        >
-                          <span>{column.label}</span>
-                          <SortIcon variant={getSortIconVariant(column.key, leaderboardSort)} />
-                        </button>
+                        <LeaderboardHeaderTooltip tooltip={column.tooltip}>
+                          <button
+                            type="button"
+                            onClick={() => setLeaderboardSort((currentSort) => getNextLeaderboardSort(column, currentSort))}
+                            className="inline-flex items-center gap-2 text-left font-semibold uppercase text-slate-500 outline-none transition hover:text-slate-900 focus-visible:text-slate-900 dark:text-slate-400 dark:hover:text-white dark:focus-visible:text-white"
+                          >
+                            <span>{column.label}</span>
+                            <SortIcon variant={getSortIconVariant(column.key, leaderboardSort)} />
+                          </button>
+                        </LeaderboardHeaderTooltip>
                       </th>
                     ))}
                   </tr>
