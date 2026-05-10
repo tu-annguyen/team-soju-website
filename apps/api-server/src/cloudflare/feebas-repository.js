@@ -317,8 +317,16 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         created_at,
         updated_at
       )
-      VALUES (${parameter(1)}, ${parameter(2)}, ${parameter(3)}, ${parameter(4)}, ${parameter(5)}, ${parameter(6)}, ${parameter(6)})
-    `, [cycleId, tileId, actorFingerprint, actorName, nextStatus, toIsoString(now)]);
+      VALUES (${parameter(1)}, ${parameter(2)}, ${parameter(3)}, ${parameter(4)}, ${parameter(5)}, ${parameter(6)}, ${parameter(7)})
+    `, [
+      cycleId,
+      tileId,
+      actorFingerprint,
+      actorName,
+      nextStatus,
+      toIsoString(now),
+      toIsoString(now),
+    ]);
   }
 
   async function insertActivityLog({
