@@ -1,43 +1,69 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "team-soju-api",
-  "main": "src/cloudflare/worker-entry.mjs",
-  "compatibility_date": "2026-04-06",
-  "compatibility_flags": ["nodejs_compat"],
-  "keep_vars": true,
-  "vars": {
-    "DB_BACKEND": "postgres",
-    "NODE_ENV": "production",
-    "LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/"
-  },
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "3b6d54cde2fd4ea9af567c0c71f99f80"
-    }
-  ],
-  "observability": {
-    "logs": {
-      "enabled": true,
-      "invocation_logs": true
-    }
-  },
-  "env": {
-    "staging": {
-      "name": "team-soju-api-staging",
-      "workers_dev": true,
-      "vars": {
-        "DB_BACKEND": "postgres",
-        "NODE_ENV": "staging",
-        "LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
-      },
-      "hyperdrive": [
-        {
-          "binding": "HYPERDRIVE",
-          "id": "ee09d9c74944457b8e1249c328e8eee8",
-          "localConnectionString": "postgresql://user:password@127.0.0.1:5432/team_soju"
-        }
-      ]
-    }
-  }
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "team-soju-api",
+	"main": "src/cloudflare/worker-entry.mjs",
+	"compatibility_date": "2026-04-06",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"keep_vars": true,
+	// "vars": {
+	// "DB_BACKEND": "postgres",
+	// "NODE_ENV": "production",
+	// "LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
+	// },
+	// "hyperdrive": [
+	// {
+	// "binding": "HYPERDRIVE",
+	// "id": "3b6d54cde2fd4ea9af567c0c71f99f80",
+	// },
+	// ],
+	"vars": {
+		"DB_BACKEND": "d1",
+		"NODE_ENV": "production",
+		"LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "team-soju-prod",
+			"database_id": "4e43a1a3-2954-447e-b2c0-6d7a8fc59a41"
+		},
+	],
+	"observability": {
+		"logs": {
+			"enabled": true,
+			"invocation_logs": true,
+		},
+	},
+	"env": {
+		"staging": {
+			"name": "team-soju-api-staging",
+			"workers_dev": true,
+			// "vars": {
+			// "DB_BACKEND": "postgres",
+			// "NODE_ENV": "staging",
+			// "LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
+			// },
+			// "hyperdrive": [
+			// {
+			// "binding": "HYPERDRIVE",
+			// "id": "ee09d9c74944457b8e1249c328e8eee8",
+			// "localConnectionString": "postgresql://user:password@127.0.0.1:5432/team_soju",
+			// },
+			// ],
+			"vars": {
+				"DB_BACKEND": "d1",
+				"NODE_ENV": "staging",
+				"LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "team-soju-staging",
+					"database_id": "5d6a0638-966f-42af-a08f-e38b2b02b98d",
+				},
+			],
+		},
+	},
 }
