@@ -245,8 +245,17 @@ curl -X POST http://localhost:3001/api/shinies \
 ### D1 Compatibility
 
 - D1 schema lives in `src/models/schema.d1.sql`.
-- Postgres export conversion helper lives in `src/scripts/postgresToD1.js` and supports members, shinies, app users, and Feebas board history.
+- Postgres export helpers live in `src/scripts/postgresToD1.js` and `src/scripts/export-postgres-to-d1.js`; they support members, shinies, app users, and Feebas board history.
 - The Worker repository layer supports both Postgres and D1 so the HTTP contract stays unchanged while the storage backend changes.
+- To replace staging D1 with current Postgres data:
+
+  ```bash
+  cd apps/api-server
+  npm run export:d1 -- --wipe --out /tmp/team-soju-staging-import.sql
+  npx wrangler d1 execute team-soju-staging --remote --file=/tmp/team-soju-staging-import.sql
+  ```
+
+  `--wipe` only writes DELETE statements into the generated SQL file; staging is changed when the file is executed with Wrangler.
 
 ### Project Structure
 

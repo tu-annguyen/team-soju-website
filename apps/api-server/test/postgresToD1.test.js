@@ -109,4 +109,25 @@ describe('convertPostgresExportToD1Sql', () => {
     expect(sql).toContain("INSERT INTO feebas_confirmed_tile_snapshots");
     expect(sql).toContain('PRAGMA foreign_keys = ON;');
   });
+
+  it('can include staging replacement deletes before inserts', () => {
+    const sql = convertPostgresExportToD1Sql({
+      members: [{
+        id: 'member-1',
+        ign: 'MemberOne',
+        discord_id: null,
+        rank: 'Trainer',
+        notes: null,
+        join_date: new Date('2026-04-06T00:00:00.000Z'),
+        is_active: true,
+      }],
+    }, { includeWipe: true });
+
+    expect(sql).toContain('DELETE FROM feebas_activity_logs;');
+    expect(sql).toContain('DELETE FROM team_shinies;');
+    expect(sql).toContain('DELETE FROM app_users;');
+    expect(sql).toContain('DELETE FROM sqlite_sequence WHERE name IN');
+    expect(sql).toContain("'2026-04-06'");
+    expect(sql.indexOf('DELETE FROM team_members;')).toBeLessThan(sql.indexOf('INSERT INTO team_members'));
+  });
 });

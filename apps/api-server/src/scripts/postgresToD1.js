@@ -1,11 +1,38 @@
 function toSqlLiteral(value) {
   if (value === null || value === undefined) return 'NULL';
+  if (value instanceof Date) return `'${value.toISOString()}'`;
   if (typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return value ? '1' : '0';
   return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function toSqlLiteralOrDefault(value, defaultExpression) {
+  if (value === null || value === undefined) return defaultExpression;
+  return toSqlLiteral(value);
+}
+
+function toDateOnly(value) {
+  if (value === null || value === undefined) return value;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
 }
 
 function normalizeBoolean(value) {
   return value ? 1 : 0;
+}
+
+function buildD1WipeStatements() {
+  return [
+    'DELETE FROM feebas_activity_logs;',
+    'DELETE FROM feebas_tile_votes;',
+    'DELETE FROM feebas_tile_states;',
+    'DELETE FROM feebas_confirmed_tile_snapshots;',
+    'DELETE FROM feebas_cycles;',
+    'DELETE FROM team_shinies;',
+    'DELETE FROM team_members;',
+    'DELETE FROM app_users;',
+    "DELETE FROM sqlite_sequence WHERE name IN ('feebas_cycles', 'feebas_tile_states', 'feebas_tile_votes', 'feebas_activity_logs', 'feebas_confirmed_tile_snapshots');",
+  ];
 }
 
 function buildMemberInsert(member) {
@@ -13,10 +40,10 @@ function buildMemberInsert(member) {
     toSqlLiteral(member.id),
     toSqlLiteral(member.ign),
     toSqlLiteral(member.discord_id),
-    toSqlLiteral(member.rank),
+    toSqlLiteral(member.rank || 'Trainer'),
     toSqlLiteral(member.notes),
-    toSqlLiteral(member.join_date),
-    normalizeBoolean(member.is_active),
+    toSqlLiteralOrDefault(toDateOnly(member.join_date), "date('now')"),
+    normalizeBoolean(member.is_active ?? true),
   ].join(', ')});`;
 }
 
@@ -28,10 +55,10 @@ function buildShinyInsert(shiny) {
   ) VALUES (${[
     toSqlLiteral(shiny.id),
     toSqlLiteral(shiny.pokemon),
-    toSqlLiteral(shiny.variants),
+    toSqlLiteral(shiny.variants ?? ''),
     toSqlLiteral(shiny.national_number),
     toSqlLiteral(shiny.original_trainer),
-    toSqlLiteral(shiny.catch_date),
+    toSqlLiteralOrDefault(toDateOnly(shiny.catch_date || shiny.created_at), "date('now')"),
     toSqlLiteral(shiny.total_encounters ?? 0),
     toSqlLiteral(shiny.species_encounters ?? 0),
     toSqlLiteral(shiny.encounter_type),
@@ -48,7 +75,7 @@ function buildShinyInsert(shiny) {
     toSqlLiteral(shiny.screenshot_url),
     toSqlLiteral(shiny.status || 'Owned'),
     toSqlLiteral(shiny.notes),
-    toSqlLiteral(shiny.created_at),
+    toSqlLiteralOrDefault(shiny.created_at, "datetime('now')"),
   ].join(', ')});`;
 }
 
@@ -70,8 +97,8 @@ function buildUserInsert(user) {
     toSqlLiteral(user.password_reset_token_hash),
     toSqlLiteral(user.password_reset_expires_at),
     toSqlLiteral(user.password_reset_requested_at),
-    toSqlLiteral(user.created_at),
-    toSqlLiteral(user.updated_at),
+    toSqlLiteralOrDefault(user.created_at, "datetime('now')"),
+    toSqlLiteralOrDefault(user.updated_at, "datetime('now')"),
     toSqlLiteral(user.last_login_at),
   ].join(', ')});`;
 }
@@ -86,7 +113,7 @@ function buildFeebasCycleInsert(cycle) {
     toSqlLiteral(cycle.cycle_end),
     toSqlLiteral(cycle.confirmed_tile_id),
     toSqlLiteral(cycle.locked_at),
-    toSqlLiteral(cycle.created_at),
+    toSqlLiteralOrDefault(cycle.created_at, "datetime('now')"),
   ].join(', ')});`;
 }
 
@@ -100,7 +127,7 @@ function buildFeebasTileStateInsert(tileState) {
     toSqlLiteral(tileState.cycle_id),
     toSqlLiteral(tileState.tile_id),
     toSqlLiteral(tileState.status || 'unchecked'),
-    toSqlLiteral(tileState.updated_at),
+    toSqlLiteralOrDefault(tileState.updated_at, "datetime('now')"),
     toSqlLiteral(tileState.updated_by_name),
     toSqlLiteral(tileState.updated_by_fingerprint),
     toSqlLiteral(tileState.pending_reported_by_name),
@@ -121,8 +148,8 @@ function buildFeebasTileVoteInsert(vote) {
     toSqlLiteral(vote.actor_fingerprint),
     toSqlLiteral(vote.actor_name),
     toSqlLiteral(vote.status),
-    toSqlLiteral(vote.created_at),
-    toSqlLiteral(vote.updated_at),
+    toSqlLiteralOrDefault(vote.created_at, "datetime('now')"),
+    toSqlLiteralOrDefault(vote.updated_at, "datetime('now')"),
   ].join(', ')});`;
 }
 
@@ -141,7 +168,7 @@ function buildFeebasActivityLogInsert(log) {
     toSqlLiteral(log.next_status),
     toSqlLiteral(log.actor_name),
     toSqlLiteral(log.actor_fingerprint),
-    toSqlLiteral(log.created_at),
+    toSqlLiteralOrDefault(log.created_at, "datetime('now')"),
   ].join(', ')});`;
 }
 
@@ -157,8 +184,8 @@ function buildFeebasConfirmedTileSnapshotInsert(snapshot) {
     toSqlLiteral(snapshot.cycle_end),
     toSqlLiteral(snapshot.tile_id),
     toSqlLiteral(snapshot.tile_label),
-    toSqlLiteral(snapshot.confirmed_vote_count),
-    toSqlLiteral(snapshot.archived_at),
+    toSqlLiteral(snapshot.confirmed_vote_count ?? 0),
+    toSqlLiteralOrDefault(snapshot.archived_at, "datetime('now')"),
   ].join(', ')});`;
 }
 
@@ -171,9 +198,12 @@ function convertPostgresExportToD1Sql({
   feebasTileVotes = [],
   feebasActivityLogs = [],
   feebasConfirmedTileSnapshots = [],
-}) {
+}, options = {}) {
+  const { includeWipe = false } = options;
+
   return [
     'PRAGMA foreign_keys = OFF;',
+    ...(includeWipe ? buildD1WipeStatements() : []),
     ...members.map(buildMemberInsert),
     ...shinies.map(buildShinyInsert),
     ...users.map(buildUserInsert),
@@ -187,6 +217,7 @@ function convertPostgresExportToD1Sql({
 }
 
 module.exports = {
+  buildD1WipeStatements,
   buildFeebasActivityLogInsert,
   buildFeebasConfirmedTileSnapshotInsert,
   buildFeebasCycleInsert,
