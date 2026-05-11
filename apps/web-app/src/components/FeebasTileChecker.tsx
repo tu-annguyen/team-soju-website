@@ -1002,6 +1002,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
     try {
       const response = await fetch(`${normalizedApiBaseUrl}/feebas/${activeLocation}/tiles/${tileId}`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

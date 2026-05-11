@@ -347,6 +347,7 @@ describe('FeebasTileChecker', () => {
         'http://localhost:3001/api/feebas/route-119-main/tiles/r1c2',
         expect.objectContaining({
           method: 'POST',
+          credentials: 'include',
           body: JSON.stringify({
             status: 'checked',
             actorFingerprint: 'account-user-id',
@@ -430,6 +431,7 @@ describe('FeebasTileChecker', () => {
       'http://localhost:3001/api/feebas/route-119-main/tiles/r1c2',
       expect.objectContaining({
         method: 'POST',
+        credentials: 'include',
         body: JSON.stringify({
           status: 'checked',
           actorFingerprint: 'client-self',
@@ -516,6 +518,7 @@ describe('FeebasTileChecker', () => {
       'http://localhost:3001/api/feebas/route-119-main/tiles/r1c2',
       expect.objectContaining({
         method: 'POST',
+        credentials: 'include',
         body: JSON.stringify({
           status: 'checked',
           actorFingerprint: 'client-self',

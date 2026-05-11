@@ -1,5 +1,7 @@
 const request = require('supertest');
 
+process.env.JWT_SECRET = 'test-secret';
+
 jest.mock('../src/models/FeebasBoard', () => ({
   getBoard: jest.fn(),
   getLeaderboard: jest.fn(),
@@ -19,8 +21,14 @@ jest.mock('../src/models/FeebasBoard', () => ({
   updateTile: jest.fn(),
 }));
 
+jest.mock('../src/models/User', () => ({
+  findById: jest.fn(),
+}));
+
 const app = require('../src/server');
 const FeebasBoard = require('../src/models/FeebasBoard');
+const User = require('../src/models/User');
+const { AUTH_COOKIE_NAME, signUserToken } = require('../src/middleware/auth');
 
 const boardFixture = {
   location: 'route-119-main',
@@ -92,10 +100,12 @@ describe('Feebas routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.NODE_ENV = 'test';
+    delete process.env.IGN_BLACKLIST;
     FeebasBoard.getBoard.mockResolvedValue(boardFixture);
     FeebasBoard.getLeaderboard.mockResolvedValue(leaderboardFixture);
     FeebasBoard.resetBoard.mockResolvedValue(boardFixture);
     FeebasBoard.updateTile.mockResolvedValue(boardFixture);
+    User.findById.mockResolvedValue(null);
   });
 
   afterAll(() => {
@@ -149,10 +159,76 @@ describe('Feebas routes', () => {
     expect(FeebasBoard.updateTile).toHaveBeenCalledWith('route-119-main', 'r1c3', {
       status: 'pending',
       actorFingerprint: 'client-12345678',
-      actorName: 'May',
+      actorName: null,
     }, {
       includeLeaderboard: false,
     });
+  });
+
+  it('uses the signed-in account identity for tile updates', async () => {
+    const sessionUser = {
+      id: 'user-id',
+      email: 'trainer@example.com',
+      ign: 'Trainer',
+    };
+    const token = signUserToken(sessionUser);
+    User.findById.mockResolvedValue(sessionUser);
+
+    const response = await request(app)
+      .post('/api/feebas/route-119-main/tiles/r1c3')
+      .set('Cookie', `${AUTH_COOKIE_NAME}=${token}`)
+      .send({
+        status: 'pending',
+        actorFingerprint: 'client-12345678',
+        actorName: 'Spoofed Name',
+      });
+
+    expect(response.status).toBe(200);
+    expect(FeebasBoard.updateTile).toHaveBeenCalledWith('route-119-main', 'r1c3', {
+      status: 'pending',
+      actorFingerprint: 'account-user-id',
+      actorName: 'Trainer',
+    }, {
+      includeLeaderboard: false,
+    });
+  });
+
+  it('rejects forged account fingerprints without a valid session', async () => {
+    const response = await request(app)
+      .post('/api/feebas/route-119-main/tiles/r1c3')
+      .send({
+        status: 'pending',
+        actorFingerprint: 'account-user-id',
+      });
+
+    expect(response.status).toBe(401);
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toBe('Signed-in activity requires a valid session.');
+    expect(FeebasBoard.updateTile).not.toHaveBeenCalled();
+  });
+
+  it('blocks blacklisted signed-in IGNs from posting activity', async () => {
+    process.env.IGN_BLACKLIST = 'BannedIGN';
+    const sessionUser = {
+      id: 'user-id',
+      email: 'trainer@example.com',
+      ign: 'Banned IGN',
+    };
+    const token = signUserToken(sessionUser);
+    User.findById.mockResolvedValue(sessionUser);
+
+    const response = await request(app)
+      .post('/api/feebas/route-119-main/tiles/r1c3')
+      .set('Cookie', `${AUTH_COOKIE_NAME}=${token}`)
+      .send({
+        status: 'pending',
+        actorFingerprint: 'client-12345678',
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toBe('This account IGN is not allowed on the Activity Log.');
+    expect(FeebasBoard.updateTile).not.toHaveBeenCalled();
   });
 
   it('resets the board in non-production environments', async () => {

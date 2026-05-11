@@ -1,7 +1,9 @@
 const request = require('supertest');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 
 process.env.JWT_SECRET = 'test-secret';
+process.env.IGN_BLACKLIST = 'BannedIGN';
 process.env.DISCORD_CLIENT_ID = 'discord-client-id';
 process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret';
 process.env.DISCORD_REDIRECT_URI = 'http://localhost:3001/api/auth/discord/callback';
@@ -89,6 +91,22 @@ describe('Auth routes', () => {
       expect(response.status).toBe(409);
       expect(response.body.success).toBe(false);
       expect(response.body.message).toBe('An account with that email already exists.');
+    });
+
+    it('rejects blacklisted IGNs during registration', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: 'trainer@example.com',
+          password: 'hunter42!',
+          ign: 'Banned IGN',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('That IGN is not allowed. Please choose a different in-game name.');
+      expect(User.createWithPassword).not.toHaveBeenCalled();
+      expect(bcrypt.hash).not.toHaveBeenCalled();
     });
   });
 
@@ -256,6 +274,18 @@ describe('Auth routes', () => {
       expect(redirectUrl.searchParams.get('state')).toBeTruthy();
     });
 
+    it('blocks blacklisted IGNs before starting Discord registration', async () => {
+      const response = await request(app)
+        .get('/api/auth/discord?mode=register&ign=Banned%20IGN');
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(
+        'http://localhost:4321/auth?error=That+IGN+is+not+allowed.+Please+choose+a+different+in-game+name.'
+      );
+      expect(axios.post).not.toHaveBeenCalled();
+      expect(User.createWithDiscord).not.toHaveBeenCalled();
+    });
+
     it('creates a Discord account on callback when registering', async () => {
       const startResponse = await request(app)
         .get('/api/auth/discord?mode=register&ign=Trainer&returnTo=/auth');
@@ -300,6 +330,26 @@ describe('Auth routes', () => {
         ign: 'Trainer',
         discord: discordUser,
       });
+    });
+
+    it('blocks blacklisted IGNs on Discord callback before account creation', async () => {
+      const state = jwt.sign({
+        type: 'discord_oauth_state',
+        mode: 'register',
+        ign: 'Banned IGN',
+        returnTo: '/auth',
+      }, process.env.JWT_SECRET, { expiresIn: '10m' });
+
+      const response = await request(app)
+        .get(`/api/auth/discord/callback?code=oauth-code&state=${encodeURIComponent(state)}`);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(
+        'http://localhost:4321/auth?error=That+IGN+is+not+allowed.+Please+choose+a+different+in-game+name.'
+      );
+      expect(axios.post).not.toHaveBeenCalled();
+      expect(axios.get).not.toHaveBeenCalled();
+      expect(User.createWithDiscord).not.toHaveBeenCalled();
     });
   });
 });

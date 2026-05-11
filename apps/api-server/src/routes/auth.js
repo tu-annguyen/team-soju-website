@@ -15,6 +15,7 @@ const {
   verifyUserToken,
 } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../services/email');
+const { isIgnBlacklisted } = require('../utils/ignModeration');
 
 const router = express.Router();
 
@@ -173,6 +174,10 @@ function getDuplicateMessage(error) {
   return 'An account with that email or IGN already exists.';
 }
 
+function getBlacklistedIgnMessage() {
+  return 'That IGN is not allowed. Please choose a different in-game name.';
+}
+
 async function signInUser(res, user, statusCode = 200, message = 'Signed in successfully.') {
   const loggedInUser = await User.recordLogin(user.id);
   const safeUser = User.toSafeUser(loggedInUser || user);
@@ -225,6 +230,13 @@ router.post('/register', async (req, res) => {
         success: false,
         message: 'Validation error',
         details: error.details,
+      });
+    }
+
+    if (isIgnBlacklisted(value.ign)) {
+      return res.status(400).json({
+        success: false,
+        message: getBlacklistedIgnMessage(),
       });
     }
 
@@ -433,6 +445,10 @@ router.get('/discord', (req, res) => {
       return res.redirect(buildWebRedirect('/auth', { error: 'Enter your IGN before continuing with Discord.' }));
     }
 
+    if (value.mode === 'register' && value.ign && isIgnBlacklisted(value.ign)) {
+      return res.redirect(buildWebRedirect('/auth', { error: getBlacklistedIgnMessage() }));
+    }
+
     const { clientId, redirectUri } = getDiscordConfig();
     const params = new URLSearchParams({
       client_id: clientId,
@@ -461,6 +477,11 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     const state = verifyState(req.query.state);
+
+    if (state.mode === 'register' && state.ign && isIgnBlacklisted(state.ign)) {
+      return res.redirect(buildWebRedirect('/auth', { error: getBlacklistedIgnMessage() }));
+    }
+
     const token = await exchangeDiscordCode(req.query.code);
     const discordUser = await fetchDiscordUser(token.access_token);
 
