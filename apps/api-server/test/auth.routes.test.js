@@ -51,6 +51,7 @@ describe('Auth routes', () => {
       email_verified_at: row.email_verified_at,
     }) : null);
     User.recordLogin.mockResolvedValue(userRow);
+    User.normalizeEmail.mockImplementation((email) => String(email || '').trim().toLowerCase());
     sendEmailVerificationEmail.mockResolvedValue({ provider: 'test' });
     sendPasswordResetEmail.mockResolvedValue({ provider: 'test' });
   });
@@ -306,6 +307,101 @@ describe('Auth routes', () => {
     });
   });
 
+  describe('Signed-in account management', () => {
+    it('changes the signed-in user email and sends a new verification email', async () => {
+      const token = signUserToken(userRow);
+      const updatedUser = {
+        ...userRow,
+        email: 'new@example.com',
+        email_verified_at: null,
+      };
+
+      User.findById.mockResolvedValue(userRow);
+      User.updateEmail.mockResolvedValue(updatedUser);
+
+      const response = await request(app)
+        .post('/api/auth/change-email')
+        .set('Cookie', `${AUTH_COOKIE_NAME}=${token}`)
+        .send({ email: 'new@example.com' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Email updated. Check your new inbox to verify it.');
+      expect(response.headers['set-cookie'][0]).toContain(`${AUTH_COOKIE_NAME}=`);
+      expect(User.updateEmail).toHaveBeenCalledWith('user-id', {
+        email: 'new@example.com',
+        tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        expiresAt: expect.any(Date),
+      });
+      expect(sendEmailVerificationEmail).toHaveBeenCalledWith(expect.objectContaining({
+        to: 'new@example.com',
+        ign: 'Trainer',
+        expiresInMinutes: 1440,
+      }));
+    });
+
+    it('changes the signed-in user password after verifying the current password', async () => {
+      const token = signUserToken(userRow);
+      const updatedUser = {
+        ...userRow,
+        password_hash: 'new-hashed-password',
+      };
+
+      User.findById.mockResolvedValue(userRow);
+      bcrypt.compare.mockResolvedValue(true);
+      bcrypt.hash.mockResolvedValue('new-hashed-password');
+      User.updatePassword.mockResolvedValue(updatedUser);
+
+      const response = await request(app)
+        .post('/api/auth/change-password')
+        .set('Cookie', `${AUTH_COOKIE_NAME}=${token}`)
+        .send({
+          currentPassword: 'hunter42!',
+          newPassword: 'newhunter42!',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Password updated successfully.');
+      expect(bcrypt.compare).toHaveBeenCalledWith('hunter42!', 'hashed-password');
+      expect(User.updatePassword).toHaveBeenCalledWith('user-id', 'new-hashed-password');
+    });
+
+    it('allows a Discord-only account to add a password without a current password', async () => {
+      const token = signUserToken({
+        ...userRow,
+        auth_provider: 'discord',
+      });
+      const discordOnlyUser = {
+        ...userRow,
+        password_hash: null,
+        auth_provider: 'discord',
+      };
+      const updatedUser = {
+        ...discordOnlyUser,
+        password_hash: 'new-hashed-password',
+        auth_provider: 'password_discord',
+      };
+
+      User.findById.mockResolvedValue(discordOnlyUser);
+      bcrypt.hash.mockResolvedValue('new-hashed-password');
+      User.updatePassword.mockResolvedValue(updatedUser);
+
+      const response = await request(app)
+        .post('/api/auth/change-password')
+        .set('Cookie', `${AUTH_COOKIE_NAME}=${token}`)
+        .send({
+          currentPassword: '',
+          newPassword: 'newhunter42!',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe('Password added successfully.');
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+      expect(User.updatePassword).toHaveBeenCalledWith('user-id', 'new-hashed-password');
+    });
+  });
+
   describe('GET /api/auth/me', () => {
     it('returns null when there is no active session', async () => {
       const response = await request(app).get('/api/auth/me');
@@ -422,6 +518,40 @@ describe('Auth routes', () => {
         ign: 'Trainer',
         discord: discordUser,
       });
+    });
+
+    it('connects Discord to the signed-in account when using connect mode', async () => {
+      const sessionToken = signUserToken(userRow);
+      const startResponse = await request(app)
+        .get('/api/auth/discord?mode=connect&returnTo=/auth')
+        .set('Cookie', `${AUTH_COOKIE_NAME}=${sessionToken}`);
+      const state = new URL(startResponse.headers.location).searchParams.get('state');
+      const discordUser = {
+        id: 'discord-id',
+        email: 'discord@example.com',
+        username: 'discord-user',
+        global_name: 'Discord User',
+        avatar: 'avatar-hash',
+      };
+      const connectedUser = {
+        ...userRow,
+        discord_id: 'discord-id',
+        auth_provider: 'password_discord',
+      };
+
+      axios.post.mockResolvedValue({ data: { access_token: 'discord-token' } });
+      axios.get.mockResolvedValue({ data: discordUser });
+      User.findById.mockResolvedValueOnce(userRow).mockResolvedValueOnce(userRow);
+      User.findByDiscordId.mockResolvedValue(null);
+      User.attachDiscord.mockResolvedValue(connectedUser);
+      User.recordLogin.mockResolvedValue(connectedUser);
+
+      const response = await request(app)
+        .get(`/api/auth/discord/callback?code=oauth-code&state=${encodeURIComponent(state)}`);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('http://localhost:4321/auth?status=signed-in');
+      expect(User.attachDiscord).toHaveBeenCalledWith('user-id', discordUser);
     });
 
     it('blocks blacklisted IGNs on Discord callback before account creation', async () => {
