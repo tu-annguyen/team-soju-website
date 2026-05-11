@@ -10,6 +10,7 @@ const {
   clearAuthCookie,
   getJwtSecret,
   getTokenFromRequest,
+  requireUser,
   setAuthCookie,
   signUserToken,
   verifyUserToken,
@@ -53,12 +54,21 @@ const resetPasswordSchema = Joi.object({
   password: Joi.string().min(8).max(128).required(),
 });
 
+const changeEmailSchema = Joi.object({
+  email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
+});
+
+const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().allow('', null).max(128),
+  newPassword: Joi.string().min(8).max(128).required(),
+});
+
 const verifyEmailSchema = Joi.object({
   token: Joi.string().trim().min(32).max(256).required(),
 });
 
 const discordStartSchema = Joi.object({
-  mode: Joi.string().valid('login', 'register').default('login'),
+  mode: Joi.string().valid('login', 'register', 'connect').default('login'),
   ign: Joi.string().trim().max(50).allow('', null),
   returnTo: Joi.string().trim().max(200).allow('', null),
 });
@@ -165,6 +175,7 @@ function buildState(payload) {
       type: 'discord_oauth_state',
       mode: payload.mode,
       ign: payload.ign || null,
+      userId: payload.userId || null,
       returnTo: sanitizeReturnTo(payload.returnTo),
     },
     getJwtSecret(),
@@ -180,8 +191,13 @@ function verifyState(state) {
   }
 
   return {
-    mode: decoded.mode === 'register' ? 'register' : 'login',
+    mode: decoded.mode === 'register'
+      ? 'register'
+      : decoded.mode === 'connect'
+        ? 'connect'
+        : 'login',
     ign: decoded.ign || null,
+    userId: decoded.userId || null,
     returnTo: sanitizeReturnTo(decoded.returnTo),
   };
 }
@@ -476,6 +492,130 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+router.post('/change-email', requireUser, async (req, res) => {
+  try {
+    const { error, value } = changeEmailSchema.validate(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: error.details,
+      });
+    }
+
+    const currentUser = await User.findById(req.user.sub);
+
+    if (!currentUser) {
+      clearAuthCookie(res);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired session.',
+      });
+    }
+
+    const normalizedEmail = User.normalizeEmail(value.email);
+
+    if (normalizedEmail === currentUser.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'That is already your current email address.',
+      });
+    }
+
+    const verificationToken = generateEmailVerificationToken();
+    const verificationExpiresAt = new Date(Date.now() + (emailVerificationExpiresInMinutes * 60 * 1000));
+    const updatedUser = await User.updateEmail(currentUser.id, {
+      email: normalizedEmail,
+      tokenHash: hashEmailVerificationToken(verificationToken),
+      expiresAt: verificationExpiresAt,
+    });
+
+    await sendEmailVerificationEmail({
+      to: normalizedEmail,
+      verificationUrl: getEmailVerificationUrl(verificationToken),
+      expiresInMinutes: emailVerificationExpiresInMinutes,
+      ign: currentUser.ign,
+    });
+
+    const safeUser = User.toSafeUser(updatedUser || currentUser);
+    setAuthCookie(res, signUserToken(safeUser));
+
+    return res.json({
+      success: true,
+      data: safeUser,
+      message: 'Email updated. Check your new inbox to verify it.',
+    });
+  } catch (error) {
+    const duplicateMessage = getDuplicateMessage(error);
+
+    if (duplicateMessage) {
+      return res.status(409).json({
+        success: false,
+        message: duplicateMessage,
+      });
+    }
+
+    console.error('Error changing email:', error);
+    return res.status(error.publicMessage ? 503 : 500).json({
+      success: false,
+      message: error.publicMessage || 'Failed to change email',
+    });
+  }
+});
+
+router.post('/change-password', requireUser, async (req, res) => {
+  try {
+    const { error, value } = changePasswordSchema.validate(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: error.details,
+      });
+    }
+
+    const currentUser = await User.findById(req.user.sub);
+
+    if (!currentUser) {
+      clearAuthCookie(res);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired session.',
+      });
+    }
+
+    if (currentUser.password_hash) {
+      const passwordMatches = await bcrypt.compare(value.currentPassword || '', currentUser.password_hash);
+
+      if (!passwordMatches) {
+        return res.status(401).json({
+          success: false,
+          message: 'Current password is incorrect.',
+        });
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(value.newPassword, passwordRounds);
+    const updatedUser = await User.updatePassword(currentUser.id, passwordHash);
+
+    return res.json({
+      success: true,
+      data: User.toSafeUser(updatedUser || currentUser),
+      message: currentUser.password_hash
+        ? 'Password updated successfully.'
+        : 'Password added successfully.',
+    });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to change password',
+    });
+  }
+});
+
 router.get('/verify-email', async (req, res) => {
   const { error, value } = verifyEmailSchema.validate(req.query);
 
@@ -551,7 +691,7 @@ router.get('/me', async (req, res) => {
   }
 });
 
-router.get('/discord', (req, res) => {
+router.get('/discord', async (req, res) => {
   try {
     const { error, value } = discordStartSchema.validate(req.query);
 
@@ -567,12 +707,40 @@ router.get('/discord', (req, res) => {
       return res.redirect(buildWebRedirect('/auth', { error: getBlacklistedIgnMessage() }));
     }
 
+    let userId = null;
+
+    if (value.mode === 'connect') {
+      const token = getTokenFromRequest(req);
+
+      if (!token) {
+        return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
+      }
+
+      try {
+        const session = verifyUserToken(token);
+        const user = await User.findById(session.sub);
+
+        if (!user) {
+          clearAuthCookie(res);
+          return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
+        }
+
+        userId = user.id;
+      } catch {
+        clearAuthCookie(res);
+        return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
+      }
+    }
+
     const { clientId, redirectUri } = getDiscordConfig();
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      state: buildState(value),
+      state: buildState({
+        ...value,
+        userId,
+      }),
     });
 
     return res.redirect(`https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`);
@@ -613,7 +781,26 @@ router.get('/discord/callback', async (req, res) => {
 
     let user = await User.findByDiscordId(discordUser.id);
 
-    if (!user) {
+    if (state.mode === 'connect') {
+      if (!state.userId) {
+        return res.redirect(buildWebRedirect('/auth', { error: 'Discord connection session expired. Please try again.' }));
+      }
+
+      const currentUser = await User.findById(state.userId);
+
+      if (!currentUser) {
+        clearAuthCookie(res);
+        return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
+      }
+
+      if (user && user.id !== currentUser.id) {
+        return res.redirect(buildWebRedirect('/auth', { error: 'That Discord account is already connected to another Team Soju account.' }));
+      }
+
+      user = user?.id === currentUser.id
+        ? user
+        : await User.attachDiscord(currentUser.id, discordUser);
+    } else if (!user) {
       const userByEmail = await User.findByEmail(discordUser.email);
 
       if (userByEmail) {

@@ -187,6 +187,27 @@ class User {
     return result.rows[0] || null;
   }
 
+  static async updateEmail(id, { email, tokenHash, expiresAt }) {
+    const result = await pool.query(`
+      UPDATE app_users
+      SET email = $2,
+          email_verification_token_hash = $3,
+          email_verification_expires_at = $4,
+          email_verification_sent_at = now(),
+          email_verified_at = NULL,
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `, [
+      id,
+      normalizeEmail(email),
+      tokenHash,
+      expiresAt,
+    ]);
+
+    return result.rows[0] || null;
+  }
+
   static async findByEmailVerificationTokenHash(tokenHash) {
     const result = await pool.query(`
       SELECT *

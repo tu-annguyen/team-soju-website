@@ -177,4 +177,94 @@ describe('AuthPage', () => {
 
     expect(await screen.findByText('Email verified. You can sign in now.')).toBeInTheDocument();
   });
+
+  it('lets a signed-in user change their email and password', async () => {
+    const user = userEvent.setup();
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            id: 'user-id',
+            email: 'trainer@example.com',
+            ign: 'Trainer',
+            discord_id: null,
+            auth_provider: 'password',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          message: 'Email updated. Check your new inbox to verify it.',
+          data: {
+            id: 'user-id',
+            email: 'new@example.com',
+            ign: 'Trainer',
+            discord_id: null,
+            auth_provider: 'password',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          message: 'Password updated successfully.',
+          data: {
+            id: 'user-id',
+            email: 'new@example.com',
+            ign: 'Trainer',
+            discord_id: null,
+            auth_provider: 'password',
+          },
+        }),
+      });
+
+    render(<AuthPage apiBaseUrl="http://localhost:3001/api" />);
+
+    expect(await screen.findByText('Welcome back, Trainer.')).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText('New email'));
+    await user.type(screen.getByLabelText('New email'), 'new@example.com');
+    await user.click(screen.getByRole('button', { name: 'Update email' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:3001/api/auth/change-email',
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          body: JSON.stringify({
+            email: 'new@example.com',
+          }),
+        })
+      );
+    });
+
+    await user.type(screen.getByLabelText('Current password'), 'hunter42!');
+    await user.type(screen.getByLabelText('New password'), 'newhunter42!');
+    await user.click(screen.getByRole('button', { name: 'Update password' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:3001/api/auth/change-password',
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          body: JSON.stringify({
+            currentPassword: 'hunter42!',
+            newPassword: 'newhunter42!',
+          }),
+        })
+      );
+    });
+
+    expect(await screen.findByText('Password updated successfully.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connect Discord' })).toBeInTheDocument();
+  });
 });

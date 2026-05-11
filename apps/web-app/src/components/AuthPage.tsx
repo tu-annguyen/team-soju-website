@@ -9,6 +9,7 @@ type AuthUser = {
   email: string;
   ign: string;
   discord_id?: string | null;
+  auth_provider?: string | null;
 };
 
 type AuthResponse = {
@@ -34,6 +35,9 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [ign, setIgn] = useState('');
   const [isSessionLoading, setIsSessionLoading] = useState(true);
@@ -83,6 +87,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
 
         if (isMounted && response.ok && body.success) {
           setUser(body.data || null);
+          setNewEmail(body.data?.email || '');
         }
       } catch {
         if (isMounted) {
@@ -131,6 +136,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
         }
 
         setUser(body.data);
+        setNewEmail(body.data.email);
         setNotice(body.message || messages.successLogin);
         window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: body.data }));
       } else {
@@ -206,6 +212,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
       }
 
       setUser(body.data);
+      setNewEmail(body.data.email);
       setPassword('');
       setResetToken('');
       setMode('login');
@@ -231,10 +238,92 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
       });
     } finally {
       setUser(null);
+      setNewEmail('');
+      setCurrentPassword('');
+      setNewPassword('');
       setIsSubmitting(false);
       window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: null }));
     }
   };
+
+  const submitEmailChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const response = await fetch(`${normalizedApiBaseUrl}/auth/change-email`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: newEmail }),
+      });
+      const body = await response.json() as AuthResponse;
+
+      if (!response.ok || !body.success || !body.data) {
+        throw new Error(body.message || messages.errors.generic);
+      }
+
+      setUser(body.data);
+      setNewEmail(body.data.email);
+      setNotice(body.message || messages.successEmailVerified);
+      window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: body.data }));
+    } catch (changeEmailError) {
+      setError(changeEmailError instanceof Error ? changeEmailError.message : messages.errors.generic);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const submitPasswordChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const response = await fetch(`${normalizedApiBaseUrl}/auth/change-password`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+      const body = await response.json() as AuthResponse;
+
+      if (!response.ok || !body.success || !body.data) {
+        throw new Error(body.message || messages.errors.generic);
+      }
+
+      setUser(body.data);
+      setCurrentPassword('');
+      setNewPassword('');
+      setNotice(body.message || messages.successPasswordReset);
+      window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: body.data }));
+    } catch (changePasswordError) {
+      setError(changePasswordError instanceof Error ? changePasswordError.message : messages.errors.generic);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const connectDiscordAccount = () => {
+    setError('');
+    setNotice('');
+    window.location.assign(`${normalizedApiBaseUrl}/auth/discord?${new URLSearchParams({
+      mode: 'connect',
+      returnTo: '/auth',
+    }).toString()}`);
+  };
+
+  const hasPassword = user?.auth_provider === 'password' || user?.auth_provider === 'password_discord';
 
   const continueWithDiscord = () => {
     setError('');
@@ -320,34 +409,142 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
               </button>
             </div>
           ) : user ? (
-            <div className="space-y-6 text-center">
-              <div>
+            <div className="space-y-8">
+              <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{messages.signedInHeading}</h2>
                 <p className="mt-2 text-gray-700 dark:text-gray-300">
                   {formatCopy(messages.signedInCopy, { ign: user.ign })}
                 </p>
               </div>
-              <div className="grid gap-3 rounded-lg border border-gray-200 bg-slate-50 p-4 text-left text-sm dark:border-gray-800 dark:bg-gray-950 sm:grid-cols-2">
-                <div>
-                  <span className="block font-semibold text-gray-950 dark:text-white">{messages.email}</span>
-                  <span className="break-all text-gray-700 dark:text-gray-300">{user.email}</span>
-                </div>
-                <div>
-                  <span className="block font-semibold text-gray-950 dark:text-white">Discord</span>
-                  <span className="text-gray-700 dark:text-gray-300">
-                    {user.discord_id ? messages.discordLinked : messages.discordNotLinked}
-                  </span>
+
+              <div className="space-y-4 rounded-lg border border-gray-200 bg-slate-50 p-4 text-sm dark:border-gray-800 dark:bg-gray-950">
+                <h3 className="text-base font-semibold text-gray-950 dark:text-white">{messages.accountDetailsHeading}</h3>
+                <div className="grid gap-3 text-left sm:grid-cols-2">
+                  <div>
+                    <span className="block font-semibold text-gray-950 dark:text-white">{messages.email}</span>
+                    <span className="break-all text-gray-700 dark:text-gray-300">{user.email}</span>
+                  </div>
+                  <div>
+                    <span className="block font-semibold text-gray-950 dark:text-white">Discord</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {user.discord_id ? messages.discordLinked : messages.discordNotLinked}
+                    </span>
+                  </div>
                 </div>
               </div>
-              {notice && <p className="text-sm font-medium text-primary-700 dark:text-primary-300">{notice}</p>}
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={signOut}
-                disabled={isSubmitting}
-              >
-                {messages.signOut}
-              </button>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-950 dark:text-white">{messages.accountSettingsHeading}</h3>
+                  <p className="mt-2 text-gray-700 dark:text-gray-300">{messages.accountSettingsCopy}</p>
+                </div>
+
+                <form className="space-y-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800" onSubmit={submitEmailChange}>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-950 dark:text-white">{messages.changeEmailHeading}</h4>
+                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{messages.changeEmailCopy}</p>
+                  </div>
+                  <div>
+                    <label htmlFor="account-new-email" className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {messages.newEmail}
+                    </label>
+                    <input
+                      id="account-new-email"
+                      type="email"
+                      value={newEmail}
+                      onChange={(event) => setNewEmail(event.target.value)}
+                      autoComplete="email"
+                      required
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isSubmitting}
+                  >
+                    {messages.changeEmailSubmit}
+                  </button>
+                </form>
+
+                <form className="space-y-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800" onSubmit={submitPasswordChange}>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-950 dark:text-white">
+                      {hasPassword ? messages.changePasswordHeading : messages.setPasswordHeading}
+                    </h4>
+                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{messages.changePasswordCopy}</p>
+                  </div>
+                  <div>
+                    <label htmlFor="account-current-password" className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {hasPassword ? messages.currentPassword : messages.currentPasswordOptional}
+                    </label>
+                    <input
+                      id="account-current-password"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      autoComplete="current-password"
+                      required={hasPassword}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="account-new-password" className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {messages.newPassword}
+                    </label>
+                    <input
+                      id="account-new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      autoComplete="new-password"
+                      required
+                      minLength={8}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isSubmitting}
+                  >
+                    {hasPassword ? messages.changePasswordSubmit : messages.setPasswordSubmit}
+                  </button>
+                </form>
+
+                {!user.discord_id && (
+                  <div className="space-y-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-950 dark:text-white">{messages.connectDiscordHeading}</h4>
+                      <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{messages.connectDiscordCopy}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="w-full rounded-lg border border-[#5865f2] bg-[#5865f2] px-6 py-3 font-semibold text-white transition hover:bg-[#4752c4] focus:outline-none focus:ring-2 focus:ring-[#5865f2]/40"
+                      onClick={connectDiscordAccount}
+                      disabled={isSubmitting}
+                    >
+                      {messages.connectDiscordSubmit}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3" aria-live="polite">
+                {error && <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{error}</p>}
+                {notice && <p className="text-sm font-medium text-primary-700 dark:text-primary-300">{notice}</p>}
+              </div>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={signOut}
+                  disabled={isSubmitting}
+                >
+                  {messages.signOut}
+                </button>
+              </div>
             </div>
           ) : (
             <>
