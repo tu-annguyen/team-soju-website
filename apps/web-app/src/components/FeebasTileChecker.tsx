@@ -157,7 +157,6 @@ const DEFAULT_LEADERBOARD_SORT: LeaderboardSortState = {
 };
 const ACTIVITY_PAGE_SIZE = 5;
 const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
-const DISPLAY_NAME_STORAGE_KEY = 'feebas-tile-checker-display-name';
 const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
 const BOARD_MIN_TILE_SIZE_PX = 40;
 const BOARD_MIN_WIDTH_PX = 768;
@@ -699,7 +698,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -713,7 +711,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const activeLocationOption = localizedLocationOptionsById.get(activeLocation) || localizedLocationOptionsById.get(DEFAULT_LOCATION)!;
   const activeTerrain = activeLocationOption.terrain;
   const actorFingerprint = authUser ? `account-${authUser.id}` : clientId;
-  const voteActorName = authUser?.ign.trim() || displayName.trim();
+  const voteActorName = authUser?.ign.trim();
   const authHref = getLocaleParamPath('/auth', activeLocale);
   const querySuffix = actorFingerprint ? `?actorFingerprint=${encodeURIComponent(actorFingerprint)}` : '';
 
@@ -749,8 +747,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
       localStorage.setItem(CLIENT_ID_STORAGE_KEY, resolvedClientId);
       setClientId(resolvedClientId);
 
-      const storedName = localStorage.getItem(DISPLAY_NAME_STORAGE_KEY) || '';
-      setDisplayName(storedName);
     } catch {
       setClientId(createClientId());
     }
@@ -909,14 +905,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
       setError(nextError instanceof Error ? nextError.message : messages.errors.refreshBoard);
     });
   }, [countdown]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(DISPLAY_NAME_STORAGE_KEY, displayName.trim());
-    } catch {
-      // Ignore storage write failures.
-    }
-  }, [displayName]);
 
   const tileMap = useMemo(() => {
     if (!board) {
@@ -1140,32 +1128,16 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
               {authMessages.loading}
             </div>
           ) : authUser ? (
-            <p className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-medium text-primary-800 dark:border-primary-800/60 dark:bg-primary-950/40 dark:text-primary-200">
+          <p className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-medium text-primary-800 dark:border-primary-800/60 dark:bg-primary-950/40 dark:text-primary-200">
               {formatCopy(messages.general.signedInAs, { ign: authUser.ign })}
             </p>
           ) : (
-            <div className="grid gap-2">
-              <label htmlFor="feebas-display-name" className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                {messages.general.optionalDisplayName}
-              </label>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <input
-                  id="feebas-display-name"
-                  type="text"
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value.slice(0, 40))}
-                  placeholder={messages.general.displayNamePlaceholder}
-                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-primary-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-                  disabled={loading && !board}
-                />
-                <a
-                  href={authHref}
-                  className={LEADERBOARD_SIGN_IN_CTA_CLASSES}
-                >
-                  {messages.general.signInToTrackLeaderboardStats}
-                </a>
-              </div>
-            </div>
+            <a
+              href={authHref}
+              className={LEADERBOARD_SIGN_IN_CTA_CLASSES}
+            >
+              {messages.general.signInToTrackLeaderboardStats}
+            </a>
           )}
         </div>
       </section>
