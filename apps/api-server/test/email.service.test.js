@@ -1,5 +1,6 @@
 const axios = require('axios');
 const {
+  buildEmailVerificationMessage,
   buildPasswordResetMessage,
   sendEmail,
 } = require('../src/services/email');
@@ -30,6 +31,20 @@ describe('email service', () => {
     expect(message.text).toContain('https://teamsoju.com/auth?resetToken=abc123');
     expect(message.html).toContain('&lt;Trainer&gt;');
     expect(message.html).toContain('Reset your password');
+  });
+
+  it('builds an email verification email with escaped display content', () => {
+    const message = buildEmailVerificationMessage({
+      to: 'trainer@example.com',
+      verificationUrl: 'https://teamsoju.com/api/auth/verify-email?token=abc123',
+      expiresInMinutes: 1440,
+      ign: '<Trainer>',
+    });
+
+    expect(message.subject).toBe('Verify your Team Soju email');
+    expect(message.text).toContain('https://teamsoju.com/api/auth/verify-email?token=abc123');
+    expect(message.html).toContain('&lt;Trainer&gt;');
+    expect(message.html).toContain('Verify your email');
   });
 
   it('sends with Resend when configured', async () => {

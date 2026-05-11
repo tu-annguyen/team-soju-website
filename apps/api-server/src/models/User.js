@@ -22,6 +22,7 @@ function toSafeUser(row) {
     discord_global_name: row.discord_global_name,
     discord_avatar: row.discord_avatar,
     auth_provider: row.auth_provider,
+    email_verified_at: row.email_verified_at,
     created_at: row.created_at,
     updated_at: row.updated_at,
     last_login_at: row.last_login_at,
@@ -71,12 +72,27 @@ class User {
     return result.rows[0] || null;
   }
 
-  static async createWithPassword({ email, passwordHash, ign }) {
+  static async createWithPassword({ email, passwordHash, ign, verificationTokenHash, verificationExpiresAt }) {
     const result = await pool.query(`
-      INSERT INTO app_users (email, password_hash, ign, auth_provider)
-      VALUES ($1, $2, $3, 'password')
+      INSERT INTO app_users (
+        email,
+        password_hash,
+        ign,
+        auth_provider,
+        email_verification_token_hash,
+        email_verification_expires_at,
+        email_verification_sent_at,
+        email_verified_at
+      )
+      VALUES ($1, $2, $3, 'password', $4, $5, now(), NULL)
       RETURNING *
-    `, [normalizeEmail(email), passwordHash, normalizeIgn(ign)]);
+    `, [
+      normalizeEmail(email),
+      passwordHash,
+      normalizeIgn(ign),
+      verificationTokenHash,
+      verificationExpiresAt,
+    ]);
 
     return result.rows[0];
   }
@@ -157,6 +173,46 @@ class User {
     return result.rows[0] || null;
   }
 
+  static async setEmailVerificationToken(id, { tokenHash, expiresAt }) {
+    const result = await pool.query(`
+      UPDATE app_users
+      SET email_verification_token_hash = $2,
+          email_verification_expires_at = $3,
+          email_verification_sent_at = now(),
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `, [id, tokenHash, expiresAt]);
+
+    return result.rows[0] || null;
+  }
+
+  static async findByEmailVerificationTokenHash(tokenHash) {
+    const result = await pool.query(`
+      SELECT *
+      FROM app_users
+      WHERE email_verification_token_hash = $1
+      LIMIT 1
+    `, [tokenHash]);
+
+    return result.rows[0] || null;
+  }
+
+  static async markEmailVerified(id) {
+    const result = await pool.query(`
+      UPDATE app_users
+      SET email_verification_token_hash = NULL,
+          email_verification_expires_at = NULL,
+          email_verification_sent_at = NULL,
+          email_verified_at = now(),
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+
+    return result.rows[0] || null;
+  }
+
   static async findByPasswordResetTokenHash(tokenHash) {
     const result = await pool.query(`
       SELECT *
@@ -199,6 +255,13 @@ class User {
     `, [id, passwordHash]);
 
     return result.rows[0] || null;
+  }
+
+  static async deleteById(id) {
+    await pool.query(`
+      DELETE FROM app_users
+      WHERE id = $1
+    `, [id]);
   }
 }
 

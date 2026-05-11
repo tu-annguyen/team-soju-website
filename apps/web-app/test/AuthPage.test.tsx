@@ -13,7 +13,7 @@ describe('AuthPage', () => {
     global.fetch = fetchMock;
   });
 
-  it('registers with email, password, and IGN', async () => {
+  it('registers with email, password, and IGN, then asks for email verification', async () => {
     const user = userEvent.setup();
     fetchMock
       .mockResolvedValueOnce({
@@ -24,12 +24,8 @@ describe('AuthPage', () => {
         ok: true,
         json: async () => ({
           success: true,
-          data: {
-            id: 'user-id',
-            email: 'trainer@example.com',
-            ign: 'Trainer',
-            discord_id: null,
-          },
+          data: null,
+          message: 'Account created. Check your email to verify it before signing in.',
         }),
       });
 
@@ -59,7 +55,7 @@ describe('AuthPage', () => {
         })
       );
     });
-    expect(await screen.findByText('Welcome back, Trainer.')).toBeInTheDocument();
+    expect(await screen.findByText('Account created. Check your email to verify it before signing in.')).toBeInTheDocument();
   });
 
   it('requests a password reset email from the forgot password flow', async () => {
@@ -168,5 +164,17 @@ describe('AuthPage', () => {
 
     expect(screen.getByText('Enter your IGN before continuing with Discord.')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a success notice after returning from email verification', async () => {
+    window.history.replaceState({}, '', '/auth?status=email-verified');
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: null }),
+    });
+
+    render(<AuthPage apiBaseUrl="http://localhost:3001/api" />);
+
+    expect(await screen.findByText('Email verified. You can sign in now.')).toBeInTheDocument();
   });
 });

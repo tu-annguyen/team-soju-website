@@ -19,12 +19,16 @@ describe('User model', () => {
       email: '  Trainer@Example.COM ',
       passwordHash: 'hashed-password',
       ign: ' Trainer ',
+      verificationTokenHash: 'verification-token-hash',
+      verificationExpiresAt: new Date('2026-05-12T12:00:00.000Z'),
     });
 
     expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [
       'trainer@example.com',
       'hashed-password',
       'Trainer',
+      'verification-token-hash',
+      new Date('2026-05-12T12:00:00.000Z'),
     ]);
     expect(result).toEqual(created);
   });
@@ -78,6 +82,44 @@ describe('User model', () => {
     expect(result).toEqual(updated);
   });
 
+  it('stores email verification token metadata', async () => {
+    const updated = { id: 'user-id', email_verification_token_hash: 'token-hash' };
+    const expiresAt = new Date('2026-05-08T12:00:00.000Z');
+    mockQuery.mockResolvedValue({ rows: [updated] });
+
+    const result = await User.setEmailVerificationToken('user-id', {
+      tokenHash: 'token-hash',
+      expiresAt,
+    });
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [
+      'user-id',
+      'token-hash',
+      expiresAt,
+    ]);
+    expect(result).toEqual(updated);
+  });
+
+  it('finds a user by email verification token hash', async () => {
+    const row = { id: 'user-id', email_verification_token_hash: 'token-hash' };
+    mockQuery.mockResolvedValue({ rows: [row] });
+
+    const result = await User.findByEmailVerificationTokenHash('token-hash');
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), ['token-hash']);
+    expect(result).toEqual(row);
+  });
+
+  it('marks a user email as verified and clears verification token metadata', async () => {
+    const updated = { id: 'user-id', email_verified_at: '2026-05-08T12:00:00.000Z' };
+    mockQuery.mockResolvedValue({ rows: [updated] });
+
+    const result = await User.markEmailVerified('user-id');
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), ['user-id']);
+    expect(result).toEqual(updated);
+  });
+
   it('finds a user by password reset token hash', async () => {
     const row = { id: 'user-id', password_reset_token_hash: 'token-hash' };
     mockQuery.mockResolvedValue({ rows: [row] });
@@ -118,6 +160,7 @@ describe('User model', () => {
       discord_global_name: undefined,
       discord_avatar: undefined,
       auth_provider: 'password',
+      email_verified_at: undefined,
       created_at: undefined,
       updated_at: undefined,
       last_login_at: undefined,

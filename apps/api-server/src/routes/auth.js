@@ -14,7 +14,10 @@ const {
   signUserToken,
   verifyUserToken,
 } = require('../middleware/auth');
-const { sendPasswordResetEmail } = require('../services/email');
+const {
+  sendEmailVerificationEmail,
+  sendPasswordResetEmail,
+} = require('../services/email');
 const { isIgnBlacklisted } = require('../utils/ignModeration');
 
 const router = express.Router();
@@ -24,6 +27,9 @@ const discordScopes = ['identify', 'email'];
 const passwordResetExpiresInMinutes = 60;
 const passwordResetTokenBytes = 32;
 const passwordResetSentMessage = 'If an account uses that email, a reset link has been sent.';
+const emailVerificationExpiresInMinutes = 24 * 60;
+const emailVerificationTokenBytes = 32;
+const emailVerificationSentMessage = 'Account created. Check your email to verify it before signing in.';
 
 const ignSchema = Joi.string().trim().min(1).max(50).required();
 
@@ -45,6 +51,10 @@ const forgotPasswordSchema = Joi.object({
 const resetPasswordSchema = Joi.object({
   token: Joi.string().trim().min(32).max(256).required(),
   password: Joi.string().min(8).max(128).required(),
+});
+
+const verifyEmailSchema = Joi.object({
+  token: Joi.string().trim().min(32).max(256).required(),
 });
 
 const discordStartSchema = Joi.object({
@@ -113,13 +123,33 @@ function hashPasswordResetToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+function generateEmailVerificationToken() {
+  return crypto.randomBytes(emailVerificationTokenBytes).toString('hex');
+}
+
+function hashEmailVerificationToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 function getPasswordResetUrl(token) {
   const url = new URL('/auth', getWebAppUrl());
   url.searchParams.set('resetToken', token);
   return url.toString();
 }
 
+function getEmailVerificationUrl(token) {
+  const url = new URL('/api/auth/verify-email', getDiscordRedirectUri());
+  url.searchParams.set('token', token);
+  return url.toString();
+}
+
 function isPasswordResetExpired(expiresAt) {
+  const expiresAtMs = new Date(expiresAt).getTime();
+
+  return !Number.isFinite(expiresAtMs) || expiresAtMs < Date.now();
+}
+
+function isEmailVerificationExpired(expiresAt) {
   const expiresAtMs = new Date(expiresAt).getTime();
 
   return !Number.isFinite(expiresAtMs) || expiresAtMs < Date.now();
@@ -192,6 +222,23 @@ async function signInUser(res, user, statusCode = 200, message = 'Signed in succ
   });
 }
 
+async function issueEmailVerification(user) {
+  const token = generateEmailVerificationToken();
+  const expiresAt = new Date(Date.now() + (emailVerificationExpiresInMinutes * 60 * 1000));
+
+  await User.setEmailVerificationToken(user.id, {
+    tokenHash: hashEmailVerificationToken(token),
+    expiresAt,
+  });
+
+  await sendEmailVerificationEmail({
+    to: user.email,
+    verificationUrl: getEmailVerificationUrl(token),
+    expiresInMinutes: emailVerificationExpiresInMinutes,
+    ign: user.ign,
+  });
+}
+
 async function exchangeDiscordCode(code) {
   const { clientId, clientSecret, redirectUri } = getDiscordConfig();
   const body = new URLSearchParams({
@@ -241,13 +288,35 @@ router.post('/register', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(value.password, passwordRounds);
+    const verificationToken = generateEmailVerificationToken();
+    const verificationExpiresAt = new Date(Date.now() + (emailVerificationExpiresInMinutes * 60 * 1000));
     const user = await User.createWithPassword({
       email: value.email,
       passwordHash,
       ign: value.ign,
+      verificationTokenHash: hashEmailVerificationToken(verificationToken),
+      verificationExpiresAt,
     });
 
-    return signInUser(res, user, 201, 'Account created successfully.');
+    try {
+      await sendEmailVerificationEmail({
+        to: user.email,
+        verificationUrl: getEmailVerificationUrl(verificationToken),
+        expiresInMinutes: emailVerificationExpiresInMinutes,
+        ign: user.ign,
+      });
+    } catch (sendError) {
+      await User.deleteById(user.id).catch((deleteError) => {
+        console.error('Error deleting unverified user after email failure:', deleteError);
+      });
+      throw sendError;
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: null,
+      message: emailVerificationSentMessage,
+    });
   } catch (error) {
     const duplicateMessage = getDuplicateMessage(error);
 
@@ -259,9 +328,9 @@ router.post('/register', async (req, res) => {
     }
 
     console.error('Error registering user:', error);
-    return res.status(500).json({
+    return res.status(error.publicMessage ? 503 : 500).json({
       success: false,
-      message: 'Failed to create account',
+      message: error.publicMessage || 'Failed to create account',
     });
   }
 });
@@ -287,6 +356,23 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
+      });
+    }
+
+    if (!user.email_verified_at) {
+      try {
+        await issueEmailVerification(user);
+      } catch (sendError) {
+        console.error('Error resending verification email:', sendError);
+        return res.status(sendError.publicMessage ? 503 : 500).json({
+          success: false,
+          message: sendError.publicMessage || 'Failed to send verification email',
+        });
+      }
+
+      return res.status(403).json({
+        success: false,
+        message: 'Verify your email before signing in. We sent you a new verification link.',
       });
     }
 
@@ -387,6 +473,38 @@ router.post('/reset-password', async (req, res) => {
       success: false,
       message: 'Failed to reset password',
     });
+  }
+});
+
+router.get('/verify-email', async (req, res) => {
+  const { error, value } = verifyEmailSchema.validate(req.query);
+
+  if (error) {
+    return res.redirect(buildWebRedirect('/auth', {
+      error: 'That verification link is invalid or expired.',
+    }));
+  }
+
+  try {
+    const tokenHash = hashEmailVerificationToken(value.token);
+    const user = await User.findByEmailVerificationTokenHash(tokenHash);
+
+    if (!user || isEmailVerificationExpired(user.email_verification_expires_at)) {
+      return res.redirect(buildWebRedirect('/auth', {
+        error: 'That verification link is invalid or expired.',
+      }));
+    }
+
+    await User.markEmailVerified(user.id);
+    return res.redirect(buildWebRedirect('/auth', {
+      mode: 'login',
+      status: 'email-verified',
+    }));
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    return res.redirect(buildWebRedirect('/auth', {
+      error: 'Unable to verify your email.',
+    }));
   }
 });
 

@@ -133,6 +133,10 @@ CREATE TABLE IF NOT EXISTS app_users (
   password_reset_token_hash TEXT,
   password_reset_expires_at TIMESTAMPTZ,
   password_reset_requested_at TIMESTAMPTZ,
+  email_verification_token_hash TEXT,
+  email_verification_expires_at TIMESTAMPTZ,
+  email_verification_sent_at TIMESTAMPTZ,
+  email_verified_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   last_login_at TIMESTAMPTZ,
@@ -165,6 +169,18 @@ ALTER TABLE app_users
   ADD COLUMN IF NOT EXISTS password_reset_requested_at TIMESTAMPTZ;
 
 ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS email_verification_token_hash TEXT;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS email_verification_expires_at TIMESTAMPTZ;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS email_verification_sent_at TIMESTAMPTZ;
+
+ALTER TABLE app_users
+  ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+
+ALTER TABLE app_users
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
 
 ALTER TABLE app_users
@@ -184,6 +200,12 @@ SET auth_provider = CASE
 END
 WHERE auth_provider IS NULL
    OR auth_provider NOT IN ('password', 'discord', 'password_discord');
+
+UPDATE app_users
+SET email_verified_at = COALESCE(email_verified_at, created_at, now()),
+    updated_at = now()
+WHERE email_verified_at IS NULL
+  AND email_verification_sent_at IS NULL;
 
 ALTER TABLE app_users
   ALTER COLUMN auth_provider SET NOT NULL;
@@ -219,6 +241,10 @@ CREATE INDEX IF NOT EXISTS idx_app_users_discord_id
 CREATE INDEX IF NOT EXISTS idx_app_users_password_reset_token_hash
   ON app_users(password_reset_token_hash)
   WHERE password_reset_token_hash IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_app_users_email_verification_token_hash
+  ON app_users(email_verification_token_hash)
+  WHERE email_verification_token_hash IS NOT NULL;
 
 -- Feebas tile coordination cycles
 CREATE TABLE IF NOT EXISTS feebas_cycles (
