@@ -2,6 +2,9 @@ const express = require('express');
 const Joi = require('joi');
 const FeebasBoard = require('../models/FeebasBoard');
 const { FeebasRuleError, getLocationConfig } = require('../utils/feebas');
+const { getTokenFromRequest, verifyUserToken } = require('../middleware/auth');
+const User = require('../models/User');
+const { isIgnBlacklisted } = require('../utils/ignModeration');
 
 const router = express.Router();
 const subscribersByLocation = new Map();
@@ -18,6 +21,21 @@ const leaderboardQuerySchema = Joi.object({
   sortBy: Joi.string().valid(...leaderboardSortKeys).optional(),
   sortDirection: Joi.string().valid('asc', 'desc').optional(),
 });
+
+async function getAuthenticatedUser(req) {
+  const token = getTokenFromRequest(req);
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decoded = verifyUserToken(token);
+    return await User.findById(decoded.sub);
+  } catch {
+    return null;
+  }
+}
 
 async function broadcastBoard(location) {
   const subscribers = subscribersByLocation.get(location);
@@ -159,7 +177,28 @@ router.post('/:location/tiles/:tileId', async (req, res) => {
       });
     }
 
-    const board = await FeebasBoard.updateTile(req.params.location, req.params.tileId, value, {
+    const authenticatedUser = await getAuthenticatedUser(req);
+    const payload = authenticatedUser
+      ? {
+        status: value.status,
+        actorFingerprint: `account-${authenticatedUser.id}`,
+        actorName: authenticatedUser.ign,
+      }
+      : {
+        status: value.status,
+        actorFingerprint: value.actorFingerprint,
+        actorName: null,
+      };
+
+    if (!authenticatedUser && String(value.actorFingerprint || '').startsWith('account-')) {
+      throw new FeebasRuleError('Signed-in activity requires a valid session.', 401);
+    }
+
+    if (authenticatedUser && isIgnBlacklisted(authenticatedUser.ign)) {
+      throw new FeebasRuleError('This account IGN is not allowed on the Activity Log.', 403);
+    }
+
+    const board = await FeebasBoard.updateTile(req.params.location, req.params.tileId, payload, {
       includeLeaderboard: false,
     });
     await broadcastBoard(req.params.location);
