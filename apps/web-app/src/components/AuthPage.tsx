@@ -65,8 +65,11 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
 
     if (queryStatus === 'signed-in') {
       setNotice(messages.successLogin);
+    } else if (queryStatus === 'email-verified') {
+      setMode('login');
+      setNotice(messages.successEmailVerified);
     }
-  }, [messages.successLogin]);
+  }, [messages.successEmailVerified, messages.successLogin]);
 
   useEffect(() => {
     let isMounted = true;
@@ -116,14 +119,24 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
       });
       const body = await response.json() as AuthResponse;
 
-      if (!response.ok || !body.success || !body.data) {
+      if (!response.ok || !body.success) {
         throw new Error(body.message || messages.errors.generic);
       }
 
-      setUser(body.data);
       setPassword('');
-      setNotice(mode === 'login' ? messages.successLogin : messages.successRegister);
-      window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: body.data }));
+
+      if (mode === 'login') {
+        if (!body.data) {
+          throw new Error(body.message || messages.errors.generic);
+        }
+
+        setUser(body.data);
+        setNotice(body.message || messages.successLogin);
+        window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: body.data }));
+      } else {
+        setMode('login');
+        setNotice(body.message || messages.successRegister);
+      }
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : messages.errors.generic);
     } finally {

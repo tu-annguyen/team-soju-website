@@ -46,7 +46,8 @@ const en = {
     signOut: 'Sign out',
     loading: 'Checking your session...',
     successLogin: 'Signed in successfully.',
-    successRegister: 'Account created successfully.',
+    successRegister: 'Account created. Check your email to verify it before signing in.',
+    successEmailVerified: 'Email verified. You can sign in now.',
     discordLinked: 'Discord connected',
     discordNotLinked: 'Discord not connected',
     errors: {

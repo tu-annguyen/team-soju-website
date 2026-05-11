@@ -13,7 +13,10 @@ const app = require('../src/server');
 const User = require('../src/models/User');
 const bcrypt = require('bcrypt');
 const axios = require('axios');
-const { sendPasswordResetEmail } = require('../src/services/email');
+const {
+  sendEmailVerificationEmail,
+  sendPasswordResetEmail,
+} = require('../src/services/email');
 const { AUTH_COOKIE_NAME, signUserToken } = require('../src/middleware/auth');
 
 jest.mock('../src/models/User');
@@ -23,6 +26,7 @@ jest.mock('bcrypt', () => ({
 }));
 jest.mock('axios');
 jest.mock('../src/services/email', () => ({
+  sendEmailVerificationEmail: jest.fn(),
   sendPasswordResetEmail: jest.fn(),
 }));
 
@@ -44,13 +48,15 @@ describe('Auth routes', () => {
       ign: row.ign,
       discord_id: row.discord_id,
       auth_provider: row.auth_provider,
+      email_verified_at: row.email_verified_at,
     }) : null);
     User.recordLogin.mockResolvedValue(userRow);
+    sendEmailVerificationEmail.mockResolvedValue({ provider: 'test' });
     sendPasswordResetEmail.mockResolvedValue({ provider: 'test' });
   });
 
   describe('POST /api/auth/register', () => {
-    it('creates a user, signs them in, and sets the auth cookie', async () => {
+    it('creates a user, sends a verification email, and does not sign them in yet', async () => {
       bcrypt.hash.mockResolvedValue('hashed-password');
       User.createWithPassword.mockResolvedValue(userRow);
 
@@ -64,13 +70,23 @@ describe('Auth routes', () => {
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.password_hash).toBeUndefined();
-      expect(response.headers['set-cookie'][0]).toContain(`${AUTH_COOKIE_NAME}=`);
+      expect(response.body.data).toBeNull();
+      expect(response.body.message).toBe('Account created. Check your email to verify it before signing in.');
+      expect(response.headers['set-cookie']).toBeUndefined();
       expect(User.createWithPassword).toHaveBeenCalledWith({
         email: 'trainer@example.com',
         passwordHash: 'hashed-password',
         ign: 'Trainer',
+        verificationTokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        verificationExpiresAt: expect.any(Date),
       });
+      expect(sendEmailVerificationEmail).toHaveBeenCalledWith(expect.objectContaining({
+        to: 'trainer@example.com',
+        ign: 'Trainer',
+        expiresInMinutes: 1440,
+      }));
+      expect(sendEmailVerificationEmail.mock.calls[0][0].verificationUrl)
+        .toMatch(/^http:\/\/localhost:3001\/api\/auth\/verify-email\?token=[a-f0-9]{64}$/);
     });
 
     it('returns 409 for duplicate accounts', async () => {
@@ -93,6 +109,27 @@ describe('Auth routes', () => {
       expect(response.body.message).toBe('An account with that email already exists.');
     });
 
+    it('deletes the unverified account if the verification email cannot be sent', async () => {
+      bcrypt.hash.mockResolvedValue('hashed-password');
+      User.createWithPassword.mockResolvedValue(userRow);
+      User.deleteById.mockResolvedValue();
+      const error = new Error('email unavailable');
+      error.publicMessage = 'Email delivery is not configured yet.';
+      sendEmailVerificationEmail.mockRejectedValue(error);
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: 'trainer@example.com',
+          password: 'hunter42!',
+          ign: 'Trainer',
+        });
+
+      expect(response.status).toBe(503);
+      expect(response.body.message).toBe('Email delivery is not configured yet.');
+      expect(User.deleteById).toHaveBeenCalledWith('user-id');
+    });
+
     it('rejects blacklisted IGNs during registration', async () => {
       const response = await request(app)
         .post('/api/auth/register')
@@ -112,7 +149,10 @@ describe('Auth routes', () => {
 
   describe('POST /api/auth/login', () => {
     it('signs in with email and password', async () => {
-      User.findByEmail.mockResolvedValue(userRow);
+      User.findByEmail.mockResolvedValue({
+        ...userRow,
+        email_verified_at: '2026-05-11T00:00:00.000Z',
+      });
       bcrypt.compare.mockResolvedValue(true);
 
       const response = await request(app)
@@ -126,6 +166,35 @@ describe('Auth routes', () => {
       expect(response.body.success).toBe(true);
       expect(response.headers['set-cookie'][0]).toContain(`${AUTH_COOKIE_NAME}=`);
       expect(User.findByEmail).toHaveBeenCalledWith('trainer@example.com');
+    });
+
+    it('rejects unverified accounts and resends verification email', async () => {
+      User.findByEmail.mockResolvedValue({
+        ...userRow,
+        email_verified_at: null,
+      });
+      User.setEmailVerificationToken.mockResolvedValue(userRow);
+      bcrypt.compare.mockResolvedValue(true);
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'trainer@example.com',
+          password: 'hunter42!',
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Verify your email before signing in. We sent you a new verification link.');
+      expect(User.setEmailVerificationToken).toHaveBeenCalledWith('user-id', {
+        tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        expiresAt: expect.any(Date),
+      });
+      expect(sendEmailVerificationEmail).toHaveBeenCalledWith(expect.objectContaining({
+        to: 'trainer@example.com',
+        ign: 'Trainer',
+        expiresInMinutes: 1440,
+      }));
     });
 
     it('rejects invalid credentials', async () => {
@@ -257,6 +326,29 @@ describe('Auth routes', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.ign).toBe('Trainer');
       expect(User.findById).toHaveBeenCalledWith('user-id');
+    });
+  });
+
+  describe('GET /api/auth/verify-email', () => {
+    it('marks a matching verification token as verified and redirects to sign in', async () => {
+      const token = 'a'.repeat(64);
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      User.findByEmailVerificationTokenHash.mockResolvedValue({
+        ...userRow,
+        email_verification_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      });
+      User.markEmailVerified.mockResolvedValue({
+        ...userRow,
+        email_verified_at: new Date().toISOString(),
+      });
+
+      const response = await request(app)
+        .get(`/api/auth/verify-email?token=${token}`);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('http://localhost:4321/auth?mode=login&status=email-verified');
+      expect(User.findByEmailVerificationTokenHash).toHaveBeenCalledWith(tokenHash);
+      expect(User.markEmailVerified).toHaveBeenCalledWith('user-id');
     });
   });
 

@@ -10,15 +10,15 @@ function getFromAddress() {
   return process.env.EMAIL_FROM || process.env.RESEND_FROM || process.env.POSTMARK_FROM || '';
 }
 
-function createConfigError(message) {
+function createConfigError(message, publicMessage = 'Email delivery is not configured yet.') {
   const error = new Error(message);
-  error.publicMessage = 'Password reset email is not configured yet.';
+  error.publicMessage = publicMessage;
   return error;
 }
 
-function requireConfig(name, value) {
+function requireConfig(name, value, publicMessage) {
   if (!value) {
-    throw createConfigError(`${name} is required to send password reset emails.`);
+    throw createConfigError(`${name} is required to send email.`, publicMessage);
   }
 
   return value;
@@ -54,6 +54,37 @@ function buildPasswordResetMessage({ to, resetUrl, expiresInMinutes, ign }) {
     <p><a href="${escapedResetUrl}">Reset your password</a></p>
     <p>This link expires in ${expiresInMinutes} minutes.</p>
     <p>If you did not request this, you can ignore this email.</p>
+  `;
+
+  return {
+    to,
+    subject,
+    text,
+    html,
+  };
+}
+
+function buildEmailVerificationMessage({ to, verificationUrl, expiresInMinutes, ign }) {
+  const displayName = ign ? ` ${ign}` : '';
+  const escapedDisplayName = escapeHtml(displayName);
+  const escapedVerificationUrl = escapeHtml(verificationUrl);
+  const subject = 'Verify your Team Soju email';
+  const text = [
+    `Hi${displayName},`,
+    '',
+    'Use this link to verify your Team Soju email before signing in:',
+    verificationUrl,
+    '',
+    `This link expires in ${expiresInMinutes} minutes.`,
+    '',
+    'If you did not create this account, you can ignore this email.',
+  ].join('\n');
+  const html = `
+    <p>Hi${escapedDisplayName},</p>
+    <p>Use this link to verify your Team Soju email before signing in:</p>
+    <p><a href="${escapedVerificationUrl}">Verify your email</a></p>
+    <p>This link expires in ${expiresInMinutes} minutes.</p>
+    <p>If you did not create this account, you can ignore this email.</p>
   `;
 
   return {
@@ -112,7 +143,7 @@ async function sendWithPostmark(message) {
 
 async function sendWithConsole(message) {
   if (process.env.NODE_ENV !== 'test') {
-    console.log(`Password reset email for ${message.to}:\n${message.text}`);
+    console.log(`${message.subject} email for ${message.to}:\n${message.text}`);
   }
 
   return { provider: 'console' };
@@ -145,9 +176,20 @@ async function sendPasswordResetEmail({ to, resetUrl, expiresInMinutes, ign }) {
   }));
 }
 
+async function sendEmailVerificationEmail({ to, verificationUrl, expiresInMinutes, ign }) {
+  return sendEmail(buildEmailVerificationMessage({
+    to,
+    verificationUrl,
+    expiresInMinutes,
+    ign,
+  }));
+}
+
 module.exports = {
+  buildEmailVerificationMessage,
   buildPasswordResetMessage,
   getEmailProvider,
   sendEmail,
+  sendEmailVerificationEmail,
   sendPasswordResetEmail,
 };
