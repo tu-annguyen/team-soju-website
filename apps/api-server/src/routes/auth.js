@@ -33,10 +33,19 @@ const emailVerificationTokenBytes = 32;
 const emailVerificationSentMessage = 'Account created. Check your email to verify it before signing in.';
 
 const ignSchema = Joi.string().trim().min(1).max(50).required();
+const passwordSchema = Joi.string()
+  .min(8)
+  .max(128)
+  .pattern(/[0-9]/, 'number')
+  .pattern(/[^A-Za-z0-9]/, 'special character')
+  .required()
+  .messages({
+    'string.pattern.name': 'Password must include at least one number and one special character.',
+  });
 
 const registerSchema = Joi.object({
   email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
-  password: Joi.string().min(8).max(128).required(),
+  password: passwordSchema,
   ign: ignSchema,
 });
 
@@ -51,7 +60,7 @@ const forgotPasswordSchema = Joi.object({
 
 const resetPasswordSchema = Joi.object({
   token: Joi.string().trim().min(32).max(256).required(),
-  password: Joi.string().min(8).max(128).required(),
+  password: passwordSchema,
 });
 
 const changeEmailSchema = Joi.object({
@@ -60,7 +69,7 @@ const changeEmailSchema = Joi.object({
 
 const changePasswordSchema = Joi.object({
   currentPassword: Joi.string().allow('', null).max(128),
-  newPassword: Joi.string().min(8).max(128).required(),
+  newPassword: passwordSchema,
 });
 
 const verifyEmailSchema = Joi.object({
