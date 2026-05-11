@@ -110,6 +110,22 @@ describe('Auth routes', () => {
       expect(response.body.message).toBe('An account with that email already exists.');
     });
 
+    it('rejects registration passwords without a number and special character', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: 'trainer@example.com',
+          password: 'password',
+          ign: 'Trainer',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Validation error');
+      expect(User.createWithPassword).not.toHaveBeenCalled();
+      expect(bcrypt.hash).not.toHaveBeenCalled();
+    });
+
     it('deletes the unverified account if the verification email cannot be sent', async () => {
       bcrypt.hash.mockResolvedValue('hashed-password');
       User.createWithPassword.mockResolvedValue(userRow);
@@ -305,6 +321,20 @@ describe('Auth routes', () => {
       expect(User.clearPasswordResetToken).toHaveBeenCalledWith('user-id');
       expect(User.updatePassword).not.toHaveBeenCalled();
     });
+
+    it('rejects reset passwords without a number and special character', async () => {
+      const response = await request(app)
+        .post('/api/auth/reset-password')
+        .send({
+          token: 'valid-reset-token-00000000000000000000',
+          password: 'newpassword',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe('Validation error');
+      expect(User.findByPasswordResetTokenHash).not.toHaveBeenCalled();
+      expect(User.updatePassword).not.toHaveBeenCalled();
+    });
   });
 
   describe('Signed-in account management', () => {
@@ -399,6 +429,23 @@ describe('Auth routes', () => {
       expect(response.body.message).toBe('Password added successfully.');
       expect(bcrypt.compare).not.toHaveBeenCalled();
       expect(User.updatePassword).toHaveBeenCalledWith('user-id', 'new-hashed-password');
+    });
+
+    it('rejects new account passwords without a number and special character', async () => {
+      const token = signUserToken(userRow);
+
+      const response = await request(app)
+        .post('/api/auth/change-password')
+        .set('Cookie', `${AUTH_COOKIE_NAME}=${token}`)
+        .send({
+          currentPassword: 'hunter42!',
+          newPassword: 'newpassword',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe('Validation error');
+      expect(User.findById).not.toHaveBeenCalled();
+      expect(bcrypt.hash).not.toHaveBeenCalled();
     });
   });
 

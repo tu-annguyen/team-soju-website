@@ -13,6 +13,15 @@ describe('AuthPage', () => {
     global.fetch = fetchMock;
   });
 
+  it('renders a form-shaped loading skeleton while checking the session', () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+
+    render(<AuthPage apiBaseUrl="http://localhost:3001/api" />);
+
+    expect(screen.getByTestId('auth-loading-skeleton')).toBeInTheDocument();
+    expect(screen.getByText('Checking your session...')).toBeInTheDocument();
+  });
+
   it('registers with email, password, and IGN, then asks for email verification', async () => {
     const user = userEvent.setup();
     fetchMock
@@ -38,7 +47,9 @@ describe('AuthPage', () => {
     await user.click(screen.getByRole('button', { name: 'Create account' }));
     await user.type(screen.getByLabelText('Email'), 'trainer@example.com');
     await user.type(screen.getByLabelText('In-game name'), 'Trainer');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('pattern', '(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,128}');
     await user.type(screen.getByLabelText('Password'), 'hunter42!');
+    await user.type(screen.getByLabelText('Re-type new password'), 'hunter42!');
     await user.click(screen.getAllByRole('button', { name: 'Create account' })[1]);
 
     await waitFor(() => {
@@ -127,6 +138,7 @@ describe('AuthPage', () => {
     });
 
     await user.type(screen.getByLabelText('New password'), 'newhunter42!');
+    await user.type(screen.getByLabelText('Re-type new password'), 'newhunter42!');
     await user.click(screen.getByRole('button', { name: 'Reset password' }));
 
     await waitFor(() => {
@@ -247,6 +259,7 @@ describe('AuthPage', () => {
 
     await user.type(screen.getByLabelText('Current password'), 'hunter42!');
     await user.type(screen.getByLabelText('New password'), 'newhunter42!');
+    await user.type(screen.getByLabelText('Re-type new password'), 'newhunter42!');
     await user.click(screen.getByRole('button', { name: 'Update password' }));
 
     await waitFor(() => {
@@ -266,5 +279,34 @@ describe('AuthPage', () => {
 
     expect(await screen.findByText('Password updated successfully.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect Discord' })).toBeInTheDocument();
+  });
+
+  it('blocks password updates when the re-typed password does not match', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          id: 'user-id',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+          discord_id: null,
+          auth_provider: 'password',
+        },
+      }),
+    });
+
+    render(<AuthPage apiBaseUrl="http://localhost:3001/api" />);
+
+    expect(await screen.findByText('Welcome back, Trainer.')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Current password'), 'hunter42!');
+    await user.type(screen.getByLabelText('New password'), 'newhunter42!');
+    await user.type(screen.getByLabelText('Re-type new password'), 'different42!');
+    await user.click(screen.getByRole('button', { name: 'Update password' }));
+
+    expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

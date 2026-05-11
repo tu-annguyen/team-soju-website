@@ -27,6 +27,40 @@ function formatCopy(template: string, values: Record<string, string>) {
   return template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
 }
 
+const PASSWORD_PATTERN = '(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,128}';
+const skeletonBlockClass = 'rounded-md bg-gray-200 dark:bg-gray-800';
+
+const AuthLoadingSkeleton = ({ label }: { label: string }) => (
+  <div
+    className="min-h-[28rem] space-y-6"
+    aria-busy="true"
+    aria-live="polite"
+    data-testid="auth-loading-skeleton"
+  >
+    <p className="sr-only">{label}</p>
+    <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1 dark:bg-gray-950">
+      <span className={`${skeletonBlockClass} h-10`} />
+      <span className="h-10" />
+    </div>
+    <div className="space-y-5">
+      {[0, 1].map((item) => (
+        <div key={item} className="space-y-2">
+          <span className={`${skeletonBlockClass} block h-4 w-24`} />
+          <span className={`${skeletonBlockClass} block h-12 w-full`} />
+        </div>
+      ))}
+      <span className={`${skeletonBlockClass} block h-3 w-2/3`} />
+      <span className={`${skeletonBlockClass} block h-12 w-full`} />
+    </div>
+    <div className="flex items-center gap-3">
+      <span className={`${skeletonBlockClass} h-px flex-1`} />
+      <span className={`${skeletonBlockClass} h-3 w-16`} />
+      <span className={`${skeletonBlockClass} h-px flex-1`} />
+    </div>
+    <span className={`${skeletonBlockClass} block h-12 w-full`} />
+  </div>
+);
+
 const AuthPage = ({ apiBaseUrl, locale }: Props) => {
   const normalizedApiBaseUrl = useMemo(() => apiBaseUrl.replace(/\/+$/, ''), [apiBaseUrl]);
   const [activeLocale, setActiveLocale] = useState<Locale>(() => getClientLocale(locale));
@@ -35,9 +69,11 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [ign, setIgn] = useState('');
   const [isSessionLoading, setIsSessionLoading] = useState(true);
@@ -113,6 +149,12 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
     setError('');
     setNotice('');
 
+    if (mode === 'register' && password !== confirmPassword) {
+      setError(messages.errors.passwordMismatch);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${normalizedApiBaseUrl}/auth/${mode === 'login' ? 'login' : 'register'}`, {
         method: 'POST',
@@ -129,6 +171,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
       }
 
       setPassword('');
+      setConfirmPassword('');
 
       if (mode === 'login') {
         if (!body.data) {
@@ -197,6 +240,10 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
         throw new Error(messages.errors.resetTokenMissing);
       }
 
+      if (password !== confirmPassword) {
+        throw new Error(messages.errors.passwordMismatch);
+      }
+
       const response = await fetch(`${normalizedApiBaseUrl}/auth/reset-password`, {
         method: 'POST',
         credentials: 'include',
@@ -214,6 +261,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
       setUser(body.data);
       setNewEmail(body.data.email);
       setPassword('');
+      setConfirmPassword('');
       setResetToken('');
       setMode('login');
       setNotice(body.message || messages.successPasswordReset);
@@ -241,6 +289,8 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
       setNewEmail('');
       setCurrentPassword('');
       setNewPassword('');
+      setConfirmPassword('');
+      setConfirmNewPassword('');
       setIsSubmitting(false);
       window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: null }));
     }
@@ -284,6 +334,12 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
     setError('');
     setNotice('');
 
+    if (newPassword !== confirmNewPassword) {
+      setError(messages.errors.passwordMismatch);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${normalizedApiBaseUrl}/auth/change-password`, {
         method: 'POST',
@@ -305,6 +361,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
       setUser(body.data);
       setCurrentPassword('');
       setNewPassword('');
+      setConfirmNewPassword('');
       setNotice(body.message || messages.successPasswordReset);
       window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: body.data }));
     } catch (changePasswordError) {
@@ -354,7 +411,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
 
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-8">
           {isSessionLoading ? (
-            <p className="text-center text-gray-700 dark:text-gray-300">{messages.loading}</p>
+            <AuthLoadingSkeleton label={messages.loading} />
           ) : mode === 'reset' ? (
             <div className="space-y-6">
               <div>
@@ -375,6 +432,28 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
                     autoComplete="new-password"
                     required
                     minLength={8}
+                    maxLength={128}
+                    pattern={PASSWORD_PATTERN}
+                    title={messages.passwordRequirements}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="auth-confirm-password" className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {messages.confirmPassword}
+                  </label>
+                  <input
+                    id="auth-confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    maxLength={128}
+                    pattern={PASSWORD_PATTERN}
+                    title={messages.passwordRequirements}
                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
                   />
                 </div>
@@ -399,6 +478,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
                 onClick={() => {
                   setMode('login');
                   setPassword('');
+                  setConfirmPassword('');
                   setResetToken('');
                   removeResetTokenFromUrl();
                   setError('');
@@ -500,6 +580,27 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
                       autoComplete="new-password"
                       required
                       minLength={8}
+                      maxLength={128}
+                      pattern={PASSWORD_PATTERN}
+                      title={messages.passwordRequirements}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="account-confirm-new-password" className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {messages.confirmPassword}
+                    </label>
+                    <input
+                      id="account-confirm-new-password"
+                      type="password"
+                      value={confirmNewPassword}
+                      onChange={(event) => setConfirmNewPassword(event.target.value)}
+                      autoComplete="new-password"
+                      required
+                      minLength={8}
+                      maxLength={128}
+                      pattern={PASSWORD_PATTERN}
+                      title={messages.passwordRequirements}
                       className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
                     />
                   </div>
@@ -560,6 +661,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
                     onClick={() => {
                       setMode('login');
                       setPassword('');
+                      setConfirmPassword('');
                       setError('');
                       setNotice('');
                     }}
@@ -576,6 +678,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
                     onClick={() => {
                       setMode('register');
                       setPassword('');
+                      setConfirmPassword('');
                       setError('');
                       setNotice('');
                     }}
@@ -683,6 +786,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
                         onClick={() => {
                           setMode('forgot');
                           setPassword('');
+                          setConfirmPassword('');
                           setError('');
                           setNotice('');
                         }}
@@ -699,9 +803,33 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                     required
                     minLength={mode === 'register' ? 8 : 1}
+                    maxLength={128}
+                    pattern={mode === 'register' ? PASSWORD_PATTERN : undefined}
+                    title={mode === 'register' ? messages.passwordRequirements : undefined}
                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
                   />
                 </div>
+
+                {mode === 'register' && (
+                  <div>
+                    <label htmlFor="auth-confirm-password" className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {messages.confirmPassword}
+                    </label>
+                    <input
+                      id="auth-confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      autoComplete="new-password"
+                      required
+                      minLength={8}
+                      maxLength={128}
+                      pattern={PASSWORD_PATTERN}
+                      title={messages.passwordRequirements}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-primary-800"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-3" aria-live="polite">
                   {error && <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{error}</p>}
