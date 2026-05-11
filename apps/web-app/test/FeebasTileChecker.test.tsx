@@ -183,13 +183,14 @@ describe('FeebasTileChecker', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows the optional display name field and leaderboard sign-in links when signed out', async () => {
+  it('shows leaderboard sign-in links when signed out', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
     await waitFor(() =>
-      expect(screen.getByLabelText(/Temporary display name/i)).toBeInTheDocument()
+      expect(screen.getAllByRole('link', { name: /Sign in to track leaderboard statistics/i })).toHaveLength(2)
     );
 
+    expect(screen.queryByLabelText(/Temporary display name/i)).not.toBeInTheDocument();
     const signInLinks = screen.getAllByRole('link', { name: /Sign in to track leaderboard statistics/i });
     expect(signInLinks).toHaveLength(2);
     expect(signInLinks.every((link) => link.getAttribute('href') === '/auth')).toBe(true);

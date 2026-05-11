@@ -12,6 +12,7 @@ const {
 const DEFAULT_LEADERBOARD_LIMIT = 10;
 const MAX_LEADERBOARD_LIMIT = 50;
 const LEADERBOARD_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const ACCOUNT_FINGERPRINT_PREFIX = 'account-';
 const LEADERBOARD_SORT_OPTIONS = [
   { key: 'ign', defaultDirection: 'asc' },
   { key: 'weeklyContributionScore', defaultDirection: 'desc' },
@@ -51,6 +52,14 @@ function normalizeLeaderboardSortDirection(sortDirection) {
   return sortDirection === 'desc' || sortDirection === 'asc'
     ? sortDirection
     : DEFAULT_LEADERBOARD_SORT_DIRECTION;
+}
+
+function getActivityActorName(entry) {
+  if (String(entry.actor_fingerprint || '').startsWith(ACCOUNT_FINGERPRINT_PREFIX)) {
+    return entry.actor_name;
+  }
+
+  return null;
 }
 
 function compareNumbers(left, right) {
@@ -860,7 +869,7 @@ class FeebasBoard {
         actionType: entry.action_type,
         previousStatus: entry.previous_status,
         nextStatus: entry.next_status === 'unchecked' ? null : entry.next_status,
-        actorName: entry.actor_name,
+        actorName: getActivityActorName(entry),
         createdAt: new Date(entry.created_at).toISOString(),
       })),
       ...(includeLeaderboard ? { leaderboard } : {}),

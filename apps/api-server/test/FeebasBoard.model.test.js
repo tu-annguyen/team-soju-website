@@ -222,6 +222,64 @@ describe('FeebasBoard model', () => {
     expect(client.query).toHaveBeenCalledTimes(3);
   });
 
+  it('masks unsigned activity names as anonymous while preserving signed-in IGNs', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 1,
+              tile_id: 'r1c1',
+              tile_label: 'A1',
+              action_type: 'voted',
+              previous_status: 'unchecked',
+              next_status: 'checked',
+              actor_name: 'Guest Custom Name',
+              actor_fingerprint: 'client-12345678',
+              created_at: '2026-04-10T00:10:00.000Z',
+            },
+            {
+              id: 2,
+              tile_id: 'r1c2',
+              tile_label: 'A2',
+              action_type: 'confirmed',
+              previous_status: 'pending',
+              next_status: 'confirmed',
+              actor_name: 'Trainer',
+              actor_fingerprint: 'account-user-1',
+              created_at: '2026-04-10T00:12:00.000Z',
+            },
+          ],
+        }),
+    };
+
+    const result = await FeebasBoard.getBoardForCycle(
+      client,
+      'route-119-main',
+      {
+        id: 45,
+        cycle_start: '2026-04-10T00:00:00.000Z',
+        cycle_end: '2026-04-10T00:45:00.000Z',
+      },
+      new Date('2026-04-10T00:20:00.000Z'),
+      'client-12345678',
+      { includeLeaderboard: false },
+    );
+
+    expect(result.activity).toEqual([
+      expect.objectContaining({
+        id: 1,
+        actorName: null,
+      }),
+      expect.objectContaining({
+        id: 2,
+        actorName: 'Trainer',
+      }),
+    ]);
+  });
+
   it('archives confirmed tiles from the previous cycle before creating a new one', async () => {
     const previousCycle = {
       id: 41,
