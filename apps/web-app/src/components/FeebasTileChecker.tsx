@@ -149,6 +149,10 @@ type TooltipPosition = {
   width: number;
   arrowLeft: number;
 };
+type PendingNominationNotification = {
+  title: string;
+  message: string;
+};
 
 const DEFAULT_LOCATION = 'route-119-main';
 const DEFAULT_LEADERBOARD_SORT: LeaderboardSortState = {
@@ -164,6 +168,7 @@ const TOOLTIP_MAX_WIDTH_PX = 288;
 const TOOLTIP_VIEWPORT_MARGIN_PX = 8;
 const TOOLTIP_ARROW_MARGIN_PX = 16;
 const LEADERBOARD_VISIBLE_LIMIT = 10;
+const PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS = 6000;
 const LEADERBOARD_SIGN_IN_CTA_CLASSES =
   'inline-flex items-center justify-center rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600';
 const ROUTE_119_MAIN_TERRAIN = [
@@ -664,6 +669,10 @@ function getBoardMinWidth(cols: number) {
   return `${Math.max(cols * BOARD_MIN_TILE_SIZE_PX, BOARD_MIN_WIDTH_PX)}px`;
 }
 
+function getPendingActivityEntries(board: FeebasBoard) {
+  return board.activity.filter((entry) => entry.actionType !== 'cleared_vote' && entry.nextStatus === 'pending');
+}
+
 function LoadingPlaceholder({ className }: { className: string }) {
   return (
     <span
@@ -711,8 +720,11 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const [leaderboardSort, setLeaderboardSort] = useState<LeaderboardSortState>(DEFAULT_LEADERBOARD_SORT);
   const [activityPage, setActivityPage] = useState(1);
   const [countdown, setCountdown] = useState('--:--');
+  const [pendingNominationNotification, setPendingNominationNotification] = useState<PendingNominationNotification | null>(null);
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
+  const pendingActivityLocationRef = useRef<string | null>(null);
+  const seenPendingActivityIdsRef = useRef<Set<number>>(new Set());
   const activeLocationOption = localizedLocationOptionsById.get(activeLocation) || localizedLocationOptionsById.get(DEFAULT_LOCATION)!;
   const activeTerrain = activeLocationOption.terrain;
   const actorFingerprint = authUser ? `account-${authUser.id}` : clientId;
@@ -720,7 +732,51 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const authHref = getLocaleParamPath('/auth', activeLocale);
   const querySuffix = actorFingerprint ? `?actorFingerprint=${encodeURIComponent(actorFingerprint)}` : '';
 
+  const syncPendingNominationNotifications = (nextBoard: FeebasBoard) => {
+    const pendingActivities = getPendingActivityEntries(nextBoard);
+    const pendingActivityIds = new Set(pendingActivities.map((entry) => entry.id));
+
+    if (pendingActivityLocationRef.current !== nextBoard.location) {
+      pendingActivityLocationRef.current = nextBoard.location;
+      seenPendingActivityIdsRef.current = pendingActivityIds;
+      return;
+    }
+
+    const newPendingActivities = pendingActivities.filter((entry) => !seenPendingActivityIdsRef.current.has(entry.id));
+    seenPendingActivityIdsRef.current = new Set([
+      ...Array.from(seenPendingActivityIdsRef.current),
+      ...Array.from(pendingActivityIds),
+    ]);
+
+    const latestPendingActivity = newPendingActivities.sort((left, right) => right.id - left.id)[0];
+
+    if (!latestPendingActivity) {
+      return;
+    }
+
+    const pendingTile = nextBoard.tiles.find((tile) => tile.tileId === latestPendingActivity.tileId);
+    const isCurrentSessionNomination = pendingTile?.currentUserVote === 'pending';
+    const actorName = formatActorName(latestPendingActivity.actorName, messages.general.anonymousName);
+
+    setPendingNominationNotification({
+      title: isCurrentSessionNomination
+        ? messages.notifications.pendingNominationSelfTitle
+        : messages.notifications.pendingNominationTitle,
+      message: formatCopy(
+        isCurrentSessionNomination
+          ? messages.notifications.pendingNominationSelfBody
+          : messages.notifications.pendingNominationBody,
+        {
+          actorName,
+          location: nextBoard.displayName,
+          tileLabel: latestPendingActivity.tileLabel,
+        }
+      ),
+    });
+  };
+
   const applyBoardUpdate = (nextBoard: FeebasBoard) => {
+    syncPendingNominationNotifications(nextBoard);
     setBoard((currentBoard) => ({
       ...nextBoard,
       leaderboard: nextBoard.leaderboard
@@ -837,6 +893,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
         setLoading(true);
         setError(null);
         setBoard(null);
+        setPendingNominationNotification(null);
         setSelectedTileId(null);
         setActivityPage(1);
         await fetchBoard();
@@ -900,6 +957,20 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (!pendingNominationNotification) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setPendingNominationNotification(null);
+    }, PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [pendingNominationNotification]);
 
   useEffect(() => {
     if (countdown !== '00:00' || resetRefreshInFlightRef.current) {
@@ -1082,6 +1153,31 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
 
   return (
     <div className="space-y-6">
+      {pendingNominationNotification ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed right-4 top-4 z-[80] w-[min(calc(100vw-2rem),24rem)] rounded-xl border border-amber-200 bg-white p-4 text-slate-900 shadow-2xl shadow-slate-950/20 dark:border-amber-400/40 dark:bg-slate-950 dark:text-white"
+        >
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400 text-sm font-black text-slate-950">
+              !
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold">{pendingNominationNotification.title}</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{pendingNominationNotification.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingNominationNotification(null)}
+              className="ml-auto rounded-full px-2 text-lg leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+              aria-label={messages.notifications.dismiss}
+            >
+              x
+            </button>
+          </div>
+        </div>
+      ) : null}
       {loading && !board ? <span className="sr-only">{messages.general.loadingBoard}</span> : null}
       <section className="card p-6">
         <div className="flex flex-col gap-4">

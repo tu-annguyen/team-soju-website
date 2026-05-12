@@ -175,6 +175,13 @@ const zh = {
         pendingTiles: '待确认丑丑鱼格子',
         confirmedTiles: '已确认丑丑鱼格子',
       },
+      notifications: {
+        pendingNominationTitle: '待确认提名',
+        pendingNominationBody: '{actorName} 在 {location} 提名了 {tileLabel}。',
+        pendingNominationSelfTitle: '提名已发送',
+        pendingNominationSelfBody: '你在 {location} 对 {tileLabel} 的提名已通知这里的所有人。',
+        dismiss: '关闭通知',
+      },
       heatmap: {
         toggleLabel: '棋盘显示模式',
         votingMode: '投票',
