@@ -152,6 +152,7 @@ type TooltipPosition = {
 type PendingNominationNotification = {
   title: string;
   message: string;
+  isSelfNomination: boolean;
 };
 
 const DEFAULT_LOCATION = 'route-119-main';
@@ -772,6 +773,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
           tileLabel: latestPendingActivity.tileLabel,
         }
       ),
+      isSelfNomination: isCurrentSessionNomination,
     });
   };
 
@@ -959,7 +961,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   }, []);
 
   useEffect(() => {
-    if (!pendingNominationNotification) {
+    if (!pendingNominationNotification?.isSelfNomination) {
       return undefined;
     }
 

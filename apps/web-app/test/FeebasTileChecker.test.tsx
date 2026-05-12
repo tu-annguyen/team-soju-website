@@ -470,58 +470,69 @@ describe('FeebasTileChecker', () => {
   });
 
   it('shows a location-specific popup when another session adds a pending nomination', async () => {
+    jest.useFakeTimers();
     (global as any).EventSource = MockEventSource;
 
-    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+    try {
+      render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
-    await waitFor(() =>
-      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
-    );
+      await waitFor(() =>
+        expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+      );
 
-    expect(screen.queryByText('Pending nomination')).not.toBeInTheDocument();
+      expect(screen.queryByText('Pending nomination')).not.toBeInTheDocument();
 
-    await waitFor(() =>
-      expect(MockEventSource.instances[0]?.url).toContain('/feebas/route-119-main/stream')
-    );
+      await waitFor(() =>
+        expect(MockEventSource.instances[0]?.url).toContain('/feebas/route-119-main/stream')
+      );
 
-    act(() => {
-      MockEventSource.instances[0].emit({
-        success: true,
-        data: {
-          ...boardFixture,
-          activity: [
-            {
-              id: 2,
-              tileId: 'r1c2',
-              tileLabel: 'B2',
-              actionType: 'voted',
-              previousStatus: 'unchecked',
-              nextStatus: 'pending',
-              actorName: 'Brendan',
-              createdAt: '2026-04-09T20:19:00.000Z',
-            },
-            ...boardFixture.activity,
-          ],
-          tiles: [
-            boardFixture.tiles[0],
-            {
-              ...boardFixture.tiles[1],
-              status: 'pending',
-              voteCounts: {
-                checked: 0,
-                pending: 1,
-                confirmed: 0,
+      act(() => {
+        MockEventSource.instances[0].emit({
+          success: true,
+          data: {
+            ...boardFixture,
+            activity: [
+              {
+                id: 2,
+                tileId: 'r1c2',
+                tileLabel: 'B2',
+                actionType: 'voted',
+                previousStatus: 'unchecked',
+                nextStatus: 'pending',
+                actorName: 'Brendan',
+                createdAt: '2026-04-09T20:19:00.000Z',
               },
-              totalVotes: 1,
-              currentUserVote: 'unchecked',
-            },
-          ],
-        },
+              ...boardFixture.activity,
+            ],
+            tiles: [
+              boardFixture.tiles[0],
+              {
+                ...boardFixture.tiles[1],
+                status: 'pending',
+                voteCounts: {
+                  checked: 0,
+                  pending: 1,
+                  confirmed: 0,
+                },
+                totalVotes: 1,
+                currentUserVote: 'unchecked',
+              },
+            ],
+          },
+        });
       });
-    });
 
-    expect(screen.getByText('Pending nomination')).toBeInTheDocument();
-    expect(screen.getByText(/Brendan nominated B2 at Route 119, Hoenn/i)).toBeInTheDocument();
+      expect(screen.getByText('Pending nomination')).toBeInTheDocument();
+      expect(screen.getByText(/Brendan nominated B2 at Route 119, Hoenn/i)).toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(6000);
+      });
+
+      expect(screen.getByText('Pending nomination')).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('does not show Route 119 pending nomination popups while viewing Mt. Coronet', async () => {
@@ -582,6 +593,7 @@ describe('FeebasTileChecker', () => {
   });
 
   it('shows the self notification after this session sends a pending nomination', async () => {
+    jest.useFakeTimers();
     const boardWithCurrentUserVote = {
       ...boardFixture,
       activity: [],
@@ -654,19 +666,29 @@ describe('FeebasTileChecker', () => {
 
     (global as any).fetch = fetchMock;
 
-    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+    try {
+      render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /B2 1 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument()
-    );
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /B2 1 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument()
+      );
 
-    fireEvent.click(screen.getByRole('button', { name: /B2 1 checked, 0 pending, 0 confirmed/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Feebas Found/i }));
+      fireEvent.click(screen.getByRole('button', { name: /B2 1 checked, 0 pending, 0 confirmed/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Feebas Found/i }));
 
-    await waitFor(() =>
-      expect(screen.getByText(/Nomination sent/i)).toBeInTheDocument()
-    );
-    expect(screen.getByText(/Your nomination for B2 at Route 119, Hoenn has notified everyone here/i)).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getByText(/Nomination sent/i)).toBeInTheDocument()
+      );
+      expect(screen.getByText(/Your nomination for B2 at Route 119, Hoenn has notified everyone here/i)).toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(6000);
+      });
+
+      expect(screen.queryByText(/Nomination sent/i)).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('casts a checked vote when a tile is clicked', async () => {
