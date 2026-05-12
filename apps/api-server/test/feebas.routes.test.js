@@ -118,7 +118,10 @@ describe('Feebas routes', () => {
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data).toEqual(boardFixture);
-    expect(FeebasBoard.getBoard).toHaveBeenCalledWith('route-119-main', { actorFingerprint: undefined });
+    expect(FeebasBoard.getBoard).toHaveBeenCalledWith('route-119-main', {
+      actorFingerprint: undefined,
+      currentUserId: undefined,
+    });
   });
 
   it('returns the Feebas leaderboard', async () => {
@@ -131,6 +134,7 @@ describe('Feebas routes', () => {
       limit: 5,
       sortBy: 'ign',
       sortDirection: 'asc',
+      currentUserId: undefined,
     });
   });
 

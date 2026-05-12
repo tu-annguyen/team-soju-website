@@ -163,6 +163,7 @@ const BOARD_MIN_WIDTH_PX = 768;
 const TOOLTIP_MAX_WIDTH_PX = 288;
 const TOOLTIP_VIEWPORT_MARGIN_PX = 8;
 const TOOLTIP_ARROW_MARGIN_PX = 16;
+const LEADERBOARD_VISIBLE_LIMIT = 10;
 const LEADERBOARD_SIGN_IN_CTA_CLASSES =
   'inline-flex items-center justify-center rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600';
 const ROUTE_119_MAIN_TERRAIN = [
@@ -451,6 +452,10 @@ function sortLeaderboardEntries(entries: FeebasLeaderboardEntry[], sort: Leaderb
   ));
 }
 
+function isCurrentUserLeaderboardEntry(entry: FeebasLeaderboardEntry, authUser: AuthUser | null) {
+  return Boolean(authUser && entry.userId === authUser.id);
+}
+
 function getSortIconVariant(columnKey: LeaderboardSortKey, sort: LeaderboardSortState): SortIconVariant {
   if (sort.key !== columnKey) {
     return 'sort';
@@ -728,7 +733,9 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
       return;
     }
 
-    const response = await fetch(`${normalizedApiBaseUrl}/feebas/${activeLocation}${querySuffix}`);
+    const response = await fetch(`${normalizedApiBaseUrl}/feebas/${activeLocation}${querySuffix}`, {
+      credentials: 'include',
+    });
     const payload: BoardResponse = await response.json();
 
     if (!response.ok || !payload.success) {
@@ -968,6 +975,28 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
     () => sortLeaderboardEntries(leaderboardEntries, leaderboardSort),
     [leaderboardEntries, leaderboardSort]
   );
+  const currentUserLeaderboardEntry = authUser
+    ? leaderboardEntries.find((entry) => isCurrentUserLeaderboardEntry(entry, authUser)) || null
+    : null;
+  const isCurrentUserOutsideTopTen = Boolean(
+    currentUserLeaderboardEntry && currentUserLeaderboardEntry.rank > LEADERBOARD_VISIBLE_LIMIT
+  );
+  const displayedLeaderboardEntries = useMemo(() => {
+    if (!authUser || !isCurrentUserOutsideTopTen) {
+      return sortedLeaderboardEntries;
+    }
+
+    const currentUserEntry = sortedLeaderboardEntries.find((entry) => isCurrentUserLeaderboardEntry(entry, authUser));
+
+    if (!currentUserEntry) {
+      return sortedLeaderboardEntries;
+    }
+
+    return [
+      ...sortedLeaderboardEntries.filter((entry) => !isCurrentUserLeaderboardEntry(entry, authUser)),
+      currentUserEntry,
+    ];
+  }, [authUser, isCurrentUserOutsideTopTen, sortedLeaderboardEntries]);
   const leaderboardNotables = useMemo(() => getLeaderboardNotables(leaderboardEntries), [leaderboardEntries]);
   const selectedTileLabel = selectedTile ? getTileLabel(selectedTile.row, selectedTile.col, board?.layout.rows || activeTerrain.length) : null;
   const selectedTileCurrentVote = selectedTile?.currentUserVote || 'unchecked';
@@ -1573,21 +1602,35 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {sortedLeaderboardEntries.map((entry, index) => (
-                    <tr key={entry.userId} className="text-slate-700 dark:text-slate-200">
-                      <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">#{index + 1}</td>
-                      <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">{entry.ign}</td>
-                      <td className="px-3 py-3">{formatScore(entry.weeklyContributionScore, activeLocale)}</td>
-                      <td className="px-3 py-3">{formatScore(entry.allTimeContributionScore, activeLocale)}</td>
-                      <td className="px-3 py-3">{entry.verifiedDiscoveries}</td>
-                      <td className="px-3 py-3">{formatUptime(entry.feebasUptimeCreatedMinutes, activeLocale)}</td>
-                      <td className="px-3 py-3">{entry.confirmations}</td>
-                      <td className="px-3 py-3">{entry.searchCoverage}</td>
-                      <td className="px-3 py-3">{formatPercent(entry.reportAccuracy, activeLocale)}</td>
-                      <td className="px-3 py-3">{formatPercent(entry.efficiency, activeLocale)}</td>
-                      <td className="px-3 py-3">{entry.currentStreak}</td>
-                    </tr>
-                  ))}
+                  {displayedLeaderboardEntries.map((entry, index) => {
+                    const isCurrentUserEntry = isCurrentUserLeaderboardEntry(entry, authUser);
+                    const displayRank = isCurrentUserEntry && entry.rank > LEADERBOARD_VISIBLE_LIMIT
+                      ? entry.rank
+                      : index + 1;
+
+                    return (
+                      <tr
+                        key={entry.userId}
+                        className={`text-slate-700 dark:text-slate-200 ${
+                          isCurrentUserEntry
+                            ? 'relative border-l-4 border-primary-500 bg-primary-50 text-primary-950 ring-1 ring-primary-200 dark:bg-primary-950/40 dark:text-primary-100 dark:ring-primary-700/70'
+                            : ''
+                        }`}
+                      >
+                        <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">#{displayRank}</td>
+                        <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">{entry.ign}</td>
+                        <td className="px-3 py-3">{formatScore(entry.weeklyContributionScore, activeLocale)}</td>
+                        <td className="px-3 py-3">{formatScore(entry.allTimeContributionScore, activeLocale)}</td>
+                        <td className="px-3 py-3">{entry.verifiedDiscoveries}</td>
+                        <td className="px-3 py-3">{formatUptime(entry.feebasUptimeCreatedMinutes, activeLocale)}</td>
+                        <td className="px-3 py-3">{entry.confirmations}</td>
+                        <td className="px-3 py-3">{entry.searchCoverage}</td>
+                        <td className="px-3 py-3">{formatPercent(entry.reportAccuracy, activeLocale)}</td>
+                        <td className="px-3 py-3">{formatPercent(entry.efficiency, activeLocale)}</td>
+                        <td className="px-3 py-3">{entry.currentStreak}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -66,7 +66,11 @@ router.get('/:location/leaderboard', async (req, res) => {
       });
     }
 
-    const leaderboard = await FeebasBoard.getLeaderboard(req.params.location, value);
+    const authenticatedUser = await getAuthenticatedUser(req);
+    const leaderboard = await FeebasBoard.getLeaderboard(req.params.location, {
+      ...value,
+      currentUserId: authenticatedUser?.id,
+    });
 
     res.json({
       success: true,
@@ -92,7 +96,11 @@ router.get('/:location', async (req, res) => {
   try {
     getLocationConfig(req.params.location);
     const actorFingerprint = actorFingerprintQuerySchema.validate(req.query.actorFingerprint).value;
-    const board = await FeebasBoard.getBoard(req.params.location, { actorFingerprint });
+    const authenticatedUser = await getAuthenticatedUser(req);
+    const board = await FeebasBoard.getBoard(req.params.location, {
+      actorFingerprint,
+      currentUserId: authenticatedUser?.id,
+    });
 
     res.json({
       success: true,

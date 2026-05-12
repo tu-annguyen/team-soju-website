@@ -288,6 +288,77 @@ describe('FeebasTileChecker', () => {
     expect(trainerSortButton.querySelector('svg')).toHaveAttribute('data-sort-icon', 'sort-down');
   });
 
+  it('highlights the signed-in user when they are in the top ten', async () => {
+    (global as any).fetch = mockFeebasFetch({
+      ...authUserFixture,
+      ign: 'May',
+    });
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    const rows = await screen.findAllByRole('row');
+    const mayRow = rows.find((row) => row.textContent?.includes('May'));
+
+    expect(mayRow).toHaveClass('bg-primary-50');
+  });
+
+  it('pins the signed-in user to the last leaderboard row when they rank outside the top ten', async () => {
+    const topTenEntries = Array.from({ length: 10 }, (_, index) => ({
+      ...boardFixture.leaderboard.entries[1],
+      rank: index + 1,
+      userId: `top-user-${index + 1}`,
+      ign: `Top ${index + 1}`,
+      allTimeContributionScore: 500 - index,
+      weeklyContributionScore: 100 - index,
+    }));
+    const boardWithCurrentUserOutsideTopTen = {
+      ...boardFixture,
+      leaderboard: {
+        ...boardFixture.leaderboard,
+        entries: [
+          ...topTenEntries,
+          {
+            ...boardFixture.leaderboard.entries[0],
+            rank: 26,
+            userId: authUserFixture.id,
+            ign: authUserFixture.ign,
+            allTimeContributionScore: 25,
+            weeklyContributionScore: 12,
+          },
+        ],
+      },
+    };
+
+    (global as any).fetch = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/auth/me')) {
+        return jsonResponse({
+          success: true,
+          data: authUserFixture,
+        });
+      }
+
+      return jsonResponse({
+        success: true,
+        data: boardWithCurrentUserOutsideTopTen,
+      });
+    });
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('row').some((row) => row.textContent?.includes(authUserFixture.ign))).toBe(true)
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Trainer/i }));
+
+    const rows = screen.getAllByRole('row');
+    const lastRow = rows[rows.length - 1];
+    expect(lastRow).toHaveTextContent(/#26\s*Trainer/);
+    expect(lastRow).toHaveClass('bg-primary-50');
+  });
+
   it('keeps leaderboard header tooltips inside the viewport near an edge', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
@@ -736,7 +807,9 @@ describe('FeebasTileChecker', () => {
       expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
     );
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self');
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self', {
+      credentials: 'include',
+    });
     expect(localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY)).toBe('mt-coronet');
   });
 
