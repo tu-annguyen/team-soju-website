@@ -181,6 +181,13 @@ const es = {
         pendingTiles: 'Casillas de Feebas pendientes',
         confirmedTiles: 'Casillas de Feebas confirmadas',
       },
+      notifications: {
+        pendingNominationTitle: 'Nominacion pendiente',
+        pendingNominationBody: '{actorName} nomino {tileLabel} en {location}.',
+        pendingNominationSelfTitle: 'Nominacion enviada',
+        pendingNominationSelfBody: 'Tu nominacion de {tileLabel} en {location} notifico a todos aqui.',
+        dismiss: 'Descartar notificacion',
+      },
       heatmap: {
         toggleLabel: 'Modo de visualizacion del tablero',
         votingMode: 'Votacion',

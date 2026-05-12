@@ -179,6 +179,13 @@ const en = {
         pendingTiles: 'Pending Feebas tiles',
         confirmedTiles: 'Confirmed Feebas tiles',
       },
+      notifications: {
+        pendingNominationTitle: 'Pending nomination',
+        pendingNominationBody: '{actorName} nominated {tileLabel} at {location}.',
+        pendingNominationSelfTitle: 'Nomination sent',
+        pendingNominationSelfBody: 'Your nomination for {tileLabel} at {location} has notified everyone here.',
+        dismiss: 'Dismiss notification',
+      },
       heatmap: {
         toggleLabel: 'Board display mode',
         votingMode: 'Voting',
