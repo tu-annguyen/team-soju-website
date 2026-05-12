@@ -143,11 +143,12 @@ class FeebasBoard {
     const client = options.client || pool;
     const now = options.now ? new Date(options.now) : new Date();
     const actorFingerprint = sanitizeFingerprint(options.actorFingerprint);
+    const currentUserId = options.currentUserId ? String(options.currentUserId) : null;
     const includeLeaderboard = options.includeLeaderboard !== false;
     const { cycleStart, cycleEnd } = getCycleWindow(now);
 
     const cycle = await this.ensureCycle(client, location, cycleStart, cycleEnd);
-    return this.getBoardForCycle(client, location, cycle, now, actorFingerprint, { includeLeaderboard });
+    return this.getBoardForCycle(client, location, cycle, now, actorFingerprint, { includeLeaderboard, currentUserId });
   }
 
   static async resetBoard(location, options = {}) {
@@ -509,6 +510,7 @@ class FeebasBoard {
     const limit = normalizeLeaderboardLimit(options.limit);
     const sortBy = normalizeLeaderboardSortBy(options.sortBy);
     const sortDirection = normalizeLeaderboardSortDirection(options.sortDirection);
+    const currentUserId = options.currentUserId ? String(options.currentUserId) : null;
     const queryParams = [location, weeklySince.toISOString()];
 
     const leaderboardResult = await client.query(`
@@ -791,12 +793,18 @@ class FeebasBoard {
       pendingReports: toFiniteNumber(row.pending_reports),
       verifiedReports: toFiniteNumber(row.verified_reports),
     }));
-    const sortedEntries = sortLeaderboardEntries(entries, sortBy, sortDirection)
-      .slice(0, limit)
+    const rankedEntries = sortLeaderboardEntries(entries, sortBy, sortDirection)
       .map((entry, index) => ({
         rank: index + 1,
         ...entry,
       }));
+    const limitedEntries = rankedEntries.slice(0, limit);
+    const currentUserEntry = currentUserId
+      ? rankedEntries.find((entry) => String(entry.userId) === currentUserId)
+      : null;
+    const sortedEntries = currentUserEntry && currentUserEntry.rank > limit
+      ? [...limitedEntries, currentUserEntry]
+      : limitedEntries;
 
     return {
       location,
@@ -833,7 +841,7 @@ class FeebasBoard {
       LIMIT 20
     `, [cycle.id]);
     const leaderboard = includeLeaderboard
-      ? await this.getLeaderboard(location, { client, now })
+      ? await this.getLeaderboard(location, { client, now, currentUserId: options.currentUserId })
       : undefined;
 
     const votesByTile = votesResult.rows.reduce((map, row) => {

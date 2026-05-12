@@ -193,6 +193,44 @@ describe('FeebasBoard model', () => {
     ]);
   });
 
+  it('includes the signed-in user after the visible leaderboard limit with their real rank', async () => {
+    pool.query
+      .mockResolvedValueOnce({
+        rows: Array.from({ length: 11 }, (_, index) => ({
+          user_id: `user-${index + 1}`,
+          ign: `Trainer ${index + 1}`,
+          verified_discoveries: '0',
+          feebas_uptime_created_minutes: '0',
+          confirmations: '0',
+          search_coverage: String(20 - index),
+          weekly_contribution_score: '0',
+          all_time_contribution_score: String(100 - index),
+          fastest_find_seconds: '0',
+          early_scout_seconds: '0',
+          efficiency: '0',
+          report_accuracy: '0',
+          most_persistent_checks: '0',
+          pending_reports: '0',
+          verified_reports: '0',
+        })),
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const result = await FeebasBoard.getLeaderboard('route-119-main', {
+      currentUserId: 'user-11',
+      limit: 10,
+      now: '2026-04-10T01:00:00.000Z',
+    });
+
+    expect(result.entries).toHaveLength(11);
+    expect(result.entries.slice(0, 10).map((entry) => entry.rank)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(result.entries[10]).toEqual(expect.objectContaining({
+      rank: 11,
+      userId: 'user-11',
+      ign: 'Trainer 11',
+    }));
+  });
+
   it('can build a board without recomputing leaderboard stats', async () => {
     const client = {
       query: jest.fn()
