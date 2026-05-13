@@ -12,6 +12,7 @@ jest.mock('@team-soju/utils', () => ({
 process.env.JWT_SECRET = 'test-secret';
 
 const app = require('../src/server');
+const shiniesRouter = require('../src/routes/shinies');
 const TeamShiny = require('../src/models/TeamShiny');
 const { getPokemonVariants } = require('@team-soju/utils');
 
@@ -23,6 +24,9 @@ const withBotAuth = (testRequest) => testRequest.set('Authorization', `Bearer ${
 describe('Shinies routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.SCREENSHOT_DATA_API_BASE_URL;
+    delete process.env.SCREENSHOT_DATA_API_BOT_TOKEN;
+    global.fetch = undefined;
     getPokemonVariants.mockResolvedValue({
       national_number: null,
       variants: [],
@@ -331,6 +335,63 @@ describe('Shinies routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.message).toBe('Shiny entry deleted successfully');
+    });
+  });
+
+  describe('screenshot data API migration helpers', () => {
+    it('reads members from the configured Worker API instead of local models', async () => {
+      const member = { id: 'member-1', ign: 'Trainer', discord_id: 'discord-1' };
+      process.env.SCREENSHOT_DATA_API_BASE_URL = 'https://worker.example.com/api/';
+      process.env.SCREENSHOT_DATA_API_BOT_TOKEN = 'worker-token';
+      global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({
+        success: true,
+        data: member,
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }));
+
+      const result = await shiniesRouter._test.findMemberByDiscordId('discord-1');
+
+      expect(result).toEqual(member);
+      expect(global.fetch).toHaveBeenCalledWith('https://worker.example.com/api/members/discord/discord-1', expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer worker-token',
+        }),
+      }));
+    });
+
+    it('creates screenshot shinies through the configured Worker API', async () => {
+      const shiny = { id: 'shiny-1', pokemon: 'pikachu' };
+      const payload = {
+        national_number: 25,
+        pokemon: 'pikachu',
+        original_trainer: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        catch_date: '2026-05-13',
+        encounter_type: 'single',
+      };
+      process.env.SCREENSHOT_DATA_API_BASE_URL = 'https://worker.example.com/api';
+      process.env.SCREENSHOT_DATA_API_BOT_TOKEN = 'worker-token';
+      global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({
+        success: true,
+        data: shiny,
+      }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }));
+
+      const result = await shiniesRouter._test.createShinyRecord(payload);
+
+      expect(result).toEqual(shiny);
+      expect(TeamShiny.create).not.toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalledWith('https://worker.example.com/api/shinies', expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer worker-token',
+        }),
+      }));
     });
   });
 });

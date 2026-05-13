@@ -235,12 +235,12 @@ curl -X POST http://localhost:3001/api/shinies \
 
 - Default Worker database backend is Postgres via Hyperdrive or `DATABASE_URL`.
 - Set `DB_BACKEND=d1` and bind `DB` to switch the Worker to D1. The D1 schema covers team members, shinies, app users for `GET /api/auth/me`, and Feebas board REST tables.
-- Set `LEGACY_API_BASE_URL` during migration to proxy:
+- Set `LEGACY_API_BASE_URL` during migration to proxy legacy-only runtime routes:
   - `POST /api/shinies/from-screenshot`
   - `POST /api/shinies/from-screenshot/async`
   - `GET /api/shinies/sprites/:nationalNumber/greyscale(.gif)`
-  - auth endpoints other than `GET /api/auth/me`
-  - `GET /api/feebas/:location/stream`
+- To keep screenshot OCR on the legacy Node/Render runtime while using Worker/D1 data, set `SCREENSHOT_DATA_API_BASE_URL` on the Node service to the Worker API base URL, for example `https://team-soju-api.tunacore.workers.dev/api`.
+- If the Node service and Worker do not share `JWT_SECRET`, also set `SCREENSHOT_DATA_API_BOT_TOKEN` on the Node service to a bot token accepted by the Worker.
 
 ### D1 Compatibility
 

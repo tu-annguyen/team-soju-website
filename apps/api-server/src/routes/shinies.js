@@ -7,7 +7,7 @@ const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
 const { parseMobileStatsPanel } = require('../utils/mobileStatsParser');
 const router = express.Router();
-const { authenticateBot } = require('../middleware/auth');
+const { authenticateBot, generateBotToken } = require('../middleware/auth');
 
 const NATURE_CHOICES = [
   'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
@@ -38,6 +38,70 @@ const ENCOUNTER_TYPE_CHOICES = [
 const SHINY_STATUS_CHOICES = ['Owned', 'Sold', 'Fled', 'Died', 'Bred'];
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
 const SHINY_WARS_2025_RELEASE_DATE = '2025-07-11';
+
+function getScreenshotDataApiBaseUrl() {
+  return (process.env.SCREENSHOT_DATA_API_BASE_URL || '').trim().replace(/\/+$/, '');
+}
+
+function getScreenshotDataApiToken() {
+  return process.env.SCREENSHOT_DATA_API_BOT_TOKEN || generateBotToken();
+}
+
+async function requestScreenshotDataApi(pathname, options = {}) {
+  const baseUrl = getScreenshotDataApiBaseUrl();
+  if (!baseUrl) {
+    return null;
+  }
+
+  const response = await fetch(`${baseUrl}${pathname}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      Authorization: `Bearer ${getScreenshotDataApiToken()}`,
+      ...(options.headers || {}),
+    },
+  });
+  const contentType = response.headers.get('content-type') || '';
+  const body = contentType.includes('application/json')
+    ? await response.json()
+    : await response.text();
+
+  if (!response.ok) {
+    const error = new Error(body?.message || `Screenshot data API request failed (${response.status})`);
+    error.status = response.status;
+    error.details = body?.details || null;
+    throw error;
+  }
+
+  return body;
+}
+
+async function findMemberByDiscordId(discordId) {
+  const response = await requestScreenshotDataApi(`/members/discord/${encodeURIComponent(discordId)}`);
+  if (response) return response.data || null;
+  return TeamMember.findByDiscordId(discordId);
+}
+
+async function findMemberByIgn(ign) {
+  const response = await requestScreenshotDataApi(`/members/ign/${encodeURIComponent(ign)}`);
+  if (response) return response.data || null;
+  return TeamMember.findByIgn(ign);
+}
+
+async function findAllMembers() {
+  const response = await requestScreenshotDataApi('/members');
+  if (response) return response.data || [];
+  return TeamMember.findAll();
+}
+
+async function createShinyRecord(payload) {
+  const response = await requestScreenshotDataApi('/shinies', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (response) return response.data;
+  return TeamShiny.create(payload);
+}
 
 function normalizePokemonRouteName(value) {
   return String(value || '').trim().toLowerCase();
@@ -706,13 +770,13 @@ function normalizeIgnForComparison(value) {
 async function findTrainerFromOcr(parsedTrainer) {
   if (!parsedTrainer) return null;
 
-  const exactMatch = await TeamMember.findByIgn(parsedTrainer);
+  const exactMatch = await findMemberByIgn(parsedTrainer);
   if (exactMatch) return exactMatch;
 
   const normalizedTrainer = normalizeIgnForComparison(parsedTrainer);
   if (!normalizedTrainer) return null;
 
-  const members = await TeamMember.findAll();
+  const members = await findAllMembers();
   const candidates = members.filter((member) => (
     normalizeIgnForComparison(member.ign) === normalizedTrainer
   ));
@@ -1094,7 +1158,7 @@ async function createShinyFromScreenshotValue(value) {
       throw error;
     }
 
-    const member = await TeamMember.findByDiscordId(value.discord_user_id);
+    const member = await findMemberByDiscordId(value.discord_user_id);
     const hasSojuRole = value.member_roles.includes('Soju');
     const hasStaffRole = value.member_roles.includes('Elite 4') || value.member_roles.includes('Champion');
 
@@ -1129,7 +1193,7 @@ async function createShinyFromScreenshotValue(value) {
       throw error;
     }
 
-    const shiny = await TeamShiny.create({
+    const shiny = await createShinyRecord({
       national_number: nationalNumber,
       pokemon: normalizePokemonName(mergedParsed.name),
       variants: normalizeVariantName(mergedParsed.name),
@@ -1545,7 +1609,11 @@ router.delete('/:id', authenticateBot, async (req, res) => {
 
 router._test = {
   buildOcrJobs,
+  createShinyRecord,
   createOcrWorker,
+  findAllMembers,
+  findMemberByDiscordId,
+  findMemberByIgn,
   getOcrEncounterCandidates,
   loadOcrDependencies,
   mergeParsedStats,
