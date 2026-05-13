@@ -170,6 +170,7 @@ const TOOLTIP_VIEWPORT_MARGIN_PX = 8;
 const TOOLTIP_ARROW_MARGIN_PX = 16;
 const LEADERBOARD_VISIBLE_LIMIT = 10;
 const PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS = 6000;
+const RESET_REFRESH_RETRY_MS = 1000;
 const LEADERBOARD_SIGN_IN_CTA_CLASSES =
   'inline-flex items-center justify-center rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600';
 const ROUTE_119_MAIN_TERRAIN = [
@@ -343,7 +344,7 @@ function formatCountdown(targetIso: string | null) {
     return '00:00';
   }
 
-  const totalSeconds = Math.floor(diff / 1000);
+  const totalSeconds = Math.ceil(diff / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
 
@@ -724,6 +725,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const [pendingNominationNotification, setPendingNominationNotification] = useState<PendingNominationNotification | null>(null);
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
+  const resetRetryTimeoutRef = useRef<number | null>(null);
   const pendingActivityLocationRef = useRef<string | null>(null);
   const pendingActivityCycleEndRef = useRef<string | null>(null);
   const seenPendingActivityIdsRef = useRef<Set<number>>(new Set());
@@ -814,6 +816,39 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
     lastFetchedCycleEndRef.current = payload.data.cycleEnd;
   };
 
+  const clearResetRetryTimeout = () => {
+    if (resetRetryTimeoutRef.current !== null) {
+      window.clearTimeout(resetRetryTimeoutRef.current);
+      resetRetryTimeoutRef.current = null;
+    }
+  };
+
+  const refreshBoardAfterReset = async (expiredCycleEnd: string) => {
+    resetRefreshInFlightRef.current = true;
+
+    try {
+      await fetchBoard();
+      setError(null);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : messages.errors.refreshBoard);
+    } finally {
+      resetRefreshInFlightRef.current = false;
+    }
+
+    if (lastFetchedCycleEndRef.current !== expiredCycleEnd) {
+      clearResetRetryTimeout();
+      return;
+    }
+
+    resetRetryTimeoutRef.current = window.setTimeout(() => {
+      resetRetryTimeoutRef.current = null;
+
+      if (lastFetchedCycleEndRef.current === expiredCycleEnd) {
+        void refreshBoardAfterReset(expiredCycleEnd);
+      }
+    }, RESET_REFRESH_RETRY_MS);
+  };
+
   useEffect(() => {
     try {
       const storedClientId = localStorage.getItem(CLIENT_ID_STORAGE_KEY);
@@ -901,6 +936,8 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
 
     (async () => {
       try {
+        clearResetRetryTimeout();
+        resetRefreshInFlightRef.current = false;
         setLoading(true);
         setError(null);
         setBoard(null);
@@ -921,6 +958,8 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
 
     return () => {
       mounted = false;
+      clearResetRetryTimeout();
+      resetRefreshInFlightRef.current = false;
     };
   }, [activeLocation, normalizedApiBaseUrl, actorFingerprint, isAuthLoading]);
 
@@ -943,6 +982,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
           setCountdown(formatCountdown(payload.data.cycleEnd));
           lastFetchedCycleEndRef.current = payload.data.cycleEnd;
           resetRefreshInFlightRef.current = false;
+          clearResetRetryTimeout();
           setError(null);
         }
       } catch {
@@ -984,16 +1024,23 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   }, [pendingNominationNotification]);
 
   useEffect(() => {
-    if (countdown !== '00:00' || resetRefreshInFlightRef.current) {
+    const expiredCycleEnd = lastFetchedCycleEndRef.current;
+
+    if (
+      !expiredCycleEnd
+      || countdown !== '00:00'
+      || resetRefreshInFlightRef.current
+      || resetRetryTimeoutRef.current !== null
+    ) {
       return;
     }
 
-    resetRefreshInFlightRef.current = true;
-    fetchBoard().catch((nextError) => {
-      resetRefreshInFlightRef.current = false;
-      setError(nextError instanceof Error ? nextError.message : messages.errors.refreshBoard);
-    });
+    void refreshBoardAfterReset(expiredCycleEnd);
   }, [countdown]);
+
+  useEffect(() => () => {
+    clearResetRetryTimeout();
+  }, []);
 
   const tileMap = useMemo(() => {
     if (!board) {
