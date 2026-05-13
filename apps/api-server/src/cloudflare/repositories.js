@@ -112,10 +112,13 @@ function createPostgresRepositories(env = process.env, options = {}) {
 }
 
 function createD1Repositories(env, options = {}) {
-  const db = options.db || env.DB;
-  if (!db) {
+  const binding = options.db || env.DB;
+  if (!binding) {
     throw new Error('D1 binding "DB" is required when DB_BACKEND=d1.');
   }
+  const db = typeof binding.withSession === 'function'
+    ? binding.withSession(options.sessionBookmark || 'first-primary')
+    : binding;
 
   const execute = async (text, params = []) => {
     const statement = db.prepare(text).bind(...params);
@@ -124,7 +127,7 @@ function createD1Repositories(env, options = {}) {
 
   return createRepositoryBundle({
     query: execute,
-    parameter: () => '?',
+    parameter: (index) => `?${index}`,
     runSelect: async (text, params) => mapD1Rows(await (await execute(text, params)).all()),
     runOne: async (text, params) => {
       const result = await (await execute(text, params)).first();
@@ -710,7 +713,7 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
 
     async setPasswordResetToken(id, { tokenHash, expiresAt }) {
       const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
-      await runCommand(`
+      const result = await runCommand(`
         UPDATE app_users
         SET password_reset_token_hash = ${parameter(2)},
             password_reset_expires_at = ${parameter(3)},
@@ -718,7 +721,19 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
             updated_at = ${nowExpression}
         WHERE id = ${parameter(1)}
       `, [id, tokenHash, expiresAt instanceof Date ? expiresAt.toISOString() : expiresAt]);
-      return this.findById(id);
+      const updatedUser = await this.findById(id);
+      if (dialect === 'd1') {
+        console.log('Password reset token update result:', {
+          userId: id,
+          success: result?.success,
+          changedDb: result?.meta?.changed_db,
+          changes: result?.meta?.changes,
+          rowsWritten: result?.meta?.rows_written,
+          persistedHashPrefix: updatedUser?.password_reset_token_hash?.slice(0, 8) || null,
+          persistedExpiresAt: updatedUser?.password_reset_expires_at || null,
+        });
+      }
+      return updatedUser;
     },
 
     async clearPasswordResetToken(id) {

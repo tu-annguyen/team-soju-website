@@ -936,12 +936,23 @@ function createWorkerApp(options = {}) {
         }
 
         const user = await getRepositories().users.findByEmail(value.email);
+        const emailHash = await sha256Hex(value.email);
+        console.log('Password reset request processed:', {
+          emailHashPrefix: emailHash.slice(0, 8),
+          userFound: Boolean(user),
+        });
         if (user) {
           const token = randomHex(32);
+          const tokenHash = await sha256Hex(token);
           const expiresAt = new Date(Date.now() + (passwordResetExpiresInMinutes * 60 * 1000));
           await getRepositories().users.setPasswordResetToken(user.id, {
-            tokenHash: await sha256Hex(token),
+            tokenHash,
             expiresAt,
+          });
+          console.log('Password reset token stored:', {
+            userId: user.id,
+            tokenHashPrefix: tokenHash.slice(0, 8),
+            expiresAt: expiresAt.toISOString(),
           });
 
           try {
@@ -974,12 +985,19 @@ function createWorkerApp(options = {}) {
         const body = await readJson(request);
         const { error, value } = resetPasswordSchema.validate(body);
         if (error) {
+          console.warn('Password reset validation failed:', error.details.map((detail) => detail.message));
           return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
         }
 
         const tokenHash = await sha256Hex(value.token);
         const user = await getRepositories().users.findByPasswordResetTokenHash(tokenHash);
         if (!user || isExpired(user.password_reset_expires_at)) {
+          console.warn('Password reset token rejected:', {
+            tokenHashPrefix: tokenHash.slice(0, 8),
+            userFound: Boolean(user),
+            expiresAt: user?.password_reset_expires_at || null,
+            workerNow: new Date().toISOString(),
+          });
           if (user) {
             await getRepositories().users.clearPasswordResetToken(user.id);
           }
