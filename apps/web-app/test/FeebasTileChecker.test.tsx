@@ -209,6 +209,80 @@ describe('FeebasTileChecker', () => {
     ).toBeInTheDocument();
   });
 
+  it('retries the reset refresh when the first boundary fetch still returns the expired cycle', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-04-09T20:59:59.000Z'));
+
+    const expiredBoard = {
+      ...boardFixture,
+      cycleEnd: '2026-04-09T21:00:00.000Z',
+    };
+    const resetBoard = {
+      ...boardFixture,
+      cycleStart: '2026-04-09T21:00:00.000Z',
+      cycleEnd: '2026-04-09T21:45:00.000Z',
+      activity: [],
+      tiles: boardFixture.tiles.map((tile) => ({
+        ...tile,
+        status: 'unchecked',
+        voteCounts: {
+          checked: 0,
+          pending: 0,
+          confirmed: 0,
+        },
+        totalVotes: 0,
+        currentUserVote: 'unchecked',
+      })),
+    };
+    let boardRequestCount = 0;
+    const fetchMock = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/auth/me')) {
+        return jsonResponse({
+          success: true,
+          data: null,
+        });
+      }
+
+      boardRequestCount += 1;
+
+      return jsonResponse({
+        success: true,
+        data: boardRequestCount < 3 ? expiredBoard : resetBoard,
+      });
+    });
+
+    (global as any).fetch = fetchMock;
+
+    try {
+      render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument()
+      );
+      expect(screen.getByText('00:01')).toBeInTheDocument();
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      await waitFor(() => expect(boardRequestCount).toBe(2));
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument();
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /A2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument()
+      );
+      expect(boardRequestCount).toBe(3);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('shows leaderboard sign-in links when signed out', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
