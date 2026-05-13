@@ -271,15 +271,6 @@ async function verifyPassword(password, storedHash) {
     return actualHash.endsWith(`$${expectedHash}`);
   }
 
-  if (storedHash.startsWith('$2')) {
-    try {
-      const bcrypt = require('bcrypt');
-      return bcrypt.compare(password, storedHash);
-    } catch {
-      return false;
-    }
-  }
-
   return false;
 }
 
