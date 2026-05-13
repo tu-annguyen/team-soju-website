@@ -22,6 +22,12 @@
 		"DB_BACKEND": "d1",
 		"NODE_ENV": "production",
 		"LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
+	  "DISCORD_CLIENT_ID": "1424533889678053428",
+		"DISCORD_REDIRECT_URI": "https://team-soju-api.tunacore.workers.dev/api/auth/discord/callback",
+		"WEB_APP_URL": "https://teamsoju.com",
+		"API_ORIGIN": "https://team-soju-api.tunacore.workers.dev",
+		"EMAIL_PROVIDER": "resend",
+		"EMAIL_FROM": "Team Soju <no-reply@teamsoju.com>"
 	},
 	"d1_databases": [
 		{
