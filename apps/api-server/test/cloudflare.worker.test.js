@@ -502,25 +502,87 @@ describe('Cloudflare Worker API', () => {
     expect(body.message).toBe('Feebas tile updated successfully');
   });
 
-  it('keeps Feebas SSE on the legacy API during migration', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(new Response('data: {}\n\n', {
-      status: 200,
-      headers: { 'content-type': 'text/event-stream' },
-    }));
-    const app = createWorkerApp({
-      repositories: {
-        members: {},
-        shinies: {},
+  it('serves Feebas SSE from the Worker repository contract', async () => {
+    const board = {
+      location: 'route-119-main',
+      tiles: [],
+      activity: [],
+    };
+    const fetchMock = jest.fn();
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        getBoard: jest.fn().mockResolvedValue(board),
       },
+    };
+    const app = createWorkerApp({
+      repositories,
       fetch: fetchMock,
     });
 
     const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv({
       LEGACY_API_BASE_URL: 'https://legacy.example.com',
     }));
+    const reader = response.body.getReader();
+    const firstChunk = await reader.read();
+    await reader.cancel();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0].toString()).toBe('https://legacy.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(repositories.feebas.getBoard).toHaveBeenCalledWith('route-119-main', {
+      actorFingerprint: 'client-12345678',
+      includeLeaderboard: false,
+    });
     expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('text/event-stream');
+    expect(new TextDecoder().decode(firstChunk.value)).toContain(JSON.stringify({ success: true, data: board }));
+  });
+
+  it('broadcasts Feebas tile updates to Worker SSE subscribers', async () => {
+    const initialBoard = {
+      location: 'route-119-main',
+      tiles: [{ id: 'r1c7', status: 'unchecked' }],
+      activity: [],
+    };
+    const updatedBoard = {
+      location: 'route-119-main',
+      tiles: [{ id: 'r1c7', status: 'pending' }],
+      activity: [],
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        getBoard: jest.fn()
+          .mockResolvedValueOnce(initialBoard)
+          .mockResolvedValueOnce(updatedBoard),
+        updateTile: jest.fn().mockResolvedValue(updatedBoard),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const streamResponse = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv());
+    const reader = streamResponse.body.getReader();
+    await reader.read();
+
+    await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/tiles/r1c7', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        status: 'pending',
+        actorFingerprint: 'client-12345678',
+        actorName: 'Trainer',
+      }),
+    }), createEnv());
+    const nextChunk = await reader.read();
+    await reader.cancel();
+
+    expect(repositories.feebas.getBoard).toHaveBeenLastCalledWith('route-119-main', {
+      actorFingerprint: 'client-12345678',
+      includeLeaderboard: false,
+    });
+    expect(new TextDecoder().decode(nextChunk.value)).toContain(JSON.stringify({ success: true, data: updatedBoard }));
   });
 });

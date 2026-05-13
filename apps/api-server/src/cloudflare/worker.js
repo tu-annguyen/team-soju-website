@@ -455,6 +455,88 @@ function normalizeLegacySetCookie(cookieHeader) {
 function createWorkerApp(options = {}) {
   const createRepos = options.createRepositories || createRepositories;
   const fetchImpl = options.fetch || fetch;
+  const feebasSubscribersByLocation = new Map();
+
+  function removeFeebasSubscriber(location, subscriber) {
+    const subscribers = feebasSubscribersByLocation.get(location);
+    if (!subscribers) return;
+
+    subscribers.delete(subscriber);
+    if (subscribers.size === 0) {
+      feebasSubscribersByLocation.delete(location);
+    }
+  }
+
+  function encodeFeebasEvent(payload) {
+    return new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`);
+  }
+
+  function createFeebasStreamResponse(request, location, actorFingerprint, board) {
+    let subscriber;
+
+    const stream = new ReadableStream({
+      start(controller) {
+        const subscribers = feebasSubscribersByLocation.get(location) || new Set();
+        subscriber = { controller, actorFingerprint };
+        subscribers.add(subscriber);
+        feebasSubscribersByLocation.set(location, subscribers);
+
+        controller.enqueue(encodeFeebasEvent({ success: true, data: board }));
+
+        const heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(new TextEncoder().encode(': keep-alive\n\n'));
+          } catch {
+            clearInterval(heartbeat);
+            removeFeebasSubscriber(location, subscriber);
+          }
+        }, 25000);
+
+        const cleanup = () => {
+          clearInterval(heartbeat);
+          removeFeebasSubscriber(location, subscriber);
+          try {
+            controller.close();
+          } catch {
+            // The stream may already be closed by the client.
+          }
+        };
+
+        subscriber.cleanup = cleanup;
+        request.signal?.addEventListener('abort', cleanup, { once: true });
+      },
+      cancel() {
+        subscriber?.cleanup?.();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  }
+
+  async function broadcastFeebasBoard(location, repositories) {
+    const subscribers = feebasSubscribersByLocation.get(location);
+    if (!subscribers || subscribers.size === 0) {
+      return;
+    }
+
+    await Promise.all(Array.from(subscribers).map(async (subscriber) => {
+      try {
+        const board = await repositories.feebas.getBoard(location, {
+          actorFingerprint: subscriber.actorFingerprint,
+          includeLeaderboard: false,
+        });
+        subscriber.controller.enqueue(encodeFeebasEvent({ success: true, data: board }));
+      } catch {
+        subscriber.cleanup?.();
+      }
+    }));
+  }
 
   async function maybeProxyLegacyRequest(request, env) {
     const url = new URL(request.url);
@@ -514,8 +596,7 @@ function createWorkerApp(options = {}) {
     return pathname === '/api/shinies/from-screenshot'
       || pathname === '/api/shinies/from-screenshot/async'
       || pathname.startsWith('/api/shinies/sprites/')
-      || (pathname.startsWith('/api/auth/') && !workerAuthPaths.has(pathname))
-      || /^\/api\/feebas\/[^/]+\/stream$/.test(pathname);
+      || (pathname.startsWith('/api/auth/') && !workerAuthPaths.has(pathname));
   }
 
   async function requireBotAuth(request, env) {
@@ -1485,6 +1566,7 @@ function createWorkerApp(options = {}) {
         const board = await getRepositories().feebas.updateTile(match[1], match[2], value, {
           includeLeaderboard: false,
         });
+        await broadcastFeebasBoard(match[1], getRepositories());
         return json({
           success: true,
           data: board,
@@ -1497,6 +1579,27 @@ function createWorkerApp(options = {}) {
 
         console.error('Error updating Feebas tile:', error);
         return json({ success: false, message: 'Failed to update Feebas tile' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/feebas\/([^/]+)\/stream$/);
+    if (request.method === 'GET' && match) {
+      try {
+        getLocationConfig(match[1]);
+        const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
+        const board = await getRepositories().feebas.getBoard(match[1], {
+          actorFingerprint,
+          includeLeaderboard: false,
+        });
+
+        return createFeebasStreamResponse(request, match[1], actorFingerprint, board);
+      } catch (error) {
+        if (error instanceof FeebasRuleError) {
+          return json({ success: false, message: error.message }, { status: error.statusCode });
+        }
+
+        console.error('Error opening Feebas stream:', error);
+        return json({ success: false, message: 'Failed to open Feebas stream' }, { status: 500 });
       }
     }
 
