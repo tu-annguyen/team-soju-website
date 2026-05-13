@@ -11,6 +11,7 @@ const {
 const DEFAULT_LEADERBOARD_LIMIT = 10;
 const MAX_LEADERBOARD_LIMIT = 50;
 const LEADERBOARD_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const ACCOUNT_FINGERPRINT_PREFIX = 'account-';
 const LEADERBOARD_SORT_OPTIONS = [
   { key: 'ign', defaultDirection: 'asc' },
   { key: 'weeklyContributionScore', defaultDirection: 'desc' },
@@ -406,7 +407,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       ORDER BY logs.created_at ASC, logs.id ASC
     `, [location]);
     const users = await runSelect('SELECT id, ign FROM app_users', []);
-    const userByFingerprint = new Map(users.map((user) => [`account-${user.id}`, user]));
+    const userByFingerprint = new Map(users.map((user) => [`${ACCOUNT_FINGERPRINT_PREFIX}${user.id}`, user]));
     const allActivity = activityRows.map((row) => ({
       id: row.id,
       location: row.location,
@@ -650,8 +651,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         weeklyVerifiedReports: weeklyVerifiedReports.get(userId) || 0,
       };
     });
-    const sortedEntries = sortLeaderboardEntries(entries, sortBy, sortDirection)
-      .slice(0, limit)
+    const rankedEntries = sortLeaderboardEntries(entries, sortBy, sortDirection)
       .map((entry, index) => ({
         rank: index + 1,
         ...entry,
@@ -670,6 +670,14 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         pendingReports: toFiniteNumber(entry.pendingReports),
         verifiedReports: toFiniteNumber(entry.verifiedReports),
       }));
+    const limitedEntries = rankedEntries.slice(0, limit);
+    const currentUserId = options.currentUserId ? String(options.currentUserId) : null;
+    const currentUserEntry = currentUserId
+      ? rankedEntries.find((entry) => String(entry.userId) === currentUserId)
+      : null;
+    const sortedEntries = currentUserEntry && currentUserEntry.rank > limit
+      ? [...limitedEntries, currentUserEntry]
+      : limitedEntries;
 
     return {
       location,
@@ -706,7 +714,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       LIMIT 20
     `, [cycle.id]);
     const leaderboard = includeLeaderboard
-      ? await getLeaderboard(location, { now })
+      ? await getLeaderboard(location, { now, currentUserId: options.currentUserId })
       : undefined;
     const votesByTile = votes.reduce((map, row) => {
       const existing = map.get(row.tile_id) || [];
@@ -779,7 +787,10 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       const { cycleStart, cycleEnd } = getCycleWindow(now);
       const cycle = await ensureCycle(location, cycleStart, cycleEnd);
 
-      return getBoardForCycle(location, cycle, now, actorFingerprint, { includeLeaderboard });
+      return getBoardForCycle(location, cycle, now, actorFingerprint, {
+        includeLeaderboard,
+        currentUserId: options.currentUserId,
+      });
     },
 
     async resetBoard(location, options = {}) {
@@ -829,7 +840,10 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
           { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd },
           now,
           actorFingerprint,
-          { includeLeaderboard: options.includeLeaderboard !== false },
+          {
+            includeLeaderboard: options.includeLeaderboard !== false,
+            currentUserId: options.currentUserId,
+          },
         );
       }
 
@@ -869,7 +883,10 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd },
         now,
         actorFingerprint,
-        { includeLeaderboard: options.includeLeaderboard !== false },
+        {
+          includeLeaderboard: options.includeLeaderboard !== false,
+          currentUserId: options.currentUserId,
+        },
       );
     },
 

@@ -43,10 +43,15 @@ function toSafeUser(row) {
     discord_global_name: row.discord_global_name,
     discord_avatar: row.discord_avatar,
     auth_provider: row.auth_provider,
+    email_verified_at: row.email_verified_at,
     created_at: row.created_at,
     updated_at: row.updated_at,
     last_login_at: row.last_login_at,
   };
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
 }
 
 let cachedPool;
@@ -558,12 +563,137 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
   };
 
   const users = {
+    normalizeEmail,
+
     async findById(id) {
       return runOne(`
         SELECT *
         FROM app_users
         WHERE id = ${parameter(1)}
       `, [id]);
+    },
+
+    async findByEmail(email) {
+      return runOne(`
+        SELECT *
+        FROM app_users
+        WHERE LOWER(email) = LOWER(${parameter(1)})
+      `, [normalizeEmail(email)]);
+    },
+
+    async findByPasswordResetTokenHash(tokenHash) {
+      return runOne(`
+        SELECT *
+        FROM app_users
+        WHERE password_reset_token_hash = ${parameter(1)}
+        LIMIT 1
+      `, [tokenHash]);
+    },
+
+    async findByEmailVerificationTokenHash(tokenHash) {
+      return runOne(`
+        SELECT *
+        FROM app_users
+        WHERE email_verification_token_hash = ${parameter(1)}
+        LIMIT 1
+      `, [tokenHash]);
+    },
+
+    async recordLogin(id) {
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        UPDATE app_users
+        SET last_login_at = ${nowExpression},
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+      `, [id]);
+      return this.findById(id);
+    },
+
+    async setPasswordResetToken(id, { tokenHash, expiresAt }) {
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        UPDATE app_users
+        SET password_reset_token_hash = ${parameter(2)},
+            password_reset_expires_at = ${parameter(3)},
+            password_reset_requested_at = ${nowExpression},
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+      `, [id, tokenHash, expiresAt instanceof Date ? expiresAt.toISOString() : expiresAt]);
+      return this.findById(id);
+    },
+
+    async clearPasswordResetToken(id) {
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        UPDATE app_users
+        SET password_reset_token_hash = NULL,
+            password_reset_expires_at = NULL,
+            password_reset_requested_at = NULL,
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+      `, [id]);
+      return this.findById(id);
+    },
+
+    async setEmailVerificationToken(id, { tokenHash, expiresAt }) {
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        UPDATE app_users
+        SET email_verification_token_hash = ${parameter(2)},
+            email_verification_expires_at = ${parameter(3)},
+            email_verification_sent_at = ${nowExpression},
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+      `, [id, tokenHash, expiresAt instanceof Date ? expiresAt.toISOString() : expiresAt]);
+      return this.findById(id);
+    },
+
+    async updateEmail(id, { email, tokenHash, expiresAt }) {
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        UPDATE app_users
+        SET email = ${parameter(2)},
+            email_verification_token_hash = ${parameter(3)},
+            email_verification_expires_at = ${parameter(4)},
+            email_verification_sent_at = ${nowExpression},
+            email_verified_at = NULL,
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+      `, [id, normalizeEmail(email), tokenHash, expiresAt instanceof Date ? expiresAt.toISOString() : expiresAt]);
+      return this.findById(id);
+    },
+
+    async markEmailVerified(id) {
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        UPDATE app_users
+        SET email_verification_token_hash = NULL,
+            email_verification_expires_at = NULL,
+            email_verification_sent_at = NULL,
+            email_verified_at = ${nowExpression},
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+      `, [id]);
+      return this.findById(id);
+    },
+
+    async updatePassword(id, passwordHash) {
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        UPDATE app_users
+        SET password_hash = ${parameter(2)},
+            password_reset_token_hash = NULL,
+            password_reset_expires_at = NULL,
+            password_reset_requested_at = NULL,
+            auth_provider = CASE
+              WHEN discord_id IS NOT NULL THEN 'password_discord'
+              ELSE 'password'
+            END,
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+      `, [id, passwordHash]);
+      return this.findById(id);
     },
 
     toSafeUser,

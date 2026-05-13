@@ -12,11 +12,17 @@ const {
   clearAuthCookie,
   generateBotToken,
   getTokenFromRequest,
+  setAuthCookie,
+  signUserToken,
   verifyUserToken,
 } = require('./auth');
 const { createRepositories } = require('./repositories');
 const { buildCorsHeaders, empty, json, readJson, withStandardHeaders } = require('./http');
 const { FeebasRuleError, getLocationConfig } = require('../utils/feebas');
+
+const passwordResetExpiresInMinutes = 60;
+const passwordResetSentMessage = 'If an account uses that email, a reset link has been sent.';
+const emailVerificationExpiresInMinutes = 24 * 60;
 
 const updateFeebasTileSchema = Joi.object({
   status: Joi.string().valid('unchecked', 'checked', 'pending', 'confirmed').required(),
@@ -24,6 +30,273 @@ const updateFeebasTileSchema = Joi.object({
   actorName: Joi.string().trim().allow('', null).max(40).optional(),
 });
 const feebasActorFingerprintSchema = Joi.string().trim().min(8).max(120).optional();
+const passwordSchema = Joi.string()
+  .min(8)
+  .max(128)
+  .pattern(/[0-9]/, 'number')
+  .pattern(/[^A-Za-z0-9]/, 'special character')
+  .required()
+  .messages({
+    'string.pattern.name': 'Password must include at least one number and one special character.',
+  });
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
+});
+const resetPasswordSchema = Joi.object({
+  token: Joi.string().trim().min(32).max(256).required(),
+  password: passwordSchema,
+});
+const changeEmailSchema = Joi.object({
+  email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
+});
+const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().allow('', null).max(128),
+  newPassword: passwordSchema,
+});
+const verifyEmailSchema = Joi.object({
+  token: Joi.string().trim().min(32).max(256).required(),
+});
+
+function getEnvUrl(env, ...keys) {
+  const value = keys.map((key) => env[key]).find(Boolean);
+  return String(value || 'http://localhost:4321').replace(/\/+$/, '');
+}
+
+function getWebAppUrl(env) {
+  return getEnvUrl(env, 'WEB_APP_URL', 'FRONTEND_URL');
+}
+
+function getApiOrigin(env) {
+  return String(env.API_ORIGIN || env.API_BASE_URL || 'http://localhost:3001')
+    .replace(/\/api\/?$/, '')
+    .replace(/\/+$/, '');
+}
+
+function getEmailVerificationUrl(env, token) {
+  const redirectUri = env.DISCORD_REDIRECT_URI || `${getApiOrigin(env)}/api/auth/verify-email`;
+  const url = new URL('/api/auth/verify-email', redirectUri);
+  url.searchParams.set('token', token);
+  return url.toString();
+}
+
+function getPasswordResetUrl(env, token) {
+  const url = new URL('/auth', getWebAppUrl(env));
+  url.searchParams.set('resetToken', token);
+  return url.toString();
+}
+
+function buildWebRedirect(env, pathname = '/auth', params = {}) {
+  const url = new URL(pathname, getWebAppUrl(env));
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) url.searchParams.set(key, value);
+  });
+  return url.toString();
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildPasswordResetMessage({ to, resetUrl, expiresInMinutes, ign }) {
+  const displayName = ign ? ` ${ign}` : '';
+  const escapedDisplayName = escapeHtml(displayName);
+  const escapedResetUrl = escapeHtml(resetUrl);
+  return {
+    to,
+    subject: 'Reset your Team Soju password',
+    text: [
+      `Hi${displayName},`,
+      '',
+      'Use this link to reset your Team Soju password:',
+      resetUrl,
+      '',
+      `This link expires in ${expiresInMinutes} minutes.`,
+      '',
+      'If you did not request this, you can ignore this email.',
+    ].join('\n'),
+    html: `
+      <p>Hi${escapedDisplayName},</p>
+      <p>Use this link to reset your Team Soju password:</p>
+      <p><a href="${escapedResetUrl}">Reset your password</a></p>
+      <p>This link expires in ${expiresInMinutes} minutes.</p>
+      <p>If you did not request this, you can ignore this email.</p>
+    `,
+  };
+}
+
+function buildEmailVerificationMessage({ to, verificationUrl, expiresInMinutes, ign }) {
+  const displayName = ign ? ` ${ign}` : '';
+  const escapedDisplayName = escapeHtml(displayName);
+  const escapedVerificationUrl = escapeHtml(verificationUrl);
+  return {
+    to,
+    subject: 'Verify your Team Soju email',
+    text: [
+      `Hi${displayName},`,
+      '',
+      'Use this link to verify your Team Soju email before signing in:',
+      verificationUrl,
+      '',
+      `This link expires in ${expiresInMinutes} minutes.`,
+      '',
+      'If you did not create this account, you can ignore this email.',
+    ].join('\n'),
+    html: `
+      <p>Hi${escapedDisplayName},</p>
+      <p>Use this link to verify your Team Soju email before signing in:</p>
+      <p><a href="${escapedVerificationUrl}">Verify your email</a></p>
+      <p>This link expires in ${expiresInMinutes} minutes.</p>
+      <p>If you did not create this account, you can ignore this email.</p>
+    `,
+  };
+}
+
+async function sendEmail(fetchImpl, env, message) {
+  const provider = String(env.EMAIL_PROVIDER || (env.NODE_ENV === 'production' ? 'resend' : 'console')).trim().toLowerCase();
+  if (provider === 'console') {
+    if (env.NODE_ENV !== 'test') {
+      console.log(`${message.subject} email for ${message.to}:\n${message.text}`);
+    }
+    return { provider: 'console' };
+  }
+
+  if (provider === 'resend') {
+    if (!env.RESEND_API_KEY || !(env.EMAIL_FROM || env.RESEND_FROM)) {
+      const error = new Error('Resend email is not configured.');
+      error.publicMessage = 'Email delivery is not configured yet.';
+      throw error;
+    }
+
+    const response = await fetchImpl('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: env.EMAIL_FROM || env.RESEND_FROM,
+        to: [message.to],
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+      }),
+    });
+    if (!response.ok) {
+      const error = new Error('Resend email request failed.');
+      error.publicMessage = 'Email delivery is not configured yet.';
+      throw error;
+    }
+    return response.json();
+  }
+
+  if (provider === 'postmark') {
+    if (!env.POSTMARK_SERVER_TOKEN || !(env.EMAIL_FROM || env.POSTMARK_FROM)) {
+      const error = new Error('Postmark email is not configured.');
+      error.publicMessage = 'Email delivery is not configured yet.';
+      throw error;
+    }
+
+    const body = {
+      From: env.EMAIL_FROM || env.POSTMARK_FROM,
+      To: message.to,
+      Subject: message.subject,
+      TextBody: message.text,
+      HtmlBody: message.html,
+    };
+    if (env.POSTMARK_MESSAGE_STREAM) {
+      body.MessageStream = env.POSTMARK_MESSAGE_STREAM;
+    }
+
+    const response = await fetchImpl('https://api.postmarkapp.com/email', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Postmark-Server-Token': env.POSTMARK_SERVER_TOKEN,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = new Error('Postmark email request failed.');
+      error.publicMessage = 'Email delivery is not configured yet.';
+      throw error;
+    }
+    return response.json();
+  }
+
+  const error = new Error(`Unsupported EMAIL_PROVIDER: ${provider}`);
+  error.publicMessage = 'Email delivery is not configured yet.';
+  throw error;
+}
+
+function getCrypto() {
+  return globalThis.crypto || require('crypto').webcrypto;
+}
+
+function randomHex(byteLength) {
+  const bytes = new Uint8Array(byteLength);
+  getCrypto().getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function sha256Hex(value) {
+  const digest = await getCrypto().subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function derivePasswordHash(password, saltHex = randomHex(16), iterations = 210000) {
+  const salt = Uint8Array.from(saltHex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+  const key = await getCrypto().subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await getCrypto().subtle.deriveBits({
+    name: 'PBKDF2',
+    hash: 'SHA-256',
+    salt,
+    iterations,
+  }, key, 256);
+  const hashHex = Array.from(new Uint8Array(bits), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `pbkdf2_sha256$${iterations}$${saltHex}$${hashHex}`;
+}
+
+async function verifyPassword(password, storedHash) {
+  if (!storedHash) return false;
+
+  if (storedHash.startsWith('pbkdf2_sha256$')) {
+    const [, iterations, saltHex, expectedHash] = storedHash.split('$');
+    const actualHash = await derivePasswordHash(password, saltHex, Number(iterations));
+    return actualHash.endsWith(`$${expectedHash}`);
+  }
+
+  if (storedHash.startsWith('$2')) {
+    try {
+      const bcrypt = require('bcrypt');
+      return bcrypt.compare(password, storedHash);
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+function isExpired(expiresAt) {
+  const expiresAtMs = new Date(expiresAt).getTime();
+  return !Number.isFinite(expiresAtMs) || expiresAtMs < Date.now();
+}
+
+function duplicateAuthMessage(error) {
+  const message = `${error?.code || ''} ${error?.message || ''}`.toLowerCase();
+  if (!message.includes('unique') && error?.code !== '23505') {
+    return null;
+  }
+  if (message.includes('ign')) return 'That IGN is already in use.';
+  if (message.includes('email')) return 'An account with that email already exists.';
+  return 'An account with that email or IGN already exists.';
+}
 
 function createWorkerApp(options = {}) {
   const createRepos = options.createRepositories || createRepositories;
@@ -49,10 +322,20 @@ function createWorkerApp(options = {}) {
   }
 
   function isLegacyProxyPath(pathname) {
+    const workerAuthPaths = new Set([
+      '/api/auth/me',
+      '/api/auth/logout',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
+      '/api/auth/change-email',
+      '/api/auth/change-password',
+      '/api/auth/verify-email',
+    ]);
+
     return pathname === '/api/shinies/from-screenshot'
       || pathname === '/api/shinies/from-screenshot/async'
       || pathname.startsWith('/api/shinies/sprites/')
-      || (pathname.startsWith('/api/auth/') && pathname !== '/api/auth/me')
+      || (pathname.startsWith('/api/auth/') && !workerAuthPaths.has(pathname))
       || /^\/api\/feebas\/[^/]+\/stream$/.test(pathname);
   }
 
@@ -62,6 +345,80 @@ function createWorkerApp(options = {}) {
       return json(auth.response.body, { status: auth.response.status });
     }
     return null;
+  }
+
+  async function getAuthenticatedUser(request, env, repositories) {
+    const token = getTokenFromRequest(request, env);
+    if (!token) return null;
+
+    try {
+      const decoded = await verifyUserToken(token, env);
+      return repositories.users.findById(decoded.sub);
+    } catch {
+      return null;
+    }
+  }
+
+  async function requireUser(request, env, repositories) {
+    const token = getTokenFromRequest(request, env);
+    if (!token) {
+      return {
+        response: json({ success: false, message: 'Not signed in.' }, { status: 401 }),
+      };
+    }
+
+    try {
+      const decoded = await verifyUserToken(token, env);
+      const user = await repositories.users.findById(decoded.sub);
+      if (!user) {
+        return {
+          response: json({
+            success: false,
+            message: 'Invalid or expired session.',
+          }, {
+            status: 401,
+            headers: { 'set-cookie': clearAuthCookie(env) },
+          }),
+        };
+      }
+      return { user };
+    } catch {
+      return {
+        response: json({ success: false, message: 'Invalid or expired session.' }, { status: 401 }),
+      };
+    }
+  }
+
+  async function signInUser(env, repositories, user, statusCode = 200, message = 'Signed in successfully.') {
+    const loggedInUser = await repositories.users.recordLogin(user.id);
+    const safeUser = repositories.users.toSafeUser(loggedInUser || user);
+    const token = await signUserToken(safeUser, env);
+
+    return json({
+      success: true,
+      data: safeUser,
+      message,
+    }, {
+      status: statusCode,
+      headers: { 'set-cookie': setAuthCookie(token, env) },
+    });
+  }
+
+  async function issueEmailVerification(fetchImpl, env, repositories, user) {
+    const token = randomHex(32);
+    const expiresAt = new Date(Date.now() + (emailVerificationExpiresInMinutes * 60 * 1000));
+
+    await repositories.users.setEmailVerificationToken(user.id, {
+      tokenHash: await sha256Hex(token),
+      expiresAt,
+    });
+
+    await sendEmail(fetchImpl, env, buildEmailVerificationMessage({
+      to: user.email,
+      verificationUrl: getEmailVerificationUrl(env, token),
+      expiresInMinutes: emailVerificationExpiresInMinutes,
+      ign: user.ign,
+    }));
   }
 
   async function routeRequest(request, env, ctx) {
@@ -145,6 +502,206 @@ function createWorkerApp(options = {}) {
             'set-cookie': clearAuthCookie(env),
           },
         });
+      }
+    }
+
+    if (request.method === 'POST' && pathname === '/api/auth/logout') {
+      return json({
+        success: true,
+        message: 'Signed out successfully.',
+      }, {
+        headers: { 'set-cookie': clearAuthCookie(env) },
+      });
+    }
+
+    if (request.method === 'POST' && pathname === '/api/auth/forgot-password') {
+      try {
+        const body = await readJson(request);
+        const { error, value } = forgotPasswordSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const user = await getRepositories().users.findByEmail(value.email);
+        if (user) {
+          const token = randomHex(32);
+          const expiresAt = new Date(Date.now() + (passwordResetExpiresInMinutes * 60 * 1000));
+          await getRepositories().users.setPasswordResetToken(user.id, {
+            tokenHash: await sha256Hex(token),
+            expiresAt,
+          });
+
+          try {
+            await sendEmail(fetchImpl, env, buildPasswordResetMessage({
+              to: user.email,
+              resetUrl: getPasswordResetUrl(env, token),
+              expiresInMinutes: passwordResetExpiresInMinutes,
+              ign: user.ign,
+            }));
+          } catch (sendError) {
+            await getRepositories().users.clearPasswordResetToken(user.id).catch((clearError) => {
+              console.error('Error clearing failed password reset token:', clearError);
+            });
+            throw sendError;
+          }
+        }
+
+        return json({ success: true, message: passwordResetSentMessage });
+      } catch (error) {
+        console.error('Error requesting password reset:', error);
+        return json({
+          success: false,
+          message: error.publicMessage || 'Failed to request password reset',
+        }, { status: error.publicMessage ? 503 : 500 });
+      }
+    }
+
+    if (request.method === 'POST' && pathname === '/api/auth/reset-password') {
+      try {
+        const body = await readJson(request);
+        const { error, value } = resetPasswordSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const tokenHash = await sha256Hex(value.token);
+        const user = await getRepositories().users.findByPasswordResetTokenHash(tokenHash);
+        if (!user || isExpired(user.password_reset_expires_at)) {
+          if (user) {
+            await getRepositories().users.clearPasswordResetToken(user.id);
+          }
+          return json({
+            success: false,
+            message: 'That password reset link is invalid or expired.',
+          }, { status: 400 });
+        }
+
+        const updatedUser = await getRepositories().users.updatePassword(user.id, await derivePasswordHash(value.password));
+        return signInUser(env, getRepositories(), updatedUser || user, 200, 'Password reset successfully.');
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        return json({ success: false, message: 'Failed to reset password' }, { status: 500 });
+      }
+    }
+
+    if (request.method === 'POST' && pathname === '/api/auth/change-email') {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = changeEmailSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const normalizedEmail = getRepositories().users.normalizeEmail(value.email);
+        if (normalizedEmail === auth.user.email) {
+          return json({
+            success: false,
+            message: 'That is already your current email address.',
+          }, { status: 400 });
+        }
+
+        const verificationToken = randomHex(32);
+        const updatedUser = await getRepositories().users.updateEmail(auth.user.id, {
+          email: normalizedEmail,
+          tokenHash: await sha256Hex(verificationToken),
+          expiresAt: new Date(Date.now() + (emailVerificationExpiresInMinutes * 60 * 1000)),
+        });
+
+        await sendEmail(fetchImpl, env, buildEmailVerificationMessage({
+          to: normalizedEmail,
+          verificationUrl: getEmailVerificationUrl(env, verificationToken),
+          expiresInMinutes: emailVerificationExpiresInMinutes,
+          ign: auth.user.ign,
+        }));
+
+        const safeUser = getRepositories().users.toSafeUser(updatedUser || auth.user);
+        const token = await signUserToken(safeUser, env);
+        return json({
+          success: true,
+          data: safeUser,
+          message: 'Email updated. Check your new inbox to verify it.',
+        }, {
+          headers: { 'set-cookie': setAuthCookie(token, env) },
+        });
+      } catch (error) {
+        const duplicateMessage = duplicateAuthMessage(error);
+        if (duplicateMessage) {
+          return json({ success: false, message: duplicateMessage }, { status: 409 });
+        }
+
+        console.error('Error changing email:', error);
+        return json({
+          success: false,
+          message: error.publicMessage || 'Failed to change email',
+        }, { status: error.publicMessage ? 503 : 500 });
+      }
+    }
+
+    if (request.method === 'POST' && pathname === '/api/auth/change-password') {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = changePasswordSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        if (auth.user.password_hash) {
+          const passwordMatches = await verifyPassword(value.currentPassword || '', auth.user.password_hash);
+          if (!passwordMatches) {
+            return json({
+              success: false,
+              message: 'Current password is incorrect.',
+            }, { status: 401 });
+          }
+        }
+
+        const updatedUser = await getRepositories().users.updatePassword(auth.user.id, await derivePasswordHash(value.newPassword));
+        return json({
+          success: true,
+          data: getRepositories().users.toSafeUser(updatedUser || auth.user),
+          message: auth.user.password_hash
+            ? 'Password updated successfully.'
+            : 'Password added successfully.',
+        });
+      } catch (error) {
+        console.error('Error changing password:', error);
+        return json({ success: false, message: 'Failed to change password' }, { status: 500 });
+      }
+    }
+
+    if (request.method === 'GET' && pathname === '/api/auth/verify-email') {
+      const { error, value } = verifyEmailSchema.validate(Object.fromEntries(url.searchParams.entries()));
+      if (error) {
+        return Response.redirect(buildWebRedirect(env, '/auth', {
+          error: 'That verification link is invalid or expired.',
+        }), 302);
+      }
+
+      try {
+        const tokenHash = await sha256Hex(value.token);
+        const user = await getRepositories().users.findByEmailVerificationTokenHash(tokenHash);
+        if (!user || isExpired(user.email_verification_expires_at)) {
+          return Response.redirect(buildWebRedirect(env, '/auth', {
+            error: 'That verification link is invalid or expired.',
+          }), 302);
+        }
+
+        await getRepositories().users.markEmailVerified(user.id);
+        return Response.redirect(buildWebRedirect(env, '/auth', {
+          mode: 'login',
+          status: 'email-verified',
+        }), 302);
+      } catch (error) {
+        console.error('Error verifying email:', error);
+        return Response.redirect(buildWebRedirect(env, '/auth', {
+          error: 'Unable to verify your email.',
+        }), 302);
       }
     }
 
@@ -460,7 +1017,11 @@ function createWorkerApp(options = {}) {
           }, { status: 400 });
         }
 
-        const leaderboard = await getRepositories().feebas.getLeaderboard(match[1], value);
+        const authenticatedUser = await getAuthenticatedUser(request, env, getRepositories());
+        const leaderboard = await getRepositories().feebas.getLeaderboard(match[1], {
+          ...value,
+          currentUserId: authenticatedUser?.id,
+        });
         return json({
           success: true,
           data: leaderboard,
@@ -540,7 +1101,11 @@ function createWorkerApp(options = {}) {
       try {
         getLocationConfig(match[1]);
         const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
-        const board = await getRepositories().feebas.getBoard(match[1], { actorFingerprint });
+        const authenticatedUser = await getAuthenticatedUser(request, env, getRepositories());
+        const board = await getRepositories().feebas.getBoard(match[1], {
+          actorFingerprint,
+          currentUserId: authenticatedUser?.id,
+        });
 
         return json({
           success: true,

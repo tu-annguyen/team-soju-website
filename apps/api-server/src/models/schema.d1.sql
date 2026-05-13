@@ -53,6 +53,10 @@ CREATE TABLE IF NOT EXISTS app_users (
   password_reset_token_hash TEXT,
   password_reset_expires_at TEXT,
   password_reset_requested_at TEXT,
+  email_verification_token_hash TEXT,
+  email_verification_expires_at TEXT,
+  email_verification_sent_at TEXT,
+  email_verified_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_login_at TEXT,
@@ -72,6 +76,10 @@ CREATE INDEX IF NOT EXISTS idx_app_users_discord_id
 CREATE INDEX IF NOT EXISTS idx_app_users_password_reset_token_hash
   ON app_users(password_reset_token_hash)
   WHERE password_reset_token_hash IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_app_users_email_verification_token_hash
+  ON app_users(email_verification_token_hash)
+  WHERE email_verification_token_hash IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS feebas_cycles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

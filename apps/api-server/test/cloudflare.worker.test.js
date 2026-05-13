@@ -207,6 +207,89 @@ describe('Cloudflare Worker API', () => {
     });
   });
 
+  it('serves auth update routes from the Worker instead of the legacy proxy', async () => {
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findByEmail: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+        }),
+        setPasswordResetToken: jest.fn().mockResolvedValue({}),
+        clearPasswordResetToken: jest.fn(),
+      },
+    };
+    const fetchMock = jest.fn();
+    const app = createWorkerApp({ repositories, fetch: fetchMock });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'trainer@example.com' }),
+    }), createEnv({
+      LEGACY_API_BASE_URL: 'https://legacy.example.com',
+      NODE_ENV: 'test',
+      EMAIL_PROVIDER: 'console',
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(repositories.users.findByEmail).toHaveBeenCalledWith('trainer@example.com');
+    expect(repositories.users.setPasswordResetToken).toHaveBeenCalledWith('user-1', {
+      tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      expiresAt: expect.any(Date),
+    });
+    expect(body.message).toBe('If an account uses that email, a reset link has been sent.');
+  });
+
+  it('passes the signed-in user to Feebas leaderboard routes', async () => {
+    const leaderboard = {
+      location: 'route-119-main',
+      entries: [],
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+        }),
+      },
+      feebas: {
+        getLeaderboardSortOptions: jest.fn().mockReturnValue([{ key: 'ign' }]),
+        getLeaderboard: jest.fn().mockResolvedValue(leaderboard),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'user-1',
+      email: 'trainer@example.com',
+      ign: 'Trainer',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/leaderboard?limit=5&sortBy=ign', {
+      headers: {
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+    }), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(repositories.users.findById).toHaveBeenCalledWith('user-1');
+    expect(repositories.feebas.getLeaderboard).toHaveBeenCalledWith('route-119-main', {
+      limit: 5,
+      sortBy: 'ign',
+      currentUserId: 'user-1',
+    });
+    expect(body.data).toEqual(leaderboard);
+  });
+
   it('serves Feebas board REST routes from the Worker repository contract', async () => {
     const board = {
       location: 'route-119-main',

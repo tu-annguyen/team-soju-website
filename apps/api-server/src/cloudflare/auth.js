@@ -3,6 +3,8 @@ const crypto = globalThis.crypto || require('crypto').webcrypto;
 const AUTH_COOKIE_NAME = 'team_soju_session';
 const USER_TOKEN_TYPE = 'web_user';
 const BOT_TOKEN_TYPE = 'discord_bot';
+const USER_TOKEN_EXPIRES_IN = '14d';
+const USER_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 14;
 
 function base64UrlEncode(value) {
   return Buffer.from(value)
@@ -113,6 +115,19 @@ async function generateBotToken(secret) {
   );
 }
 
+async function signUserToken(user, env = {}) {
+  return signJwt(
+    {
+      type: USER_TOKEN_TYPE,
+      sub: user.id,
+      email: user.email,
+      ign: user.ign,
+    },
+    env.JWT_SECRET,
+    { expiresIn: USER_TOKEN_EXPIRES_IN }
+  );
+}
+
 async function authenticateBotRequest(request, env) {
   const headerValue = request.headers.get('authorization');
   const token = headerValue?.replace('Bearer ', '');
@@ -211,6 +226,13 @@ function clearAuthCookie(env = {}) {
   });
 }
 
+function setAuthCookie(token, env = {}) {
+  return serializeCookie(getAuthCookieName(env), token, {
+    ...getAuthCookieOptions(env),
+    maxAge: USER_COOKIE_MAX_AGE_SECONDS,
+  });
+}
+
 function getTokenFromRequest(request, env = {}) {
   const authorizationToken = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (authorizationToken) {
@@ -242,6 +264,8 @@ module.exports = {
   parseCookies,
   serializeCookie,
   signJwt,
+  signUserToken,
+  setAuthCookie,
   verifyJwt,
   verifyUserToken,
 };
