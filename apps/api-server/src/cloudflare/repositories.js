@@ -54,6 +54,10 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function normalizeIgn(ign) {
+  return String(ign || '').trim();
+}
+
 let cachedPool;
 
 function resolveConnectionString(env) {
@@ -564,6 +568,7 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
 
   const users = {
     normalizeEmail,
+    normalizeIgn,
 
     async findById(id) {
       return runOne(`
@@ -579,6 +584,99 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
         FROM app_users
         WHERE LOWER(email) = LOWER(${parameter(1)})
       `, [normalizeEmail(email)]);
+    },
+
+    async findByDiscordId(discordId) {
+      return runOne(`
+        SELECT *
+        FROM app_users
+        WHERE discord_id = ${parameter(1)}
+      `, [discordId]);
+    },
+
+    async createWithPassword({ email, passwordHash, ign, verificationTokenHash, verificationExpiresAt }) {
+      const id = crypto.randomUUID();
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        INSERT INTO app_users (
+          id,
+          email,
+          password_hash,
+          ign,
+          auth_provider,
+          email_verification_token_hash,
+          email_verification_expires_at,
+          email_verification_sent_at,
+          email_verified_at
+        )
+        VALUES (
+          ${parameter(1)}, ${parameter(2)}, ${parameter(3)}, ${parameter(4)}, 'password',
+          ${parameter(5)}, ${parameter(6)}, ${nowExpression}, NULL
+        )
+      `, [
+        id,
+        normalizeEmail(email),
+        passwordHash,
+        normalizeIgn(ign),
+        verificationTokenHash,
+        verificationExpiresAt instanceof Date ? verificationExpiresAt.toISOString() : verificationExpiresAt,
+      ]);
+      return this.findById(id);
+    },
+
+    async createWithDiscord({ email, ign, discord }) {
+      const id = crypto.randomUUID();
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        INSERT INTO app_users (
+          id,
+          email,
+          ign,
+          discord_id,
+          discord_username,
+          discord_global_name,
+          discord_avatar,
+          auth_provider,
+          email_verified_at
+        )
+        VALUES (
+          ${parameter(1)}, ${parameter(2)}, ${parameter(3)}, ${parameter(4)}, ${parameter(5)},
+          ${parameter(6)}, ${parameter(7)}, 'discord', ${nowExpression}
+        )
+      `, [
+        id,
+        normalizeEmail(email),
+        normalizeIgn(ign),
+        discord.id,
+        discord.username,
+        discord.global_name,
+        discord.avatar,
+      ]);
+      return this.findById(id);
+    },
+
+    async attachDiscord(id, discord) {
+      const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+      await runCommand(`
+        UPDATE app_users
+        SET discord_id = ${parameter(2)},
+            discord_username = ${parameter(3)},
+            discord_global_name = ${parameter(4)},
+            discord_avatar = ${parameter(5)},
+            auth_provider = CASE
+              WHEN password_hash IS NOT NULL THEN 'password_discord'
+              ELSE 'discord'
+            END,
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+      `, [
+        id,
+        discord.id,
+        discord.username,
+        discord.global_name,
+        discord.avatar,
+      ]);
+      return this.findById(id);
     },
 
     async findByPasswordResetTokenHash(tokenHash) {
@@ -694,6 +792,13 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
         WHERE id = ${parameter(1)}
       `, [id, passwordHash]);
       return this.findById(id);
+    },
+
+    async deleteById(id) {
+      await runCommand(`
+        DELETE FROM app_users
+        WHERE id = ${parameter(1)}
+      `, [id]);
     },
 
     toSafeUser,

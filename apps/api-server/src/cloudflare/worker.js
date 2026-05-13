@@ -13,16 +13,22 @@ const {
   generateBotToken,
   getTokenFromRequest,
   setAuthCookie,
+  signJwt,
   signUserToken,
+  verifyJwt,
   verifyUserToken,
 } = require('./auth');
 const { createRepositories } = require('./repositories');
 const { buildCorsHeaders, empty, json, readJson, withStandardHeaders } = require('./http');
 const { FeebasRuleError, getLocationConfig } = require('../utils/feebas');
+const { isIgnBlacklisted } = require('../utils/ignModeration');
 
 const passwordResetExpiresInMinutes = 60;
 const passwordResetSentMessage = 'If an account uses that email, a reset link has been sent.';
 const emailVerificationExpiresInMinutes = 24 * 60;
+const emailVerificationSentMessage = 'Account created. Check your email to verify it before signing in.';
+const discordScopes = ['identify', 'email'];
+const passwordMigrationMessage = 'We upgraded account security during the Cloudflare migration. Please reset your password to continue.';
 
 const updateFeebasTileSchema = Joi.object({
   status: Joi.string().valid('unchecked', 'checked', 'pending', 'confirmed').required(),
@@ -42,6 +48,15 @@ const passwordSchema = Joi.string()
 const forgotPasswordSchema = Joi.object({
   email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
 });
+const registerSchema = Joi.object({
+  email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
+  password: passwordSchema,
+  ign: Joi.string().trim().min(1).max(50).required(),
+});
+const loginSchema = Joi.object({
+  email: Joi.string().trim().email({ tlds: { allow: false } }).lowercase().max(254).required(),
+  password: Joi.string().min(1).max(128).required(),
+});
 const resetPasswordSchema = Joi.object({
   token: Joi.string().trim().min(32).max(256).required(),
   password: passwordSchema,
@@ -55,6 +70,11 @@ const changePasswordSchema = Joi.object({
 });
 const verifyEmailSchema = Joi.object({
   token: Joi.string().trim().min(32).max(256).required(),
+});
+const discordStartSchema = Joi.object({
+  mode: Joi.string().valid('login', 'register', 'connect').default('login'),
+  ign: Joi.string().trim().max(50).allow('', null),
+  returnTo: Joi.string().trim().max(200).allow('', null),
 });
 
 function getEnvUrl(env, ...keys) {
@@ -72,8 +92,28 @@ function getApiOrigin(env) {
     .replace(/\/+$/, '');
 }
 
+function getDiscordRedirectUri(env) {
+  return env.DISCORD_REDIRECT_URI || `${getApiOrigin(env)}/api/auth/discord/callback`;
+}
+
+function getDiscordConfig(env) {
+  const config = {
+    clientId: env.DISCORD_CLIENT_ID,
+    clientSecret: env.DISCORD_CLIENT_SECRET,
+    redirectUri: getDiscordRedirectUri(env),
+  };
+
+  if (!config.clientId || !config.clientSecret || !config.redirectUri) {
+    const error = new Error('Discord OAuth is not configured.');
+    error.publicMessage = 'Discord sign-in is not configured yet.';
+    throw error;
+  }
+
+  return config;
+}
+
 function getEmailVerificationUrl(env, token) {
-  const redirectUri = env.DISCORD_REDIRECT_URI || `${getApiOrigin(env)}/api/auth/verify-email`;
+  const redirectUri = getDiscordRedirectUri(env);
   const url = new URL('/api/auth/verify-email', redirectUri);
   url.searchParams.set('token', token);
   return url.toString();
@@ -91,6 +131,68 @@ function buildWebRedirect(env, pathname = '/auth', params = {}) {
     if (value) url.searchParams.set(key, value);
   });
   return url.toString();
+}
+
+function redirect(location, init = {}) {
+  const headers = new Headers(init.headers || {});
+  headers.set('location', location);
+  return new Response(null, {
+    status: init.status || 302,
+    headers,
+  });
+}
+
+function sanitizeReturnTo(returnTo) {
+  if (!returnTo || typeof returnTo !== 'string') {
+    return '/';
+  }
+
+  if (!returnTo.startsWith('/') || returnTo.startsWith('//')) {
+    return '/';
+  }
+
+  return returnTo;
+}
+
+function getDiscordScopeParam() {
+  return discordScopes.map(encodeURIComponent).join('%20');
+}
+
+function getBlacklistedIgnMessage() {
+  return 'That IGN is not allowed. Please choose a different in-game name.';
+}
+
+async function buildState(payload, env) {
+  return signJwt(
+    {
+      type: 'discord_oauth_state',
+      mode: payload.mode,
+      ign: payload.ign || null,
+      userId: payload.userId || null,
+      returnTo: sanitizeReturnTo(payload.returnTo),
+    },
+    env.JWT_SECRET,
+    { expiresIn: '10m' }
+  );
+}
+
+async function verifyState(state, env) {
+  const decoded = await verifyJwt(state, env.JWT_SECRET);
+
+  if (decoded?.type !== 'discord_oauth_state') {
+    throw new Error('Invalid Discord OAuth state.');
+  }
+
+  return {
+    mode: decoded.mode === 'register'
+      ? 'register'
+      : decoded.mode === 'connect'
+        ? 'connect'
+        : 'login',
+    ign: decoded.ign || null,
+    userId: decoded.userId || null,
+    returnTo: sanitizeReturnTo(decoded.returnTo),
+  };
 }
 
 function escapeHtml(value) {
@@ -234,6 +336,45 @@ async function sendEmail(fetchImpl, env, message) {
   throw error;
 }
 
+async function exchangeDiscordCode(fetchImpl, env, code) {
+  const { clientId, clientSecret, redirectUri } = getDiscordConfig(env);
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: redirectUri,
+  });
+
+  const response = await fetchImpl('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Discord token exchange failed.');
+  }
+
+  return response.json();
+}
+
+async function fetchDiscordUser(fetchImpl, accessToken) {
+  const response = await fetchImpl('https://discord.com/api/users/@me', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Discord user fetch failed.');
+  }
+
+  return response.json();
+}
+
 function getCrypto() {
   return globalThis.crypto || require('crypto').webcrypto;
 }
@@ -364,6 +505,10 @@ function createWorkerApp(options = {}) {
       '/api/auth/change-email',
       '/api/auth/change-password',
       '/api/auth/verify-email',
+      '/api/auth/register',
+      '/api/auth/login',
+      '/api/auth/discord',
+      '/api/auth/discord/callback',
     ]);
 
     return pathname === '/api/shinies/from-screenshot'
@@ -495,6 +640,236 @@ function createWorkerApp(options = {}) {
         token,
         message: 'Bot token generated successfully',
       });
+    }
+
+    if (request.method === 'POST' && pathname === '/api/auth/register') {
+      try {
+        const body = await readJson(request);
+        const { error, value } = registerSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        if (isIgnBlacklisted(value.ign)) {
+          return json({
+            success: false,
+            message: getBlacklistedIgnMessage(),
+          }, { status: 400 });
+        }
+
+        const verificationToken = randomHex(32);
+        const user = await getRepositories().users.createWithPassword({
+          email: value.email,
+          passwordHash: await derivePasswordHash(value.password),
+          ign: value.ign,
+          verificationTokenHash: await sha256Hex(verificationToken),
+          verificationExpiresAt: new Date(Date.now() + (emailVerificationExpiresInMinutes * 60 * 1000)),
+        });
+
+        try {
+          await sendEmail(fetchImpl, env, buildEmailVerificationMessage({
+            to: user.email,
+            verificationUrl: getEmailVerificationUrl(env, verificationToken),
+            expiresInMinutes: emailVerificationExpiresInMinutes,
+            ign: user.ign,
+          }));
+        } catch (sendError) {
+          await getRepositories().users.deleteById(user.id).catch((deleteError) => {
+            console.error('Error deleting unverified user after email failure:', deleteError);
+          });
+          throw sendError;
+        }
+
+        return json({
+          success: true,
+          data: null,
+          message: emailVerificationSentMessage,
+        }, { status: 201 });
+      } catch (error) {
+        const duplicateMessage = duplicateAuthMessage(error);
+        if (duplicateMessage) {
+          return json({ success: false, message: duplicateMessage }, { status: 409 });
+        }
+
+        console.error('Error registering user:', error);
+        return json({
+          success: false,
+          message: error.publicMessage || 'Failed to create account',
+        }, { status: error.publicMessage ? 503 : 500 });
+      }
+    }
+
+    if (request.method === 'POST' && pathname === '/api/auth/login') {
+      try {
+        const body = await readJson(request);
+        const { error, value } = loginSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const user = await getRepositories().users.findByEmail(value.email);
+        if (user?.password_hash?.startsWith('$2')) {
+          return json({
+            success: false,
+            message: passwordMigrationMessage,
+          }, { status: 403 });
+        }
+
+        const passwordMatches = user?.password_hash
+          ? await verifyPassword(value.password, user.password_hash)
+          : false;
+
+        if (!user || !passwordMatches) {
+          return json({
+            success: false,
+            message: 'Invalid email or password',
+          }, { status: 401 });
+        }
+
+        if (!user.email_verified_at) {
+          try {
+            await issueEmailVerification(fetchImpl, env, getRepositories(), user);
+          } catch (sendError) {
+            console.error('Error resending verification email:', sendError);
+            return json({
+              success: false,
+              message: sendError.publicMessage || 'Failed to send verification email',
+            }, { status: sendError.publicMessage ? 503 : 500 });
+          }
+
+          return json({
+            success: false,
+            message: 'Verify your email before signing in. We sent you a new verification link.',
+          }, { status: 403 });
+        }
+
+        return signInUser(env, getRepositories(), user);
+      } catch (error) {
+        console.error('Error signing in user:', error);
+        return json({ success: false, message: 'Failed to sign in' }, { status: 500 });
+      }
+    }
+
+    if (request.method === 'GET' && pathname === '/api/auth/discord') {
+      try {
+        const { error, value } = discordStartSchema.validate(Object.fromEntries(url.searchParams.entries()));
+        if (error) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Invalid Discord sign-in request.' }), 302);
+        }
+
+        if (value.mode === 'register' && !value.ign) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Enter your IGN before continuing with Discord.' }), 302);
+        }
+
+        if (value.mode === 'register' && value.ign && isIgnBlacklisted(value.ign)) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: getBlacklistedIgnMessage() }), 302);
+        }
+
+        let userId = null;
+        if (value.mode === 'connect') {
+          const auth = await requireUser(request, env, getRepositories());
+          if (auth.response) {
+            return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Sign in before connecting Discord.' }), 302);
+          }
+          userId = auth.user.id;
+        }
+
+        const { clientId, redirectUri } = getDiscordConfig(env);
+        const params = new URLSearchParams({
+          client_id: clientId,
+          redirect_uri: redirectUri,
+          response_type: 'code',
+          state: await buildState({ ...value, userId }, env),
+        });
+
+        return Response.redirect(`https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`, 302);
+      } catch (error) {
+        console.error('Error starting Discord OAuth:', error);
+        return Response.redirect(buildWebRedirect(env, '/auth', {
+          error: error.publicMessage || 'Unable to start Discord sign-in.',
+        }), 302);
+      }
+    }
+
+    if (request.method === 'GET' && pathname === '/api/auth/discord/callback') {
+      try {
+        if (url.searchParams.get('error')) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Discord sign-in was cancelled.' }), 302);
+        }
+
+        const code = url.searchParams.get('code');
+        const rawState = url.searchParams.get('state');
+        if (!code || !rawState) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Discord sign-in did not return the expected data.' }), 302);
+        }
+
+        const state = await verifyState(rawState, env);
+        if (state.mode === 'register' && state.ign && isIgnBlacklisted(state.ign)) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: getBlacklistedIgnMessage() }), 302);
+        }
+
+        const token = await exchangeDiscordCode(fetchImpl, env, code);
+        const discordUser = await fetchDiscordUser(fetchImpl, token.access_token);
+
+        if (!discordUser.email) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Discord did not return an email address.' }), 302);
+        }
+
+        if (discordUser.verified === false) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Verify your Discord email before signing in.' }), 302);
+        }
+
+        let user = await getRepositories().users.findByDiscordId(discordUser.id);
+
+        if (state.mode === 'connect') {
+          if (!state.userId) {
+            return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Discord connection session expired. Please try again.' }), 302);
+          }
+
+          const currentUser = await getRepositories().users.findById(state.userId);
+          if (!currentUser) {
+            return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Sign in before connecting Discord.' }), 302);
+          }
+
+          if (user && user.id !== currentUser.id) {
+            return Response.redirect(buildWebRedirect(env, '/auth', { error: 'That Discord account is already connected to another Team Soju account.' }), 302);
+          }
+
+          user = user?.id === currentUser.id
+            ? user
+            : await getRepositories().users.attachDiscord(currentUser.id, discordUser);
+        } else if (!user) {
+          const userByEmail = await getRepositories().users.findByEmail(discordUser.email);
+          if (userByEmail) {
+            user = await getRepositories().users.attachDiscord(userByEmail.id, discordUser);
+          } else if (state.mode === 'register' && state.ign) {
+            user = await getRepositories().users.createWithDiscord({
+              email: discordUser.email,
+              ign: state.ign,
+              discord: discordUser,
+            });
+          } else {
+            return Response.redirect(buildWebRedirect(env, '/auth', {
+              mode: 'register',
+              error: 'No Team Soju account is linked to that Discord account yet.',
+            }), 302);
+          }
+        }
+
+        const loggedInUser = await getRepositories().users.recordLogin(user.id);
+        const safeUser = getRepositories().users.toSafeUser(loggedInUser || user);
+        return redirect(buildWebRedirect(env, state.returnTo, { status: 'signed-in' }), {
+          headers: { 'set-cookie': setAuthCookie(await signUserToken(safeUser, env), env) },
+        });
+      } catch (error) {
+        const duplicateMessage = duplicateAuthMessage(error);
+        if (duplicateMessage) {
+          return Response.redirect(buildWebRedirect(env, '/auth', { error: duplicateMessage }), 302);
+        }
+
+        console.error('Error completing Discord OAuth:', error);
+        return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Unable to complete Discord sign-in.' }), 302);
+      }
     }
 
     if (request.method === 'GET' && pathname === '/api/auth/me') {
