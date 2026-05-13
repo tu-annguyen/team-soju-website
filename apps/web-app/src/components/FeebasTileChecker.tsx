@@ -725,6 +725,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
   const pendingActivityLocationRef = useRef<string | null>(null);
+  const pendingActivityCycleEndRef = useRef<string | null>(null);
   const seenPendingActivityIdsRef = useRef<Set<number>>(new Set());
   const activeLocationOption = localizedLocationOptionsById.get(activeLocation) || localizedLocationOptionsById.get(DEFAULT_LOCATION)!;
   const activeTerrain = activeLocationOption.terrain;
@@ -737,8 +738,16 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
     const pendingActivities = getPendingActivityEntries(nextBoard);
     const pendingActivityIds = new Set(pendingActivities.map((entry) => entry.id));
 
-    if (pendingActivityLocationRef.current !== nextBoard.location) {
+    if (
+      pendingActivityLocationRef.current !== nextBoard.location
+      || pendingActivityCycleEndRef.current !== nextBoard.cycleEnd
+    ) {
+      if (pendingActivityCycleEndRef.current && pendingActivityCycleEndRef.current !== nextBoard.cycleEnd) {
+        setPendingNominationNotification(null);
+      }
+
       pendingActivityLocationRef.current = nextBoard.location;
+      pendingActivityCycleEndRef.current = nextBoard.cycleEnd;
       seenPendingActivityIdsRef.current = pendingActivityIds;
       return;
     }

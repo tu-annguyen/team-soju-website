@@ -530,6 +530,31 @@ describe('FeebasTileChecker', () => {
       });
 
       expect(screen.getByText('Pending nomination')).toBeInTheDocument();
+
+      act(() => {
+        MockEventSource.instances[0].emit({
+          success: true,
+          data: {
+            ...boardFixture,
+            cycleStart: '2026-04-09T21:00:00.000Z',
+            cycleEnd: '2099-04-09T21:45:00.000Z',
+            activity: [],
+            tiles: boardFixture.tiles.map((tile) => ({
+              ...tile,
+              status: 'unchecked',
+              voteCounts: {
+                checked: 0,
+                pending: 0,
+                confirmed: 0,
+              },
+              totalVotes: 0,
+              currentUserVote: 'unchecked',
+            })),
+          },
+        });
+      });
+
+      expect(screen.queryByText('Pending nomination')).not.toBeInTheDocument();
     } finally {
       jest.useRealTimers();
     }
