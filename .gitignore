@@ -16,6 +16,7 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.dev.vars
 
 # macOS-specific files
 .DS_Store
@@ -36,3 +37,6 @@ pnpm-debug.log*
 
 #ignore Codex files
 .codex
+
+#ignore Wrangler files
+.wrangler

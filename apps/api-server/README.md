@@ -2,6 +2,8 @@
 
 A Node.js backend API with PostgreSQL database for managing Team Soju members and shiny Pokemon data, with Discord bot integration.
 
+This app now also includes a Cloudflare Worker runtime under [src/cloudflare/worker.js](/root/repos/team-soju-website/apps/api-server/src/cloudflare/worker.js) so the CRUD API can move to Workers first while screenshot/OCR, non-`/me` auth flows, and Feebas SSE remain on the legacy Node server during migration.
+
 ---
 
 ## Features
@@ -220,6 +222,40 @@ curl -X POST http://localhost:3001/api/shinies \
 
 - Route tests use `supertest` against the Express app and mock the database layer.
 - Model and config script tests mock the PostgreSQL pool and filesystem/`path` as needed.
+
+### Cloudflare Worker Runtime
+
+- Worker entrypoint: `src/cloudflare/worker.js`
+- Worker config: `wrangler.jsonc`
+- Start local Worker dev server:
+
+  ```bash
+  npm run dev:worker
+  ```
+
+- Default Worker database backend is Postgres via Hyperdrive or `DATABASE_URL`.
+- Set `DB_BACKEND=d1` and bind `DB` to switch the Worker to D1. The D1 schema covers team members, shinies, app users for `GET /api/auth/me`, and Feebas board REST tables.
+- Set `LEGACY_API_BASE_URL` during migration to proxy:
+  - `POST /api/shinies/from-screenshot`
+  - `POST /api/shinies/from-screenshot/async`
+  - `GET /api/shinies/sprites/:nationalNumber/greyscale(.gif)`
+  - auth endpoints other than `GET /api/auth/me`
+  - `GET /api/feebas/:location/stream`
+
+### D1 Compatibility
+
+- D1 schema lives in `src/models/schema.d1.sql`.
+- Postgres export helpers live in `src/scripts/postgresToD1.js` and `src/scripts/export-postgres-to-d1.js`; they support members, shinies, app users, and Feebas board history.
+- The Worker repository layer supports both Postgres and D1 so the HTTP contract stays unchanged while the storage backend changes.
+- To replace staging D1 with current Postgres data:
+
+  ```bash
+  cd apps/api-server
+  npm run export:d1 -- --wipe --out /tmp/team-soju-staging-import.sql
+  npx wrangler d1 execute team-soju-staging --remote --file=/tmp/team-soju-staging-import.sql
+  ```
+
+  `--wipe` only writes DELETE statements into the generated SQL file; staging is changed when the file is executed with Wrangler.
 
 ### Project Structure
 

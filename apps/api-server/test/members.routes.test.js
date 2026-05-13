@@ -1,13 +1,12 @@
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 
-process.env.JWT_SECRET = 'test-secret';
-
 const app = require('../src/server');
 const TeamMember = require('../src/models/TeamMember');
 
 jest.mock('../src/models/TeamMember');
 
+process.env.JWT_SECRET = 'test-secret';
 const BOT_TOKEN = jwt.sign({ type: 'discord_bot' }, process.env.JWT_SECRET);
 const withBotAuth = (testRequest) => testRequest.set('Authorization', `Bearer ${BOT_TOKEN}`);
 
@@ -68,7 +67,8 @@ describe('Members routes', () => {
     it('validates body and returns 400 on invalid payload', async () => {
       const res = await withBotAuth(request(app)
         .post('/api/members')
-        .send({})); // missing ign
+        .set('Authorization', `Bearer ${BOT_TOKEN}`)
+        .send({}); // missing ign
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
