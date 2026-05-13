@@ -397,10 +397,17 @@ async function dispatchInteraction(interaction) {
   }
 
   const handler = getCommandHandler(interaction.commandName);
+  console.log('[discord] Command runtime config:', {
+    commandName: interaction.commandName,
+    apiBaseUrl: process.env.API_BASE_URL || null,
+    publicApiBaseUrl: process.env.PUBLIC_API_BASE_URL || null,
+    hasBotApiToken: Boolean(process.env.BOT_API_TOKEN),
+  });
   await handler(interaction);
 }
 
 async function handleInteractionRequest(request, env = process.env, executionContext) {
+  Object.assign(process.env, env);
   const requestUrl = new URL(request.url);
 
   if (requestUrl.pathname === '/internal/screenshot-result') {

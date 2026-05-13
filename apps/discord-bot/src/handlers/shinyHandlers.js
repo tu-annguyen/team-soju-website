@@ -26,10 +26,17 @@ const {
   getPokemonVariants,
 } = require('@team-soju/utils');
 
-const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
-const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL || apiBaseUrl;
-const botToken = process.env.BOT_API_TOKEN;
-const screenshotResultCallbackUrl = process.env.SCREENSHOT_RESULT_CALLBACK_URL;
+function getApiBaseUrl() {
+  return (process.env.API_BASE_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
+}
+
+function getPublicApiBaseUrl() {
+  return (process.env.PUBLIC_API_BASE_URL || getApiBaseUrl()).replace(/\/+$/, '');
+}
+
+function getScreenshotResultCallbackUrl() {
+  return process.env.SCREENSHOT_RESULT_CALLBACK_URL;
+}
 
 const SHINY_MANAGER_ROLES = ['Soju', 'Elite 4', 'Champion'];
 const SHINY_STAFF_ROLES = ['Elite 4', 'Champion'];
@@ -50,7 +57,7 @@ const MAX_AUTOCOMPLETE_CHOICES = 25;
 const KNOWN_POKEMON_NAMES = getKnownPokemonNames();
 
 function getAuthHeaders() {
-  return { headers: { Authorization: `Bearer ${botToken}` } };
+  return { headers: { Authorization: `Bearer ${process.env.BOT_API_TOKEN}` } };
 }
 
 function formatPokemonAutocompleteLabel(name) {
@@ -110,8 +117,8 @@ function isFailedShiny(shiny) {
 }
 
 function getGreyscaleSpriteUrl(nationalNumber, variant = null) {
-  if (!nationalNumber || !publicApiBaseUrl.startsWith('http')) return null;
-  if (!process.env.PUBLIC_API_BASE_URL && /:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(publicApiBaseUrl)) {
+  if (!nationalNumber || !getPublicApiBaseUrl().startsWith('http')) return null;
+  if (!process.env.PUBLIC_API_BASE_URL && /:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(getPublicApiBaseUrl())) {
     return null;
   }
   const params = new URLSearchParams();
@@ -119,7 +126,7 @@ function getGreyscaleSpriteUrl(nationalNumber, variant = null) {
     params.set('variant', normalizeVariantSlug(variant));
   }
   const query = params.toString();
-  return `${publicApiBaseUrl}/shinies/sprites/${nationalNumber}/greyscale.gif${query ? `?${query}` : ''}`;
+  return `${getPublicApiBaseUrl()}/shinies/sprites/${nationalNumber}/greyscale.gif${query ? `?${query}` : ''}`;
 }
 
 function normalizeEncounterType(value) {
@@ -387,17 +394,17 @@ function getListTitle(state, memberIgn) {
 }
 
 async function fetchShinyById(shinyId) {
-  const response = await fetchClient.get(`${apiBaseUrl}/shinies/${shinyId}`, getAuthHeaders());
+  const response = await fetchClient.get(`${getApiBaseUrl()}/shinies/${shinyId}`, getAuthHeaders());
   return response.data.data;
 }
 
 async function fetchMemberByIgn(trainerIgn) {
-  const response = await fetchClient.get(`${apiBaseUrl}/members/ign/${trainerIgn}`, getAuthHeaders());
+  const response = await fetchClient.get(`${getApiBaseUrl()}/members/ign/${trainerIgn}`, getAuthHeaders());
   return response.data.data;
 }
 
 async function fetchMemberByDiscordId(discordId) {
-  const response = await fetchClient.get(`${apiBaseUrl}/members/discord/${discordId}`, getAuthHeaders());
+  const response = await fetchClient.get(`${getApiBaseUrl()}/members/discord/${discordId}`, getAuthHeaders());
   return response.data.data;
 }
 
@@ -409,7 +416,7 @@ async function fetchShinies({ trainerId, limit = 10000 }) {
     params.append('trainer_id', trainerId.toString());
   }
 
-  const response = await fetchClient.get(`${apiBaseUrl}/shinies?${params.toString()}`, getAuthHeaders());
+  const response = await fetchClient.get(`${getApiBaseUrl()}/shinies?${params.toString()}`, getAuthHeaders());
   const shinies = response.data.data || [];
 
   shinies.sort((a, b) => new Date(b.catch_date || 0) - new Date(a.catch_date || 0));
@@ -892,7 +899,7 @@ async function buildFieldPickerPayload(field, shinyId, content = null) {
 }
 
 async function updateShinyRecord(shinyId, updates) {
-  const response = await fetchClient.put(`${apiBaseUrl}/shinies/${shinyId}`, updates, getAuthHeaders());
+  const response = await fetchClient.put(`${getApiBaseUrl()}/shinies/${shinyId}`, updates, getAuthHeaders());
   return response.data.data;
 }
 
@@ -925,7 +932,7 @@ async function enhanceAsyncScreenshotPayload(payload) {
 }
 
 async function deleteShinyRecord(shinyId) {
-  const response = await fetchClient.delete(`${apiBaseUrl}/shinies/${shinyId}`, getAuthHeaders());
+  const response = await fetchClient.delete(`${getApiBaseUrl()}/shinies/${shinyId}`, getAuthHeaders());
   return response.data.data;
 }
 
@@ -938,7 +945,7 @@ function buildDeleteSuccessEmbed(shiny) {
 }
 
 async function failShinyRecord(shinyId, status) {
-  const response = await fetchClient.put(`${apiBaseUrl}/shinies/${shinyId}`, { status }, getAuthHeaders());
+  const response = await fetchClient.put(`${getApiBaseUrl()}/shinies/${shinyId}`, { status }, getAuthHeaders());
   return response.data.data;
 }
 
@@ -1023,7 +1030,7 @@ async function resolveListContext(interaction, state) {
     trainerId = member.id;
     memberIgn = member.ign;
   } else if (state.scope === 'trainer' && trainerId) {
-    const trainer = await fetchClient.get(`${apiBaseUrl}/members/${trainerId}`, getAuthHeaders());
+    const trainer = await fetchClient.get(`${getApiBaseUrl()}/members/${trainerId}`, getAuthHeaders());
     memberIgn = trainer.data.data.ign;
   }
 
@@ -1171,7 +1178,7 @@ async function handleAddShiny(interaction) {
 
     if (nature) info.nature = nature;
 
-    const shinyResponse = await fetchClient.post(`${apiBaseUrl}/shinies`, info, getAuthHeaders());
+    const shinyResponse = await fetchClient.post(`${getApiBaseUrl()}/shinies`, info, getAuthHeaders());
     const shiny = shinyResponse.data.data;
     const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
     const spriteUrl = await getSpriteUrl(shiny.national_number).catch(() => null);
@@ -1215,13 +1222,13 @@ async function handleAddShiny(interaction) {
 
 async function handleAddShinyScreenshot(interaction) {
   try {
-    if (!screenshotResultCallbackUrl) {
+    if (!getScreenshotResultCallbackUrl()) {
       throw new Error('SCREENSHOT_RESULT_CALLBACK_URL is not configured.');
     }
 
     const screenshot = interaction.options.getAttachment('screenshot');
     const screenshotUrl = screenshot.proxyURL || screenshot.url;
-    const response = await fetchClient.post(`${apiBaseUrl}/shinies/from-screenshot/async`, {
+    const response = await fetchClient.post(`${getApiBaseUrl()}/shinies/from-screenshot/async`, {
       screenshot_url: screenshotUrl,
       encounter_type: normalizeEncounterType(interaction.options.getString('encounter_type')),
       is_secret: interaction.options.getBoolean('secret') || false,
@@ -1231,7 +1238,7 @@ async function handleAddShinyScreenshot(interaction) {
       member_roles: getMemberRoles(interaction).map(role => role.name),
       discord_application_id: interaction.applicationId,
       discord_interaction_token: interaction.token,
-      callback_url: screenshotResultCallbackUrl,
+      callback_url: getScreenshotResultCallbackUrl(),
     }, getAuthHeaders());
     const jobId = response.data?.data?.job_id;
 

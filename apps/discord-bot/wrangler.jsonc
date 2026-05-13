@@ -4,7 +4,12 @@
   "main": "src/worker.mjs",
   "keep_vars": true,
   "compatibility_date": "2026-03-17",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": {
+    "API_BASE_URL": "https://team-soju-api.tunacore.workers.dev/api",
+    "PUBLIC_API_BASE_URL": "https://team-soju-api.tunacore.workers.dev/api",
+    "SCREENSHOT_RESULT_CALLBACK_URL": "https://team-soju-discord-bot.tunacore.workers.dev/internal/screenshot-result"
+  },
   "observability": {
     "enabled": false,
     "head_sampling_rate": 1,
@@ -23,6 +28,11 @@
   "env": {
     "staging": {
       "name": "team-soju-discord-bot-staging",
+      "vars": {
+        "API_BASE_URL": "https://team-soju-api-staging.tunacore.workers.dev/api",
+        "PUBLIC_API_BASE_URL": "https://team-soju-api-staging.tunacore.workers.dev/api",
+        "SCREENSHOT_RESULT_CALLBACK_URL": "https://team-soju-discord-bot-staging.tunacore.workers.dev/internal/screenshot-result"
+      },
     }
   }
 }

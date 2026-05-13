@@ -5,8 +5,13 @@
 const { EmbedBuilder } = require('../discord/api');
 const fetchClient = require('../fetchClient');
 
-const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
-const botToken = process.env.BOT_API_TOKEN;
+function getApiBaseUrl() {
+  return (process.env.API_BASE_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
+}
+
+function getAuthHeaders() {
+  return { headers: { Authorization: `Bearer ${process.env.BOT_API_TOKEN}` } };
+}
 
 function formatEncounterType(value) {
   return ({
@@ -26,9 +31,7 @@ async function handleLeaderboard(interaction) {
   const limit = interaction.options.getInteger('limit') || 10;
 
   try {
-    const response = await fetchClient.get(`${apiBaseUrl}/shinies/leaderboard?limit=${limit}`, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    const response = await fetchClient.get(`${getApiBaseUrl()}/shinies/leaderboard?limit=${limit}`, getAuthHeaders());
     const leaderboard = response.data.data;
 
     if (leaderboard.length === 0) {
@@ -58,12 +61,8 @@ async function handleStats(interaction) {
 
   try {
     const [statsResponse, membersResponse] = await Promise.all([
-      fetchClient.get(`${apiBaseUrl}/shinies/stats`, {
-        headers: { Authorization: `Bearer ${botToken}` }
-      }),
-      fetchClient.get(`${apiBaseUrl}/members`, {
-        headers: { Authorization: `Bearer ${botToken}` }
-      })
+      fetchClient.get(`${getApiBaseUrl()}/shinies/stats`, getAuthHeaders()),
+      fetchClient.get(`${getApiBaseUrl()}/members`, getAuthHeaders())
     ]);
 
     const stats = statsResponse.data.data;

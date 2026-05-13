@@ -5,8 +5,13 @@
 const { EmbedBuilder } = require('../discord/api');
 const fetchClient = require('../fetchClient');
 
-const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001/api';
-const botToken = process.env.BOT_API_TOKEN;
+function getApiBaseUrl() {
+  return (process.env.API_BASE_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
+}
+
+function getAuthHeaders() {
+  return { headers: { Authorization: `Bearer ${process.env.BOT_API_TOKEN}` } };
+}
 
 async function handleAddMember(interaction) {
   await interaction.deferReply();
@@ -16,13 +21,11 @@ async function handleAddMember(interaction) {
   const rank = interaction.options.getString('rank') || 'Trainer';
 
   try {
-    const response = await fetchClient.post(`${apiBaseUrl}/members`, {
+    const response = await fetchClient.post(`${getApiBaseUrl()}/members`, {
       ign,
       discord_id: discordUser?.id,
       rank
-    }, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    }, getAuthHeaders());
 
     const member = response.data.data;
 
@@ -53,9 +56,7 @@ async function handleEditMember(interaction) {
   const rank = interaction.options.getString('rank');
 
   try {
-    const memberResponse = await fetchClient.get(`${apiBaseUrl}/members/ign/${ign}`, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    const memberResponse = await fetchClient.get(`${getApiBaseUrl()}/members/ign/${ign}`, getAuthHeaders());
     const member = memberResponse.data.data;
 
     const updates = {};
@@ -68,9 +69,7 @@ async function handleEditMember(interaction) {
       return;
     }
 
-    const updateResponse = await fetchClient.put(`${apiBaseUrl}/members/${member.id}`, updates, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    const updateResponse = await fetchClient.put(`${getApiBaseUrl()}/members/${member.id}`, updates, getAuthHeaders());
     const updatedMember = updateResponse.data.data;
 
     const embed = new EmbedBuilder()
@@ -95,14 +94,10 @@ async function handleDeleteMember(interaction) {
   const ign = interaction.options.getString('ign');
 
   try {
-    const memberResponse = await fetchClient.get(`${apiBaseUrl}/members/ign/${ign}`, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    const memberResponse = await fetchClient.get(`${getApiBaseUrl()}/members/ign/${ign}`, getAuthHeaders());
     const member = memberResponse.data.data;
 
-    await fetchClient.delete(`${apiBaseUrl}/members/${member.id}`, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    await fetchClient.delete(`${getApiBaseUrl()}/members/${member.id}`, getAuthHeaders());
 
     const embed = new EmbedBuilder()
       .setColor(0xFF5722)
@@ -122,14 +117,10 @@ async function handleReactivateMember(interaction) {
   const ign = interaction.options.getString('ign');
 
   try {
-    const memberResponse = await fetchClient.get(`${apiBaseUrl}/members/ign/inactive/${ign}`, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    const memberResponse = await fetchClient.get(`${getApiBaseUrl()}/members/ign/inactive/${ign}`, getAuthHeaders());
     const member = memberResponse.data.data;
 
-    await fetchClient.put(`${apiBaseUrl}/members/reactivate/${member.id}`, {}, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    await fetchClient.put(`${getApiBaseUrl()}/members/reactivate/${member.id}`, {}, getAuthHeaders());
 
     const embed = new EmbedBuilder()
       .setColor(0x4CAF50)
@@ -155,9 +146,7 @@ async function handleGetMember(interaction) {
   const ign = interaction.options.getString('ign');
 
   try {
-    const response = await fetchClient.get(`${apiBaseUrl}/members/ign/${ign}`, {
-      headers: { Authorization: `Bearer ${botToken}` }
-    });
+    const response = await fetchClient.get(`${getApiBaseUrl()}/members/ign/${ign}`, getAuthHeaders());
     const member = response.data.data;
 
     const embed = new EmbedBuilder()
