@@ -119,6 +119,12 @@ const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001
     <SpeedInsights />
     <Header client:load locale={locale} apiBaseUrl={apiBaseUrl} />
     <main class="pt-16">
+      <div class="border-y border-amber-300 bg-amber-100 text-amber-950 dark:border-amber-500/40 dark:bg-amber-950 dark:text-amber-50" role="status">
+        <div class="container flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-center sm:gap-2 sm:text-center">
+          <span class="font-bold">Maintenance in progress:</span>
+          <span>We are migrating the API to Cloudflare. Account, shiny, leaderboard, and Feebas features may be briefly unavailable.</span>
+        </div>
+      </div>
       <slot />
     </main>
     <Footer client:load locale={locale} />
