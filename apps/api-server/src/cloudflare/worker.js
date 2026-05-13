@@ -390,7 +390,7 @@ async function sha256Hex(value) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function derivePasswordHash(password, saltHex = randomHex(16), iterations = 210000) {
+async function derivePasswordHash(password, saltHex = randomHex(16), iterations = 100000) {
   const salt = Uint8Array.from(saltHex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
   const key = await getCrypto().subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await getCrypto().subtle.deriveBits({

@@ -26,7 +26,7 @@ describe('Cloudflare Worker API', () => {
     };
   }
 
-  function createPbkdf2PasswordHash(password, saltHex = '00112233445566778899aabbccddeeff', iterations = 210000) {
+  function createPbkdf2PasswordHash(password, saltHex = '00112233445566778899aabbccddeeff', iterations = 100000) {
     const hashHex = crypto
       .pbkdf2Sync(password, Buffer.from(saltHex, 'hex'), iterations, 32, 'sha256')
       .toString('hex');
