@@ -13,10 +13,12 @@
   "scripts": {
     "dev:web": "npm run dev --workspace=@team-soju/web-app",
     "dev:api": "npm run dev --workspace=@team-soju/api-server",
+    "dev:api:worker": "npm run dev:worker --workspace=@team-soju/api-server",
     "dev:bot:server": "npm run dev --workspace=@team-soju/discord-bot",
     "dev:bot:tunnel": "ngrok http 8787",
     "dev:bot": "concurrently \"npm run dev:bot:server\" \"npm run dev:bot:tunnel\"",
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:bot\"",
+    "dev:worker": "concurrently \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:api:worker\"",
     "bot": "npm run dev:bot",
     "build": "npm run build --workspace=@team-soju/web-app",
     "start": "npm run start:api",

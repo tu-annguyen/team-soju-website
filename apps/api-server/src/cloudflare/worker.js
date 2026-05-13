@@ -289,6 +289,28 @@ function duplicateAuthMessage(error) {
   return 'An account with that email or IGN already exists.';
 }
 
+function isLocalhost(value) {
+  try {
+    const url = new URL(value);
+    return url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
+function shouldNormalizeLegacyCookie(request, env) {
+  return env.NODE_ENV !== 'production' || isLocalhost(request.url) || isLocalhost(env.API_ORIGIN || env.API_BASE_URL || '');
+}
+
+function normalizeLegacySetCookie(cookieHeader) {
+  return cookieHeader
+    .split(';')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment && segment.toLowerCase() !== 'secure' && !segment.toLowerCase().startsWith('samesite='))
+    .concat('SameSite=Lax')
+    .join('; ');
+}
+
 function createWorkerApp(options = {}) {
   const createRepos = options.createRepositories || createRepositories;
   const fetchImpl = options.fetch || fetch;
@@ -309,6 +331,27 @@ function createWorkerApp(options = {}) {
       headers: request.headers,
       body: ['GET', 'HEAD'].includes(request.method) ? undefined : await request.clone().arrayBuffer(),
     });
+
+    if (url.pathname.startsWith('/api/auth/') && shouldNormalizeLegacyCookie(request, env)) {
+      const headers = new Headers(response.headers);
+      const setCookies = typeof headers.getSetCookie === 'function'
+        ? headers.getSetCookie()
+        : [headers.get('set-cookie')].filter(Boolean);
+
+      if (setCookies.length > 0) {
+        headers.delete('set-cookie');
+        setCookies.forEach((cookie) => {
+          headers.append('set-cookie', normalizeLegacySetCookie(cookie));
+        });
+
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
+      }
+    }
+
     return response;
   }
 
@@ -469,6 +512,10 @@ function createWorkerApp(options = {}) {
         const user = await getRepositories().users.findById(decoded.sub);
 
         if (!user) {
+          if (env.LEGACY_API_BASE_URL && shouldNormalizeLegacyCookie(request, env)) {
+            return maybeProxyLegacyRequest(request, env, ctx);
+          }
+
           return json({
             success: true,
             data: null,

@@ -207,6 +207,51 @@ describe('Cloudflare Worker API', () => {
     });
   });
 
+  it('falls back to legacy auth/me locally when D1 does not have the signed-in user yet', async () => {
+    const legacyBody = {
+      success: true,
+      data: {
+        id: 'user-1',
+        email: 'trainer@example.com',
+        ign: 'Trainer',
+        auth_provider: 'password',
+      },
+    };
+    const fetchMock = jest.fn().mockResolvedValue(new Response(JSON.stringify(legacyBody), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const app = createWorkerApp({ repositories, fetch: fetchMock });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'user-1',
+      email: 'trainer@example.com',
+      ign: 'Trainer',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/auth/me', {
+      headers: {
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+    }), createEnv({
+      LEGACY_API_BASE_URL: 'http://localhost:3001',
+      NODE_ENV: 'development',
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0].toString()).toBe('http://localhost:3001/api/auth/me');
+    expect(body).toEqual(legacyBody);
+  });
+
   it('serves auth update routes from the Worker instead of the legacy proxy', async () => {
     const repositories = {
       members: {},
