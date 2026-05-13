@@ -3,6 +3,7 @@ jest.mock('@team-soju/utils', () => ({
 }));
 
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { getPokemonVariants } = require('@team-soju/utils');
 const { AUTH_COOKIE_NAME, generateBotToken } = require('../src/cloudflare/auth');
 const { createWorkerApp } = require('../src/cloudflare/worker');
@@ -23,6 +24,13 @@ describe('Cloudflare Worker API', () => {
       DB_BACKEND: 'postgres',
       ...overrides,
     };
+  }
+
+  function createPbkdf2PasswordHash(password, saltHex = '00112233445566778899aabbccddeeff', iterations = 210000) {
+    const hashHex = crypto
+      .pbkdf2Sync(password, Buffer.from(saltHex, 'hex'), iterations, 32, 'sha256')
+      .toString('hex');
+    return `pbkdf2_sha256$${iterations}$${saltHex}$${hashHex}`;
   }
 
   it('returns the health payload', async () => {
@@ -288,6 +296,98 @@ describe('Cloudflare Worker API', () => {
       expiresAt: expect.any(Date),
     });
     expect(body.message).toBe('If an account uses that email, a reset link has been sent.');
+  });
+
+  it('serves auth/login from D1 and returns a reset message for bcrypt-era passwords', async () => {
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findByEmail: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+          password_hash: '$2b$12$legacybcrypt',
+          email_verified_at: '2026-05-13T00:00:00.000Z',
+          auth_provider: 'password',
+        }),
+      },
+    };
+    const fetchMock = jest.fn();
+    const app = createWorkerApp({ repositories, fetch: fetchMock });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'trainer@example.com', password: 'hunter42!' }),
+    }), createEnv({ LEGACY_API_BASE_URL: 'https://legacy.example.com' }));
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(body.message).toContain('Please reset your password');
+  });
+
+  it('signs in D1 password users with Worker-compatible password hashes', async () => {
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findByEmail: jest.fn(),
+        recordLogin: jest.fn(),
+        toSafeUser: jest.fn((user) => ({
+          id: user.id,
+          email: user.email,
+          ign: user.ign,
+          auth_provider: user.auth_provider,
+        })),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const user = {
+      id: 'user-1',
+      email: 'trainer@example.com',
+      ign: 'Trainer',
+      password_hash: createPbkdf2PasswordHash('hunter42!'),
+      email_verified_at: '2026-05-13T00:00:00.000Z',
+      auth_provider: 'password',
+    };
+    repositories.users.findByEmail.mockResolvedValue(user);
+    repositories.users.recordLogin.mockResolvedValue(user);
+
+    const response = await app.fetch(new Request('https://api.example.com/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'trainer@example.com', password: 'hunter42!' }),
+    }), createEnv());
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('set-cookie')).toContain(`${AUTH_COOKIE_NAME}=`);
+  });
+
+  it('starts Discord OAuth from the Worker instead of the legacy proxy', async () => {
+    const fetchMock = jest.fn();
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        users: {},
+      },
+      fetch: fetchMock,
+    });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/auth/discord?mode=register&ign=Trainer'), createEnv({
+      LEGACY_API_BASE_URL: 'https://legacy.example.com',
+      DISCORD_CLIENT_ID: 'discord-client',
+      DISCORD_CLIENT_SECRET: 'discord-secret',
+      DISCORD_REDIRECT_URI: 'https://api.example.com/api/auth/discord/callback',
+    }));
+
+    expect(response.status).toBe(302);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(response.headers.get('location')).toContain('https://discord.com/oauth2/authorize');
+    expect(response.headers.get('location')).toContain('client_id=discord-client');
   });
 
   it('passes the signed-in user to Feebas leaderboard routes', async () => {
