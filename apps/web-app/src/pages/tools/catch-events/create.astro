@@ -1,0 +1,13 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import CatchEventManager from '../../../components/CatchEventManager';
+
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+---
+
+<Layout
+  title="Create Catch Event - Team Soju"
+  description="Create a PokeMMO catch event with targets, bonuses, penalties, and winner rules."
+>
+  <CatchEventManager client:load apiBaseUrl={apiBaseUrl} initialView="create" />
+</Layout>

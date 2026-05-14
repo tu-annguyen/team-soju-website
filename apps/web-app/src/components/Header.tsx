@@ -12,6 +12,10 @@ import {
 
 const toolsLinks = [
   {
+    href: '/tools/catch-events/create',
+    label: 'Catch Event Manager',
+  },
+  {
     href: '/feebas-tile-checker',
     label: 'Feebas Tile Tracker',
   },
