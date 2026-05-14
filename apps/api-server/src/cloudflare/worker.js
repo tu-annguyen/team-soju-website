@@ -30,6 +30,9 @@ const emailVerificationExpiresInMinutes = 24 * 60;
 const emailVerificationSentMessage = 'Account created. Check your email to verify it before signing in.';
 const discordScopes = ['identify', 'email'];
 const passwordMigrationMessage = 'We upgraded account security during the Cloudflare migration. Please reset your password to continue.';
+const discordHandoffTokenType = 'discord_oauth_handoff';
+const discordHandoffExpiresIn = '2m';
+const discordHandoffHashParam = 'discordAuthToken';
 
 const updateFeebasTileSchema = Joi.object({
   status: Joi.string().valid('unchecked', 'checked', 'pending', 'confirmed').required(),
@@ -76,6 +79,9 @@ const discordStartSchema = Joi.object({
   mode: Joi.string().valid('login', 'register', 'connect').default('login'),
   ign: Joi.string().trim().max(50).allow('', null),
   returnTo: Joi.string().trim().max(200).allow('', null),
+});
+const discordSessionSchema = Joi.object({
+  token: Joi.string().trim().min(32).max(2048).required(),
 });
 
 function getEnvUrl(env, ...keys) {
@@ -131,6 +137,14 @@ function buildWebRedirect(env, pathname = '/auth', params = {}) {
   Object.entries(params).forEach(([key, value]) => {
     if (value) url.searchParams.set(key, value);
   });
+  return url.toString();
+}
+
+function buildDiscordHandoffRedirect(env, returnTo, token) {
+  const url = new URL(buildWebRedirect(env, returnTo, { status: 'signed-in' }));
+  const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+  hashParams.set(discordHandoffHashParam, token);
+  url.hash = hashParams.toString();
   return url.toString();
 }
 
@@ -194,6 +208,27 @@ async function verifyState(state, env) {
     userId: decoded.userId || null,
     returnTo: sanitizeReturnTo(decoded.returnTo),
   };
+}
+
+async function buildDiscordHandoffToken(user, env) {
+  return signJwt(
+    {
+      type: discordHandoffTokenType,
+      sub: user.id,
+    },
+    env.JWT_SECRET,
+    { expiresIn: discordHandoffExpiresIn }
+  );
+}
+
+async function verifyDiscordHandoffToken(token, env) {
+  const decoded = await verifyJwt(token, env.JWT_SECRET);
+
+  if (decoded?.type !== discordHandoffTokenType || !decoded?.sub) {
+    throw new Error('Invalid Discord OAuth handoff token.');
+  }
+
+  return decoded;
 }
 
 function escapeHtml(value) {
@@ -856,6 +891,7 @@ function createWorkerApp(options = {}) {
       '/api/auth/register',
       '/api/auth/login',
       '/api/auth/discord',
+      '/api/auth/discord/session',
       '/api/auth/discord/callback',
     ]);
 
@@ -1205,8 +1241,11 @@ function createWorkerApp(options = {}) {
 
         const loggedInUser = await getRepositories().users.recordLogin(user.id);
         const safeUser = getRepositories().users.toSafeUser(loggedInUser || user);
-        return redirect(buildWebRedirect(env, state.returnTo, { status: 'signed-in' }), {
-          headers: { 'set-cookie': setAuthCookie(await signUserToken(safeUser, env), env) },
+        const sessionToken = await signUserToken(safeUser, env);
+        const handoffToken = await buildDiscordHandoffToken(safeUser, env);
+
+        return redirect(buildDiscordHandoffRedirect(env, state.returnTo, handoffToken), {
+          headers: { 'set-cookie': setAuthCookie(sessionToken, env) },
         });
       } catch (error) {
         const duplicateMessage = duplicateAuthMessage(error);
@@ -1216,6 +1255,40 @@ function createWorkerApp(options = {}) {
 
         console.error('Error completing Discord OAuth:', error);
         return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Unable to complete Discord sign-in.' }), 302);
+      }
+    }
+
+    if (request.method === 'POST' && pathname === '/api/auth/discord/session') {
+      try {
+        const body = await readJson(request);
+        const { error, value } = discordSessionSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const session = await verifyDiscordHandoffToken(value.token, env);
+        const user = await getRepositories().users.findById(session.sub);
+        if (!user) {
+          return json({
+            success: false,
+            message: 'Discord sign-in session expired. Please try again.',
+          }, { status: 401 });
+        }
+
+        const safeUser = getRepositories().users.toSafeUser(user);
+        const token = await signUserToken(safeUser, env);
+        return json({
+          success: true,
+          data: safeUser,
+          message: 'Signed in successfully.',
+        }, {
+          headers: { 'set-cookie': setAuthCookie(token, env) },
+        });
+      } catch {
+        return json({
+          success: false,
+          message: 'Discord sign-in session expired. Please try again.',
+        }, { status: 401 });
       }
     }
 

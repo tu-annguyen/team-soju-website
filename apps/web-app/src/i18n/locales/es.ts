@@ -72,6 +72,7 @@ const es = {
     errors: {
       generic: 'Algo salio mal. Intentalo de nuevo.',
       discordIgnRequired: 'Ingresa tu IGN antes de continuar con Discord.',
+      discordSessionExpired: 'No pudimos completar el inicio con Discord. Intentalo de nuevo.',
       resetTokenMissing: 'Falta el enlace de restablecimiento. Solicita uno nuevo.',
       passwordMismatch: 'Las contrasenas no coinciden.',
     },

@@ -28,7 +28,24 @@ function formatCopy(template: string, values: Record<string, string>) {
 }
 
 const PASSWORD_PATTERN = '(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,128}';
+const DISCORD_HANDOFF_HASH_PARAM = 'discordAuthToken';
 const skeletonBlockClass = 'rounded-md bg-gray-200 dark:bg-gray-800';
+
+function getDiscordHandoffToken() {
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  return hashParams.get(DISCORD_HANDOFF_HASH_PARAM);
+}
+
+function removeDiscordHandoffFromUrl() {
+  const nextUrl = new URL(window.location.href);
+  const hashParams = new URLSearchParams(nextUrl.hash.replace(/^#/, ''));
+
+  nextUrl.searchParams.delete('status');
+  hashParams.delete(DISCORD_HANDOFF_HASH_PARAM);
+  nextUrl.hash = hashParams.toString();
+
+  window.history.replaceState({}, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+}
 
 const AuthLoadingSkeleton = ({ label }: { label: string }) => (
   <div
@@ -103,31 +120,85 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
       setError(queryError);
     }
 
-    if (queryStatus === 'signed-in') {
-      setNotice(messages.successLogin);
-    } else if (queryStatus === 'email-verified') {
+    if (queryStatus === 'email-verified') {
       setMode('login');
       setNotice(messages.successEmailVerified);
     }
-  }, [messages.successEmailVerified, messages.successLogin]);
+  }, [messages.successEmailVerified]);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadSession() {
+      const params = new URLSearchParams(window.location.search);
+      const queryStatus = params.get('status');
+      const discordHandoffToken = getDiscordHandoffToken();
+      let discordHandoffError = '';
+
       try {
+        if (discordHandoffToken) {
+          try {
+            const response = await fetch(`${normalizedApiBaseUrl}/auth/discord/session`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ token: discordHandoffToken }),
+            });
+            const body = await response.json() as AuthResponse;
+
+            if (!response.ok || !body.success || !body.data) {
+              throw new Error(body.message || messages.errors.discordSessionExpired);
+            }
+
+            if (isMounted) {
+              setUser(body.data);
+              setNewEmail(body.data.email);
+              setNotice(body.message || messages.successLogin);
+              window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: body.data }));
+            }
+
+            removeDiscordHandoffFromUrl();
+            return;
+          } catch (handoffError) {
+            discordHandoffError = handoffError instanceof Error
+              ? handoffError.message
+              : messages.errors.discordSessionExpired;
+            removeDiscordHandoffFromUrl();
+          }
+        }
+
         const response = await fetch(`${normalizedApiBaseUrl}/auth/me`, {
           credentials: 'include',
         });
         const body = await response.json() as AuthResponse;
 
-        if (isMounted && response.ok && body.success) {
-          setUser(body.data || null);
-          setNewEmail(body.data?.email || '');
+        if (isMounted) {
+          if (!response.ok || !body.success) {
+            if (discordHandoffError) {
+              setError(discordHandoffError);
+            }
+            return;
+          }
+
+          const nextUser = body.data || null;
+          setUser(nextUser);
+          setNewEmail(nextUser?.email || '');
+
+          if (nextUser && queryStatus === 'signed-in') {
+            setNotice(messages.successLogin);
+          } else if (!nextUser && discordHandoffError) {
+            setError(discordHandoffError);
+          }
         }
       } catch {
         if (isMounted) {
           setUser(null);
+
+          if (discordHandoffError) {
+            setError(discordHandoffError);
+          }
         }
       } finally {
         if (isMounted) {
@@ -141,7 +212,7 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
     return () => {
       isMounted = false;
     };
-  }, [normalizedApiBaseUrl]);
+  }, [messages.errors.discordSessionExpired, messages.successLogin, normalizedApiBaseUrl]);
 
   const submitAuth = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

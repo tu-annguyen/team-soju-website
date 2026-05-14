@@ -190,6 +190,38 @@ describe('AuthPage', () => {
     expect(await screen.findByText('Email verified. You can sign in now.')).toBeInTheDocument();
   });
 
+  it('finishes Discord sign-in by exchanging the handoff token from the returned URL hash', async () => {
+    window.history.replaceState({}, '', '/auth?status=signed-in#discordAuthToken=handoff-token');
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        message: 'Signed in successfully.',
+        data: {
+          id: 'user-id',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+          discord_id: 'discord-id',
+          auth_provider: 'discord',
+        },
+      }),
+    });
+
+    render(<AuthPage apiBaseUrl="http://localhost:3001/api" />);
+
+    expect(await screen.findByText('Welcome back, Trainer.')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3001/api/auth/discord/session',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({ token: 'handoff-token' }),
+      })
+    );
+    expect(window.location.search).toBe('');
+    expect(window.location.hash).toBe('');
+  });
+
   it('lets a signed-in user change their email and password', async () => {
     const user = userEvent.setup();
     fetchMock

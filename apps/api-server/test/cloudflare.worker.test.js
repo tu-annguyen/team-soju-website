@@ -5,7 +5,7 @@ jest.mock('@team-soju/utils', () => ({
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { getPokemonVariants } = require('@team-soju/utils');
-const { AUTH_COOKIE_NAME, generateBotToken } = require('../src/cloudflare/auth');
+const { AUTH_COOKIE_NAME, generateBotToken, signJwt } = require('../src/cloudflare/auth');
 const { createWorkerApp, FeebasBoardStreamDurableObject } = require('../src/cloudflare/worker');
 
 describe('Cloudflare Worker API', () => {
@@ -388,6 +388,51 @@ describe('Cloudflare Worker API', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(response.headers.get('location')).toContain('https://discord.com/oauth2/authorize');
     expect(response.headers.get('location')).toContain('client_id=discord-client');
+  });
+
+  it('exchanges Discord handoff tokens from the Worker and sets the browser session cookie', async () => {
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+          auth_provider: 'discord',
+        }),
+        toSafeUser: jest.fn((user) => ({
+          id: user.id,
+          email: user.email,
+          ign: user.ign,
+          auth_provider: user.auth_provider,
+        })),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const handoffToken = await signJwt({
+      type: 'discord_oauth_handoff',
+      sub: 'user-1',
+    }, 'test-secret', { expiresIn: '2m' });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/auth/discord/session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: handoffToken }),
+    }), createEnv({ NODE_ENV: 'production' }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual({
+      id: 'user-1',
+      email: 'trainer@example.com',
+      ign: 'Trainer',
+      auth_provider: 'discord',
+    });
+    expect(response.headers.get('set-cookie')).toContain(`${AUTH_COOKIE_NAME}=`);
+    expect(response.headers.get('set-cookie')).toContain('SameSite=None');
+    expect(response.headers.get('set-cookie')).toContain('Secure');
+    expect(repositories.users.findById).toHaveBeenCalledWith('user-1');
   });
 
   it('passes the signed-in user to Feebas leaderboard routes', async () => {

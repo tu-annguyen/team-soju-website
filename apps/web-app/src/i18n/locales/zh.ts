@@ -71,6 +71,7 @@ const zh = {
     errors: {
       generic: '出了点问题。请再试一次。',
       discordIgnRequired: '继续使用 Discord 前，请先输入你的 IGN。',
+      discordSessionExpired: '无法完成 Discord 登录。请重试。',
       resetTokenMissing: '缺少重置链接。请重新申请新的重置邮件。',
       passwordMismatch: '两次输入的密码不一致。',
     },

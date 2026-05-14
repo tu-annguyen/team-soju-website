@@ -72,6 +72,7 @@ const en = {
     errors: {
       generic: 'Something went wrong. Please try again.',
       discordIgnRequired: 'Enter your IGN before continuing with Discord.',
+      discordSessionExpired: 'We could not finish the Discord sign-in. Please try again.',
       resetTokenMissing: 'Password reset link is missing. Request a new reset link.',
       passwordMismatch: 'Passwords do not match.',
     },

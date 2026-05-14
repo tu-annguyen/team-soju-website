@@ -549,7 +549,15 @@ describe('Auth routes', () => {
         .get(`/api/auth/discord/callback?code=oauth-code&state=${encodeURIComponent(state)}`);
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('http://localhost:4321/auth?status=signed-in');
+      const redirectUrl = new URL(response.headers.location);
+      const handoffToken = new URLSearchParams(redirectUrl.hash.replace(/^#/, '')).get('discordAuthToken');
+      expect(`${redirectUrl.origin}${redirectUrl.pathname}`).toBe('http://localhost:4321/auth');
+      expect(redirectUrl.searchParams.get('status')).toBe('signed-in');
+      expect(handoffToken).toBeTruthy();
+      expect(jwt.verify(handoffToken, process.env.JWT_SECRET)).toEqual(expect.objectContaining({
+        type: 'discord_oauth_handoff',
+        sub: 'user-id',
+      }));
       expect(response.headers['set-cookie'][0]).toContain(`${AUTH_COOKIE_NAME}=`);
       expect(axios.post).toHaveBeenCalledWith(
         'https://discord.com/api/oauth2/token',
@@ -565,6 +573,24 @@ describe('Auth routes', () => {
         ign: 'Trainer',
         discord: discordUser,
       });
+    });
+
+    it('exchanges a Discord handoff token for a browser-session cookie', async () => {
+      const handoffToken = jwt.sign({
+        type: 'discord_oauth_handoff',
+        sub: 'user-id',
+      }, process.env.JWT_SECRET, { expiresIn: '2m' });
+      User.findById.mockResolvedValue(userRow);
+
+      const response = await request(app)
+        .post('/api/auth/discord/session')
+        .send({ token: handoffToken });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.ign).toBe('Trainer');
+      expect(response.headers['set-cookie'][0]).toContain(`${AUTH_COOKIE_NAME}=`);
+      expect(User.findById).toHaveBeenCalledWith('user-id');
     });
 
     it('connects Discord to the signed-in account when using connect mode', async () => {
@@ -597,7 +623,11 @@ describe('Auth routes', () => {
         .get(`/api/auth/discord/callback?code=oauth-code&state=${encodeURIComponent(state)}`);
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('http://localhost:4321/auth?status=signed-in');
+      const redirectUrl = new URL(response.headers.location);
+      const handoffToken = new URLSearchParams(redirectUrl.hash.replace(/^#/, '')).get('discordAuthToken');
+      expect(`${redirectUrl.origin}${redirectUrl.pathname}`).toBe('http://localhost:4321/auth');
+      expect(redirectUrl.searchParams.get('status')).toBe('signed-in');
+      expect(handoffToken).toBeTruthy();
       expect(User.attachDiscord).toHaveBeenCalledWith('user-id', discordUser);
     });
 

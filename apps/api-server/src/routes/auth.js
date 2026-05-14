@@ -31,6 +31,9 @@ const passwordResetSentMessage = 'If an account uses that email, a reset link ha
 const emailVerificationExpiresInMinutes = 24 * 60;
 const emailVerificationTokenBytes = 32;
 const emailVerificationSentMessage = 'Account created. Check your email to verify it before signing in.';
+const discordHandoffTokenType = 'discord_oauth_handoff';
+const discordHandoffExpiresIn = '2m';
+const discordHandoffHashParam = 'discordAuthToken';
 
 const ignSchema = Joi.string().trim().min(1).max(50).required();
 const passwordSchema = Joi.string()
@@ -80,6 +83,10 @@ const discordStartSchema = Joi.object({
   mode: Joi.string().valid('login', 'register', 'connect').default('login'),
   ign: Joi.string().trim().max(50).allow('', null),
   returnTo: Joi.string().trim().max(200).allow('', null),
+});
+
+const discordSessionSchema = Joi.object({
+  token: Joi.string().trim().min(32).max(2048).required(),
 });
 
 function getWebAppUrl() {
@@ -209,6 +216,35 @@ function verifyState(state) {
     userId: decoded.userId || null,
     returnTo: sanitizeReturnTo(decoded.returnTo),
   };
+}
+
+function buildDiscordHandoffToken(user) {
+  return jwt.sign(
+    {
+      type: discordHandoffTokenType,
+      sub: user.id,
+    },
+    getJwtSecret(),
+    { expiresIn: discordHandoffExpiresIn }
+  );
+}
+
+function verifyDiscordHandoffToken(token) {
+  const decoded = jwt.verify(token, getJwtSecret());
+
+  if (decoded?.type !== discordHandoffTokenType || !decoded?.sub) {
+    throw new Error('Invalid Discord OAuth handoff token.');
+  }
+
+  return decoded;
+}
+
+function buildDiscordHandoffRedirect(returnTo, token) {
+  const url = new URL(buildWebRedirect(returnTo, { status: 'signed-in' }));
+  const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+  hashParams.set(discordHandoffHashParam, token);
+  url.hash = hashParams.toString();
+  return url.toString();
 }
 
 function getDuplicateMessage(error) {
@@ -700,6 +736,43 @@ router.get('/me', async (req, res) => {
   }
 });
 
+router.post('/discord/session', async (req, res) => {
+  const { error, value } = discordSessionSchema.validate(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation error',
+      details: error.details,
+    });
+  }
+
+  try {
+    const session = verifyDiscordHandoffToken(value.token);
+    const user = await User.findById(session.sub);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Discord sign-in session expired. Please try again.',
+      });
+    }
+
+    const safeUser = User.toSafeUser(user);
+    setAuthCookie(res, signUserToken(safeUser));
+    return res.json({
+      success: true,
+      data: safeUser,
+      message: 'Signed in successfully.',
+    });
+  } catch {
+    return res.status(401).json({
+      success: false,
+      message: 'Discord sign-in session expired. Please try again.',
+    });
+  }
+});
+
 router.get('/discord', async (req, res) => {
   try {
     const { error, value } = discordStartSchema.validate(req.query);
@@ -830,9 +903,11 @@ router.get('/discord/callback', async (req, res) => {
 
     const loggedInUser = await User.recordLogin(user.id);
     const safeUser = User.toSafeUser(loggedInUser || user);
+    const sessionToken = signUserToken(safeUser);
+    const handoffToken = buildDiscordHandoffToken(safeUser);
 
-    setAuthCookie(res, signUserToken(safeUser));
-    return res.redirect(buildWebRedirect(state.returnTo, { status: 'signed-in' }));
+    setAuthCookie(res, sessionToken);
+    return res.redirect(buildDiscordHandoffRedirect(state.returnTo, handoffToken));
   } catch (error) {
     const duplicateMessage = getDuplicateMessage(error);
 
