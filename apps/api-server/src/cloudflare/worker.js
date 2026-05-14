@@ -23,6 +23,7 @@ const { buildCorsHeaders, empty, json, readJson, withStandardHeaders } = require
 const { FeebasRuleError, getLocationConfig } = require('../utils/feebas');
 const { isIgnBlacklisted } = require('../utils/ignModeration');
 
+const DEFAULT_FEEBAS_STREAM_POLL_INTERVAL_MS = 5000;
 const passwordResetExpiresInMinutes = 60;
 const passwordResetSentMessage = 'If an account uses that email, a reset link has been sent.';
 const emailVerificationExpiresInMinutes = 24 * 60;
@@ -452,9 +453,40 @@ function normalizeLegacySetCookie(cookieHeader) {
     .join('; ');
 }
 
+function getFeebasBoardStreamSignature(board) {
+  return JSON.stringify({
+    location: board.location,
+    cycleStart: board.cycleStart,
+    cycleEnd: board.cycleEnd,
+    confirmedTileId: board.confirmedTileId,
+    isLocked: board.isLocked,
+    previousConfirmedTiles: (board.previousConfirmedTiles || []).map((tile) => ({
+      tileId: tile.tileId,
+      confirmations: tile.confirmations,
+    })),
+    activity: (board.activity || []).map((entry) => ({
+      id: entry.id,
+      tileId: entry.tileId,
+      actionType: entry.actionType,
+      previousStatus: entry.previousStatus,
+      nextStatus: entry.nextStatus,
+      actorName: entry.actorName,
+      createdAt: entry.createdAt,
+    })),
+    tiles: (board.tiles || []).map((tile) => ({
+      tileId: tile.tileId,
+      status: tile.status,
+      voteCounts: tile.voteCounts,
+      totalVotes: tile.totalVotes,
+      currentUserVote: tile.currentUserVote,
+    })),
+  });
+}
+
 function createWorkerApp(options = {}) {
   const createRepos = options.createRepositories || createRepositories;
   const fetchImpl = options.fetch || fetch;
+  const feebasStreamPollIntervalMs = options.feebasStreamPollIntervalMs || DEFAULT_FEEBAS_STREAM_POLL_INTERVAL_MS;
   const feebasSubscribersByLocation = new Map();
 
   function removeFeebasSubscriber(location, subscriber) {
@@ -471,29 +503,31 @@ function createWorkerApp(options = {}) {
     return new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`);
   }
 
-  function createFeebasStreamResponse(request, location, actorFingerprint, board) {
+  function createFeebasStreamResponse(request, location, actorFingerprint, board, repositories) {
     let subscriber;
 
     const stream = new ReadableStream({
       start(controller) {
         const subscribers = feebasSubscribersByLocation.get(location) || new Set();
-        subscriber = { controller, actorFingerprint };
-        subscribers.add(subscriber);
-        feebasSubscribersByLocation.set(location, subscribers);
+        let isClosed = false;
+        let isPolling = false;
+        let heartbeat;
+        let pollForChanges;
+        let lastBoardSignature = getFeebasBoardStreamSignature(board);
 
-        controller.enqueue(encodeFeebasEvent({ success: true, data: board }));
-
-        const heartbeat = setInterval(() => {
-          try {
-            controller.enqueue(new TextEncoder().encode(': keep-alive\n\n'));
-          } catch {
-            clearInterval(heartbeat);
-            removeFeebasSubscriber(location, subscriber);
-          }
-        }, 25000);
+        const emitBoard = (nextBoard) => {
+          lastBoardSignature = getFeebasBoardStreamSignature(nextBoard);
+          controller.enqueue(encodeFeebasEvent({ success: true, data: nextBoard }));
+        };
 
         const cleanup = () => {
+          if (isClosed) {
+            return;
+          }
+
+          isClosed = true;
           clearInterval(heartbeat);
+          clearInterval(pollForChanges);
           removeFeebasSubscriber(location, subscriber);
           try {
             controller.close();
@@ -502,8 +536,57 @@ function createWorkerApp(options = {}) {
           }
         };
 
-        subscriber.cleanup = cleanup;
-        request.signal?.addEventListener('abort', cleanup, { once: true });
+        subscriber = { controller, actorFingerprint, cleanup, emitBoard };
+        subscribers.add(subscriber);
+        feebasSubscribersByLocation.set(location, subscribers);
+
+        emitBoard(board);
+
+        heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(new TextEncoder().encode(': keep-alive\n\n'));
+          } catch {
+            cleanup();
+          }
+        }, 25000);
+
+        pollForChanges = setInterval(() => {
+          if (isClosed || isPolling) {
+            return;
+          }
+
+          isPolling = true;
+          repositories.feebas.getBoard(location, {
+            actorFingerprint,
+            includeLeaderboard: false,
+          })
+            .then((nextBoard) => {
+              if (isClosed) {
+                return;
+              }
+
+              const nextBoardSignature = getFeebasBoardStreamSignature(nextBoard);
+              if (nextBoardSignature !== lastBoardSignature) {
+                emitBoard(nextBoard);
+              }
+            })
+            .catch(() => {
+              cleanup();
+            })
+            .finally(() => {
+              isPolling = false;
+            });
+        }, feebasStreamPollIntervalMs);
+
+        const handleAbort = () => {
+          cleanup();
+        };
+
+        request.signal?.addEventListener('abort', handleAbort, { once: true });
+        subscriber.cleanup = () => {
+          request.signal?.removeEventListener('abort', handleAbort);
+          cleanup();
+        };
       },
       cancel() {
         subscriber?.cleanup?.();
@@ -531,7 +614,12 @@ function createWorkerApp(options = {}) {
           actorFingerprint: subscriber.actorFingerprint,
           includeLeaderboard: false,
         });
-        subscriber.controller.enqueue(encodeFeebasEvent({ success: true, data: board }));
+
+        if (subscriber.emitBoard) {
+          subscriber.emitBoard(board);
+        } else {
+          subscriber.controller.enqueue(encodeFeebasEvent({ success: true, data: board }));
+        }
       } catch {
         subscriber.cleanup?.();
       }
@@ -1592,7 +1680,7 @@ function createWorkerApp(options = {}) {
           includeLeaderboard: false,
         });
 
-        return createFeebasStreamResponse(request, match[1], actorFingerprint, board);
+        return createFeebasStreamResponse(request, match[1], actorFingerprint, board, getRepositories());
       } catch (error) {
         if (error instanceof FeebasRuleError) {
           return json({ success: false, message: error.message }, { status: error.statusCode });

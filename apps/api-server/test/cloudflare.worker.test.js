@@ -585,4 +585,59 @@ describe('Cloudflare Worker API', () => {
     });
     expect(new TextDecoder().decode(nextChunk.value)).toContain(JSON.stringify({ success: true, data: updatedBoard }));
   });
+
+  it('polls Worker SSE subscribers for Feebas board changes missed by in-memory broadcast', async () => {
+    jest.useFakeTimers();
+
+    const initialBoard = {
+      location: 'route-119-main',
+      cycleStart: '2026-04-09T20:15:00.000Z',
+      cycleEnd: '2026-04-09T21:00:00.000Z',
+      tiles: [{ tileId: 'r1c7', status: 'unchecked', voteCounts: { checked: 0, pending: 0, confirmed: 0 }, totalVotes: 0, currentUserVote: 'unchecked' }],
+      activity: [],
+    };
+    const updatedBoard = {
+      ...initialBoard,
+      tiles: [{ tileId: 'r1c7', status: 'pending', voteCounts: { checked: 0, pending: 1, confirmed: 0 }, totalVotes: 1, currentUserVote: 'unchecked' }],
+      activity: [{
+        id: 1,
+        tileId: 'r1c7',
+        actionType: 'voted',
+        previousStatus: null,
+        nextStatus: 'pending',
+        actorName: 'Trainer',
+        createdAt: '2026-04-09T20:20:00.000Z',
+      }],
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        getBoard: jest.fn()
+          .mockResolvedValueOnce(initialBoard)
+          .mockResolvedValueOnce(updatedBoard),
+      },
+    };
+    const app = createWorkerApp({
+      repositories,
+      feebasStreamPollIntervalMs: 100,
+    });
+
+    try {
+      const streamResponse = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv());
+      const reader = streamResponse.body.getReader();
+      await reader.read();
+
+      const nextChunkPromise = reader.read();
+      await jest.advanceTimersByTimeAsync(100);
+      const nextChunk = await nextChunkPromise;
+      await reader.cancel();
+
+      expect(repositories.feebas.getBoard).toHaveBeenCalledTimes(2);
+      expect(new TextDecoder().decode(nextChunk.value)).toContain(JSON.stringify({ success: true, data: updatedBoard }));
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
