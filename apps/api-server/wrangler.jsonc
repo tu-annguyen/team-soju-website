@@ -36,6 +36,9 @@
 			"bucket_name": "team-soju-catch-event-screenshots"
 		},
 	],
+	"ai": {
+		"binding": "AI"
+	},
 	"durable_objects": {
 		"bindings": [
 			{
@@ -91,6 +94,9 @@
 					"bucket_name": "team-soju-catch-event-screenshots-staging"
 				},
 			],
+			"ai": {
+				"binding": "AI"
+			},
 			"durable_objects": {
 				"bindings": [
 					{

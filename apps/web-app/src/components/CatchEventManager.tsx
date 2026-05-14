@@ -25,6 +25,18 @@ type ViewMode = 'create' | 'submit' | 'admin' | 'leaderboard';
 type RuleRow = { id: string; name: string; points: string };
 type AuthUser = { id: string; email: string; ign: string };
 type ScreenshotProof = { name?: string; fileName?: string; dataUrl?: string; url?: string };
+type CatchEventOcrResult = {
+  playerIgn?: string | null;
+  species?: string | null;
+  pokedexNumber?: number | null;
+  nature?: string | null;
+  totalIv?: number | null;
+  catchLocal?: string | null;
+  catchTimeText?: string | null;
+  location?: string | null;
+  confidence?: number | null;
+  warnings?: string[];
+};
 type ApiResponse<T> = {
   success: boolean;
   data: T;
@@ -307,6 +319,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
   const [createdEventId, setCreatedEventId] = useState('');
   const [createError, setCreateError] = useState('');
   const [submitMessage, setSubmitMessage] = useState('');
+  const [ocrMessage, setOcrMessage] = useState('');
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [hasExplicitEventQuery, setHasExplicitEventQuery] = useState(false);
   const [selectedProof, setSelectedProof] = useState<ScreenshotProof | null>(null);
   const timezoneOptions = useMemo(getTimezoneOptions, []);
@@ -730,6 +744,57 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     }
   }
 
+  async function handleAutofillFromScreenshots() {
+    const screenshots = submissionForm.screenshotProofs
+      .map((proof) => ({
+        name: proof.name || proof.fileName || 'screenshot.png',
+        contentType: proof.dataUrl?.match(/^data:([^;,]+)/)?.[1] || 'image/png',
+        dataUrl: proof.dataUrl,
+      }))
+      .filter((proof): proof is { name: string; contentType: string; dataUrl: string } => Boolean(proof.dataUrl));
+
+    if (!screenshots.length) {
+      setOcrMessage('Upload summary, IV, and information screenshots before using autofill.');
+      return;
+    }
+
+    setIsOcrLoading(true);
+    setOcrMessage('Reading screenshots...');
+
+    try {
+      const response = await fetchJson<CatchEventOcrResult>(`${normalizedApiBaseUrl}/catch-events/ocr`, {
+        method: 'POST',
+        body: JSON.stringify({ screenshots }),
+      });
+      const result = response.data;
+      const updates: Partial<typeof submissionForm> = {};
+
+      if (result.playerIgn) updates.playerIgn = result.playerIgn;
+      if (result.species) updates.species = result.species;
+      if (result.nature) updates.nature = result.nature;
+      if (typeof result.totalIv === 'number') updates.totalIv = result.totalIv;
+      if (result.catchLocal) updates.catchLocal = result.catchLocal;
+
+      setSubmissionForm((current) => ({
+        ...current,
+        ...updates,
+      }));
+
+      const filledFields = Object.keys(updates).length;
+      const warnings = result.warnings?.length ? ` ${result.warnings.join(' ')}` : '';
+      const locationNote = result.location ? ` Location read as ${result.location}.` : '';
+      setOcrMessage(
+        filledFields
+          ? `Autofill filled ${filledFields} field${filledFields === 1 ? '' : 's'}. Verify before submitting.${locationNote}${warnings}`
+          : `OCR ran, but did not find fields confidently enough to autofill.${locationNote}${warnings}`
+      );
+    } catch (error) {
+      setOcrMessage(error instanceof Error ? error.message : 'Failed to read screenshots.');
+    } finally {
+      setIsOcrLoading(false);
+    }
+  }
+
   async function updateSubmissionStatus(submissionId: string, status: CatchEventStatus) {
     if (!activeEvent) return;
 
@@ -1147,7 +1212,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                   </label>
                   <label className={labelClasses}>
                     Catch date/time
-                    <input className={fieldClasses} type="datetime-local" value={submissionForm.catchLocal} onChange={(event) => setSubmissionForm({ ...submissionForm, catchLocal: event.target.value })} required />
+                    <input className={fieldClasses} type="datetime-local" step={1} value={submissionForm.catchLocal} onChange={(event) => setSubmissionForm({ ...submissionForm, catchLocal: event.target.value })} required />
                   </label>
                   <label className={labelClasses}>
                     Player timezone
@@ -1163,6 +1228,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                     multiple
                     onChange={async (event) => {
                       const screenshotProofs = await readImageProofs(event.target.files);
+                      setOcrMessage('');
 
                       setSubmissionForm({
                         ...submissionForm,
@@ -1172,6 +1238,19 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                     }}
                   />
                 </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className={smallButtonClasses}
+                    type="button"
+                    disabled={isOcrLoading || !submissionForm.screenshotProofs.length}
+                    onClick={handleAutofillFromScreenshots}
+                  >
+                    {isOcrLoading ? 'Reading screenshots...' : 'Autofill from screenshots'}
+                  </button>
+                  {ocrMessage && (
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{ocrMessage}</p>
+                  )}
+                </div>
                 <div className="rounded-lg bg-gray-50 p-4 text-sm text-gray-700 dark:bg-gray-950 dark:text-gray-300">
                   <p className="font-semibold text-gray-950 dark:text-white">Verify before submitting</p>
                   <p>

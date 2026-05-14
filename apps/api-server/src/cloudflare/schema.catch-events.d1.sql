@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS catch_event_submissions (
   total_iv INTEGER NOT NULL CHECK (total_iv BETWEEN 0 AND 186),
   catch_local TEXT NOT NULL,
   timezone TEXT NOT NULL,
+  region TEXT NOT NULL CHECK (region IN ('Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova')),
+  route TEXT NOT NULL,
   catch_utc TEXT NOT NULL,
   score INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'needs-review'
@@ -49,6 +51,7 @@ CREATE TABLE IF NOT EXISTS catch_event_submissions (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   CHECK (trim(player_ign) <> ''),
+  CHECK (trim(route) <> ''),
   UNIQUE(event_id, player_ign COLLATE NOCASE)
 ) STRICT;
 

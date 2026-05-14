@@ -52,6 +52,8 @@ function normalizeSubmission(row, screenshots = []) {
     totalIv: Number(row.total_iv) || 0,
     catchLocal: row.catch_local,
     timezone: row.timezone,
+    region: row.region,
+    route: row.route,
     catchUtc: row.catch_utc,
     score: Number(row.score) || 0,
     status: row.status,
@@ -212,10 +214,12 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
               total_iv = ${parameter(5)},
               catch_local = ${parameter(6)},
               timezone = ${parameter(7)},
-              catch_utc = ${parameter(8)},
-              score = ${parameter(9)},
-              status = ${parameter(10)},
-              flags_json = ${parameter(11)},
+              region = ${parameter(8)},
+              route = ${parameter(9)},
+              catch_utc = ${parameter(10)},
+              score = ${parameter(11)},
+              status = ${parameter(12)},
+              flags_json = ${parameter(13)},
               updated_at = ${nowExpression}
           WHERE id = ${parameter(1)}
         `, [
@@ -226,6 +230,8 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
           submission.totalIv,
           submission.catchLocal,
           submission.timezone,
+          submission.region,
+          submission.route,
           submission.catchUtc,
           submission.score,
           submission.status,
@@ -239,12 +245,12 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
         await runCommand(`
           INSERT INTO catch_event_submissions (
             id, event_id, player_ign, species, nature, total_iv, catch_local,
-            timezone, catch_utc, score, status, flags_json
+            timezone, region, route, catch_utc, score, status, flags_json
           )
           VALUES (
             ${parameter(1)}, ${parameter(2)}, ${parameter(3)}, ${parameter(4)}, ${parameter(5)},
             ${parameter(6)}, ${parameter(7)}, ${parameter(8)}, ${parameter(9)}, ${parameter(10)},
-            ${parameter(11)}, ${parameter(12)}
+            ${parameter(11)}, ${parameter(12)}, ${parameter(13)}, ${parameter(14)}
           )
         `, [
           id,
@@ -255,6 +261,8 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
           submission.totalIv,
           submission.catchLocal,
           submission.timezone,
+          submission.region,
+          submission.route,
           submission.catchUtc,
           submission.score,
           submission.status,
