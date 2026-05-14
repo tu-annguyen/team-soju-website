@@ -30,6 +30,22 @@
 			"database_id": "4e43a1a3-2954-447e-b2c0-6d7a8fc59a41"
 		},
 	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "FEEBAS_BOARD_STREAM",
+				"class_name": "FeebasBoardStreamDurableObject"
+			},
+		],
+	},
+	"migrations": [
+		{
+			"tag": "v1_feebas_board_stream",
+			"new_sqlite_classes": [
+				"FeebasBoardStreamDurableObject"
+			]
+		},
+	],
 	"observability": {
 		"logs": {
 			"enabled": true,
@@ -63,6 +79,14 @@
 					"database_id": "5d6a0638-966f-42af-a08f-e38b2b02b98d",
 				},
 			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "FEEBAS_BOARD_STREAM",
+						"class_name": "FeebasBoardStreamDurableObject"
+					},
+				],
+			},
 		},
 	},
 }

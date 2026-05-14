@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { getPokemonVariants } = require('@team-soju/utils');
 const { AUTH_COOKIE_NAME, generateBotToken } = require('../src/cloudflare/auth');
-const { createWorkerApp } = require('../src/cloudflare/worker');
+const { createWorkerApp, FeebasBoardStreamDurableObject } = require('../src/cloudflare/worker');
 
 describe('Cloudflare Worker API', () => {
   beforeEach(() => {
@@ -537,6 +537,136 @@ describe('Cloudflare Worker API', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('text/event-stream');
     expect(new TextDecoder().decode(firstChunk.value)).toContain(JSON.stringify({ success: true, data: board }));
+  });
+
+  it('routes Feebas SSE through the Durable Object binding when available', async () => {
+    const durableFetch = jest.fn().mockResolvedValue(new Response('durable stream', {
+      headers: { 'content-type': 'text/event-stream' },
+    }));
+    const durableObjectBinding = {
+      idFromName: jest.fn((name) => `id:${name}`),
+      get: jest.fn(() => ({ fetch: durableFetch })),
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        getBoard: jest.fn(),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(
+      new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'),
+      createEnv({ FEEBAS_BOARD_STREAM: durableObjectBinding })
+    );
+    const durableRequest = durableFetch.mock.calls[0][0];
+    const durableUrl = new URL(durableRequest.url);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('durable stream');
+    expect(repositories.feebas.getBoard).not.toHaveBeenCalled();
+    expect(durableObjectBinding.idFromName).toHaveBeenCalledWith('route-119-main');
+    expect(durableObjectBinding.get).toHaveBeenCalledWith('id:route-119-main');
+    expect(durableRequest.method).toBe('GET');
+    expect(durableUrl.pathname).toBe('/stream');
+    expect(durableUrl.searchParams.get('location')).toBe('route-119-main');
+    expect(durableUrl.searchParams.get('actorFingerprint')).toBe('client-12345678');
+  });
+
+  it('broadcasts Feebas updates through the Durable Object binding when available', async () => {
+    const board = {
+      location: 'route-119-main',
+      tiles: [],
+      activity: [],
+    };
+    const durableFetch = jest.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const durableObjectBinding = {
+      idFromName: jest.fn((name) => `id:${name}`),
+      get: jest.fn(() => ({ fetch: durableFetch })),
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        updateTile: jest.fn().mockResolvedValue(board),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/tiles/r1c7', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        status: 'pending',
+        actorFingerprint: 'client-12345678',
+        actorName: 'Trainer',
+      }),
+    }), createEnv({ FEEBAS_BOARD_STREAM: durableObjectBinding }));
+    const durableRequest = durableFetch.mock.calls[0][0];
+    const durableUrl = new URL(durableRequest.url);
+
+    expect(response.status).toBe(200);
+    expect(repositories.feebas.updateTile).toHaveBeenCalledWith('route-119-main', 'r1c7', {
+      status: 'pending',
+      actorFingerprint: 'client-12345678',
+      actorName: 'Trainer',
+    }, {
+      includeLeaderboard: false,
+    });
+    expect(durableObjectBinding.idFromName).toHaveBeenCalledWith('route-119-main');
+    expect(durableRequest.method).toBe('POST');
+    expect(durableUrl.pathname).toBe('/broadcast');
+    expect(durableUrl.searchParams.get('location')).toBe('route-119-main');
+  });
+
+  it('streams and broadcasts Feebas boards from the Durable Object class', async () => {
+    const initialBoard = {
+      location: 'route-119-main',
+      tiles: [{ tileId: 'r1c7', status: 'unchecked' }],
+      activity: [],
+    };
+    const updatedBoard = {
+      location: 'route-119-main',
+      tiles: [{ tileId: 'r1c7', status: 'pending' }],
+      activity: [],
+    };
+    const repositories = {
+      feebas: {
+        getBoard: jest.fn()
+          .mockResolvedValueOnce(initialBoard)
+          .mockResolvedValueOnce(updatedBoard),
+      },
+    };
+    const durableObject = new FeebasBoardStreamDurableObject({}, {}, {
+      createRepositories: () => repositories,
+    });
+
+    const streamResponse = await durableObject.fetch(new Request('https://feebas-board-stream.local/stream?location=route-119-main&actorFingerprint=client-12345678'));
+    const reader = streamResponse.body.getReader();
+    const firstChunk = await reader.read();
+
+    const broadcastResponse = await durableObject.fetch(new Request('https://feebas-board-stream.local/broadcast?location=route-119-main', {
+      method: 'POST',
+    }));
+    const nextChunk = await reader.read();
+    await reader.cancel();
+
+    expect(streamResponse.status).toBe(200);
+    expect(streamResponse.headers.get('content-type')).toBe('text/event-stream');
+    expect(broadcastResponse.status).toBe(204);
+    expect(repositories.feebas.getBoard).toHaveBeenNthCalledWith(1, 'route-119-main', {
+      actorFingerprint: 'client-12345678',
+      includeLeaderboard: false,
+    });
+    expect(repositories.feebas.getBoard).toHaveBeenNthCalledWith(2, 'route-119-main', {
+      actorFingerprint: 'client-12345678',
+      includeLeaderboard: false,
+    });
+    expect(new TextDecoder().decode(firstChunk.value)).toContain(JSON.stringify({ success: true, data: initialBoard }));
+    expect(new TextDecoder().decode(nextChunk.value)).toContain(JSON.stringify({ success: true, data: updatedBoard }));
   });
 
   it('broadcasts Feebas tile updates to Worker SSE subscribers', async () => {

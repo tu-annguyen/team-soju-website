@@ -483,6 +483,171 @@ function getFeebasBoardStreamSignature(board) {
   });
 }
 
+function encodeFeebasStreamEvent(payload) {
+  return new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function createFeebasStreamDurableObjectRequest(pathname, location, actorFingerprint, init = {}) {
+  const url = new URL(`https://feebas-board-stream.local${pathname}`);
+  url.searchParams.set('location', location);
+
+  if (actorFingerprint) {
+    url.searchParams.set('actorFingerprint', actorFingerprint);
+  }
+
+  return new Request(url.toString(), init);
+}
+
+function getFeebasStreamDurableObject(env, location) {
+  const namespace = env?.FEEBAS_BOARD_STREAM;
+
+  if (
+    !namespace
+    || typeof namespace.idFromName !== 'function'
+    || typeof namespace.get !== 'function'
+  ) {
+    return null;
+  }
+
+  return namespace.get(namespace.idFromName(location));
+}
+
+class FeebasBoardStreamDurableObject {
+  constructor(state, env, options = {}) {
+    this.state = state;
+    this.env = env;
+    this.createRepositories = options.createRepositories || createRepositories;
+    this.subscribers = new Set();
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+
+    try {
+      if (request.method === 'GET' && url.pathname === '/stream') {
+        return this.openStream(request, url);
+      }
+
+      if (request.method === 'POST' && url.pathname === '/broadcast') {
+        await this.broadcast(url.searchParams.get('location'));
+        return new Response(null, { status: 204 });
+      }
+
+      return json({ success: false, message: 'Endpoint not found' }, { status: 404 });
+    } catch (error) {
+      if (error instanceof FeebasRuleError) {
+        return json({ success: false, message: error.message }, { status: error.statusCode });
+      }
+
+      console.error('Error handling Feebas stream Durable Object request:', error);
+      return json({ success: false, message: 'Failed to handle Feebas stream request' }, { status: 500 });
+    }
+  }
+
+  async openStream(request, url) {
+    const location = url.searchParams.get('location');
+    getLocationConfig(location);
+
+    const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
+    const repositories = this.createRepositories(this.env);
+    const board = await repositories.feebas.getBoard(location, {
+      actorFingerprint,
+      includeLeaderboard: false,
+    });
+    let subscriber;
+
+    const stream = new ReadableStream({
+      start: (controller) => {
+        let isClosed = false;
+        let heartbeat;
+
+        const cleanup = () => {
+          if (isClosed) {
+            return;
+          }
+
+          isClosed = true;
+          clearInterval(heartbeat);
+          this.subscribers.delete(subscriber);
+
+          try {
+            controller.close();
+          } catch {
+            // The stream may already be closed by the client.
+          }
+        };
+
+        const emitBoard = (nextBoard) => {
+          controller.enqueue(encodeFeebasStreamEvent({ success: true, data: nextBoard }));
+        };
+
+        const handleAbort = () => {
+          cleanup();
+        };
+
+        subscriber = {
+          location,
+          actorFingerprint,
+          cleanup: () => {
+            request.signal?.removeEventListener('abort', handleAbort);
+            cleanup();
+          },
+          emitBoard,
+        };
+
+        this.subscribers.add(subscriber);
+        emitBoard(board);
+
+        heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(new TextEncoder().encode(': keep-alive\n\n'));
+          } catch {
+            cleanup();
+          }
+        }, 25000);
+
+        request.signal?.addEventListener('abort', handleAbort, { once: true });
+      },
+      cancel: () => {
+        subscriber?.cleanup?.();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  }
+
+  async broadcast(location) {
+    getLocationConfig(location);
+
+    const subscribers = Array.from(this.subscribers)
+      .filter((subscriber) => subscriber.location === location);
+
+    if (subscribers.length === 0) {
+      return;
+    }
+
+    const repositories = this.createRepositories(this.env);
+
+    await Promise.all(subscribers.map(async (subscriber) => {
+      try {
+        const board = await repositories.feebas.getBoard(location, {
+          actorFingerprint: subscriber.actorFingerprint,
+          includeLeaderboard: false,
+        });
+        subscriber.emitBoard(board);
+      } catch {
+        subscriber.cleanup?.();
+      }
+    }));
+  }
+}
+
 function createWorkerApp(options = {}) {
   const createRepos = options.createRepositories || createRepositories;
   const fetchImpl = options.fetch || fetch;
@@ -500,7 +665,7 @@ function createWorkerApp(options = {}) {
   }
 
   function encodeFeebasEvent(payload) {
-    return new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`);
+    return encodeFeebasStreamEvent(payload);
   }
 
   function createFeebasStreamResponse(request, location, actorFingerprint, board, repositories) {
@@ -602,7 +767,20 @@ function createWorkerApp(options = {}) {
     });
   }
 
-  async function broadcastFeebasBoard(location, repositories) {
+  async function broadcastFeebasBoard(location, repositories, env) {
+    const durableObject = getFeebasStreamDurableObject(env, location);
+
+    if (durableObject) {
+      try {
+        await durableObject.fetch(createFeebasStreamDurableObjectRequest('/broadcast', location, null, {
+          method: 'POST',
+        }));
+      } catch (error) {
+        console.error('Error broadcasting Feebas board through Durable Object:', error);
+      }
+      return;
+    }
+
     const subscribers = feebasSubscribersByLocation.get(location);
     if (!subscribers || subscribers.size === 0) {
       return;
@@ -1654,7 +1832,7 @@ function createWorkerApp(options = {}) {
         const board = await getRepositories().feebas.updateTile(match[1], match[2], value, {
           includeLeaderboard: false,
         });
-        await broadcastFeebasBoard(match[1], getRepositories());
+        await broadcastFeebasBoard(match[1], getRepositories(), env);
         return json({
           success: true,
           data: board,
@@ -1675,6 +1853,14 @@ function createWorkerApp(options = {}) {
       try {
         getLocationConfig(match[1]);
         const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
+        const durableObject = getFeebasStreamDurableObject(env, match[1]);
+
+        if (durableObject) {
+          return durableObject.fetch(createFeebasStreamDurableObjectRequest('/stream', match[1], actorFingerprint, {
+            method: 'GET',
+          }));
+        }
+
         const board = await getRepositories().feebas.getBoard(match[1], {
           actorFingerprint,
           includeLeaderboard: false,
@@ -1703,6 +1889,7 @@ function createWorkerApp(options = {}) {
       try {
         getLocationConfig(match[1]);
         const board = await getRepositories().feebas.resetBoard(match[1]);
+        await broadcastFeebasBoard(match[1], getRepositories(), env);
         return json({
           success: true,
           data: board,
@@ -1770,5 +1957,6 @@ function createWorkerApp(options = {}) {
 
 module.exports = {
   createWorkerApp,
+  FeebasBoardStreamDurableObject,
   fetch: (...args) => createWorkerApp().fetch(...args),
 };
