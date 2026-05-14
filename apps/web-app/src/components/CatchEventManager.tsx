@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   POKEMON_NATURES,
@@ -14,20 +14,29 @@ import type {
   CatchEventStatus,
   CatchEventSubmission,
 } from '../utils/catchEventScoring';
+import {
+  CATCH_EVENT_REGIONS,
+  CATCH_EVENT_ROUTES_BY_REGION,
+  type CatchEventRegion,
+} from '../utils/catchEventLocations';
 import { POKEMON_SPECIES_NAME_SET, POKEMON_SPECIES_NAMES } from '../utils/pokemonSpecies';
 
 type ViewMode = 'create' | 'submit' | 'admin' | 'leaderboard';
 type RuleRow = { id: string; name: string; points: string };
 type AuthUser = { id: string; email: string; ign: string };
-type ScreenshotProof = { name: string; dataUrl: string };
+type ScreenshotProof = { name?: string; fileName?: string; dataUrl?: string; url?: string };
+type ApiResponse<T> = {
+  success: boolean;
+  data: T;
+  replaced?: boolean;
+  message?: string;
+};
 
 type Props = {
   apiBaseUrl: string;
   initialView?: ViewMode;
 };
 
-const EVENTS_STORAGE_KEY = 'team-soju-catch-events';
-const SUBMISSIONS_STORAGE_KEY = 'team-soju-catch-event-submissions';
 const DEFAULT_TIMEZONE = 'America/New_York';
 const NATURE_SET = new Set<string>(POKEMON_NATURES.map((nature) => nature.toLowerCase()));
 
@@ -50,23 +59,6 @@ function makeId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function readStoredJson<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
-
-  try {
-    const value = window.localStorage.getItem(key);
-    return value ? (JSON.parse(value) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeStoredJson(key: string, value: unknown) {
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
 function getBrowserTimezone() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TIMEZONE;
@@ -82,6 +74,28 @@ function getTodayLocalDate() {
   const day = String(now.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function toDateTimeLocalValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function getDefaultEventWindow() {
+  const start = new Date();
+  start.setHours(start.getHours() + 1, 0, 0, 0);
+  const end = new Date(start);
+  end.setHours(end.getHours() + 1);
+
+  return {
+    startLocal: toDateTimeLocalValue(start),
+    endLocal: toDateTimeLocalValue(end),
+  };
 }
 
 function pickRandomItems<T>(items: readonly T[], count: number) {
@@ -159,6 +173,24 @@ function makeToolUrl(view: ViewMode, eventId?: string) {
   return url.toString();
 }
 
+async function fetchJson<T>(url: string, init?: RequestInit) {
+  const response = await fetch(url, {
+    credentials: 'include',
+    ...init,
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
+  });
+  const body = (await response.json()) as ApiResponse<T>;
+
+  if (!response.ok || !body.success) {
+    throw new Error(body.message || 'Request failed.');
+  }
+
+  return body;
+}
+
 function getOrdinal(value: number) {
   const suffix =
     value % 10 === 1 && value % 100 !== 11
@@ -184,6 +216,7 @@ function readImageProofs(files: FileList | null) {
           reader.onload = () => {
             resolve({
               name: file.name,
+              fileName: file.name,
               dataUrl: String(reader.result || ''),
             });
           };
@@ -234,7 +267,9 @@ const defaultEventForm = {
   startLocal: '',
   endLocal: '',
   timezone: '',
-  winnerCount: '',
+  region: '',
+  route: '',
+  winnerCount: '4',
   useLowestScoreFinalPlace: true,
 };
 
@@ -275,24 +310,45 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
   const [hasExplicitEventQuery, setHasExplicitEventQuery] = useState(false);
   const [selectedProof, setSelectedProof] = useState<ScreenshotProof | null>(null);
   const timezoneOptions = useMemo(getTimezoneOptions, []);
+  const loadEventDetails = useCallback(async (eventId: string, nextView = view) => {
+    if (!eventId) {
+      setSubmissions([]);
+      return null;
+    }
+
+    const response = await fetchJson<CatchEventConfig>(
+      `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(eventId)}${nextView === 'leaderboard' ? '?view=leaderboard' : ''}`
+    );
+
+    setEvents((current) => {
+      const withoutEvent = current.filter((event) => event.id !== response.data.id);
+      return [response.data, ...withoutEvent];
+    });
+    setSubmissions(response.data.submissions || []);
+    return response.data;
+  }, [normalizedApiBaseUrl, view]);
 
   useEffect(() => {
-    const storedEvents = readStoredJson<CatchEventConfig[]>(EVENTS_STORAGE_KEY, []);
-    const storedSubmissions = readStoredJson<CatchEventSubmission[]>(SUBMISSIONS_STORAGE_KEY, []);
     const params = new URLSearchParams(window.location.search);
     const queryView = params.get('view') as ViewMode | null;
     const queryEvent = params.get('event') || '';
     const detectedTimezone = getBrowserTimezone();
 
-    setEvents(storedEvents);
-    setSubmissions(storedSubmissions);
-    setActiveEventId(queryEvent || storedEvents[0]?.id || '');
+    setActiveEventId(queryEvent);
     setHasExplicitEventQuery(Boolean(queryEvent));
     setBrowserTimezone(detectedTimezone);
     setEventForm((current) => ({
-      ...current,
+      ...(() => {
+        const defaultWindow = getDefaultEventWindow();
+        return {
+          ...current,
+          startLocal: current.startLocal || defaultWindow.startLocal,
+          endLocal: current.endLocal || defaultWindow.endLocal,
+        };
+      })(),
       eventDate: current.eventDate || getTodayLocalDate(),
       timezone: current.timezone || detectedTimezone,
+      region: current.region || 'Hoenn',
     }));
     setSpeciesRows((current) => {
       if (current.some((row) => row.name.trim())) {
@@ -323,6 +379,99 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       setView(queryView);
     }
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadEvents() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const queryEvent = params.get('event') || '';
+        const queryView = params.get('view') || '';
+
+        if (queryEvent) {
+          const event = await loadEventDetails(queryEvent, queryView === 'leaderboard' ? 'leaderboard' : view);
+          if (isMounted) {
+            setActiveEventId(event?.id || queryEvent);
+          }
+          return;
+        }
+
+        const listPath = queryView === 'leaderboard'
+          ? '/catch-events?published=true'
+          : '/catch-events';
+        const response = await fetchJson<CatchEventConfig[]>(`${normalizedApiBaseUrl}${listPath}`);
+
+        if (isMounted) {
+          setEvents(response.data);
+          setActiveEventId((current) => current || response.data[0]?.id || '');
+        }
+      } catch (error) {
+        console.error('Error loading catch events:', error);
+      }
+    }
+
+    loadEvents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loadEventDetails, normalizedApiBaseUrl, view]);
+
+  useEffect(() => {
+    if (!authUser || view !== 'admin') {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadOwnedEvents() {
+      try {
+        const response = await fetchJson<CatchEventConfig[]>(`${normalizedApiBaseUrl}/catch-events?owner=me`);
+        if (isMounted) {
+          setEvents(response.data);
+          const nextActiveEventId = activeEventId || response.data[0]?.id || '';
+          setActiveEventId(nextActiveEventId);
+          if (nextActiveEventId) {
+            await loadEventDetails(nextActiveEventId, 'admin');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading owned catch events:', error);
+      }
+    }
+
+    loadOwnedEvents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeEventId, authUser, loadEventDetails, normalizedApiBaseUrl, view]);
+
+  useEffect(() => {
+    if (!activeEventId) {
+      setSubmissions([]);
+      return;
+    }
+
+    loadEventDetails(activeEventId).catch((error) => {
+      console.error('Error loading catch event:', error);
+    });
+  }, [activeEventId, loadEventDetails]);
+
+  useEffect(() => {
+    if (view !== 'admin' || !activeEventId || !authUser) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      loadEventDetails(activeEventId, 'admin').catch((error) => {
+        console.error('Error refreshing catch event submissions:', error);
+      });
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [activeEventId, authUser, loadEventDetails, view]);
 
   useEffect(() => {
     let isMounted = true;
@@ -379,16 +528,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     [events]
   );
 
-  function persistEvents(nextEvents: CatchEventConfig[]) {
-    setEvents(nextEvents);
-    writeStoredJson(EVENTS_STORAGE_KEY, nextEvents);
-  }
-
-  function persistSubmissions(nextSubmissions: CatchEventSubmission[]) {
-    setSubmissions(nextSubmissions);
-    writeStoredJson(SUBMISSIONS_STORAGE_KEY, nextSubmissions);
-  }
-
   function updateRuleRow(kind: 'species' | 'nature', rowId: string, patch: Partial<RuleRow>) {
     const updateRows = (rows: RuleRow[]) =>
       rows.map((row) => (row.id === rowId ? { ...row, ...patch } : row));
@@ -425,6 +564,14 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
 
     if (!eventForm.name.trim()) {
       return 'Event name is required.';
+    }
+
+    if (!eventForm.region || !CATCH_EVENT_REGIONS.includes(eventForm.region as CatchEventRegion)) {
+      return 'Choose a valid region.';
+    }
+
+    if (!eventForm.route.trim()) {
+      return 'Choose a route.';
     }
 
     if (speciesNames.length === 0) {
@@ -466,7 +613,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     return '';
   }
 
-  function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const validationError = validateEventForm();
 
@@ -480,34 +627,42 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     const idBase = slugifyEventName(eventForm.name);
     const existingIds = new Set(events.map((storedEvent) => storedEvent.id));
     const id = existingIds.has(idBase) ? `${idBase}-${Date.now().toString(36)}` : idBase;
-    const nextEvent: CatchEventConfig = {
-      id,
-      name: eventForm.name.trim(),
-      ownerUserId: authUser?.id ?? null,
-      ownerIgn: authUser?.ign ?? null,
-      eventDate: eventForm.eventDate,
-      startLocal: eventForm.startLocal,
-      endLocal: eventForm.endLocal,
-      timezone: eventForm.timezone.trim() || DEFAULT_TIMEZONE,
-      winnerCount: Number(eventForm.winnerCount) || 4,
-      targets: speciesRows.map((row) => row.name.trim()).filter(Boolean),
-      speciesBonuses: speciesRules.bonuses,
-      speciesPenalties: speciesRules.penalties,
-      natureBonuses: natureRules.bonuses,
-      naturePenalties: natureRules.penalties,
-      useLowestScoreFinalPlace: eventForm.useLowestScoreFinalPlace,
-      isLeaderboardPublished: false,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const response = await fetchJson<CatchEventConfig>(`${normalizedApiBaseUrl}/catch-events`, {
+        method: 'POST',
+        body: JSON.stringify({
+          id,
+          slug: id,
+          name: eventForm.name.trim(),
+          eventDate: eventForm.startLocal.slice(0, 10),
+          startLocal: eventForm.startLocal,
+          endLocal: eventForm.endLocal,
+          timezone: eventForm.timezone.trim() || DEFAULT_TIMEZONE,
+          region: eventForm.region,
+          route: eventForm.route.trim(),
+          winnerCount: Number(eventForm.winnerCount),
+          targets: speciesRows.map((row) => row.name.trim()).filter(Boolean),
+          speciesBonuses: speciesRules.bonuses,
+          speciesPenalties: speciesRules.penalties,
+          natureBonuses: natureRules.bonuses,
+          naturePenalties: natureRules.penalties,
+          useLowestScoreFinalPlace: eventForm.useLowestScoreFinalPlace,
+          isLeaderboardPublished: false,
+        }),
+      });
 
-    persistEvents([nextEvent, ...events]);
-    setActiveEventId(nextEvent.id);
-    setCreatedEventId(nextEvent.id);
-    setCreateError('');
-    setView('admin');
+      setEvents([response.data, ...events.filter((storedEvent) => storedEvent.id !== response.data.id)]);
+      setSubmissions(response.data.submissions || []);
+      setActiveEventId(response.data.id);
+      setCreatedEventId(response.data.id);
+      setCreateError('');
+      setView('admin');
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : 'Failed to create event.');
+    }
   }
 
-  function handleSubmitEntry(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmitEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!activeEvent) {
@@ -516,63 +671,97 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     }
 
     const input = {
-      ...submissionForm,
+      playerIgn: submissionForm.playerIgn.trim(),
       species: submissionForm.species.trim(),
       nature: submissionForm.nature.trim(),
-      playerIgn: submissionForm.playerIgn.trim(),
       totalIv: Number(submissionForm.totalIv),
+      catchLocal: submissionForm.catchLocal,
       timezone: submissionForm.timezone || browserTimezone,
+      screenshotNames: submissionForm.screenshotNames,
+      screenshotProofs: submissionForm.screenshotProofs,
     };
     const validation = validateCatchEventSubmission(input, activeEvent, browserTimezone);
-    const duplicate = submissions.find(
-      (submission) =>
-        submission.eventId === activeEvent.id &&
-        submission.playerIgn.trim().toLowerCase() === input.playerIgn.toLowerCase()
-    );
-    const nextSubmission: CatchEventSubmission = {
-      ...input,
-      id: duplicate?.id ?? makeId('submission'),
-      eventId: activeEvent.id,
+    const payload = {
+      playerIgn: input.playerIgn,
+      species: input.species,
+      nature: input.nature,
+      totalIv: input.totalIv,
+      catchLocal: input.catchLocal,
+      timezone: input.timezone,
       score: calculateCatchEventScore(input, activeEvent),
       catchUtc: validation.catchUtc,
       flags: validation.flags,
       status: validation.status,
-      createdAt: new Date().toISOString(),
+      screenshots: input.screenshotProofs.map((proof) => ({
+        name: proof.name || proof.fileName || 'screenshot.png',
+        contentType: proof.dataUrl?.match(/^data:([^;,]+)/)?.[1] || 'image/png',
+        dataUrl: proof.dataUrl,
+      })).filter((proof) => proof.dataUrl),
     };
-    const nextSubmissions = duplicate
-      ? submissions.map((submission) => (submission.id === duplicate.id ? nextSubmission : submission))
-      : [nextSubmission, ...submissions];
 
-    persistSubmissions(nextSubmissions);
-    setSubmissionForm({
-      ...defaultSubmissionForm,
-      timezone: browserTimezone,
-      species: activeEvent.targets[0] ?? '',
-      nature: 'Jolly',
-    });
-    setSubmitMessage(
-      duplicate
-        ? 'Entry submitted. Your previous submission was overwritten.'
-        : validation.flags.length
-          ? 'Entry submitted and marked Needs Review.'
-          : 'Entry submitted successfully.'
-    );
+    try {
+      const response = await fetchJson<CatchEventSubmission>(
+        `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(activeEvent.id)}/submissions`,
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }
+      );
+      const nextSubmission = response.data;
+      setSubmissions((current) => [
+        nextSubmission,
+        ...current.filter((submission) => submission.id !== nextSubmission.id),
+      ]);
+      setSubmissionForm({
+        ...defaultSubmissionForm,
+        timezone: browserTimezone,
+        species: activeEvent.targets[0] ?? '',
+        nature: 'Jolly',
+      });
+      setSubmitMessage(
+        response.replaced
+          ? 'Entry submitted. Your previous submission was overwritten.'
+          : validation.flags.length
+            ? 'Entry submitted and marked Needs Review.'
+            : 'Entry submitted successfully.'
+      );
+    } catch (error) {
+      setSubmitMessage(error instanceof Error ? error.message : 'Failed to submit entry.');
+    }
   }
 
-  function updateSubmissionStatus(submissionId: string, status: CatchEventStatus) {
-    persistSubmissions(
-      submissions.map((submission) =>
-        submission.id === submissionId ? { ...submission, status } : submission
-      )
-    );
+  async function updateSubmissionStatus(submissionId: string, status: CatchEventStatus) {
+    if (!activeEvent) return;
+
+    try {
+      const response = await fetchJson<CatchEventConfig>(
+        `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(activeEvent.id)}/submissions/${encodeURIComponent(submissionId)}/status`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ status }),
+        }
+      );
+      setEvents((current) => current.map((event) => event.id === response.data.id ? response.data : event));
+      setSubmissions(response.data.submissions || []);
+    } catch (error) {
+      console.error('Error updating submission status:', error);
+    }
   }
 
-  function updateLeaderboardPublished(eventId: string, isLeaderboardPublished: boolean) {
-    persistEvents(
-      events.map((event) =>
-        event.id === eventId ? { ...event, isLeaderboardPublished } : event
-      )
-    );
+  async function updateLeaderboardPublished(eventId: string, isLeaderboardPublished: boolean) {
+    try {
+      const response = await fetchJson<CatchEventConfig>(
+        `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(eventId)}/publish`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ isLeaderboardPublished }),
+        }
+      );
+      setEvents((current) => current.map((event) => event.id === response.data.id ? response.data : event));
+      setSubmissions(response.data.submissions || []);
+    } catch (error) {
+      console.error('Error updating leaderboard publish status:', error);
+    }
   }
 
   function loadEventIntoForm(event: CatchEventConfig) {
@@ -582,6 +771,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       startLocal: event.startLocal,
       endLocal: event.endLocal,
       timezone: event.timezone,
+      region: event.region,
+      route: event.route,
       winnerCount: String(event.winnerCount),
       useLowestScoreFinalPlace: event.useLowestScoreFinalPlace,
     });
@@ -833,10 +1024,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                 <input className={fieldClasses} value={eventForm.name} onChange={(event) => setEventForm({ ...eventForm, name: event.target.value })} required />
               </label>
               <label className={labelClasses}>
-                Event date
-                <input className={fieldClasses} type="date" value={eventForm.eventDate} onChange={(event) => setEventForm({ ...eventForm, eventDate: event.target.value })} required />
-              </label>
-              <label className={labelClasses}>
                 Start time
                 <input className={fieldClasses} type="datetime-local" value={eventForm.startLocal} onChange={(event) => setEventForm({ ...eventForm, startLocal: event.target.value })} required />
               </label>
@@ -847,6 +1034,45 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
               <label className={labelClasses}>
                 Event timezone
                 <input className={fieldClasses} list="timezone-options" value={eventForm.timezone} onChange={(event) => setEventForm({ ...eventForm, timezone: event.target.value })} required />
+              </label>
+              <label className={labelClasses}>
+                Region
+                <input
+                  className={fieldClasses}
+                  list="catch-event-region-options"
+                  value={eventForm.region}
+                  onChange={(event) => {
+                    const nextRegion = event.target.value;
+                    setEventForm({
+                      ...eventForm,
+                      region: nextRegion,
+                      route: CATCH_EVENT_REGIONS.includes(nextRegion as CatchEventRegion)
+                        ? ''
+                        : eventForm.route,
+                    });
+                  }}
+                  required
+                />
+                <datalist id="catch-event-region-options">
+                  {CATCH_EVENT_REGIONS.map((region) => (
+                    <option key={region} value={region} />
+                  ))}
+                </datalist>
+              </label>
+              <label className={labelClasses}>
+                Route
+                <input
+                  className={fieldClasses}
+                  list="catch-event-route-options"
+                  value={eventForm.route}
+                  onChange={(event) => setEventForm({ ...eventForm, route: event.target.value })}
+                  required
+                />
+                <datalist id="catch-event-route-options">
+                  {(CATCH_EVENT_ROUTES_BY_REGION[eventForm.region as CatchEventRegion] || []).map((route) => (
+                    <option key={route} value={route} />
+                  ))}
+                </datalist>
               </label>
               <label className={labelClasses}>
                 Number of winners
@@ -881,6 +1107,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
           <div className={panelClasses}>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Player Submission</h2>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                Upload your submission Pokemon's summary, IVs, and catch time as screenshots.
+              </p>
               {activeEvent ? (
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                   Browser timezone suggestion: {browserTimezone}
@@ -907,7 +1136,10 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                   </label>
                   <label className={labelClasses}>
                     Nature
-                    <input className={fieldClasses} list="nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required />
+                    <input className={fieldClasses} list="submission-nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required />
+                    <datalist id="submission-nature-options">
+                      {POKEMON_NATURES.map((nature) => <option key={nature} value={nature} />)}
+                    </datalist>
                   </label>
                   <label className={labelClasses}>
                     Total IV
@@ -934,7 +1166,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
 
                       setSubmissionForm({
                         ...submissionForm,
-                        screenshotNames: screenshotProofs.map((proof) => proof.name),
+                        screenshotNames: screenshotProofs.map((proof) => proof.name || proof.fileName || 'screenshot.png'),
                         screenshotProofs,
                       });
                     }}
@@ -984,14 +1216,45 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         {formatLocalDateTime(activeEvent.startLocal)} to {formatLocalDateTime(activeEvent.endLocal)} {activeEvent.timezone}
                       </p>
-                      <label className="mt-4 flex items-start gap-3 text-sm font-medium text-gray-800 dark:text-gray-100">
-                        <input className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600" type="checkbox" checked={activeEvent.isLeaderboardPublished} onChange={(event) => updateLeaderboardPublished(activeEvent.id, event.target.checked)} />
-                        Publish leaderboard after staff confirms final results.
-                      </label>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                        {activeEvent.route}, {activeEvent.region}
+                      </p>
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <span className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                          activeEvent.isLeaderboardPublished
+                            ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                            : 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100'
+                        }`}>
+                          {activeEvent.isLeaderboardPublished ? 'Leaderboard published' : 'Leaderboard unpublished'}
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                          disabled={activeEvent.isLeaderboardPublished}
+                          onClick={() => updateLeaderboardPublished(activeEvent.id, true)}
+                        >
+                          Publish leaderboard
+                        </button>
+                        {activeEvent.isLeaderboardPublished && (
+                          <button
+                            type="button"
+                            className={smallButtonClasses}
+                            onClick={() => updateLeaderboardPublished(activeEvent.id, false)}
+                          >
+                            Unpublish
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="grid gap-2 text-sm">
-                      <input className={fieldClasses} readOnly value={makeToolUrl('submit', activeEvent.id)} />
-                      <input className={fieldClasses} readOnly value={makeToolUrl('leaderboard', activeEvent.id)} />
+                    <div className="grid gap-3 text-sm">
+                      <label className={labelClasses}>
+                        Submission link
+                        <input className={fieldClasses} readOnly value={makeToolUrl('submit', activeEvent.id)} />
+                      </label>
+                      <label className={labelClasses}>
+                        Public leaderboard link
+                        <input className={fieldClasses} readOnly value={makeToolUrl('leaderboard', activeEvent.id)} />
+                      </label>
                     </div>
                   </div>
                   {createdEventId === activeEvent.id && (
@@ -1028,16 +1291,16 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                                 <div className="flex max-w-48 gap-2 overflow-x-auto pb-1">
                                   {submission.screenshotProofs.map((proof, index) => (
                                     <button
-                                      key={`${submission.id}-${proof.name}-${index}`}
+                                      key={`${submission.id}-${proof.name || proof.fileName}-${index}`}
                                       type="button"
                                       className="group block shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                                       onClick={() => setSelectedProof(proof)}
-                                      title={`Open ${proof.name}`}
-                                      aria-label={`Open ${proof.name}`}
+                                      title={`Open ${proof.name || proof.fileName || 'screenshot'}`}
+                                      aria-label={`Open ${proof.name || proof.fileName || 'screenshot'}`}
                                     >
                                       <img
                                         className="h-16 w-16 rounded-lg border border-gray-200 object-cover transition-opacity group-hover:opacity-80 dark:border-gray-700"
-                                        src={proof.dataUrl}
+                                        src={proof.dataUrl || proof.url}
                                         alt={`${submission.playerIgn} proof ${index + 1}`}
                                       />
                                     </button>
@@ -1105,7 +1368,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
           className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/80 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label={selectedProof.name}
+          aria-label={selectedProof.name || selectedProof.fileName || 'Screenshot proof'}
           onClick={() => setSelectedProof(null)}
         >
           <div
@@ -1114,7 +1377,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                {selectedProof.name}
+                {selectedProof.name || selectedProof.fileName || 'Screenshot proof'}
               </p>
               <button
                 type="button"
@@ -1126,8 +1389,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
             </div>
             <img
               className="max-h-[78vh] w-full rounded-lg object-contain"
-              src={selectedProof.dataUrl}
-              alt={selectedProof.name}
+              src={selectedProof.dataUrl || selectedProof.url}
+              alt={selectedProof.name || selectedProof.fileName || 'Screenshot proof'}
             />
           </div>
         </div>

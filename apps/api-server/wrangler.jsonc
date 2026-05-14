@@ -30,6 +30,12 @@
 			"database_id": "4e43a1a3-2954-447e-b2c0-6d7a8fc59a41"
 		},
 	],
+	"r2_buckets": [
+		{
+			"binding": "CATCH_EVENT_SCREENSHOTS",
+			"bucket_name": "team-soju-catch-event-screenshots"
+		},
+	],
 	"durable_objects": {
 		"bindings": [
 			{
@@ -77,6 +83,12 @@
 					"binding": "DB",
 					"database_name": "team-soju-staging",
 					"database_id": "5d6a0638-966f-42af-a08f-e38b2b02b98d",
+				},
+			],
+			"r2_buckets": [
+				{
+					"binding": "CATCH_EVENT_SCREENSHOTS",
+					"bucket_name": "team-soju-catch-event-screenshots-staging"
 				},
 			],
 			"durable_objects": {

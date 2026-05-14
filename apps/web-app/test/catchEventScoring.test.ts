@@ -18,6 +18,8 @@ const eventFixture: CatchEventConfig = {
   startLocal: '2026-05-19T15:00',
   endLocal: '2026-05-19T16:00',
   timezone: 'America/New_York',
+  region: 'Hoenn',
+  route: 'Route 119',
   winnerCount: 4,
   targets: ['Zubat', 'Golbat'],
   speciesBonuses: [{ name: 'Zubat', points: 3 }],
