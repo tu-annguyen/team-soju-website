@@ -259,6 +259,69 @@ describe('Cloudflare Worker API', () => {
     expect(body.message).toContain('legacy Node API');
   });
 
+  it('returns a clear error when catch event OCR is not configured', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [{
+          name: 'summary.png',
+          contentType: 'image/png',
+          dataUrl: 'data:image/png;base64,AAAA',
+        }],
+      }),
+    }), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.message).toBe('OCR is not configured for this environment.');
+  });
+
+  it('reads catch event OCR screenshots one image at a time and merges the result', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn()
+      .mockResolvedValueOnce({ response: JSON.stringify({ playerIgn: 'tunacore', species: 'Milotic', confidence: 0.9, warnings: [] }) })
+      .mockResolvedValueOnce({ response: JSON.stringify({ totalIv: 140, confidence: 0.8, warnings: [] }) })
+      .mockResolvedValueOnce({ response: JSON.stringify({ catchLocal: '2026-04-12T23:31:35', location: 'Route 3', confidence: 0.7, warnings: [] }) });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'summary.png', contentType: 'image/png', dataUrl: 'data:image/png;base64,AAAA' },
+          { name: 'ivs.png', contentType: 'image/png', dataUrl: 'data:image/png;base64,BBBB' },
+          { name: 'info.png', contentType: 'image/png', dataUrl: 'data:image/png;base64,CCCC' },
+        ],
+      }),
+    }), createEnv({ AI: { run: aiRun } }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(aiRun).toHaveBeenCalledTimes(3);
+    expect(body.data).toEqual(expect.objectContaining({
+      playerIgn: 'tunacore',
+      species: 'Milotic',
+      totalIv: 140,
+      catchLocal: '2026-04-12T23:31:35',
+      location: 'Route 3',
+    }));
+  });
+
   it('serves auth/me from the Worker repository contract', async () => {
     const repositories = {
       members: {},

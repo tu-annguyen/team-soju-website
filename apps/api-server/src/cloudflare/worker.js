@@ -112,6 +112,8 @@ const catchEventSubmissionSchema = Joi.object({
   totalIv: Joi.number().integer().min(0).max(186).required(),
   catchLocal: Joi.string().trim().min(8).max(40).required(),
   timezone: Joi.string().trim().min(1).max(80).required(),
+  region: Joi.string().valid('Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova').required(),
+  route: Joi.string().trim().min(1).max(120).required(),
   catchUtc: Joi.string().trim().min(8).max(40).required(),
   score: Joi.number().integer().min(-999).max(1186).required(),
   status: Joi.string().valid('valid', 'needs-review').required(),
@@ -121,6 +123,13 @@ const catchEventSubmissionSchema = Joi.object({
     contentType: Joi.string().trim().max(80).default('image/png'),
     dataUrl: Joi.string().max(8 * 1024 * 1024).required(),
   })).max(6).default([]),
+});
+const catchEventOcrSchema = Joi.object({
+  screenshots: Joi.array().items(Joi.object({
+    name: Joi.string().trim().allow('', null).max(160),
+    contentType: Joi.string().trim().allow('', null).max(80),
+    dataUrl: Joi.string().max(8 * 1024 * 1024).required(),
+  })).min(1).max(6).required(),
 });
 const catchEventPublishSchema = Joi.object({
   isLeaderboardPublished: Joi.boolean().required(),
@@ -308,6 +317,187 @@ function parseScreenshotDataUrl(dataUrl) {
 
 function sanitizeFileName(value) {
   return String(value || 'screenshot.png').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 120);
+}
+
+function extractAiResponseText(result) {
+  if (!result) return '';
+  if (typeof result === 'string') return result;
+  if (typeof result.response === 'string') return result.response;
+  if (typeof result.result === 'string') return result.result;
+  if (typeof result.text === 'string') return result.text;
+  if (Array.isArray(result.content)) {
+    return result.content
+      .map((part) => (typeof part === 'string' ? part : part?.text || ''))
+      .filter(Boolean)
+      .join('\n');
+  }
+  return '';
+}
+
+function parseAiJson(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) {
+    throw new Error('OCR returned an empty response.');
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const match = trimmed.match(/\{[\s\S]*\}/);
+    if (!match) {
+      throw new Error('OCR response was not JSON.');
+    }
+    return JSON.parse(match[0]);
+  }
+}
+
+function cleanNullableString(value, maxLength = 160) {
+  const text = String(value || '').trim();
+  if (!text || text.toLowerCase() === 'null' || text.toLowerCase() === 'unknown') {
+    return null;
+  }
+  return text.slice(0, maxLength);
+}
+
+function normalizeOcrCatchLocal(value, dateOrder) {
+  const text = cleanNullableString(value, 40);
+  if (!text) return null;
+
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (isoMatch) {
+    const [, year, month, day, hour, minute, second = '00'] = isoMatch;
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  }
+
+  const usMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (!usMatch) return null;
+
+  const [, rawMonth, rawDay, rawYear, rawHour, minute, rawSecond = '00', meridiem] = usMatch;
+  const first = Number(rawMonth);
+  const second = Number(rawDay);
+  const order = String(dateOrder || '').toLowerCase();
+  if (!order && first <= 12 && second <= 12) {
+    return null;
+  }
+  const yearNumber = Number(rawYear);
+  const year = yearNumber < 100 ? 2000 + yearNumber : yearNumber;
+  const month = order === 'dmy' || (!order && first > 12) ? second : first;
+  const day = order === 'dmy' || (!order && first > 12) ? first : second;
+  let hour = Number(rawHour);
+  if (meridiem?.toUpperCase() === 'PM' && hour < 12) hour += 12;
+  if (meridiem?.toUpperCase() === 'AM' && hour === 12) hour = 0;
+
+  return [
+    String(year).padStart(4, '0'),
+    '-',
+    String(month).padStart(2, '0'),
+    '-',
+    String(day).padStart(2, '0'),
+    'T',
+    String(hour).padStart(2, '0'),
+    ':',
+    minute,
+    ':',
+    rawSecond,
+  ].join('');
+}
+
+function normalizeCatchEventOcrResult(parsed) {
+  const warnings = Array.isArray(parsed?.warnings)
+    ? parsed.warnings.map((warning) => cleanNullableString(warning, 200)).filter(Boolean)
+    : [];
+  const confidence = Number(parsed?.confidence);
+  const totalIv = Number(parsed?.totalIv);
+  const pokedexNumber = Number(parsed?.pokedexNumber);
+  const dateOrder = ['mdy', 'dmy', 'ymd'].includes(String(parsed?.dateOrder || '').toLowerCase())
+    ? String(parsed.dateOrder).toLowerCase()
+    : null;
+
+  return {
+    playerIgn: cleanNullableString(parsed?.playerIgn || parsed?.ot, 50),
+    species: cleanNullableString(parsed?.species || parsed?.pokemon, 80),
+    pokedexNumber: Number.isFinite(pokedexNumber) ? pokedexNumber : null,
+    nature: cleanNullableString(parsed?.nature, 40),
+    totalIv: Number.isFinite(totalIv) ? Math.max(0, Math.min(186, Math.round(totalIv))) : null,
+    catchLocal: normalizeOcrCatchLocal(parsed?.catchLocal || parsed?.catchTime, dateOrder),
+    catchTimeText: cleanNullableString(parsed?.catchTimeText || parsed?.catchTime, 80),
+    location: cleanNullableString(parsed?.location, 120),
+    dateOrder,
+    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : null,
+    warnings,
+  };
+}
+
+function mergeCatchEventOcrResults(results) {
+  const confidenceValues = results
+    .map((result) => result.confidence)
+    .filter((confidence) => typeof confidence === 'number');
+
+  return {
+    playerIgn: results.find((result) => result.playerIgn)?.playerIgn || null,
+    species: results.find((result) => result.species)?.species || null,
+    pokedexNumber: results.find((result) => result.pokedexNumber)?.pokedexNumber || null,
+    nature: results.find((result) => result.nature)?.nature || null,
+    totalIv: results.find((result) => typeof result.totalIv === 'number')?.totalIv ?? null,
+    catchLocal: results.find((result) => result.catchLocal)?.catchLocal || null,
+    catchTimeText: results.find((result) => result.catchTimeText)?.catchTimeText || null,
+    location: results.find((result) => result.location)?.location || null,
+    dateOrder: results.find((result) => result.dateOrder)?.dateOrder || null,
+    confidence: confidenceValues.length
+      ? confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length
+      : null,
+    warnings: results.flatMap((result) => result.warnings || []),
+  };
+}
+
+async function extractCatchEventScreenshotFields(env, screenshots) {
+  if (!env.AI) {
+    const error = new Error('OCR is not configured for this environment.');
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const model = env.CATCH_EVENT_OCR_MODEL || '@cf/google/gemma-3-12b-it';
+  const results = await Promise.all(screenshots.map(async (screenshot, index) => {
+    const prompt = [
+    `Read only the left half of this PokeMMO Pokemon Summary screenshot for catch event submission autofill. This is screenshot ${index + 1} of ${screenshots.length}${screenshot.name ? ` named ${screenshot.name}` : ''}.`,
+    'Ignore the Pokemon art, nickname/level area, held item area, and everything on the right half.',
+    'It may show the summary tab, IV tab, or information tab.',
+    'Extract only visible values. Do not infer missing values.',
+    'playerIgn must come only from the left-side "OT:" field.',
+    'species must come only from the left-side "Name:" field.',
+    'nature must come only from the left-side "Nature:" field. If stat modifiers are shown in brackets, omit them.',
+    'totalIv must come only from the left-side "Total:" IV row.',
+    'Return JSON only, with this exact shape:',
+    '{"playerIgn": string|null, "species": string|null, "pokedexNumber": number|null, "nature": string|null, "totalIv": number|null, "catchLocal": "YYYY-MM-DDTHH:mm:ss"|null, "catchTimeText": string|null, "dateOrder": "mdy"|"dmy"|"ymd"|null, "location": string|null, "confidence": number, "warnings": string[]}',
+    'For the Information tab, location is the text after Hatched/Caught in, before "after" when present.',
+    'For numeric dates, use the screenshot/client language or locale cues to decide MM/DD/YY versus DD/MM/YY. Set dateOrder to mdy, dmy, or ymd.',
+    'If a numeric date is ambiguous, such as 4/12/26, and no locale cue is visible, leave catchLocal null, keep the original in catchTimeText, and add a warning.',
+    'If the total is shown as "140 / 186", totalIv is 140.',
+    ].join('\n');
+    const result = await env.AI.run(model, {
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: screenshot.dataUrl,
+              },
+            },
+          ],
+        },
+      ],
+      temperature: 0,
+      max_tokens: 600,
+    });
+
+    return normalizeCatchEventOcrResult(parseAiJson(extractAiResponseText(result)));
+  }));
+
+  return mergeCatchEventOcrResults(results);
 }
 
 async function storeCatchEventScreenshots(env, eventId, submissionId, screenshots, requestUrl) {
@@ -1953,6 +2143,29 @@ function createWorkerApp(options = {}) {
       } catch (error) {
         console.error('Error creating catch event:', error);
         return json({ success: false, message: 'Failed to create catch event' }, { status: 500 });
+      }
+    }
+
+    if (request.method === 'POST' && pathname === '/api/catch-events/ocr') {
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventOcrSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const data = await extractCatchEventScreenshotFields(env, value.screenshots);
+        return json({ success: true, data });
+      } catch (error) {
+        if (error.statusCode !== 503) {
+          console.error('Error reading catch event screenshots:', error);
+        }
+        return json({
+          success: false,
+          message: error.statusCode === 503
+            ? error.message
+            : 'Failed to read screenshots',
+        }, { status: error.statusCode || 500 });
       }
     }
 
