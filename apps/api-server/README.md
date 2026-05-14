@@ -233,7 +233,7 @@ curl -X POST http://localhost:3001/api/shinies \
   npm run dev:worker
   ```
 
-- Default Worker database backend is Postgres via Hyperdrive or `DATABASE_URL`.
+- Default Worker database backend is Postgres via `DATABASE_URL`.
 - Set `DB_BACKEND=d1` and bind `DB` to switch the Worker to D1. The D1 schema covers team members, shinies, app users for `GET /api/auth/me`, and Feebas board REST tables.
 - Set `LEGACY_API_BASE_URL` during migration to proxy legacy-only runtime routes:
   - `POST /api/shinies/from-screenshot`

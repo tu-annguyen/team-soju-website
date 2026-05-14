@@ -62,8 +62,6 @@ let cachedPool;
 
 function resolveConnectionString(env) {
   return (
-    env.HYPERDRIVE?.connectionString ||
-    env.HYPERDRIVE_CONNECTION_STRING ||
     env.DATABASE_URL ||
     null
   );
