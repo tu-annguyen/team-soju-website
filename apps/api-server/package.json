@@ -12,6 +12,7 @@
     "dev:worker": "wrangler dev --config wrangler.jsonc",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\"",
     "deploy:cf:staging": "wrangler deploy --config wrangler.jsonc --env staging",
+    "tail:cf:staging": "wrangler tail --config wrangler.jsonc --env staging --format pretty",
     "migrate": "node src/config/migrate.js",
     "clear-shinies": "node src/config/clear-shinies.js",
     "seed:feebas-heatmap": "node src/config/seed-feebas-heatmap.js",

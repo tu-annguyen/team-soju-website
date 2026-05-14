@@ -11,6 +11,7 @@
     "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",
     "deploy:cf:staging": "wrangler deploy --config wrangler.jsonc --env staging && npm run register",
     "deploy:cf:staging:preview": "wrangler versions upload --config wrangler.jsonc --env staging",
+    "tail:cf:staging": "wrangler tail --config wrangler.jsonc --env staging --format pretty",
     "test": "jest --runInBand --coverage"
   },
   "keywords": [
