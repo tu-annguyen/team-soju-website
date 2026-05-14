@@ -115,7 +115,13 @@ const en = {
         'Jump into the tools we use to organize hunts, share progress, and keep everyone on the same page.',
       openTool: 'Open tool',
       categories: {
+        eventOps: 'Event Operations',
         liveCoordination: 'Live Coordination',
+      },
+      catchEventsCard: {
+        title: 'Catch Event Manager',
+        description:
+          'Create catch events, collect player submissions, calculate species and nature bonuses, and generate ranked winner output for staff review.',
       },
       feebasCard: {
         title: 'Feebas Tile Tracker',

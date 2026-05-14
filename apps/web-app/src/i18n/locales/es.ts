@@ -116,7 +116,13 @@ const es = {
         'Entra en las herramientas que usamos para organizar hunts, compartir progreso y mantener a todos alineados.',
       openTool: 'Abrir herramienta',
       categories: {
+        eventOps: 'Operacion de eventos',
         liveCoordination: 'Coordinacion en vivo',
+      },
+      catchEventsCard: {
+        title: 'Gestor de eventos de captura',
+        description:
+          'Crea eventos de captura, recibe envios de jugadores, calcula bonos de especie y naturaleza, y genera resultados clasificados para revision del staff.',
       },
       feebasCard: {
         title: 'Rastreador de casillas de Feebas',

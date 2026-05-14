@@ -111,7 +111,13 @@ const zh = {
       availableDescription: '进入我们用来组织狩猎、分享进度并让大家保持同步的工具。',
       openTool: '打开工具',
       categories: {
+        eventOps: '活动管理',
         liveCoordination: '实时协作',
+      },
+      catchEventsCard: {
+        title: '捕捉活动管理器',
+        description:
+          '创建捕捉活动，收集玩家提交，计算种族和性格加分，并生成供管理人员审核的排名结果。',
       },
       feebasCard: {
         title: '丑丑鱼格子追踪器',
