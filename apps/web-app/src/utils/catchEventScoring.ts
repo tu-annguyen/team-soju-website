@@ -14,6 +14,8 @@ export type CatchEventConfig = {
   startLocal: string;
   endLocal: string;
   timezone: string;
+  region: string;
+  route: string;
   winnerCount: number;
   targets: string[];
   speciesBonuses: CatchEventRule[];
@@ -23,6 +25,9 @@ export type CatchEventConfig = {
   useLowestScoreFinalPlace: boolean;
   isLeaderboardPublished: boolean;
   createdAt: string;
+  updatedAt?: string;
+  submissions?: CatchEventSubmission[];
+  leaderboardHidden?: boolean;
 };
 
 export type CatchEventSubmissionInput = {
@@ -35,7 +40,9 @@ export type CatchEventSubmissionInput = {
   screenshotNames: string[];
   screenshotProofs?: {
     name: string;
-    dataUrl: string;
+    dataUrl?: string;
+    url?: string;
+    fileName?: string;
   }[];
 };
 

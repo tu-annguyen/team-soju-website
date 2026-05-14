@@ -1,5 +1,6 @@
 const crypto = globalThis.crypto || require('crypto');
 const { Pool, types } = require('pg');
+const { createCatchEventsRepository } = require('./catch-events-repository');
 const { createFeebasRepository } = require('./feebas-repository');
 
 types.setTypeParser(1082, (val) => val);
@@ -825,7 +826,15 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
     runSelect,
   });
 
-  return { feebas, members, shinies, users };
+  const catchEvents = createCatchEventsRepository({
+    dialect,
+    parameter,
+    runCommand,
+    runOne,
+    runSelect,
+  });
+
+  return { catchEvents, feebas, members, shinies, users };
 }
 
 function createRepositories(env = process.env, options = {}) {

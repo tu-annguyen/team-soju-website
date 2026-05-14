@@ -82,6 +82,52 @@ const discordStartSchema = Joi.object({
 const discordSessionSchema = Joi.object({
   token: Joi.string().trim().min(32).max(2048).required(),
 });
+const catchEventRuleSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(80).required(),
+  points: Joi.number().integer().min(-999).max(999).required(),
+});
+const catchEventCreateSchema = Joi.object({
+  id: Joi.string().trim().min(1).max(120).optional(),
+  name: Joi.string().trim().min(1).max(160).required(),
+  slug: Joi.string().trim().min(1).max(160).required(),
+  eventDate: Joi.string().trim().min(4).max(20).required(),
+  startLocal: Joi.string().trim().min(8).max(40).required(),
+  endLocal: Joi.string().trim().min(8).max(40).required(),
+  timezone: Joi.string().trim().min(1).max(80).required(),
+  region: Joi.string().valid('Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova').required(),
+  route: Joi.string().trim().min(1).max(120).required(),
+  winnerCount: Joi.number().integer().min(1).max(10).required(),
+  targets: Joi.array().items(Joi.string().trim().min(1).max(80)).min(1).max(20).required(),
+  speciesBonuses: Joi.array().items(catchEventRuleSchema).max(20).default([]),
+  speciesPenalties: Joi.array().items(catchEventRuleSchema).max(20).default([]),
+  natureBonuses: Joi.array().items(catchEventRuleSchema).max(25).default([]),
+  naturePenalties: Joi.array().items(catchEventRuleSchema).max(25).default([]),
+  useLowestScoreFinalPlace: Joi.boolean().default(true),
+  isLeaderboardPublished: Joi.boolean().default(false),
+});
+const catchEventSubmissionSchema = Joi.object({
+  playerIgn: Joi.string().trim().min(1).max(50).required(),
+  species: Joi.string().trim().min(1).max(80).required(),
+  nature: Joi.string().trim().min(1).max(40).required(),
+  totalIv: Joi.number().integer().min(0).max(186).required(),
+  catchLocal: Joi.string().trim().min(8).max(40).required(),
+  timezone: Joi.string().trim().min(1).max(80).required(),
+  catchUtc: Joi.string().trim().min(8).max(40).required(),
+  score: Joi.number().integer().min(-999).max(1186).required(),
+  status: Joi.string().valid('valid', 'needs-review').required(),
+  flags: Joi.array().items(Joi.string().trim().max(200)).max(20).default([]),
+  screenshots: Joi.array().items(Joi.object({
+    name: Joi.string().trim().min(1).max(160).required(),
+    contentType: Joi.string().trim().max(80).default('image/png'),
+    dataUrl: Joi.string().max(8 * 1024 * 1024).required(),
+  })).max(6).default([]),
+});
+const catchEventPublishSchema = Joi.object({
+  isLeaderboardPublished: Joi.boolean().required(),
+});
+const catchEventSubmissionStatusSchema = Joi.object({
+  status: Joi.string().valid('valid', 'needs-review', 'invalid', 'disqualified').required(),
+});
 
 function getEnvUrl(env, ...keys) {
   const value = keys.map((key) => env[key]).find(Boolean);
@@ -237,6 +283,62 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function parseScreenshotDataUrl(dataUrl) {
+  const match = String(dataUrl || '').match(/^data:([^;,]+);base64,(.+)$/);
+  if (!match) {
+    const error = new Error('Screenshot must be a base64 data URL.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const [, contentType, base64] = match;
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return {
+    contentType,
+    bytes,
+  };
+}
+
+function sanitizeFileName(value) {
+  return String(value || 'screenshot.png').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 120);
+}
+
+async function storeCatchEventScreenshots(env, eventId, submissionId, screenshots, requestUrl) {
+  if (!screenshots.length) return [];
+  if (!env.CATCH_EVENT_SCREENSHOTS) {
+    const error = new Error('Catch event screenshot storage is not configured.');
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const origin = new URL(requestUrl).origin;
+  return Promise.all(screenshots.map(async (screenshot) => {
+    const id = randomHex(16);
+    const parsed = parseScreenshotDataUrl(screenshot.dataUrl);
+    const fileName = sanitizeFileName(screenshot.name);
+    const storageKey = `catch-events/${eventId}/${submissionId}/${id}-${fileName}`;
+
+    await env.CATCH_EVENT_SCREENSHOTS.put(storageKey, parsed.bytes, {
+      httpMetadata: {
+        contentType: screenshot.contentType || parsed.contentType,
+      },
+    });
+
+    return {
+      id,
+      fileName,
+      contentType: screenshot.contentType || parsed.contentType,
+      storageKey,
+      url: `${origin}/api/catch-events/screenshots/${id}`,
+    };
+  }));
 }
 
 function buildPasswordResetMessage({ to, resetUrl, expiresInMinutes, ign }) {
@@ -1812,6 +1914,197 @@ function createWorkerApp(options = {}) {
       } catch (error) {
         console.error('Error deleting shiny:', error);
         return json({ success: false, message: 'Failed to delete shiny entry' }, { status: 500 });
+      }
+    }
+
+    if (request.method === 'GET' && pathname === '/api/catch-events') {
+      try {
+        const authenticatedUser = await getAuthenticatedUser(request, env, getRepositories());
+        const ownerOnly = url.searchParams.get('owner') === 'me';
+
+        if (ownerOnly && !authenticatedUser) {
+          return json({ success: false, message: 'Not signed in.' }, { status: 401 });
+        }
+
+        const events = await getRepositories().catchEvents.listEvents({
+          ownerUserId: ownerOnly ? authenticatedUser.id : undefined,
+          publishedOnly: url.searchParams.get('published') === 'true',
+        });
+        return json({ success: true, data: events });
+      } catch (error) {
+        console.error('Error listing catch events:', error);
+        return json({ success: false, message: 'Failed to list catch events' }, { status: 500 });
+      }
+    }
+
+    if (request.method === 'POST' && pathname === '/api/catch-events') {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventCreateSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const event = await getRepositories().catchEvents.createEvent(auth.user, value);
+        return json({ success: true, data: event, message: 'Catch event created successfully' }, { status: 201 });
+      } catch (error) {
+        console.error('Error creating catch event:', error);
+        return json({ success: false, message: 'Failed to create catch event' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/screenshots\/([^/]+)$/);
+    if (request.method === 'GET' && match) {
+      try {
+        const screenshot = await getRepositories().catchEvents.getScreenshotById(match[1]);
+        if (!screenshot) {
+          return json({ success: false, message: 'Screenshot not found' }, { status: 404 });
+        }
+        if (!env.CATCH_EVENT_SCREENSHOTS) {
+          return json({ success: false, message: 'Screenshot storage is not configured' }, { status: 503 });
+        }
+
+        const object = await env.CATCH_EVENT_SCREENSHOTS.get(screenshot.storageKey);
+        if (!object) {
+          return json({ success: false, message: 'Screenshot not found' }, { status: 404 });
+        }
+
+        return new Response(object.body, {
+          headers: {
+            'content-type': object.httpMetadata?.contentType || screenshot.contentType || 'application/octet-stream',
+            'cache-control': 'private, max-age=60',
+          },
+        });
+      } catch (error) {
+        console.error('Error fetching catch event screenshot:', error);
+        return json({ success: false, message: 'Failed to fetch screenshot' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/publish$/);
+    if (request.method === 'POST' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventPublishSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const event = await getRepositories().catchEvents.setLeaderboardPublished(
+          match[1],
+          auth.user.id,
+          value.isLeaderboardPublished
+        );
+        if (!event) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: event, message: 'Catch event updated successfully' });
+      } catch (error) {
+        console.error('Error publishing catch event leaderboard:', error);
+        return json({ success: false, message: 'Failed to update catch event' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/submissions\/([^/]+)\/status$/);
+    if (request.method === 'POST' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventSubmissionStatusSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const event = await getRepositories().catchEvents.updateSubmissionStatus(
+          match[1],
+          auth.user.id,
+          match[2],
+          value.status
+        );
+        return json({ success: true, data: event, message: 'Submission updated successfully' });
+      } catch (error) {
+        console.error('Error updating catch event submission:', error);
+        return json({ success: false, message: 'Failed to update submission' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/submissions$/);
+    if (request.method === 'POST' && match) {
+      try {
+        const event = await getRepositories().catchEvents.getEventById(match[1]);
+        if (!event) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        const body = await readJson(request);
+        const { error, value } = catchEventSubmissionSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const submissionId = crypto.randomUUID();
+        const screenshots = await storeCatchEventScreenshots(
+          env,
+          match[1],
+          submissionId,
+          value.screenshots,
+          request.url
+        );
+        const result = await getRepositories().catchEvents.upsertSubmission(match[1], value, screenshots);
+
+        return json({
+          success: true,
+          data: result.submission,
+          replaced: result.replaced,
+          message: result.replaced ? 'Submission replaced successfully' : 'Submission created successfully',
+        }, { status: result.replaced ? 200 : 201 });
+      } catch (error) {
+        console.error('Error submitting catch event entry:', error);
+        return json({
+          success: false,
+          message: error.statusCode === 503
+            ? error.message
+            : 'Failed to submit catch event entry',
+        }, { status: error.statusCode || 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)$/);
+    if (request.method === 'GET' && match) {
+      try {
+        const authenticatedUser = await getAuthenticatedUser(request, env, getRepositories());
+        const event = await getRepositories().catchEvents.getEventById(match[1], {
+          includeSubmissions: true,
+        });
+        if (!event) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        const isOwner = authenticatedUser?.id && authenticatedUser.id === event.ownerUserId;
+        if (!event.isLeaderboardPublished && !isOwner && url.searchParams.get('view') === 'leaderboard') {
+          return json({
+            success: true,
+            data: {
+              ...event,
+              submissions: [],
+              leaderboardHidden: true,
+            },
+          });
+        }
+
+        return json({ success: true, data: event });
+      } catch (error) {
+        console.error('Error fetching catch event:', error);
+        return json({ success: false, message: 'Failed to fetch catch event' }, { status: 500 });
       }
     }
 
