@@ -129,8 +129,11 @@ const catchEventOcrSchema = Joi.object({
   screenshots: Joi.array().items(Joi.object({
     name: Joi.string().trim().allow('', null).max(160),
     contentType: Joi.string().trim().allow('', null).max(80),
+    role: Joi.string().valid('nature-ot', 'ivs', 'information').optional(),
     dataUrl: Joi.string().max(8 * 1024 * 1024).required(),
   })).min(1).max(6).required(),
+  locale: Joi.string().trim().allow('', null).max(40),
+  timezone: Joi.string().trim().allow('', null).max(80),
 });
 const catchEventPublishSchema = Joi.object({
   isLeaderboardPublished: Joi.boolean().required(),
@@ -360,6 +363,35 @@ function cleanNullableString(value, maxLength = 160) {
   return text.slice(0, maxLength);
 }
 
+function inferDateOrderFromLocaleTimezone(locale, timezone) {
+  const normalizedLocale = String(locale || '').toLowerCase();
+  const normalizedTimezone = String(timezone || '').toLowerCase();
+
+  if (/^(en-us|en-ph)\b/.test(normalizedLocale)) return 'mdy';
+  if (/^(ja|ko|zh)\b/.test(normalizedLocale)) return 'ymd';
+  if (/^(en-gb|en-au|en-nz|en-ie|fr|de|es|it|pt|nl|ru|pl)\b/.test(normalizedLocale)) return 'dmy';
+
+  if (normalizedTimezone.startsWith('america/')) return 'mdy';
+  if (
+    normalizedTimezone.startsWith('europe/')
+    || normalizedTimezone.startsWith('africa/')
+    || normalizedTimezone.startsWith('australia/')
+  ) {
+    return 'dmy';
+  }
+  if (
+    normalizedTimezone === 'asia/tokyo'
+    || normalizedTimezone === 'asia/seoul'
+    || normalizedTimezone === 'asia/shanghai'
+    || normalizedTimezone === 'asia/hong_kong'
+    || normalizedTimezone === 'asia/taipei'
+  ) {
+    return 'ymd';
+  }
+
+  return null;
+}
+
 function normalizeOcrCatchLocal(value, dateOrder) {
   const text = cleanNullableString(value, 40);
   if (!text) return null;
@@ -403,7 +435,7 @@ function normalizeOcrCatchLocal(value, dateOrder) {
   ].join('');
 }
 
-function normalizeCatchEventOcrResult(parsed) {
+function normalizeCatchEventOcrResult(parsed, fallbackDateOrder = null) {
   const warnings = Array.isArray(parsed?.warnings)
     ? parsed.warnings.map((warning) => cleanNullableString(warning, 200)).filter(Boolean)
     : [];
@@ -412,7 +444,10 @@ function normalizeCatchEventOcrResult(parsed) {
   const pokedexNumber = Number(parsed?.pokedexNumber);
   const dateOrder = ['mdy', 'dmy', 'ymd'].includes(String(parsed?.dateOrder || '').toLowerCase())
     ? String(parsed.dateOrder).toLowerCase()
-    : null;
+    : fallbackDateOrder;
+  if (!parsed?.dateOrder && fallbackDateOrder && cleanNullableString(parsed?.catchLocal || parsed?.catchTime, 40)) {
+    warnings.push(`Date order inferred from browser settings as ${fallbackDateOrder.toUpperCase()}.`);
+  }
 
   return {
     playerIgn: cleanNullableString(parsed?.playerIgn || parsed?.ot, 50),
@@ -451,19 +486,25 @@ function mergeCatchEventOcrResults(results) {
   };
 }
 
-async function extractCatchEventScreenshotFields(env, screenshots) {
+async function extractCatchEventScreenshotFields(env, screenshots, context = {}) {
   if (!env.AI) {
     const error = new Error('OCR is not configured for this environment.');
     error.statusCode = 503;
     throw error;
   }
 
+  const fallbackDateOrder = inferDateOrderFromLocaleTimezone(context.locale, context.timezone);
   const model = env.CATCH_EVENT_OCR_MODEL || '@cf/google/gemma-3-12b-it';
   const results = await Promise.all(screenshots.map(async (screenshot, index) => {
+    const roleInstructions = {
+      'nature-ot': 'This is the Nature/OT screenshot. Only extract species from "Name:", nature from "Nature:", OT/playerIgn from "OT:", and pokedexNumber from "Pokedex:". Leave IV, date, and location fields null.',
+      ivs: 'This is the IVs screenshot. Only extract totalIv from the "Total:" row. Leave species, nature, OT, date, and location fields null.',
+      information: 'This is the Information screenshot. Only extract location and catchLocal/catchTimeText from the information text. Leave species, nature, OT, and IV fields null.',
+    };
     const prompt = [
     `Read only the left half of this PokeMMO Pokemon Summary screenshot for catch event submission autofill. This is screenshot ${index + 1} of ${screenshots.length}${screenshot.name ? ` named ${screenshot.name}` : ''}.`,
+    roleInstructions[screenshot.role] || 'It may show the summary tab, IV tab, or information tab.',
     'Ignore the Pokemon art, nickname/level area, held item area, and everything on the right half.',
-    'It may show the summary tab, IV tab, or information tab.',
     'Extract only visible values. Do not infer missing values.',
     'playerIgn must come only from the left-side "OT:" field.',
     'species must come only from the left-side "Name:" field.',
@@ -473,7 +514,9 @@ async function extractCatchEventScreenshotFields(env, screenshots) {
     '{"playerIgn": string|null, "species": string|null, "pokedexNumber": number|null, "nature": string|null, "totalIv": number|null, "catchLocal": "YYYY-MM-DDTHH:mm:ss"|null, "catchTimeText": string|null, "dateOrder": "mdy"|"dmy"|"ymd"|null, "location": string|null, "confidence": number, "warnings": string[]}',
     'For the Information tab, location is the text after Hatched/Caught in, before "after" when present.',
     'For numeric dates, use the screenshot/client language or locale cues to decide MM/DD/YY versus DD/MM/YY. Set dateOrder to mdy, dmy, or ymd.',
-    'If a numeric date is ambiguous, such as 4/12/26, and no locale cue is visible, leave catchLocal null, keep the original in catchTimeText, and add a warning.',
+    fallbackDateOrder
+      ? `If a numeric date is ambiguous and no screenshot locale cue is visible, use browser fallback dateOrder ${fallbackDateOrder}.`
+      : 'If a numeric date is ambiguous, such as 4/12/26, and no locale cue is visible, leave catchLocal null, keep the original in catchTimeText, and add a warning.',
     'If the total is shown as "140 / 186", totalIv is 140.',
     ].join('\n');
     const result = await env.AI.run(model, {
@@ -495,7 +538,7 @@ async function extractCatchEventScreenshotFields(env, screenshots) {
       max_tokens: 600,
     });
 
-    return normalizeCatchEventOcrResult(parseAiJson(extractAiResponseText(result)));
+    return normalizeCatchEventOcrResult(parseAiJson(extractAiResponseText(result)), fallbackDateOrder);
   }));
 
   return mergeCatchEventOcrResults(results);
@@ -2187,7 +2230,10 @@ function createWorkerApp(options = {}) {
           return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
         }
 
-        const data = await extractCatchEventScreenshotFields(env, value.screenshots);
+        const data = await extractCatchEventScreenshotFields(env, value.screenshots, {
+          locale: value.locale,
+          timezone: value.timezone,
+        });
         return json({ success: true, data });
       } catch (error) {
         if (error.statusCode !== 503) {

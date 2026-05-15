@@ -33,6 +33,7 @@ type CatchEventOcrResult = {
   totalIv?: number | null;
   catchLocal?: string | null;
   catchTimeText?: string | null;
+  dateOrder?: string | null;
   location?: string | null;
   confidence?: number | null;
   warnings?: string[];
@@ -292,9 +293,20 @@ const defaultSubmissionForm = {
   totalIv: 0,
   catchLocal: '',
   timezone: '',
-  screenshotNames: [] as string[],
-  screenshotProofs: [] as ScreenshotProof[],
+  natureOtScreenshot: null as ScreenshotProof | null,
+  ivsScreenshot: null as ScreenshotProof | null,
+  infoScreenshot: null as ScreenshotProof | null,
+  region: '',
+  route: '',
 };
+
+function getSubmissionProofs(form: typeof defaultSubmissionForm) {
+  return [
+    { role: 'nature-ot', proof: form.natureOtScreenshot },
+    { role: 'ivs', proof: form.ivsScreenshot },
+    { role: 'information', proof: form.infoScreenshot },
+  ].filter((entry): entry is { role: 'nature-ot' | 'ivs' | 'information'; proof: ScreenshotProof } => Boolean(entry.proof));
+}
 
 const defaultSpeciesRows: RuleRow[] = [
   { id: makeId('species'), name: '', points: '0' },
@@ -525,6 +537,16 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     () => eventOptions.find((event) => event.id === activeEventId) ?? eventOptions[0],
     [activeEventId, eventOptions]
   );
+  useEffect(() => {
+    if (!activeEvent) return;
+
+    setSubmissionForm((current) => ({
+      ...current,
+      species: current.species || activeEvent.targets[0] || '',
+      region: current.region || activeEvent.region,
+      route: current.route || activeEvent.route,
+    }));
+  }, [activeEvent?.id]);
   const activeSubmissions = useMemo(
     () => submissions.filter((submission) => submission.eventId === activeEvent?.id),
     [activeEvent?.id, submissions]
@@ -684,6 +706,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       return;
     }
 
+    const screenshotProofs = getSubmissionProofs(submissionForm).map((entry) => entry.proof);
     const input = {
       playerIgn: submissionForm.playerIgn.trim(),
       species: submissionForm.species.trim(),
@@ -691,8 +714,10 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       totalIv: Number(submissionForm.totalIv),
       catchLocal: submissionForm.catchLocal,
       timezone: submissionForm.timezone || browserTimezone,
-      screenshotNames: submissionForm.screenshotNames,
-      screenshotProofs: submissionForm.screenshotProofs,
+      region: submissionForm.region.trim(),
+      route: submissionForm.route.trim(),
+      screenshotNames: screenshotProofs.map((proof) => proof.name || proof.fileName || 'screenshot.png'),
+      screenshotProofs,
     };
     const validation = validateCatchEventSubmission(input, activeEvent, browserTimezone);
     const payload = {
@@ -702,6 +727,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       totalIv: input.totalIv,
       catchLocal: input.catchLocal,
       timezone: input.timezone,
+      region: input.region,
+      route: input.route,
       score: calculateCatchEventScore(input, activeEvent),
       catchUtc: validation.catchUtc,
       flags: validation.flags,
@@ -729,6 +756,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       setSubmissionForm({
         ...defaultSubmissionForm,
         timezone: browserTimezone,
+        region: activeEvent.region,
+        route: activeEvent.route,
         species: activeEvent.targets[0] ?? '',
         nature: 'Jolly',
       });
@@ -745,16 +774,18 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
   }
 
   async function handleAutofillFromScreenshots() {
-    const screenshots = submissionForm.screenshotProofs
-      .map((proof) => ({
+    const screenshotEntries = getSubmissionProofs(submissionForm);
+    const screenshots = screenshotEntries
+      .map(({ role, proof }) => ({
         name: proof.name || proof.fileName || 'screenshot.png',
         contentType: proof.dataUrl?.match(/^data:([^;,]+)/)?.[1] || 'image/png',
+        role,
         dataUrl: proof.dataUrl,
       }))
-      .filter((proof): proof is { name: string; contentType: string; dataUrl: string } => Boolean(proof.dataUrl));
+      .filter((proof): proof is { name: string; contentType: string; role: 'nature-ot' | 'ivs' | 'information'; dataUrl: string } => Boolean(proof.dataUrl));
 
-    if (!screenshots.length) {
-      setOcrMessage('Upload summary, IV, and information screenshots before using autofill.');
+    if (screenshots.length < 3) {
+      setOcrMessage('Upload the Nature/OT, IVs, and Information screenshots before using autofill.');
       return;
     }
 
@@ -764,7 +795,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     try {
       const response = await fetchJson<CatchEventOcrResult>(`${normalizedApiBaseUrl}/catch-events/ocr`, {
         method: 'POST',
-        body: JSON.stringify({ screenshots }),
+        body: JSON.stringify({
+          screenshots,
+          locale: navigator.language || '',
+          timezone: submissionForm.timezone || browserTimezone,
+        }),
       });
       const result = response.data;
       const updates: Partial<typeof submissionForm> = {};
@@ -774,6 +809,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       if (result.nature) updates.nature = result.nature;
       if (typeof result.totalIv === 'number') updates.totalIv = result.totalIv;
       if (result.catchLocal) updates.catchLocal = result.catchLocal;
+      if (result.location) updates.route = result.location;
 
       setSubmissionForm((current) => ({
         ...current,
@@ -782,7 +818,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
 
       const filledFields = Object.keys(updates).length;
       const warnings = result.warnings?.length ? ` ${result.warnings.join(' ')}` : '';
-      const locationNote = result.location ? ` Location read as ${result.location}.` : '';
+      const locationNote = result.location ? ` Route read as ${result.location}; choose the matching region before submitting.` : '';
       setOcrMessage(
         filledFields
           ? `Autofill filled ${filledFields} field${filledFields === 1 ? '' : 's'}. Verify before submitting.${locationNote}${warnings}`
@@ -1218,23 +1254,85 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                     Player timezone
                     <input className={fieldClasses} list="timezone-options" value={submissionForm.timezone} onChange={(event) => setSubmissionForm({ ...submissionForm, timezone: event.target.value })} required />
                   </label>
+                  <label className={labelClasses}>
+                    Catch region
+                    <input
+                      className={fieldClasses}
+                      list="submission-region-options"
+                      value={submissionForm.region}
+                      onChange={(event) => setSubmissionForm({ ...submissionForm, region: event.target.value, route: '' })}
+                      required
+                    />
+                    <datalist id="submission-region-options">
+                      {CATCH_EVENT_REGIONS.map((region) => (
+                        <option key={region} value={region} />
+                      ))}
+                    </datalist>
+                  </label>
+                  <label className={labelClasses}>
+                    Catch route/location
+                    <input
+                      className={fieldClasses}
+                      list="submission-route-options"
+                      value={submissionForm.route}
+                      onChange={(event) => setSubmissionForm({ ...submissionForm, route: event.target.value })}
+                      required
+                    />
+                    <datalist id="submission-route-options">
+                      {(CATCH_EVENT_ROUTES_BY_REGION[submissionForm.region as CatchEventRegion] || []).map((route) => (
+                        <option key={route} value={route} />
+                      ))}
+                    </datalist>
+                  </label>
                 </div>
                 <label className={labelClasses}>
-                  Screenshots as proof
+                  Nature/OT Summary screenshot
                   <input
                     className={fieldClasses}
                     type="file"
                     accept="image/*"
-                    multiple
                     onChange={async (event) => {
                       const screenshotProofs = await readImageProofs(event.target.files);
                       setOcrMessage('');
 
-                      setSubmissionForm({
-                        ...submissionForm,
-                        screenshotNames: screenshotProofs.map((proof) => proof.name || proof.fileName || 'screenshot.png'),
-                        screenshotProofs,
-                      });
+                      setSubmissionForm((prev) => ({
+                        ...prev,
+                        natureOtScreenshot: screenshotProofs[0] ?? null,
+                      }));
+                    }}
+                  />
+                </label>
+                <label className={labelClasses}>
+                  IVs screenshot
+                  <input
+                    className={fieldClasses}
+                    type="file"
+                    accept="image/*"
+                    onChange={async (event) => {
+                      const screenshotProofs = await readImageProofs(event.target.files);
+                      setOcrMessage('');
+
+                      setSubmissionForm((prev) => ({
+                        ...prev,
+                        ivsScreenshot: screenshotProofs[0] ?? null,
+                      }));
+                    }}
+                  />
+                </label>
+                <label className={labelClasses}>
+                  Information screenshot
+                  <input
+                    className={fieldClasses}
+                    type="file"
+                    accept="image/*"
+                    onChange={async (event) => {
+                      const screenshotProofs = await readImageProofs(event.target.files);
+                      setOcrMessage('');
+
+                      setSubmissionForm((prev) => ({
+                        ...prev,
+                        infoScreenshot: screenshotProofs[0] ?? null,
+                      }));
                     }}
                   />
                 </label>
@@ -1242,7 +1340,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                   <button
                     className={smallButtonClasses}
                     type="button"
-                    disabled={isOcrLoading || !submissionForm.screenshotProofs.length}
+                    disabled={isOcrLoading || getSubmissionProofs(submissionForm).length < 3}
                     onClick={handleAutofillFromScreenshots}
                   >
                     {isOcrLoading ? 'Reading screenshots...' : 'Autofill from screenshots'}
@@ -1345,13 +1443,14 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                 <div className={panelClasses}>
                   <h3 className="text-xl font-bold text-gray-950 dark:text-white">Review Queue</h3>
                   <div className="mt-4 overflow-x-auto">
-                    <table className="w-full min-w-[1040px] text-left text-sm">
+                    <table className="w-full min-w-[1120px] text-left text-sm">
                       <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800">
                         <tr>
                           <th className="py-3 pr-4">Player</th>
                           <th className="py-3 pr-4">Entry</th>
                           <th className="py-3 pr-4">Proof</th>
                           <th className="py-3 pr-4">Score</th>
+                          <th className="py-3 pr-4">Location</th>
                           <th className="py-3 pr-4">Catch UTC</th>
                           <th className="py-3 pr-4">Flags</th>
                           <th className="py-3 pr-4">Status</th>
@@ -1394,6 +1493,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                               )}
                             </td>
                             <td className="py-3 pr-4 font-bold">{submission.score}</td>
+                            <td className="py-3 pr-4">
+                              {submission.route || 'Unknown'}, {submission.region || 'Unknown'}
+                            </td>
                             <td className="py-3 pr-4">{formatDateTime(submission.catchUtc)}</td>
                             <td className="py-3 pr-4">{submission.flags.length ? submission.flags.join('; ') : 'None'}</td>
                             <td className="py-3 pr-4">
