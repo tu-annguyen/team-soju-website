@@ -2,7 +2,7 @@
 
 A Node.js backend API with PostgreSQL database for managing Team Soju members and shiny Pokemon data, with Discord bot integration.
 
-This app now also includes a Cloudflare Worker runtime under [src/cloudflare/worker.js](/root/repos/team-soju-website/apps/api-server/src/cloudflare/worker.js) so the CRUD API can move to Workers first while screenshot/OCR, non-`/me` auth flows, and Feebas SSE remain on the legacy Node server during migration.
+This app now also includes a Cloudflare Worker runtime under [src/cloudflare/worker.js](/root/repos/team-soju-website/apps/api-server/src/cloudflare/worker.js) so the CRUD API can move to Workers first while screenshot/OCR and non-`/me` auth flows remain on the legacy Node server during migration. Feebas live updates are served from the Worker with a hibernating Durable Object WebSocket.
 
 ---
 
