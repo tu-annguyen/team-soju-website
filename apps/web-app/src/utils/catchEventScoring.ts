@@ -37,6 +37,8 @@ export type CatchEventSubmissionInput = {
   totalIv: number;
   catchLocal: string;
   timezone: string;
+  region: string;
+  route: string;
   screenshotNames: string[];
   screenshotProofs?: {
     name: string;
@@ -238,6 +240,21 @@ export function validateCatchEventSubmission(
 
   if (input.screenshotNames.length === 0) {
     flags.push('No screenshots attached');
+  }
+
+  const inputRegion = input.region?.trim() || '';
+  const inputRoute = input.route?.trim() || '';
+
+  if (!inputRegion) {
+    flags.push('Missing catch region');
+  } else if (normalizeName(inputRegion) !== normalizeName(event.region)) {
+    flags.push('Catch region differs from event location');
+  }
+
+  if (!inputRoute) {
+    flags.push('Missing catch route/location');
+  } else if (normalizeName(inputRoute) !== normalizeName(event.route)) {
+    flags.push('Catch route/location differs from event location');
   }
 
   if (browserTimezone && input.timezone !== browserTimezone) {
