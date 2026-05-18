@@ -991,7 +991,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     return (
       <>
         <div className={panelClasses}>
-          <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Winner Output</h2>
+          <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Winners</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {eventWinners.map((winner, index) => (
               <div key={winner.id} className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">

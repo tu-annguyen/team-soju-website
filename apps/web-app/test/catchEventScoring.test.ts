@@ -160,4 +160,21 @@ describe('catch event scoring', () => {
       'low',
     ]);
   });
+
+  it('only selects valid submissions for winner output', () => {
+    const winners = selectCatchEventWinners(eventFixture, [
+      makeSubmission('needs-review-high', 186, '2026-05-19T19:01:00.000Z', 'needs-review'),
+      makeSubmission('invalid-high', 185, '2026-05-19T19:02:00.000Z', 'invalid'),
+      makeSubmission('valid-first', 160, '2026-05-19T19:03:00.000Z'),
+      makeSubmission('valid-second', 120, '2026-05-19T19:04:00.000Z'),
+      makeSubmission('needs-review-low', 1, '2026-05-19T19:05:00.000Z', 'needs-review'),
+      makeSubmission('valid-low', 20, '2026-05-19T19:06:00.000Z'),
+    ]);
+
+    expect(winners.map((submission) => submission.id)).toEqual([
+      'valid-first',
+      'valid-second',
+      'valid-low',
+    ]);
+  });
 });
