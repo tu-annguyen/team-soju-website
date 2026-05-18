@@ -302,7 +302,8 @@ export function selectCatchEventWinners(
   event: Pick<CatchEventConfig, 'winnerCount' | 'useLowestScoreFinalPlace'>,
   submissions: CatchEventSubmission[]
 ) {
-  const ranked = rankCatchEventSubmissions(submissions);
+  const validSubmissions = submissions.filter((submission) => submission.status === 'valid');
+  const ranked = rankCatchEventSubmissions(validSubmissions);
 
   if (!event.useLowestScoreFinalPlace || event.winnerCount < 2) {
     return ranked.slice(0, event.winnerCount);
@@ -314,8 +315,7 @@ export function selectCatchEventWinners(
   const lowestScoreWinner = submissions
     .filter(
       (submission) =>
-        (submission.status === 'valid' || submission.status === 'needs-review') &&
-        !excludedIds.has(submission.id)
+        submission.status === 'valid' && !excludedIds.has(submission.id)
     )
     .sort((a, b) => {
       if (a.score !== b.score) {
