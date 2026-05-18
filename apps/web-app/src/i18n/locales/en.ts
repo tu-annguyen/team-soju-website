@@ -1,3 +1,5 @@
+import catchEventManager from './catch-events/en';
+
 const en = {
   meta: {
     defaultTitle: 'Team Soju - PokeMMO Team',
@@ -137,6 +139,7 @@ const en = {
       intro:
         'Coordinate Feebas tile checks in real time. Vote tiles as checked, pending, or confirmed. Colors stack at 25% opacity per vote so the board behaves like a live heatmap of group opinion.',
     },
+    catchEventManager,
     feebasChecker: {
       locationsTabLabel: 'Feebas locations',
       locations: {

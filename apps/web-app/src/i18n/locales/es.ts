@@ -1,3 +1,5 @@
+import catchEventManager from './catch-events/es';
+
 const es = {
   meta: {
     defaultTitle: 'Team Soju - Equipo de PokeMMO',
@@ -138,6 +140,7 @@ const es = {
       intro:
         'Coordina las comprobaciones de casillas de Feebas en tiempo real. Vota las casillas como revisadas, pendientes o confirmadas. Los colores se acumulan al 25% de opacidad por voto para que el tablero funcione como un mapa de calor de la opinion del grupo.',
     },
+    catchEventManager,
     feebasChecker: {
       locationsTabLabel: 'Ubicaciones de Feebas',
       locations: {

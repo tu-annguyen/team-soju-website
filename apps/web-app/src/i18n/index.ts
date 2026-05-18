@@ -36,6 +36,12 @@ function mergeTranslations<T extends Record<string, unknown>>(base: T, overrides
     return [key, overrideValue ?? value];
   });
 
+  for (const [key, overrideValue] of Object.entries(overrides)) {
+    if (!(key in base)) {
+      mergedEntries.push([key, overrideValue]);
+    }
+  }
+
   return Object.fromEntries(mergedEntries) as T;
 }
 
