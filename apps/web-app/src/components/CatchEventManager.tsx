@@ -385,6 +385,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [createdEventId, setCreatedEventId] = useState('');
+  const [editingEventId, setEditingEventId] = useState('');
   const [createError, setCreateError] = useState('');
   const [submitMessage, setSubmitMessage] = useState('');
   const [ocrMessage, setOcrMessage] = useState('');
@@ -741,12 +742,12 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
 
     const speciesRules = splitRules(speciesRows);
     const natureRules = splitRules(natureRows);
-    const idBase = slugifyEventName(eventForm.name);
+    const idBase = editingEventId || slugifyEventName(eventForm.name);
     const existingIds = new Set(events.map((storedEvent) => storedEvent.id));
-    const id = existingIds.has(idBase) ? `${idBase}-${Date.now().toString(36)}` : idBase;
+    const id = editingEventId ? editingEventId : existingIds.has(idBase) ? `${idBase}-${Date.now().toString(36)}` : idBase;
     try {
-      const response = await fetchJson<CatchEventConfig>(`${normalizedApiBaseUrl}/catch-events`, {
-        method: 'POST',
+      const response = await fetchJson<CatchEventConfig>(`${normalizedApiBaseUrl}/catch-events${editingEventId ? `/${encodeURIComponent(editingEventId)}` : ''}`, {
+        method: editingEventId ? 'PUT' : 'POST',
         body: JSON.stringify({
           id,
           slug: id,
@@ -772,11 +773,12 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
       setSubmissions(response.data.submissions || []);
       setActiveEventId(response.data.id);
       setCreatedEventId(response.data.id);
+      setEditingEventId('');
       setCreateError('');
       setView('host');
       setHostTab('manage');
     } catch (error) {
-      setCreateError(error instanceof Error ? error.message : 'Failed to create event.');
+      setCreateError(error instanceof Error ? error.message : editingEventId ? 'Failed to update event.' : 'Failed to create event.');
     }
   }
 
@@ -968,9 +970,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
     }
   }
 
-  function loadEventIntoForm(event: CatchEventConfig) {
+  function loadEventIntoForm(event: CatchEventConfig, mode: 'duplicate' | 'edit' = 'duplicate') {
     setEventForm({
-      name: `${event.name} Copy`,
+      name: mode === 'edit' ? event.name : `${event.name} Copy`,
       eventDate: event.eventDate,
       startLocal: event.startLocal,
       endLocal: event.endLocal,
@@ -982,8 +984,27 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
     });
     setSpeciesRows(rowsFromRules(event.speciesBonuses, event.speciesPenalties));
     setNatureRows(rowsFromRules(event.natureBonuses, event.naturePenalties));
+    setEditingEventId(mode === 'edit' ? event.id : '');
+    setCreateError('');
     setView('host');
     setHostTab('create');
+  }
+
+  async function deleteEvent(event: CatchEventConfig) {
+    const confirmed = window.confirm(`Delete ${event.name}? This will remove its submissions and cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      await fetchJson<CatchEventConfig>(
+        `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(event.id)}`,
+        { method: 'DELETE' }
+      );
+      setEvents((current) => current.filter((storedEvent) => storedEvent.id !== event.id));
+      setSubmissions((current) => current.filter((submission) => submission.eventId !== event.id));
+      setActiveEventId((current) => current === event.id ? '' : current);
+    } catch (error) {
+      console.error('Error deleting catch event:', error);
+    }
   }
 
   const rulesEditor = (
@@ -1284,7 +1305,12 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
                     ? 'border-emerald-600 bg-emerald-600 text-white'
                     : 'border-gray-300 bg-white text-gray-800 hover:border-emerald-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100'
                 }`}
-                onClick={() => setHostTab(tab)}
+                onClick={() => {
+                  if (tab === 'create') {
+                    setEditingEventId('');
+                  }
+                  setHostTab(tab);
+                }}
               >
                 {tab === 'create' ? 'Create' : 'Manage'}
               </button>
@@ -1295,7 +1321,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
         {view === 'host' && hostTab === 'create' && (
           <form className={`${panelClasses} space-y-6`} onSubmit={handleCreateEvent}>
             <div>
-              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Create Event</h2>
+              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{editingEventId ? 'Edit Event' : 'Create Event'}</h2>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                 Add each target Pokemon from the species list and give it a positive, negative, or zero point value.
               </p>
@@ -1377,9 +1403,24 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
                 {createError}
               </p>
             )}
-            <button className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700">
-              Save event
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700">
+                {editingEventId ? 'Update event' : 'Save event'}
+              </button>
+              {editingEventId && (
+                <button
+                  type="button"
+                  className={smallButtonClasses}
+                  onClick={() => {
+                    setEditingEventId('');
+                    setCreateError('');
+                    setHostTab('manage');
+                  }}
+                >
+                  Cancel edit
+                </button>
+              )}
+            </div>
           </form>
         )}
 
@@ -1762,6 +1803,16 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
                         </button>
                         <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent)}>
                           Duplicate setup
+                        </button>
+                        <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent, 'edit')}>
+                          Edit event
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700"
+                          onClick={() => deleteEvent(activeEvent)}
+                        >
+                          Delete event
                         </button>
                       </div>
                     </div>
