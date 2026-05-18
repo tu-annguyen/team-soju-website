@@ -1213,18 +1213,20 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{tr('Target Pokemon')}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="my-2 flex flex-wrap gap-2">
             {event.targets.map((target) => (
               <span key={target} className="rounded-lg bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-200">
                 {translateSpeciesDisplay(target)}
               </span>
             ))}
           </div>
+          <div className="my-2 flex flex-wrap gap-2">
+            {renderRuleList(tr('Species Bonuses & Penalties'), event.speciesBonuses, event.speciesPenalties, translateSpeciesDisplay)}
+          </div>
+          <div className="my-2 flex flex-wrap gap-2">
+            {renderRuleList(tr('Nature Bonuses & Penalties'), event.natureBonuses, event.naturePenalties, translateNatureDisplay)}
+          </div>
         </div>
-      </div>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {renderRuleList(tr('Species Bonuses & Penalties'), event.speciesBonuses, event.speciesPenalties, translateSpeciesDisplay)}
-        {renderRuleList(tr('Nature Bonuses & Penalties'), event.natureBonuses, event.naturePenalties, translateNatureDisplay)}
       </div>
     </div>
   );
@@ -1878,10 +1880,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                       </div>
                     </div>
                     <div className="grid gap-3 text-sm">
-                      <label className={labelClasses}>
-                        {tr('Submission link')}
-                        <input className={fieldClasses} readOnly value={makeToolUrl('events', activeEvent.id)} />
-                      </label>
                       <label className={labelClasses}>
                         {tr('Event link')}
                         <input className={fieldClasses} readOnly value={makeToolUrl('events', activeEvent.id)} />
