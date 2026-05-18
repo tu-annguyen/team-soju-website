@@ -136,7 +136,6 @@ const catchEventManager = {
   "Delete event": "Eliminar evento",
   "Delete": "Eliminar",
   "This will remove its submissions and cannot be undone.": "Esto quitará sus envíos y no se puede deshacer.",
-    "Submission link": "Enlace de envío",
     "Event link": "Enlace del evento",
     "Event saved. Share the submit link when entries open.": "Evento guardado. Comparte el enlace de envío cuando se abran las participaciones.",
     "Review Queue": "Cola de revisión",
