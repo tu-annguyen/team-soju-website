@@ -131,21 +131,27 @@ const authUserFixture = {
   ign: 'Trainer',
 };
 
-class MockEventSource {
-  static instances: MockEventSource[] = [];
+class MockWebSocket {
+  static instances: MockWebSocket[] = [];
 
   url: string;
   onmessage: ((event: { data: string }) => void) | null = null;
   onerror: (() => void) | null = null;
+  onclose: (() => void) | null = null;
   closed = false;
 
   constructor(url: string) {
     this.url = url;
-    MockEventSource.instances.push(this);
+    MockWebSocket.instances.push(this);
   }
 
   close() {
+    if (this.closed) {
+      return;
+    }
+
     this.closed = true;
+    this.onclose?.();
   }
 
   emit(payload: unknown) {
@@ -184,8 +190,8 @@ describe('FeebasTileChecker', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('feebas-tile-checker-client-id', 'client-self');
-    MockEventSource.instances = [];
-    (global as any).EventSource = undefined;
+    MockWebSocket.instances = [];
+    (global as any).WebSocket = undefined;
 
     (global as any).fetch = mockFeebasFetch();
   });
@@ -545,7 +551,7 @@ describe('FeebasTileChecker', () => {
 
   it('shows a location-specific popup when another session adds a pending nomination', async () => {
     jest.useFakeTimers();
-    (global as any).EventSource = MockEventSource;
+    (global as any).WebSocket = MockWebSocket;
 
     try {
       render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
@@ -557,11 +563,11 @@ describe('FeebasTileChecker', () => {
       expect(screen.queryByText('Pending nomination')).not.toBeInTheDocument();
 
       await waitFor(() =>
-        expect(MockEventSource.instances[0]?.url).toContain('/feebas/route-119-main/stream')
+        expect(MockWebSocket.instances[0]?.url).toContain('/feebas/route-119-main/stream')
       );
 
       act(() => {
-        MockEventSource.instances[0].emit({
+        MockWebSocket.instances[0].emit({
           success: true,
           data: {
             ...boardFixture,
@@ -606,7 +612,7 @@ describe('FeebasTileChecker', () => {
       expect(screen.getByText('Pending nomination')).toBeInTheDocument();
 
       act(() => {
-        MockEventSource.instances[0].emit({
+        MockWebSocket.instances[0].emit({
           success: true,
           data: {
             ...boardFixture,
@@ -635,7 +641,7 @@ describe('FeebasTileChecker', () => {
   });
 
   it('does not show Route 119 pending nomination popups while viewing Mt. Coronet', async () => {
-    (global as any).EventSource = MockEventSource;
+    (global as any).WebSocket = MockWebSocket;
 
     const fetchMock = jest.fn((input: RequestInfo | URL) => {
       const url = String(input);
@@ -655,14 +661,14 @@ describe('FeebasTileChecker', () => {
       expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
     );
 
-    const route119Stream = MockEventSource.instances[0];
+    const route119Stream = MockWebSocket.instances[0];
     fireEvent.click(screen.getByRole('tab', { name: /Mt. Coronet/i }));
 
     await waitFor(() =>
       expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
     );
     await waitFor(() =>
-      expect(MockEventSource.instances[1]?.url).toContain('/feebas/mt-coronet/stream')
+      expect(MockWebSocket.instances[1]?.url).toContain('/feebas/mt-coronet/stream')
     );
 
     act(() => {

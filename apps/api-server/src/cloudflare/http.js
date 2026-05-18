@@ -10,6 +10,33 @@ function json(data, init = {}) {
   });
 }
 
+function createResponse(body, init = {}) {
+  try {
+    return new Response(body, init);
+  } catch (error) {
+    if ((error instanceof RangeError || error?.name === 'RangeError') && init.status === 101) {
+      const { webSocket, ...fallbackInit } = init;
+      const response = new Response(body, {
+        ...fallbackInit,
+        status: 200,
+      });
+      Object.defineProperty(response, 'status', {
+        configurable: true,
+        value: 101,
+      });
+      if (webSocket) {
+        Object.defineProperty(response, 'webSocket', {
+          configurable: true,
+          value: webSocket,
+        });
+      }
+      return response;
+    }
+
+    throw error;
+  }
+}
+
 function empty(status = 204, init = {}) {
   return new Response(null, {
     ...init,
@@ -75,11 +102,17 @@ function withStandardHeaders(response, request, env) {
     }
   });
 
-  return new Response(response.body, {
+  const responseInit = {
     status: response.status,
     statusText: response.statusText,
     headers: nextHeaders,
-  });
+  };
+
+  if (response.webSocket) {
+    responseInit.webSocket = response.webSocket;
+  }
+
+  return createResponse(response.body, responseInit);
 }
 
 async function readJson(request) {

@@ -171,6 +171,7 @@ const TOOLTIP_ARROW_MARGIN_PX = 16;
 const LEADERBOARD_VISIBLE_LIMIT = 10;
 const PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS = 6000;
 const RESET_REFRESH_RETRY_MS = 1000;
+const FEEBAS_LIVE_UPDATES_RECONNECT_MS = 5000;
 const LEADERBOARD_SIGN_IN_CTA_CLASSES =
   'inline-flex items-center justify-center rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600';
 const ROUTE_119_MAIN_TERRAIN = [
@@ -688,6 +689,13 @@ function isAuthUser(value: AuthUser | null | undefined): value is AuthUser {
   return Boolean(value && typeof value.id === 'string' && typeof value.ign === 'string');
 }
 
+function buildFeebasLiveUpdatesUrl(apiBaseUrl: string, location: string, actorFingerprint: string) {
+  const url = new URL(`${apiBaseUrl}/feebas/${location}/stream`, window.location.href);
+  url.searchParams.set('actorFingerprint', actorFingerprint);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return url.toString();
+}
+
 const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   const normalizedApiBaseUrl = useMemo(() => apiBaseUrl.replace(/\/+$/, ''), [apiBaseUrl]);
   const activeLocale = getClientLocale(locale);
@@ -964,7 +972,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
   }, [activeLocation, normalizedApiBaseUrl, actorFingerprint, isAuthLoading]);
 
   useEffect(() => {
-    if (typeof EventSource === 'undefined') {
+    if (typeof WebSocket === 'undefined') {
       return undefined;
     }
 
@@ -972,30 +980,69 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: Props) => {
       return undefined;
     }
 
-    const eventSource = new EventSource(`${normalizedApiBaseUrl}/feebas/${activeLocation}/stream?actorFingerprint=${encodeURIComponent(actorFingerprint)}`);
+    let isStopped = false;
+    let reconnectTimeout: number | null = null;
+    let liveUpdatesSocket: WebSocket | null = null;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const payload: BoardResponse = JSON.parse(event.data);
-        if (payload.success) {
-          applyBoardUpdate(payload.data);
-          setCountdown(formatCountdown(payload.data.cycleEnd));
-          lastFetchedCycleEndRef.current = payload.data.cycleEnd;
-          resetRefreshInFlightRef.current = false;
-          clearResetRetryTimeout();
-          setError(null);
-        }
-      } catch {
-        // Ignore malformed event payloads and rely on the next valid update.
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeout !== null) {
+        window.clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
       }
     };
 
-    eventSource.onerror = () => {
-      setError((currentError) => currentError || messages.errors.liveUpdatesDisconnected);
+    const connect = () => {
+      if (isStopped) {
+        return;
+      }
+
+      const socket = new WebSocket(buildFeebasLiveUpdatesUrl(normalizedApiBaseUrl, activeLocation, actorFingerprint));
+      liveUpdatesSocket = socket;
+
+      socket.onmessage = (event) => {
+        if (socket !== liveUpdatesSocket || isStopped) {
+          return;
+        }
+
+        try {
+          const payload: BoardResponse = JSON.parse(String(event.data));
+          if (payload.success) {
+            applyBoardUpdate(payload.data);
+            setCountdown(formatCountdown(payload.data.cycleEnd));
+            lastFetchedCycleEndRef.current = payload.data.cycleEnd;
+            resetRefreshInFlightRef.current = false;
+            clearResetRetryTimeout();
+            setError(null);
+          }
+        } catch {
+          // Ignore malformed event payloads and rely on the next valid update.
+        }
+      };
+
+      socket.onerror = () => {
+        if (!isStopped && socket === liveUpdatesSocket) {
+          setError((currentError) => currentError || messages.errors.liveUpdatesDisconnected);
+          socket.close();
+        }
+      };
+
+      socket.onclose = () => {
+        if (isStopped || socket !== liveUpdatesSocket) {
+          return;
+        }
+
+        setError((currentError) => currentError || messages.errors.liveUpdatesDisconnected);
+        clearReconnectTimeout();
+        reconnectTimeout = window.setTimeout(connect, FEEBAS_LIVE_UPDATES_RECONNECT_MS);
+      };
     };
 
+    connect();
+
     return () => {
-      eventSource.close();
+      isStopped = true;
+      clearReconnectTimeout();
+      liveUpdatesSocket?.close();
     };
   }, [activeLocation, normalizedApiBaseUrl, actorFingerprint, isAuthLoading]);
 

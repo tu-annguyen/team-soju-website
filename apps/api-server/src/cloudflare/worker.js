@@ -23,7 +23,6 @@ const { buildCorsHeaders, empty, json, readJson, withStandardHeaders } = require
 const { FeebasRuleError, getLocationConfig } = require('../utils/feebas');
 const { isIgnBlacklisted } = require('../utils/ignModeration');
 
-const DEFAULT_FEEBAS_STREAM_POLL_INTERVAL_MS = 5000;
 const passwordResetExpiresInMinutes = 60;
 const passwordResetSentMessage = 'If an account uses that email, a reset link has been sent.';
 const emailVerificationExpiresInMinutes = 24 * 60;
@@ -895,38 +894,8 @@ function normalizeLegacySetCookie(cookieHeader) {
     .join('; ');
 }
 
-function getFeebasBoardStreamSignature(board) {
-  return JSON.stringify({
-    location: board.location,
-    cycleStart: board.cycleStart,
-    cycleEnd: board.cycleEnd,
-    confirmedTileId: board.confirmedTileId,
-    isLocked: board.isLocked,
-    previousConfirmedTiles: (board.previousConfirmedTiles || []).map((tile) => ({
-      tileId: tile.tileId,
-      confirmations: tile.confirmations,
-    })),
-    activity: (board.activity || []).map((entry) => ({
-      id: entry.id,
-      tileId: entry.tileId,
-      actionType: entry.actionType,
-      previousStatus: entry.previousStatus,
-      nextStatus: entry.nextStatus,
-      actorName: entry.actorName,
-      createdAt: entry.createdAt,
-    })),
-    tiles: (board.tiles || []).map((tile) => ({
-      tileId: tile.tileId,
-      status: tile.status,
-      voteCounts: tile.voteCounts,
-      totalVotes: tile.totalVotes,
-      currentUserVote: tile.currentUserVote,
-    })),
-  });
-}
-
-function encodeFeebasStreamEvent(payload) {
-  return new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`);
+function encodeFeebasSocketMessage(payload) {
+  return JSON.stringify(payload);
 }
 
 function createFeebasStreamDurableObjectRequest(pathname, location, actorFingerprint, init = {}) {
@@ -938,6 +907,82 @@ function createFeebasStreamDurableObjectRequest(pathname, location, actorFingerp
   }
 
   return new Request(url.toString(), init);
+}
+
+const feebasSocketMetadataFallback = new WeakMap();
+
+function isWebSocketUpgrade(request) {
+  return request.headers.get('upgrade')?.toLowerCase() === 'websocket';
+}
+
+function webSocketUpgradeRequired() {
+  return json({
+    success: false,
+    message: 'Expected WebSocket upgrade',
+  }, {
+    status: 426,
+    headers: {
+      Upgrade: 'websocket',
+    },
+  });
+}
+
+function createWebSocketPair() {
+  if (typeof WebSocketPair === 'undefined') {
+    throw new Error('WebSocketPair is not available in this runtime.');
+  }
+
+  const pair = new WebSocketPair();
+  const [client, server] = Object.values(pair);
+  return { client, server };
+}
+
+function createWebSocketUpgradeResponse(client) {
+  try {
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
+  } catch (error) {
+    if (error instanceof RangeError || error?.name === 'RangeError') {
+      const response = new Response(null, { status: 200 });
+      Object.defineProperty(response, 'status', {
+        configurable: true,
+        value: 101,
+      });
+      Object.defineProperty(response, 'webSocket', {
+        configurable: true,
+        value: client,
+      });
+      return response;
+    }
+
+    throw error;
+  }
+}
+
+function serializeFeebasSocketMetadata(socket, metadata) {
+  if (typeof socket.serializeAttachment === 'function') {
+    socket.serializeAttachment(metadata);
+    return;
+  }
+
+  feebasSocketMetadataFallback.set(socket, metadata);
+}
+
+function deserializeFeebasSocketMetadata(socket) {
+  if (typeof socket.deserializeAttachment === 'function') {
+    const attachment = socket.deserializeAttachment();
+    if (attachment) {
+      return attachment;
+    }
+  }
+
+  return feebasSocketMetadataFallback.get(socket) || null;
+}
+
+function sendFeebasSocketBoard(socket, board) {
+  socket.send(encodeFeebasSocketMessage({ success: true, data: board }));
 }
 
 function getFeebasStreamDurableObject(env, location) {
@@ -959,7 +1004,6 @@ class FeebasBoardStreamDurableObject {
     this.state = state;
     this.env = env;
     this.createRepositories = options.createRepositories || createRepositories;
-    this.subscribers = new Set();
   }
 
   async fetch(request) {
@@ -967,7 +1011,7 @@ class FeebasBoardStreamDurableObject {
 
     try {
       if (request.method === 'GET' && url.pathname === '/stream') {
-        return this.openStream(request, url);
+        return this.openSocket(request, url);
       }
 
       if (request.method === 'POST' && url.pathname === '/broadcast') {
@@ -986,7 +1030,15 @@ class FeebasBoardStreamDurableObject {
     }
   }
 
-  async openStream(request, url) {
+  async openSocket(request, url) {
+    if (!isWebSocketUpgrade(request)) {
+      return webSocketUpgradeRequired();
+    }
+
+    if (!this.state || typeof this.state.acceptWebSocket !== 'function') {
+      throw new Error('Durable Object WebSocket hibernation is not available.');
+    }
+
     const location = url.searchParams.get('location');
     getLocationConfig(location);
 
@@ -996,79 +1048,31 @@ class FeebasBoardStreamDurableObject {
       actorFingerprint,
       includeLeaderboard: false,
     });
-    let subscriber;
+    const { client, server } = createWebSocketPair();
+    const metadata = {
+      location,
+      actorFingerprint,
+    };
 
-    const stream = new ReadableStream({
-      start: (controller) => {
-        let isClosed = false;
-        let heartbeat;
+    this.state.acceptWebSocket(server);
+    serializeFeebasSocketMetadata(server, metadata);
+    sendFeebasSocketBoard(server, board);
 
-        const cleanup = () => {
-          if (isClosed) {
-            return;
-          }
-
-          isClosed = true;
-          clearInterval(heartbeat);
-          this.subscribers.delete(subscriber);
-
-          try {
-            controller.close();
-          } catch {
-            // The stream may already be closed by the client.
-          }
-        };
-
-        const emitBoard = (nextBoard) => {
-          controller.enqueue(encodeFeebasStreamEvent({ success: true, data: nextBoard }));
-        };
-
-        const handleAbort = () => {
-          cleanup();
-        };
-
-        subscriber = {
-          location,
-          actorFingerprint,
-          cleanup: () => {
-            request.signal?.removeEventListener('abort', handleAbort);
-            cleanup();
-          },
-          emitBoard,
-        };
-
-        this.subscribers.add(subscriber);
-        emitBoard(board);
-
-        heartbeat = setInterval(() => {
-          try {
-            controller.enqueue(new TextEncoder().encode(': keep-alive\n\n'));
-          } catch {
-            cleanup();
-          }
-        }, 25000);
-
-        request.signal?.addEventListener('abort', handleAbort, { once: true });
-      },
-      cancel: () => {
-        subscriber?.cleanup?.();
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+    return createWebSocketUpgradeResponse(client);
   }
 
   async broadcast(location) {
     getLocationConfig(location);
 
-    const subscribers = Array.from(this.subscribers)
-      .filter((subscriber) => subscriber.location === location);
+    const sockets = typeof this.state?.getWebSockets === 'function'
+      ? this.state.getWebSockets()
+      : [];
+    const subscribers = sockets
+      .map((socket) => ({
+        socket,
+        metadata: deserializeFeebasSocketMetadata(socket),
+      }))
+      .filter((subscriber) => subscriber.metadata?.location === location);
 
     if (subscribers.length === 0) {
       return;
@@ -1079,21 +1083,40 @@ class FeebasBoardStreamDurableObject {
     await Promise.all(subscribers.map(async (subscriber) => {
       try {
         const board = await repositories.feebas.getBoard(location, {
-          actorFingerprint: subscriber.actorFingerprint,
+          actorFingerprint: subscriber.metadata.actorFingerprint,
           includeLeaderboard: false,
         });
-        subscriber.emitBoard(board);
+        sendFeebasSocketBoard(subscriber.socket, board);
       } catch {
-        subscriber.cleanup?.();
+        try {
+          subscriber.socket.close(1011, 'Failed to refresh Feebas board');
+        } catch {
+          // Ignore sockets that are already closed.
+        }
       }
     }));
+  }
+
+  webSocketClose(socket) {
+    try {
+      socket.close();
+    } catch {
+      // The socket may already be closed by the runtime.
+    }
+  }
+
+  webSocketError(socket) {
+    try {
+      socket.close(1011, 'Feebas live updates failed');
+    } catch {
+      // The socket may already be closed by the runtime.
+    }
   }
 }
 
 function createWorkerApp(options = {}) {
   const createRepos = options.createRepositories || createRepositories;
   const fetchImpl = options.fetch || fetch;
-  const feebasStreamPollIntervalMs = options.feebasStreamPollIntervalMs || DEFAULT_FEEBAS_STREAM_POLL_INTERVAL_MS;
   const feebasSubscribersByLocation = new Map();
 
   function removeFeebasSubscriber(location, subscriber) {
@@ -1106,107 +1129,55 @@ function createWorkerApp(options = {}) {
     }
   }
 
-  function encodeFeebasEvent(payload) {
-    return encodeFeebasStreamEvent(payload);
-  }
+  function createFeebasSocketResponse(request, location, actorFingerprint, board) {
+    if (!isWebSocketUpgrade(request)) {
+      return webSocketUpgradeRequired();
+    }
 
-  function createFeebasStreamResponse(request, location, actorFingerprint, board, repositories) {
     let subscriber;
+    let isClosed = false;
+    const subscribers = feebasSubscribersByLocation.get(location) || new Set();
+    const { client, server } = createWebSocketPair();
 
-    const stream = new ReadableStream({
-      start(controller) {
-        const subscribers = feebasSubscribersByLocation.get(location) || new Set();
-        let isClosed = false;
-        let isPolling = false;
-        let heartbeat;
-        let pollForChanges;
-        let lastBoardSignature = getFeebasBoardStreamSignature(board);
+    const cleanup = () => {
+      if (isClosed) {
+        return;
+      }
 
-        const emitBoard = (nextBoard) => {
-          lastBoardSignature = getFeebasBoardStreamSignature(nextBoard);
-          controller.enqueue(encodeFeebasEvent({ success: true, data: nextBoard }));
-        };
+      isClosed = true;
+      removeFeebasSubscriber(location, subscriber);
+      try {
+        server.close();
+      } catch {
+        // The socket may already be closed by the client.
+      }
+    };
 
-        const cleanup = () => {
-          if (isClosed) {
-            return;
-          }
+    const handleAbort = () => {
+      cleanup();
+    };
 
-          isClosed = true;
-          clearInterval(heartbeat);
-          clearInterval(pollForChanges);
-          removeFeebasSubscriber(location, subscriber);
-          try {
-            controller.close();
-          } catch {
-            // The stream may already be closed by the client.
-          }
-        };
+    subscriber = { socket: server, actorFingerprint, cleanup };
+    subscribers.add(subscriber);
+    feebasSubscribersByLocation.set(location, subscribers);
 
-        subscriber = { controller, actorFingerprint, cleanup, emitBoard };
-        subscribers.add(subscriber);
-        feebasSubscribersByLocation.set(location, subscribers);
+    if (typeof server.accept === 'function') {
+      server.accept();
+    }
 
-        emitBoard(board);
+    sendFeebasSocketBoard(server, board);
 
-        heartbeat = setInterval(() => {
-          try {
-            controller.enqueue(new TextEncoder().encode(': keep-alive\n\n'));
-          } catch {
-            cleanup();
-          }
-        }, 25000);
+    server.addEventListener?.('close', cleanup);
+    server.addEventListener?.('error', cleanup);
+    request.signal?.addEventListener('abort', handleAbort, { once: true });
+    subscriber.cleanup = () => {
+      request.signal?.removeEventListener('abort', handleAbort);
+      server.removeEventListener?.('close', cleanup);
+      server.removeEventListener?.('error', cleanup);
+      cleanup();
+    };
 
-        pollForChanges = setInterval(() => {
-          if (isClosed || isPolling) {
-            return;
-          }
-
-          isPolling = true;
-          repositories.feebas.getBoard(location, {
-            actorFingerprint,
-            includeLeaderboard: false,
-          })
-            .then((nextBoard) => {
-              if (isClosed) {
-                return;
-              }
-
-              const nextBoardSignature = getFeebasBoardStreamSignature(nextBoard);
-              if (nextBoardSignature !== lastBoardSignature) {
-                emitBoard(nextBoard);
-              }
-            })
-            .catch(() => {
-              cleanup();
-            })
-            .finally(() => {
-              isPolling = false;
-            });
-        }, feebasStreamPollIntervalMs);
-
-        const handleAbort = () => {
-          cleanup();
-        };
-
-        request.signal?.addEventListener('abort', handleAbort, { once: true });
-        subscriber.cleanup = () => {
-          request.signal?.removeEventListener('abort', handleAbort);
-          cleanup();
-        };
-      },
-      cancel() {
-        subscriber?.cleanup?.();
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+    return createWebSocketUpgradeResponse(client);
   }
 
   async function broadcastFeebasBoard(location, repositories, env) {
@@ -1235,11 +1206,7 @@ function createWorkerApp(options = {}) {
           includeLeaderboard: false,
         });
 
-        if (subscriber.emitBoard) {
-          subscriber.emitBoard(board);
-        } else {
-          subscriber.controller.enqueue(encodeFeebasEvent({ success: true, data: board }));
-        }
+        sendFeebasSocketBoard(subscriber.socket, board);
       } catch {
         subscriber.cleanup?.();
       }
@@ -2623,11 +2590,16 @@ function createWorkerApp(options = {}) {
       try {
         getLocationConfig(match[1]);
         const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
-        const durableObject = getFeebasStreamDurableObject(env, match[1]);
 
+        if (!isWebSocketUpgrade(request)) {
+          return webSocketUpgradeRequired();
+        }
+
+        const durableObject = getFeebasStreamDurableObject(env, match[1]);
         if (durableObject) {
           return durableObject.fetch(createFeebasStreamDurableObjectRequest('/stream', match[1], actorFingerprint, {
             method: 'GET',
+            headers: request.headers,
           }));
         }
 
@@ -2636,7 +2608,7 @@ function createWorkerApp(options = {}) {
           includeLeaderboard: false,
         });
 
-        return createFeebasStreamResponse(request, match[1], actorFingerprint, board, getRepositories());
+        return createFeebasSocketResponse(request, match[1], actorFingerprint, board);
       } catch (error) {
         if (error instanceof FeebasRuleError) {
           return json({ success: false, message: error.message }, { status: error.statusCode });

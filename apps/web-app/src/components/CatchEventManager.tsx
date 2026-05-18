@@ -1879,6 +1879,10 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                     </div>
                     <div className="grid gap-3 text-sm">
                       <label className={labelClasses}>
+                        {tr('Submission link')}
+                        <input className={fieldClasses} readOnly value={makeToolUrl('events', activeEvent.id)} />
+                      </label>
+                      <label className={labelClasses}>
                         {tr('Event link')}
                         <input className={fieldClasses} readOnly value={makeToolUrl('events', activeEvent.id)} />
                       </label>

@@ -8,9 +8,101 @@ const { getPokemonVariants } = require('@team-soju/utils');
 const { AUTH_COOKIE_NAME, generateBotToken, signJwt } = require('../src/cloudflare/auth');
 const { createWorkerApp, FeebasBoardStreamDurableObject } = require('../src/cloudflare/worker');
 
+class MockWebSocket {
+  constructor() {
+    this.accepted = false;
+    this.closed = false;
+    this.received = [];
+    this.sent = [];
+    this.listeners = new Map();
+    this.attachment = null;
+    this.peer = null;
+  }
+
+  accept() {
+    this.accepted = true;
+  }
+
+  send(message) {
+    if (this.closed) {
+      throw new Error('WebSocket is closed.');
+    }
+
+    this.sent.push(message);
+    this.peer?.receive(message);
+  }
+
+  receive(message) {
+    this.received.push(message);
+    this.emit('message', { data: message });
+  }
+
+  close() {
+    if (this.closed) {
+      return;
+    }
+
+    this.closed = true;
+    this.emit('close', {});
+  }
+
+  addEventListener(type, listener) {
+    const listeners = this.listeners.get(type) || new Set();
+    listeners.add(listener);
+    this.listeners.set(type, listeners);
+  }
+
+  removeEventListener(type, listener) {
+    this.listeners.get(type)?.delete(listener);
+  }
+
+  emit(type, event) {
+    this.listeners.get(type)?.forEach((listener) => listener(event));
+  }
+
+  serializeAttachment(attachment) {
+    this.attachment = attachment;
+  }
+
+  deserializeAttachment() {
+    return this.attachment;
+  }
+}
+
+class MockWebSocketPair {
+  constructor() {
+    const client = new MockWebSocket();
+    const server = new MockWebSocket();
+    client.peer = server;
+    server.peer = client;
+    return { 0: client, 1: server };
+  }
+}
+
+function createWebSocketRequest(url) {
+  return new Request(url, {
+    headers: {
+      Upgrade: 'websocket',
+    },
+  });
+}
+
+function createDurableObjectState() {
+  const sockets = [];
+  return {
+    acceptWebSocket: jest.fn((socket) => {
+      socket.accept();
+      sockets.push(socket);
+    }),
+    getWebSockets: jest.fn(() => sockets.filter((socket) => !socket.closed)),
+    sockets,
+  };
+}
+
 describe('Cloudflare Worker API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    global.WebSocketPair = MockWebSocketPair;
     getPokemonVariants.mockResolvedValue({
       national_number: 25,
       variants: ['pikachu'],
@@ -695,7 +787,7 @@ describe('Cloudflare Worker API', () => {
     expect(body.message).toBe('Feebas tile updated successfully');
   });
 
-  it('serves Feebas SSE from the Worker repository contract', async () => {
+  it('serves Feebas WebSocket updates from the Worker repository contract', async () => {
     const board = {
       location: 'route-119-main',
       tiles: [],
@@ -715,26 +807,24 @@ describe('Cloudflare Worker API', () => {
       fetch: fetchMock,
     });
 
-    const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv({
+    const response = await app.fetch(createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv({
       LEGACY_API_BASE_URL: 'https://legacy.example.com',
     }));
-    const reader = response.body.getReader();
-    const firstChunk = await reader.read();
-    await reader.cancel();
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(repositories.feebas.getBoard).toHaveBeenCalledWith('route-119-main', {
       actorFingerprint: 'client-12345678',
       includeLeaderboard: false,
     });
-    expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe('text/event-stream');
-    expect(new TextDecoder().decode(firstChunk.value)).toContain(JSON.stringify({ success: true, data: board }));
+    expect(response.status).toBe(101);
+    expect(response.webSocket.received).toEqual([
+      JSON.stringify({ success: true, data: board }),
+    ]);
   });
 
-  it('routes Feebas SSE through the Durable Object binding when available', async () => {
+  it('routes Feebas WebSocket upgrades through the Durable Object binding when available', async () => {
     const durableFetch = jest.fn().mockResolvedValue(new Response('durable stream', {
-      headers: { 'content-type': 'text/event-stream' },
+      headers: { upgrade: 'websocket' },
     }));
     const durableObjectBinding = {
       idFromName: jest.fn((name) => `id:${name}`),
@@ -751,7 +841,7 @@ describe('Cloudflare Worker API', () => {
     const app = createWorkerApp({ repositories });
 
     const response = await app.fetch(
-      new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'),
+      createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'),
       createEnv({ FEEBAS_BOARD_STREAM: durableObjectBinding })
     );
     const durableRequest = durableFetch.mock.calls[0][0];
@@ -763,6 +853,7 @@ describe('Cloudflare Worker API', () => {
     expect(durableObjectBinding.idFromName).toHaveBeenCalledWith('route-119-main');
     expect(durableObjectBinding.get).toHaveBeenCalledWith('id:route-119-main');
     expect(durableRequest.method).toBe('GET');
+    expect(durableRequest.headers.get('upgrade')).toBe('websocket');
     expect(durableUrl.pathname).toBe('/stream');
     expect(durableUrl.searchParams.get('location')).toBe('route-119-main');
     expect(durableUrl.searchParams.get('actorFingerprint')).toBe('client-12345678');
@@ -815,7 +906,7 @@ describe('Cloudflare Worker API', () => {
     expect(durableUrl.searchParams.get('location')).toBe('route-119-main');
   });
 
-  it('streams and broadcasts Feebas boards from the Durable Object class', async () => {
+  it('streams and broadcasts Feebas boards from the hibernating Durable Object class', async () => {
     const initialBoard = {
       location: 'route-119-main',
       tiles: [{ tileId: 'r1c7', status: 'unchecked' }],
@@ -833,22 +924,19 @@ describe('Cloudflare Worker API', () => {
           .mockResolvedValueOnce(updatedBoard),
       },
     };
-    const durableObject = new FeebasBoardStreamDurableObject({}, {}, {
+    const state = createDurableObjectState();
+    const durableObject = new FeebasBoardStreamDurableObject(state, {}, {
       createRepositories: () => repositories,
     });
 
-    const streamResponse = await durableObject.fetch(new Request('https://feebas-board-stream.local/stream?location=route-119-main&actorFingerprint=client-12345678'));
-    const reader = streamResponse.body.getReader();
-    const firstChunk = await reader.read();
+    const streamResponse = await durableObject.fetch(createWebSocketRequest('https://feebas-board-stream.local/stream?location=route-119-main&actorFingerprint=client-12345678'));
 
     const broadcastResponse = await durableObject.fetch(new Request('https://feebas-board-stream.local/broadcast?location=route-119-main', {
       method: 'POST',
     }));
-    const nextChunk = await reader.read();
-    await reader.cancel();
 
-    expect(streamResponse.status).toBe(200);
-    expect(streamResponse.headers.get('content-type')).toBe('text/event-stream');
+    expect(streamResponse.status).toBe(101);
+    expect(state.acceptWebSocket).toHaveBeenCalledTimes(1);
     expect(broadcastResponse.status).toBe(204);
     expect(repositories.feebas.getBoard).toHaveBeenNthCalledWith(1, 'route-119-main', {
       actorFingerprint: 'client-12345678',
@@ -858,11 +946,13 @@ describe('Cloudflare Worker API', () => {
       actorFingerprint: 'client-12345678',
       includeLeaderboard: false,
     });
-    expect(new TextDecoder().decode(firstChunk.value)).toContain(JSON.stringify({ success: true, data: initialBoard }));
-    expect(new TextDecoder().decode(nextChunk.value)).toContain(JSON.stringify({ success: true, data: updatedBoard }));
+    expect(streamResponse.webSocket.received).toEqual([
+      JSON.stringify({ success: true, data: initialBoard }),
+      JSON.stringify({ success: true, data: updatedBoard }),
+    ]);
   });
 
-  it('broadcasts Feebas tile updates to Worker SSE subscribers', async () => {
+  it('broadcasts Feebas tile updates to Worker WebSocket subscribers', async () => {
     const initialBoard = {
       location: 'route-119-main',
       tiles: [{ id: 'r1c7', status: 'unchecked' }],
@@ -886,9 +976,7 @@ describe('Cloudflare Worker API', () => {
     };
     const app = createWorkerApp({ repositories });
 
-    const streamResponse = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv());
-    const reader = streamResponse.body.getReader();
-    await reader.read();
+    const streamResponse = await app.fetch(createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv());
 
     await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/tiles/r1c7', {
       method: 'POST',
@@ -899,68 +987,34 @@ describe('Cloudflare Worker API', () => {
         actorName: 'Trainer',
       }),
     }), createEnv());
-    const nextChunk = await reader.read();
-    await reader.cancel();
 
     expect(repositories.feebas.getBoard).toHaveBeenLastCalledWith('route-119-main', {
       actorFingerprint: 'client-12345678',
       includeLeaderboard: false,
     });
-    expect(new TextDecoder().decode(nextChunk.value)).toContain(JSON.stringify({ success: true, data: updatedBoard }));
+    expect(streamResponse.webSocket.received).toEqual([
+      JSON.stringify({ success: true, data: initialBoard }),
+      JSON.stringify({ success: true, data: updatedBoard }),
+    ]);
   });
 
-  it('polls Worker SSE subscribers for Feebas board changes missed by in-memory broadcast', async () => {
-    jest.useFakeTimers();
-
-    const initialBoard = {
-      location: 'route-119-main',
-      cycleStart: '2026-04-09T20:15:00.000Z',
-      cycleEnd: '2026-04-09T21:00:00.000Z',
-      tiles: [{ tileId: 'r1c7', status: 'unchecked', voteCounts: { checked: 0, pending: 0, confirmed: 0 }, totalVotes: 0, currentUserVote: 'unchecked' }],
-      activity: [],
-    };
-    const updatedBoard = {
-      ...initialBoard,
-      tiles: [{ tileId: 'r1c7', status: 'pending', voteCounts: { checked: 0, pending: 1, confirmed: 0 }, totalVotes: 1, currentUserVote: 'unchecked' }],
-      activity: [{
-        id: 1,
-        tileId: 'r1c7',
-        actionType: 'voted',
-        previousStatus: null,
-        nextStatus: 'pending',
-        actorName: 'Trainer',
-        createdAt: '2026-04-09T20:20:00.000Z',
-      }],
-    };
+  it('requires a WebSocket upgrade for Feebas live updates', async () => {
     const repositories = {
       members: {},
       shinies: {},
       users: {},
       feebas: {
-        getBoard: jest.fn()
-          .mockResolvedValueOnce(initialBoard)
-          .mockResolvedValueOnce(updatedBoard),
+        getBoard: jest.fn(),
       },
     };
-    const app = createWorkerApp({
-      repositories,
-      feebasStreamPollIntervalMs: 100,
-    });
+    const app = createWorkerApp({ repositories });
 
-    try {
-      const streamResponse = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv());
-      const reader = streamResponse.body.getReader();
-      await reader.read();
+    const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv());
+    const body = await response.json();
 
-      const nextChunkPromise = reader.read();
-      await jest.advanceTimersByTimeAsync(100);
-      const nextChunk = await nextChunkPromise;
-      await reader.cancel();
-
-      expect(repositories.feebas.getBoard).toHaveBeenCalledTimes(2);
-      expect(new TextDecoder().decode(nextChunk.value)).toContain(JSON.stringify({ success: true, data: updatedBoard }));
-    } finally {
-      jest.useRealTimers();
-    }
+    expect(response.status).toBe(426);
+    expect(response.headers.get('upgrade')).toBe('websocket');
+    expect(body.message).toBe('Expected WebSocket upgrade');
+    expect(repositories.feebas.getBoard).not.toHaveBeenCalled();
   });
 });
