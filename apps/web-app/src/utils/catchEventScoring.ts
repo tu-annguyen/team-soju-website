@@ -24,6 +24,7 @@ export type CatchEventConfig = {
   naturePenalties: CatchEventRule[];
   useLowestScoreFinalPlace: boolean;
   isLeaderboardPublished: boolean;
+  submissionsClosed?: boolean;
   createdAt: string;
   updatedAt?: string;
   submissions?: CatchEventSubmission[];

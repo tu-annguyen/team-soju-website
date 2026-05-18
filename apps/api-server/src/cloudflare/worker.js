@@ -137,6 +137,9 @@ const catchEventOcrSchema = Joi.object({
 const catchEventPublishSchema = Joi.object({
   isLeaderboardPublished: Joi.boolean().required(),
 });
+const catchEventSubmissionsClosedSchema = Joi.object({
+  submissionsClosed: Joi.boolean().required(),
+});
 const catchEventSubmissionStatusSchema = Joi.object({
   status: Joi.string().valid('valid', 'needs-review', 'invalid', 'disqualified').required(),
 });
@@ -2340,6 +2343,34 @@ function createWorkerApp(options = {}) {
       }
     }
 
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/submissions-closed$/);
+    if (request.method === 'POST' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventSubmissionsClosedSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const event = await getRepositories().catchEvents.setSubmissionsClosed(
+          match[1],
+          auth.user.id,
+          value.submissionsClosed
+        );
+        if (!event) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: event, message: 'Catch event updated successfully' });
+      } catch (error) {
+        console.error('Error updating catch event submissions:', error);
+        return json({ success: false, message: 'Failed to update catch event submissions' }, { status: 500 });
+      }
+    }
+
     match = pathname.match(/^\/api\/catch-events\/([^/]+)\/submissions\/([^/]+)\/status$/);
     if (request.method === 'POST' && match) {
       const auth = await requireUser(request, env, getRepositories());
@@ -2371,6 +2402,9 @@ function createWorkerApp(options = {}) {
         const event = await getRepositories().catchEvents.getEventById(match[1]);
         if (!event) {
           return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+        if (event.submissionsClosed) {
+          return json({ success: false, message: 'Submissions are closed for this event.' }, { status: 403 });
         }
 
         const body = await readJson(request);
@@ -2418,7 +2452,7 @@ function createWorkerApp(options = {}) {
         }
 
         const isOwner = authenticatedUser?.id && authenticatedUser.id === event.ownerUserId;
-        if (!event.isLeaderboardPublished && !isOwner && url.searchParams.get('view') === 'leaderboard') {
+        if (!event.isLeaderboardPublished && !isOwner) {
           return json({
             success: true,
             data: {

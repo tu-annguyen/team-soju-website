@@ -35,6 +35,7 @@ function normalizeEvent(row, screenshots = []) {
     naturePenalties: parseJson(row.nature_penalties_json, []),
     useLowestScoreFinalPlace: boolFromDb(row.use_lowest_score_final_place),
     isLeaderboardPublished: boolFromDb(row.is_leaderboard_published),
+    submissionsClosed: boolFromDb(row.submissions_closed),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     screenshots,
@@ -81,6 +82,24 @@ function normalizeScreenshot(row) {
 function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
   let submissionLocationColumnsReady = dialect !== 'd1';
+  let eventSubmissionColumnsReady = dialect !== 'd1';
+
+  async function ensureEventSubmissionColumns() {
+    if (eventSubmissionColumnsReady) return;
+
+    const columns = await runSelect('PRAGMA table_info(catch_events)');
+    const columnNames = new Set(columns.map((column) => column.name));
+
+    if (!columnNames.has('submissions_closed')) {
+      await runCommand(`
+        ALTER TABLE catch_events
+        ADD COLUMN submissions_closed INTEGER NOT NULL DEFAULT 0
+        CHECK (submissions_closed IN (0, 1))
+      `);
+    }
+
+    eventSubmissionColumnsReady = true;
+  }
 
   async function ensureSubmissionLocationColumns() {
     if (submissionLocationColumnsReady) return;
@@ -218,6 +237,17 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
             updated_at = ${nowExpression}
         WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
       `, [id, ownerUserId, isPublished ? 1 : 0]);
+      return this.getEventById(id, { includeSubmissions: true });
+    },
+
+    async setSubmissionsClosed(id, ownerUserId, isClosed) {
+      await ensureEventSubmissionColumns();
+      await runCommand(`
+        UPDATE catch_events
+        SET submissions_closed = ${parameter(3)},
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
+      `, [id, ownerUserId, isClosed ? 1 : 0]);
       return this.getEventById(id, { includeSubmissions: true });
     },
 

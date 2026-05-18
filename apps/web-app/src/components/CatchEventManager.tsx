@@ -7,6 +7,7 @@ import {
   selectCatchEventWinners,
   slugifyEventName,
   validateCatchEventSubmission,
+  zonedLocalDateTimeToUtc,
 } from '../utils/catchEventScoring';
 import type {
   CatchEventConfig,
@@ -24,6 +25,7 @@ import { POKEMON_SPECIES_NAME_SET, POKEMON_SPECIES_NAMES } from '../utils/pokemo
 type ViewMode = 'events' | 'host';
 type LegacyViewMode = ViewMode | 'create' | 'submit' | 'admin' | 'leaderboard';
 type HostTab = 'create' | 'manage';
+type EventTab = 'submission' | 'leaderboard';
 type RuleRow = { id: string; name: string; points: string };
 type AuthUser = { id: string; email: string; ign: string };
 type ScreenshotProof = { name?: string; fileName?: string; dataUrl?: string; url?: string };
@@ -171,6 +173,26 @@ function formatLocalDateTime(value: string) {
 
   const [, year, month, day, hour, minute] = match;
   return `${month}/${day}/${year} ${hour}:${minute}`;
+}
+
+function hasEventStarted(event: Pick<CatchEventConfig, 'startLocal' | 'timezone'>) {
+  try {
+    return Date.now() >= new Date(zonedLocalDateTimeToUtc(event.startLocal, event.timezone)).getTime();
+  } catch {
+    return false;
+  }
+}
+
+function getSubmissionDisabledReason(event: CatchEventConfig) {
+  if (!hasEventStarted(event)) {
+    return 'Submissions open when the event starts.';
+  }
+
+  if (event.submissionsClosed) {
+    return 'Submissions are closed for this event.';
+  }
+
+  return '';
 }
 
 function makeToolUrl(view: ViewMode, eventId?: string, hostTab?: HostTab) {
@@ -339,6 +361,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
   const [submissions, setSubmissions] = useState<CatchEventSubmission[]>([]);
   const [view, setView] = useState<ViewMode>(normalizeQueryView(initialView));
   const [hostTab, setHostTab] = useState<HostTab>(normalizeHostTab(initialView));
+  const [eventTab, setEventTab] = useState<EventTab>(initialView === 'leaderboard' ? 'leaderboard' : 'submission');
   const [eventFilters, setEventFilters] = useState({
     search: '',
     target: '',
@@ -428,6 +451,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
     if (queryView && ['events', 'host', 'create', 'submit', 'admin', 'leaderboard'].includes(queryView)) {
       setView(normalizeQueryView(queryView));
       setHostTab(normalizeHostTab(queryView, queryTab));
+      setEventTab(queryView === 'leaderboard' ? 'leaderboard' : 'submission');
     }
   }, []);
 
@@ -441,7 +465,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
         const queryView = params.get('view') || '';
 
         if (queryEvent) {
-          const event = await loadEventDetails(queryEvent, queryView === 'leaderboard' ? 'leaderboard' : view);
+          const event = await loadEventDetails(queryEvent, view);
           if (isMounted) {
             setActiveEventId(event?.id || queryEvent);
           }
@@ -596,6 +620,18 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
       route: current.route || activeEvent.route,
     }));
   }, [activeEvent?.id]);
+  useEffect(() => {
+    const canViewLeaderboard = Boolean(
+      activeEvent?.isLeaderboardPublished || (authUser && activeEvent?.ownerUserId === authUser.id)
+    );
+
+    if (eventTab === 'leaderboard' && activeEvent && !canViewLeaderboard) {
+      setEventTab('submission');
+    }
+    if (eventTab === 'submission' && activeEvent && getSubmissionDisabledReason(activeEvent) && canViewLeaderboard) {
+      setEventTab('leaderboard');
+    }
+  }, [activeEvent, authUser, eventTab]);
   const activeSubmissions = useMemo(
     () => submissions.filter((submission) => submission.eventId === activeEvent?.id),
     [activeEvent?.id, submissions]
@@ -741,6 +777,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
 
     if (!activeEvent) {
       setSubmitMessage('Create or select an event before submitting an entry.');
+      return;
+    }
+    const disabledReason = getSubmissionDisabledReason(activeEvent);
+    if (disabledReason) {
+      setSubmitMessage(disabledReason);
       return;
     }
 
@@ -903,6 +944,22 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
     }
   }
 
+  async function updateSubmissionsClosed(eventId: string, submissionsClosed: boolean) {
+    try {
+      const response = await fetchJson<CatchEventConfig>(
+        `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(eventId)}/submissions-closed`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ submissionsClosed }),
+        }
+      );
+      setEvents((current) => current.map((event) => event.id === response.data.id ? response.data : event));
+      setSubmissions(response.data.submissions || []);
+    } catch (error) {
+      console.error('Error updating catch event submissions:', error);
+    }
+  }
+
   function loadEventIntoForm(event: CatchEventConfig) {
     setEventForm({
       name: `${event.name} Copy`,
@@ -1054,6 +1111,10 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
             <p>
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Leaderboard</span>
               {event.isLeaderboardPublished ? 'Published' : 'Not published yet'}
+            </p>
+            <p>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Submissions</span>
+              {getSubmissionDisabledReason(event) || 'Open'}
             </p>
           </div>
         </div>
@@ -1392,7 +1453,39 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
 
             {activeEvent && (
               <>
-                <div className={panelClasses}>
+                <div className="flex flex-wrap gap-3">
+                  {(['submission', 'leaderboard'] as EventTab[]).map((tab) => {
+                    const isOwnerPreview = Boolean(authUser && activeEvent.ownerUserId === authUser.id);
+                    const isUnavailableLeaderboard = tab === 'leaderboard' && !activeEvent.isLeaderboardPublished && !isOwnerPreview;
+                    const isUnavailableSubmission = tab === 'submission' && Boolean(getSubmissionDisabledReason(activeEvent));
+                    const isUnavailableTab = isUnavailableLeaderboard || isUnavailableSubmission;
+
+                    return (
+                      <button
+                        key={tab}
+                        type="button"
+                        disabled={isUnavailableTab}
+                        aria-disabled={isUnavailableTab}
+                        className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+                          isUnavailableTab
+                            ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-600'
+                            : eventTab === tab
+                              ? 'border-emerald-600 bg-emerald-600 text-white'
+                              : 'border-gray-300 bg-white text-gray-800 hover:border-emerald-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100'
+                        }`}
+                        onClick={() => {
+                          if (!isUnavailableTab) {
+                            setEventTab(tab);
+                          }
+                        }}
+                      >
+                        {tab === 'submission' ? 'Submission' : 'Leaderboard'}
+                      </button>
+                    );
+                  })}
+                </div>
+                {eventTab === 'submission' && (
+                <div className={`${panelClasses} ${getSubmissionDisabledReason(activeEvent) ? 'opacity-60' : ''}`}>
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Player Submission</h2>
                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
@@ -1401,8 +1494,14 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                     Browser timezone suggestion: {browserTimezone}
                   </p>
+                  {getSubmissionDisabledReason(activeEvent) && (
+                    <p className="mt-3 rounded-lg bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+                      {getSubmissionDisabledReason(activeEvent)}
+                    </p>
+                  )}
                 </div>
                 <form className="space-y-5" onSubmit={handleSubmitEntry}>
+                <fieldset className="space-y-5" disabled={Boolean(getSubmissionDisabledReason(activeEvent))}>
                 <label className={labelClasses}>
                   Nature/OT screenshot
                   <input
@@ -1545,9 +1644,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
                 {submitMessage && (
                   <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{submitMessage}</p>
                 )}
+                </fieldset>
                 </form>
                 </div>
-                {activeEvent.isLeaderboardPublished || (authUser && activeEvent.ownerUserId === authUser.id) ? (
+                )}
+                {eventTab === 'leaderboard' && (activeEvent.isLeaderboardPublished || (authUser && activeEvent.ownerUserId === authUser.id) ? (
                   renderLeaderboard(activeEvent, Boolean(authUser && activeEvent.ownerUserId === authUser.id))
                 ) : (
                   <div className={panelClasses}>
@@ -1556,7 +1657,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
                       This leaderboard is not published yet. Check back after staff confirms the event.
                     </p>
                   </div>
-                )}
+                ))}
               </>
             )}
           </div>
@@ -1638,6 +1739,13 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
                             Unpublish
                           </button>
                         )}
+                        <button
+                          type="button"
+                          className={activeEvent.submissionsClosed ? smallButtonClasses : 'rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700'}
+                          onClick={() => updateSubmissionsClosed(activeEvent.id, !activeEvent.submissionsClosed)}
+                        >
+                          {activeEvent.submissionsClosed ? 'Reopen submissions' : 'Close submissions'}
+                        </button>
                         <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent)}>
                           Duplicate setup
                         </button>
