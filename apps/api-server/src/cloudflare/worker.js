@@ -485,13 +485,82 @@ function mergeCatchEventOcrResults(results) {
   };
 }
 
-async function extractCatchEventScreenshotFields(env, screenshots, context = {}) {
-  if (!env.AI) {
+function isLocalAiBindingError(error) {
+  return /Binding AI needs to be run remotely/i.test(String(error?.message || error || ''));
+}
+
+function getCloudflareAiRestConfig(env) {
+  const accountId = cleanNullableString(env.CLOUDFLARE_ACCOUNT_ID || env.CF_ACCOUNT_ID, 120);
+  const apiToken = cleanNullableString(
+    env.CLOUDFLARE_API_TOKEN || env.CF_API_TOKEN || env.WORKERS_AI_API_TOKEN,
+    512
+  );
+
+  if (!accountId || !apiToken) {
+    return null;
+  }
+
+  return { accountId, apiToken };
+}
+
+function createLocalAiConfigError() {
+  const error = new Error(
+    'Workers AI cannot run through the local binding. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN to enable screenshot autofill in local worker dev.'
+  );
+  error.statusCode = 503;
+  return error;
+}
+
+async function runCloudflareAiRest(env, model, payload) {
+  const config = getCloudflareAiRestConfig(env);
+  if (!config) {
+    throw createLocalAiConfigError();
+  }
+
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run/${model}`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${config.apiToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok || body?.success === false) {
+    const message = body?.errors?.[0]?.message || body?.message || 'Workers AI request failed.';
+    const error = new Error(message);
+    error.statusCode = response.status >= 400 && response.status < 500 ? response.status : 502;
+    throw error;
+  }
+
+  return body?.result ?? body;
+}
+
+async function runCatchEventOcrModel(env, model, payload) {
+  if (env.AI && typeof env.AI.run === 'function') {
+    try {
+      return await env.AI.run(model, payload);
+    } catch (error) {
+      if (!isLocalAiBindingError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  if (!env.AI && !getCloudflareAiRestConfig(env)) {
     const error = new Error('OCR is not configured for this environment.');
     error.statusCode = 503;
     throw error;
   }
 
+  return runCloudflareAiRest(env, model, payload);
+}
+
+async function extractCatchEventScreenshotFields(env, screenshots, context = {}) {
   const fallbackDateOrder = inferDateOrderFromLocaleTimezone(context.locale, context.timezone);
   const model = env.CATCH_EVENT_OCR_MODEL || '@cf/google/gemma-3-12b-it';
   const results = await Promise.all(screenshots.map(async (screenshot, index) => {
@@ -518,7 +587,7 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
       : 'If a numeric date is ambiguous, such as 4/12/26, and no locale cue is visible, leave catchLocal null, keep the original in catchTimeText, and add a warning.',
     'If the total is shown as "140 / 186", totalIv is 140.',
     ].join('\n');
-    const result = await env.AI.run(model, {
+    const result = await runCatchEventOcrModel(env, model, {
       messages: [
         {
           role: 'user',

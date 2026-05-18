@@ -322,6 +322,91 @@ describe('Cloudflare Worker API', () => {
     }));
   });
 
+  it('falls back to Workers AI REST when the local AI binding cannot run', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn().mockRejectedValue(new Error('Binding AI needs to be run remotely'));
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        result: {
+          response: JSON.stringify({
+            species: 'Milotic',
+            totalIv: 140,
+            confidence: 0.9,
+            warnings: [],
+          }),
+        },
+      }),
+    });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'summary.png', contentType: 'image/png', dataUrl: 'data:image/png;base64,AAAA' },
+        ],
+      }),
+    }), createEnv({
+      AI: { run: aiRun },
+      CLOUDFLARE_ACCOUNT_ID: 'account-id',
+      CLOUDFLARE_API_TOKEN: 'api-token',
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(aiRun).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.cloudflare.com/client/v4/accounts/account-id/ai/run/@cf/google/gemma-3-12b-it',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          authorization: 'Bearer api-token',
+          'content-type': 'application/json',
+        }),
+      })
+    );
+    expect(body.data).toEqual(expect.objectContaining({
+      species: 'Milotic',
+      totalIv: 140,
+    }));
+
+    fetchSpy.mockRestore();
+  });
+
+  it('returns a clear local-dev OCR error when Workers AI REST credentials are missing', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn().mockRejectedValue(new Error('Binding AI needs to be run remotely'));
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'summary.png', contentType: 'image/png', dataUrl: 'data:image/png;base64,AAAA' },
+        ],
+      }),
+    }), createEnv({ AI: { run: aiRun } }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.message).toContain('CLOUDFLARE_ACCOUNT_ID');
+    expect(body.message).toContain('CLOUDFLARE_API_TOKEN');
+  });
+
   it('serves auth/me from the Worker repository contract', async () => {
     const repositories = {
       members: {},

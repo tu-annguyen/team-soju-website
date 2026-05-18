@@ -80,6 +80,31 @@ function normalizeScreenshot(row) {
 
 function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+  let submissionLocationColumnsReady = dialect !== 'd1';
+
+  async function ensureSubmissionLocationColumns() {
+    if (submissionLocationColumnsReady) return;
+
+    const columns = await runSelect('PRAGMA table_info(catch_event_submissions)');
+    const columnNames = new Set(columns.map((column) => column.name));
+
+    if (!columnNames.has('region')) {
+      await runCommand(`
+        ALTER TABLE catch_event_submissions
+        ADD COLUMN region TEXT NOT NULL DEFAULT 'Hoenn'
+        CHECK (region IN ('Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova'))
+      `);
+    }
+
+    if (!columnNames.has('route')) {
+      await runCommand(`
+        ALTER TABLE catch_event_submissions
+        ADD COLUMN route TEXT NOT NULL DEFAULT 'Unknown'
+      `);
+    }
+
+    submissionLocationColumnsReady = true;
+  }
 
   async function getScreenshotsBySubmissionIds(submissionIds) {
     if (!submissionIds.length) return new Map();
@@ -197,6 +222,8 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     },
 
     async upsertSubmission(eventId, submission, screenshots = []) {
+      await ensureSubmissionLocationColumns();
+
       const existing = await runOne(`
         SELECT *
         FROM catch_event_submissions

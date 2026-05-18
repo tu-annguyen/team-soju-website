@@ -9,7 +9,7 @@
     "dev": "nodemon src/server.js",
     "import:mt-coronet-feebas-tally": "node src/config/import-mt-coronet-feebas-tally.js",
     "export:d1": "node src/scripts/export-postgres-to-d1.js",
-    "dev:worker": "wrangler dev --config wrangler.jsonc",
+    "dev:worker": "wrangler dev --local --config wrangler.jsonc",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\"",
     "deploy:cf:staging": "wrangler deploy --config wrangler.jsonc --env staging",
     "tail:cf:staging": "wrangler tail --config wrangler.jsonc --env staging --format pretty",
