@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS catch_events (
   nature_penalties_json TEXT NOT NULL DEFAULT '[]',
   use_lowest_score_final_place INTEGER NOT NULL DEFAULT 1 CHECK (use_lowest_score_final_place IN (0, 1)),
   is_leaderboard_published INTEGER NOT NULL DEFAULT 0 CHECK (is_leaderboard_published IN (0, 1)),
+  submissions_closed INTEGER NOT NULL DEFAULT 0 CHECK (submissions_closed IN (0, 1)),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   CHECK (trim(name) <> ''),
