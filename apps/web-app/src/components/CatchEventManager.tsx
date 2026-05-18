@@ -1223,6 +1223,70 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
             </div>
             {activeEvent && (
               <form className="space-y-5" onSubmit={handleSubmitEntry}>
+                <label className={labelClasses}>
+                  Nature/OT screenshot
+                  <input
+                    className={fieldClasses}
+                    type="file"
+                    accept="image/*"
+                    onChange={async (event) => {
+                      const screenshotProofs = await readImageProofs(event.target.files);
+                      setOcrMessage('');
+
+                      setSubmissionForm((prev) => ({
+                        ...prev,
+                        natureOtScreenshot: screenshotProofs[0] ?? null,
+                      }));
+                    }}
+                  />
+                </label>
+                <label className={labelClasses}>
+                  IVs screenshot
+                  <input
+                    className={fieldClasses}
+                    type="file"
+                    accept="image/*"
+                    onChange={async (event) => {
+                      const screenshotProofs = await readImageProofs(event.target.files);
+                      setOcrMessage('');
+
+                      setSubmissionForm((prev) => ({
+                        ...prev,
+                        ivsScreenshot: screenshotProofs[0] ?? null,
+                      }));
+                    }}
+                  />
+                </label>
+                <label className={labelClasses}>
+                  Catch time/location screenshot
+                  <input
+                    className={fieldClasses}
+                    type="file"
+                    accept="image/*"
+                    onChange={async (event) => {
+                      const screenshotProofs = await readImageProofs(event.target.files);
+                      setOcrMessage('');
+
+                      setSubmissionForm((prev) => ({
+                        ...prev,
+                        infoScreenshot: screenshotProofs[0] ?? null,
+                      }));
+                    }}
+                  />
+                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className={smallButtonClasses}
+                    type="button"
+                    disabled={isOcrLoading || getSubmissionProofs(submissionForm).length < 3}
+                    onClick={handleAutofillFromScreenshots}
+                  >
+                    {isOcrLoading ? 'Reading screenshots...' : 'Autofill from screenshots'}
+                  </button>
+                  {ocrMessage && (
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{ocrMessage}</p>
+                  )}
+                </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className={labelClasses}>
                     Player IGN / OT
@@ -1284,70 +1348,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                       ))}
                     </datalist>
                   </label>
-                </div>
-                <label className={labelClasses}>
-                  Nature/OT Summary screenshot
-                  <input
-                    className={fieldClasses}
-                    type="file"
-                    accept="image/*"
-                    onChange={async (event) => {
-                      const screenshotProofs = await readImageProofs(event.target.files);
-                      setOcrMessage('');
-
-                      setSubmissionForm((prev) => ({
-                        ...prev,
-                        natureOtScreenshot: screenshotProofs[0] ?? null,
-                      }));
-                    }}
-                  />
-                </label>
-                <label className={labelClasses}>
-                  IVs screenshot
-                  <input
-                    className={fieldClasses}
-                    type="file"
-                    accept="image/*"
-                    onChange={async (event) => {
-                      const screenshotProofs = await readImageProofs(event.target.files);
-                      setOcrMessage('');
-
-                      setSubmissionForm((prev) => ({
-                        ...prev,
-                        ivsScreenshot: screenshotProofs[0] ?? null,
-                      }));
-                    }}
-                  />
-                </label>
-                <label className={labelClasses}>
-                  Information screenshot
-                  <input
-                    className={fieldClasses}
-                    type="file"
-                    accept="image/*"
-                    onChange={async (event) => {
-                      const screenshotProofs = await readImageProofs(event.target.files);
-                      setOcrMessage('');
-
-                      setSubmissionForm((prev) => ({
-                        ...prev,
-                        infoScreenshot: screenshotProofs[0] ?? null,
-                      }));
-                    }}
-                  />
-                </label>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    className={smallButtonClasses}
-                    type="button"
-                    disabled={isOcrLoading || getSubmissionProofs(submissionForm).length < 3}
-                    onClick={handleAutofillFromScreenshots}
-                  >
-                    {isOcrLoading ? 'Reading screenshots...' : 'Autofill from screenshots'}
-                  </button>
-                  {ocrMessage && (
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{ocrMessage}</p>
-                  )}
                 </div>
                 <div className="rounded-lg bg-gray-50 p-4 text-sm text-gray-700 dark:bg-gray-950 dark:text-gray-300">
                   <p className="font-semibold text-gray-950 dark:text-white">Verify before submitting</p>

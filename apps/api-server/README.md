@@ -233,8 +233,17 @@ curl -X POST http://localhost:3001/api/shinies \
   npm run dev:worker
   ```
 
+- The Worker dev script uses `wrangler dev --local` because Cloudflare edge
+  preview does not support the `FEEBAS_BOARD_STREAM` Durable Object binding.
+- Workers AI does not have a local simulation. To use catch-event screenshot
+  autofill in local worker dev, set `CLOUDFLARE_ACCOUNT_ID` and
+  `CLOUDFLARE_API_TOKEN` in your local environment so the Worker can call
+  Workers AI through Cloudflare's REST API when the local `AI` binding refuses
+  to run.
 - Default Worker database backend is Postgres via `DATABASE_URL`.
 - Set `DB_BACKEND=d1` and bind `DB` to switch the Worker to D1. The D1 schema covers team members, shinies, app users for `GET /api/auth/me`, and Feebas board REST tables.
+- Older local D1 catch-event databases are upgraded lazily on the next
+  submission if they are missing submission `region` or `route` columns.
 - Set `LEGACY_API_BASE_URL` during migration to proxy legacy-only runtime routes:
   - `POST /api/shinies/from-screenshot`
   - `POST /api/shinies/from-screenshot/async`
