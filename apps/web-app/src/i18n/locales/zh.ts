@@ -1,3 +1,5 @@
+import catchEventManager from './catch-events/zh';
+
 const zh = {
   meta: {
     defaultTitle: 'Team Soju - PokeMMO 团队',
@@ -133,6 +135,7 @@ const zh = {
       intro:
         '实时协调 丑丑鱼 格子检查。你可以将格子投票为已检查、待确认或已确认。每一票都会以 25% 不透明度叠加颜色，让棋盘呈现团队判断的实时热力图。',
     },
+    catchEventManager,
     feebasChecker: {
       locationsTabLabel: '丑丑鱼地点',
       locations: {
