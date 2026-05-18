@@ -136,7 +136,6 @@ const catchEventManager = {
   "Delete event": "Delete event",
   "Delete": "Delete",
   "This will remove its submissions and cannot be undone.": "This will remove its submissions and cannot be undone.",
-    "Submission link": "Submission link",
     "Event link": "Event link",
     "Event saved. Share the submit link when entries open.": "Event saved. Share the submit link when entries open.",
     "Review Queue": "Review Queue",

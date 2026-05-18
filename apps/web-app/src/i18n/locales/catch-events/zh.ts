@@ -136,7 +136,6 @@ const catchEventManager = {
   "Delete event": "删除活动",
   "Delete": "删除",
   "This will remove its submissions and cannot be undone.": "这会删除其提交，且无法撤销。",
-    "Submission link": "提交链接",
     "Event link": "活动链接",
     "Event saved. Share the submit link when entries open.": "活动已保存。提交开放后分享提交链接。",
     "Review Queue": "审核队列",
