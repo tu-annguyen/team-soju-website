@@ -2294,6 +2294,48 @@ function createWorkerApp(options = {}) {
       }
     }
 
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)$/);
+    if (request.method === 'PUT' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventCreateSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const event = await getRepositories().catchEvents.updateEvent(match[1], auth.user.id, value);
+        if (!event) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: event, message: 'Catch event updated successfully' });
+      } catch (error) {
+        console.error('Error updating catch event:', error);
+        return json({ success: false, message: 'Failed to update catch event' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)$/);
+    if (request.method === 'DELETE' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const event = await getRepositories().catchEvents.deleteEvent(match[1], auth.user.id);
+        if (!event) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: event, message: 'Catch event deleted successfully' });
+      } catch (error) {
+        console.error('Error deleting catch event:', error);
+        return json({ success: false, message: 'Failed to delete catch event' }, { status: 500 });
+      }
+    }
+
     if (request.method === 'POST' && pathname === '/api/catch-events/ocr') {
       try {
         const body = await readJson(request);

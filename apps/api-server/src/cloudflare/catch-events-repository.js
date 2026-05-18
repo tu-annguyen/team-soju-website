@@ -195,6 +195,66 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
       return this.getEventById(id, { includeSubmissions: true });
     },
 
+    async updateEvent(id, ownerUserId, event) {
+      const existing = await this.getEventById(id);
+      if (!existing || existing.ownerUserId !== ownerUserId) {
+        return null;
+      }
+
+      await runCommand(`
+        UPDATE catch_events
+        SET name = ${parameter(3)},
+            slug = ${parameter(4)},
+            event_date = ${parameter(5)},
+            start_local = ${parameter(6)},
+            end_local = ${parameter(7)},
+            timezone = ${parameter(8)},
+            region = ${parameter(9)},
+            route = ${parameter(10)},
+            winner_count = ${parameter(11)},
+            targets_json = ${parameter(12)},
+            species_bonuses_json = ${parameter(13)},
+            species_penalties_json = ${parameter(14)},
+            nature_bonuses_json = ${parameter(15)},
+            nature_penalties_json = ${parameter(16)},
+            use_lowest_score_final_place = ${parameter(17)},
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
+      `, [
+        id,
+        ownerUserId,
+        event.name,
+        event.slug || id,
+        event.eventDate,
+        event.startLocal,
+        event.endLocal,
+        event.timezone,
+        event.region,
+        event.route,
+        event.winnerCount,
+        JSON.stringify(event.targets || []),
+        JSON.stringify(event.speciesBonuses || []),
+        JSON.stringify(event.speciesPenalties || []),
+        JSON.stringify(event.natureBonuses || []),
+        JSON.stringify(event.naturePenalties || []),
+        event.useLowestScoreFinalPlace ? 1 : 0,
+      ]);
+      return this.getEventById(id, { includeSubmissions: true });
+    },
+
+    async deleteEvent(id, ownerUserId) {
+      const event = await this.getEventById(id);
+      if (!event || event.ownerUserId !== ownerUserId) {
+        return null;
+      }
+
+      await runCommand(`
+        DELETE FROM catch_events
+        WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
+      `, [id, ownerUserId]);
+      return event;
+    },
+
     async listEvents({ ownerUserId, publishedOnly } = {}) {
       const clauses = [];
       const params = [];
@@ -231,6 +291,11 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     },
 
     async setLeaderboardPublished(id, ownerUserId, isPublished) {
+      const existing = await this.getEventById(id);
+      if (!existing || existing.ownerUserId !== ownerUserId) {
+        return null;
+      }
+
       await runCommand(`
         UPDATE catch_events
         SET is_leaderboard_published = ${parameter(3)},
@@ -242,6 +307,11 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
 
     async setSubmissionsClosed(id, ownerUserId, isClosed) {
       await ensureEventSubmissionColumns();
+      const existing = await this.getEventById(id);
+      if (!existing || existing.ownerUserId !== ownerUserId) {
+        return null;
+      }
+
       await runCommand(`
         UPDATE catch_events
         SET submissions_closed = ${parameter(3)},
