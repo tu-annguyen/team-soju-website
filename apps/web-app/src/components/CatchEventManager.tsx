@@ -21,7 +21,9 @@ import {
 } from '../utils/catchEventLocations';
 import { POKEMON_SPECIES_NAME_SET, POKEMON_SPECIES_NAMES } from '../utils/pokemonSpecies';
 
-type ViewMode = 'create' | 'submit' | 'admin' | 'leaderboard';
+type ViewMode = 'events' | 'host';
+type LegacyViewMode = ViewMode | 'create' | 'submit' | 'admin' | 'leaderboard';
+type HostTab = 'create' | 'manage';
 type RuleRow = { id: string; name: string; points: string };
 type AuthUser = { id: string; email: string; ign: string };
 type ScreenshotProof = { name?: string; fileName?: string; dataUrl?: string; url?: string };
@@ -47,7 +49,7 @@ type ApiResponse<T> = {
 
 type Props = {
   apiBaseUrl: string;
-  initialView?: ViewMode;
+  initialView?: LegacyViewMode;
 };
 
 const DEFAULT_TIMEZONE = 'America/New_York';
@@ -171,7 +173,7 @@ function formatLocalDateTime(value: string) {
   return `${month}/${day}/${year} ${hour}:${minute}`;
 }
 
-function makeToolUrl(view: ViewMode, eventId?: string) {
+function makeToolUrl(view: ViewMode, eventId?: string, hostTab?: HostTab) {
   if (typeof window === 'undefined') {
     return '/tools/catch-events';
   }
@@ -181,6 +183,10 @@ function makeToolUrl(view: ViewMode, eventId?: string) {
 
   if (eventId) {
     url.searchParams.set('event', eventId);
+  }
+
+  if (hostTab) {
+    url.searchParams.set('tab', hostTab);
   }
 
   return url.toString();
@@ -215,6 +221,18 @@ function getOrdinal(value: number) {
           : 'th';
 
   return `${value}${suffix}`;
+}
+
+function normalizeQueryView(view: LegacyViewMode | null | undefined): ViewMode {
+  return view === 'create' || view === 'admin' || view === 'host' ? 'host' : 'events';
+}
+
+function normalizeHostTab(view: LegacyViewMode | null | undefined, tab?: string | null): HostTab {
+  if (tab === 'manage' || view === 'admin') {
+    return 'manage';
+  }
+
+  return 'create';
 }
 
 function readImageProofs(files: FileList | null) {
@@ -315,11 +333,18 @@ const defaultNatureRows: RuleRow[] = [
   { id: makeId('nature'), name: '', points: '0' },
 ];
 
-const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
+const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
   const normalizedApiBaseUrl = useMemo(() => apiBaseUrl.replace(/\/+$/, ''), [apiBaseUrl]);
   const [events, setEvents] = useState<CatchEventConfig[]>([]);
   const [submissions, setSubmissions] = useState<CatchEventSubmission[]>([]);
-  const [view, setView] = useState<ViewMode>(initialView);
+  const [view, setView] = useState<ViewMode>(normalizeQueryView(initialView));
+  const [hostTab, setHostTab] = useState<HostTab>(normalizeHostTab(initialView));
+  const [eventFilters, setEventFilters] = useState({
+    search: '',
+    target: '',
+    date: '',
+    host: '',
+  });
   const [activeEventId, setActiveEventId] = useState('');
   const [eventForm, setEventForm] = useState(defaultEventForm);
   const [speciesRows, setSpeciesRows] = useState<RuleRow[]>(defaultSpeciesRows);
@@ -333,10 +358,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
   const [submitMessage, setSubmitMessage] = useState('');
   const [ocrMessage, setOcrMessage] = useState('');
   const [isOcrLoading, setIsOcrLoading] = useState(false);
-  const [hasExplicitEventQuery, setHasExplicitEventQuery] = useState(false);
   const [selectedProof, setSelectedProof] = useState<ScreenshotProof | null>(null);
   const timezoneOptions = useMemo(getTimezoneOptions, []);
-  const loadEventDetails = useCallback(async (eventId: string, nextView = view) => {
+  const loadEventDetails = useCallback(async (eventId: string, nextView: LegacyViewMode = view) => {
     if (!eventId) {
       setSubmissions([]);
       return null;
@@ -356,12 +380,12 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const queryView = params.get('view') as ViewMode | null;
+    const queryView = params.get('view') as LegacyViewMode | null;
+    const queryTab = params.get('tab');
     const queryEvent = params.get('event') || '';
     const detectedTimezone = getBrowserTimezone();
 
     setActiveEventId(queryEvent);
-    setHasExplicitEventQuery(Boolean(queryEvent));
     setBrowserTimezone(detectedTimezone);
     setEventForm((current) => ({
       ...(() => {
@@ -401,8 +425,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     });
     setSubmissionForm((current) => ({ ...current, timezone: detectedTimezone }));
 
-    if (queryView && ['create', 'submit', 'admin', 'leaderboard'].includes(queryView)) {
-      setView(queryView);
+    if (queryView && ['events', 'host', 'create', 'submit', 'admin', 'leaderboard'].includes(queryView)) {
+      setView(normalizeQueryView(queryView));
+      setHostTab(normalizeHostTab(queryView, queryTab));
     }
   }, []);
 
@@ -423,10 +448,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
           return;
         }
 
-        const listPath = queryView === 'leaderboard'
-          ? '/catch-events?published=true'
-          : '/catch-events';
-        const response = await fetchJson<CatchEventConfig[]>(`${normalizedApiBaseUrl}${listPath}`);
+        const response = await fetchJson<CatchEventConfig[]>(`${normalizedApiBaseUrl}/catch-events`);
 
         if (isMounted) {
           setEvents(response.data);
@@ -445,7 +467,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
   }, [loadEventDetails, normalizedApiBaseUrl, view]);
 
   useEffect(() => {
-    if (!authUser || view !== 'admin') {
+    if (!authUser || view !== 'host' || hostTab !== 'manage') {
       return;
     }
 
@@ -472,7 +494,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     return () => {
       isMounted = false;
     };
-  }, [activeEventId, authUser, loadEventDetails, normalizedApiBaseUrl, view]);
+  }, [activeEventId, authUser, hostTab, loadEventDetails, normalizedApiBaseUrl, view]);
 
   useEffect(() => {
     if (!activeEventId) {
@@ -486,7 +508,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
   }, [activeEventId, loadEventDetails]);
 
   useEffect(() => {
-    if (view !== 'admin' || !activeEventId || !authUser) {
+    if (view !== 'host' || hostTab !== 'manage' || !activeEventId || !authUser) {
       return undefined;
     }
 
@@ -497,7 +519,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     }, 5000);
 
     return () => window.clearInterval(interval);
-  }, [activeEventId, authUser, loadEventDetails, view]);
+  }, [activeEventId, authUser, hostTab, loadEventDetails, view]);
 
   useEffect(() => {
     let isMounted = true;
@@ -532,7 +554,34 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     () => events.filter((event) => event.ownerUserId && event.ownerUserId === authUser?.id),
     [authUser?.id, events]
   );
-  const eventOptions = view === 'admin' ? ownedEvents : events;
+  const eventOptions = view === 'host' && hostTab === 'manage' ? ownedEvents : events;
+  const filteredEvents = useMemo(() => {
+    const search = eventFilters.search.trim().toLowerCase();
+    const target = eventFilters.target.trim().toLowerCase();
+    const date = eventFilters.date.trim().toLowerCase();
+    const host = eventFilters.host.trim().toLowerCase();
+
+    return events.filter((event) => {
+      const eventHaystack = [
+        event.name,
+        event.route,
+        event.region,
+        event.startLocal,
+        event.endLocal,
+        event.timezone,
+        event.ownerIgn || '',
+        ...event.targets,
+      ].join(' ').toLowerCase();
+      const targetHaystack = event.targets.join(' ').toLowerCase();
+      const dateHaystack = `${event.eventDate} ${event.startLocal} ${event.endLocal} ${formatLocalDateTime(event.startLocal)} ${formatLocalDateTime(event.endLocal)}`.toLowerCase();
+      const hostHaystack = `${event.ownerIgn || ''} ${event.ownerUserId || ''}`.toLowerCase();
+
+      return (!search || eventHaystack.includes(search))
+        && (!target || targetHaystack.includes(target))
+        && (!date || dateHaystack.includes(date))
+        && (!host || hostHaystack.includes(host));
+    });
+  }, [eventFilters, events]);
   const activeEvent = useMemo(
     () => eventOptions.find((event) => event.id === activeEventId) ?? eventOptions[0],
     [activeEventId, eventOptions]
@@ -550,18 +599,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
   const activeSubmissions = useMemo(
     () => submissions.filter((submission) => submission.eventId === activeEvent?.id),
     [activeEvent?.id, submissions]
-  );
-  const rankedSubmissions = useMemo(
-    () => rankCatchEventSubmissions(activeSubmissions),
-    [activeSubmissions]
-  );
-  const winners = useMemo(
-    () => (activeEvent ? selectCatchEventWinners(activeEvent, activeSubmissions) : []),
-    [activeEvent, activeSubmissions]
-  );
-  const publicEvents = useMemo(
-    () => events.filter((event) => event.isLeaderboardPublished),
-    [events]
   );
 
   function updateRuleRow(kind: 'species' | 'nature', rowId: string, patch: Partial<RuleRow>) {
@@ -692,7 +729,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       setActiveEventId(response.data.id);
       setCreatedEventId(response.data.id);
       setCreateError('');
-      setView('admin');
+      setView('host');
+      setHostTab('manage');
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'Failed to create event.');
     }
@@ -879,25 +917,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     });
     setSpeciesRows(rowsFromRules(event.speciesBonuses, event.speciesPenalties));
     setNatureRows(rowsFromRules(event.natureBonuses, event.naturePenalties));
-    setView('create');
+    setView('host');
+    setHostTab('create');
   }
-
-  const eventSelector = eventOptions.length > 0 && (
-    <label className={labelClasses}>
-      Event
-      <select
-        className={fieldClasses}
-        value={activeEvent?.id ?? ''}
-        onChange={(event) => setActiveEventId(event.target.value)}
-      >
-        {eventOptions.map((catchEvent) => (
-          <option key={catchEvent.id} value={catchEvent.id}>
-            {catchEvent.name}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
 
   const rulesEditor = (
     title: string,
@@ -972,6 +994,87 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
     </div>
   );
 
+  const renderRuleList = (title: string, bonuses: CatchEventRule[], penalties: CatchEventRule[]) => {
+    const rules = [...bonuses, ...penalties];
+
+    return (
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</p>
+        {rules.length ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {rules.map((rule) => (
+              <span
+                key={`${title}-${rule.name}-${rule.points}`}
+                className={`rounded-lg px-3 py-1 text-xs font-semibold ${
+                  rule.points >= 0
+                    ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                    : 'bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-200'
+                }`}
+              >
+                {rule.name} {rule.points >= 0 ? '+' : ''}{rule.points}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">No bonuses or penalties.</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderEventSummary = (event: CatchEventConfig) => (
+    <div className={panelClasses}>
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_0.6fr]">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+            Selected Event
+          </p>
+          <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">{event.name}</h2>
+          <div className="mt-4 grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
+            <p>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Starts</span>
+              {formatLocalDateTime(event.startLocal)} {event.timezone}
+            </p>
+            <p>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ends</span>
+              {formatLocalDateTime(event.endLocal)} {event.timezone}
+            </p>
+            <p>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Location</span>
+              {event.route}, {event.region}
+            </p>
+            <p>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Host</span>
+              {event.ownerIgn || 'Team Soju'}
+            </p>
+            <p>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Winners</span>
+              {event.winnerCount}{event.useLowestScoreFinalPlace ? ' including final lowest-score slot' : ''}
+            </p>
+            <p>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Leaderboard</span>
+              {event.isLeaderboardPublished ? 'Published' : 'Not published yet'}
+            </p>
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Target Pokemon</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {event.targets.map((target) => (
+              <span key={target} className="rounded-lg bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+                {target}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        {renderRuleList('Species Bonuses & Penalties', event.speciesBonuses, event.speciesPenalties)}
+        {renderRuleList('Nature Bonuses & Penalties', event.natureBonuses, event.naturePenalties)}
+      </div>
+    </div>
+  );
+
   const renderLeaderboard = (event: CatchEventConfig, showUnpublished: boolean) => {
     const eventSubmissions = submissions.filter((submission) => submission.eventId === event.id);
     const eventRanked = rankCatchEventSubmissions(eventSubmissions);
@@ -1012,7 +1115,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
             ))}
           </div>
           {eventWinners.length === 0 && (
-            <p className="mt-4 text-gray-600 dark:text-gray-300">No valid or reviewable entries yet.</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-300">No valid entries yet.</p>
           )}
         </div>
         <div className={panelClasses}>
@@ -1074,8 +1177,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                 final leaderboards when staff is ready.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
-              {(['create', 'submit', 'admin', 'leaderboard'] as ViewMode[]).map((mode) => (
+            <div className="grid grid-cols-2 gap-3">
+              {(['events', 'host'] as ViewMode[]).map((mode) => (
                 <button
                   key={mode}
                   type="button"
@@ -1086,7 +1189,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                   }`}
                   onClick={() => setView(mode)}
                 >
-                  {mode === 'create' ? 'Create' : mode === 'submit' ? 'Submit' : mode === 'admin' ? 'Admin' : 'Leaderboard'}
+                  {mode === 'events' ? 'Events' : 'Host'}
                 </button>
               ))}
             </div>
@@ -1095,18 +1198,26 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
       </section>
 
       <section className="container pb-16">
-        {eventOptions.length > 0 && view !== 'create' && !(view === 'leaderboard' && !hasExplicitEventQuery) && (
-          <div className="mb-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-            {eventSelector}
-            {activeEvent && view === 'admin' && (
-              <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent)}>
-                Duplicate setup
+        {view === 'host' && (
+          <div className="mb-6 flex flex-wrap gap-3">
+            {(['create', 'manage'] as HostTab[]).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+                  hostTab === tab
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-800 hover:border-emerald-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100'
+                }`}
+                onClick={() => setHostTab(tab)}
+              >
+                {tab === 'create' ? 'Create' : 'Manage'}
               </button>
-            )}
+            ))}
           </div>
         )}
 
-        {view === 'create' && (
+        {view === 'host' && hostTab === 'create' && (
           <form className={`${panelClasses} space-y-6`} onSubmit={handleCreateEvent}>
             <div>
               <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Create Event</h2>
@@ -1116,7 +1227,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
             </div>
             {!isAuthLoading && !authUser && (
               <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                Sign in to create events and access the owner-only admin dashboard.
+                Sign in to create events and access owner-only management tools.
               </p>
             )}
             <div className="grid gap-4 md:grid-cols-2">
@@ -1186,13 +1297,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
               <input className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600" type="checkbox" checked={eventForm.useLowestScoreFinalPlace} onChange={(event) => setEventForm({ ...eventForm, useLowestScoreFinalPlace: event.target.checked })} />
               Reserve the final winner slot for the lowest valid score.
             </label>
-            <datalist id="timezone-options">
-              {timezoneOptions.map((timezone) => (
-                <option key={timezone.value} value={timezone.value}>
-                  {timezone.label}
-                </option>
-              ))}
-            </datalist>
             {createError && (
               <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900 dark:bg-rose-950 dark:text-rose-100">
                 {createError}
@@ -1204,25 +1308,101 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
           </form>
         )}
 
-        {view === 'submit' && (
-          <div className={panelClasses}>
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Player Submission</h2>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Upload your submission Pokemon's summary, IVs, and catch time as screenshots.
-              </p>
-              {activeEvent ? (
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Browser timezone suggestion: {browserTimezone}
-                </p>
-              ) : (
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  No catch event exists in this browser yet.
-                </p>
+        {view === 'events' && (
+          <div className="space-y-6">
+            <div className={panelClasses}>
+              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Events</h2>
+              <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <label className={labelClasses}>
+                  Name or keyword
+                  <input
+                    className={fieldClasses}
+                    value={eventFilters.search}
+                    onChange={(event) => setEventFilters({ ...eventFilters, search: event.target.value })}
+                    placeholder="Search events"
+                  />
+                </label>
+                <label className={labelClasses}>
+                  Target Pokemon
+                  <input
+                    className={fieldClasses}
+                    list="event-filter-target-options"
+                    value={eventFilters.target}
+                    onChange={(event) => setEventFilters({ ...eventFilters, target: event.target.value })}
+                    placeholder="Milotic"
+                  />
+                </label>
+                <label className={labelClasses}>
+                  Date or time
+                  <input
+                    className={fieldClasses}
+                    value={eventFilters.date}
+                    onChange={(event) => setEventFilters({ ...eventFilters, date: event.target.value })}
+                    placeholder="2026-05-19"
+                  />
+                </label>
+                <label className={labelClasses}>
+                  Host
+                  <input
+                    className={fieldClasses}
+                    value={eventFilters.host}
+                    onChange={(event) => setEventFilters({ ...eventFilters, host: event.target.value })}
+                    placeholder="Host IGN"
+                  />
+                </label>
+              </div>
+              <datalist id="event-filter-target-options">
+                {POKEMON_SPECIES_NAMES.map((species) => (
+                  <option key={species} value={species} />
+                ))}
+              </datalist>
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                {filteredEvents.map((event) => (
+                  <button
+                    key={event.id}
+                    type="button"
+                    className={`rounded-lg border p-4 text-left transition-colors ${
+                      activeEvent?.id === event.id
+                        ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
+                        : 'border-gray-200 hover:border-emerald-500 dark:border-gray-800'
+                    }`}
+                    onClick={() => setActiveEventId(event.id)}
+                  >
+                    <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      {formatLocalDateTime(event.startLocal)} to {formatLocalDateTime(event.endLocal)} {event.timezone}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      {event.route}, {event.region} - Hosted by {event.ownerIgn || 'Team Soju'}
+                    </p>
+                    <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      {event.targets.join(', ')}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              {filteredEvents.length === 0 && (
+                <p className="mt-5 text-sm text-gray-600 dark:text-gray-300">No events match those filters.</p>
               )}
             </div>
+
+            {activeEvent ? renderEventSummary(activeEvent) : (
+              <div className={panelClasses}>Select an event to view details, submit an entry, or open the leaderboard.</div>
+            )}
+
             {activeEvent && (
-              <form className="space-y-5" onSubmit={handleSubmitEntry}>
+              <>
+                <div className={panelClasses}>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Player Submission</h2>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    Upload your submission Pokemon's summary, IVs, and catch time as screenshots.
+                  </p>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    Browser timezone suggestion: {browserTimezone}
+                  </p>
+                </div>
+                <form className="space-y-5" onSubmit={handleSubmitEntry}>
                 <label className={labelClasses}>
                   Nature/OT screenshot
                   <input
@@ -1365,12 +1545,24 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                 {submitMessage && (
                   <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{submitMessage}</p>
                 )}
-              </form>
+                </form>
+                </div>
+                {activeEvent.isLeaderboardPublished || (authUser && activeEvent.ownerUserId === authUser.id) ? (
+                  renderLeaderboard(activeEvent, Boolean(authUser && activeEvent.ownerUserId === authUser.id))
+                ) : (
+                  <div className={panelClasses}>
+                    <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Leaderboard</h2>
+                    <p className="mt-2 text-gray-600 dark:text-gray-300">
+                      This leaderboard is not published yet. Check back after staff confirms the event.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
 
-        {view === 'admin' && (
+        {view === 'host' && hostTab === 'manage' && (
           <div className="space-y-6">
             {isAuthLoading ? (
               <div className={panelClasses}>Checking your Team Soju session...</div>
@@ -1378,7 +1570,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
               <div className={panelClasses}>
                 <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Sign In Required</h2>
                 <p className="mt-2 text-gray-600 dark:text-gray-300">
-                  The admin dashboard is only available to the account that created the event.
+                  Event management is only available to the account that created the event.
                 </p>
                 <a className="mt-4 inline-flex rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700" href="/auth">
                   Sign in
@@ -1386,6 +1578,31 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
               </div>
             ) : activeEvent ? (
               <>
+                <div className={panelClasses}>
+                  <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Manage Events</h2>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {ownedEvents.map((event) => (
+                      <button
+                        key={event.id}
+                        type="button"
+                        className={`rounded-lg border p-4 text-left transition-colors ${
+                          activeEvent.id === event.id
+                            ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
+                            : 'border-gray-200 hover:border-emerald-500 dark:border-gray-800'
+                        }`}
+                        onClick={() => setActiveEventId(event.id)}
+                      >
+                        <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                          {formatLocalDateTime(event.startLocal)} to {formatLocalDateTime(event.endLocal)} {event.timezone}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                          {event.route}, {event.region}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className={panelClasses}>
                   <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
                     <div>
@@ -1421,16 +1638,19 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
                             Unpublish
                           </button>
                         )}
+                        <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent)}>
+                          Duplicate setup
+                        </button>
                       </div>
                     </div>
                     <div className="grid gap-3 text-sm">
                       <label className={labelClasses}>
                         Submission link
-                        <input className={fieldClasses} readOnly value={makeToolUrl('submit', activeEvent.id)} />
+                        <input className={fieldClasses} readOnly value={makeToolUrl('events', activeEvent.id)} />
                       </label>
                       <label className={labelClasses}>
-                        Public leaderboard link
-                        <input className={fieldClasses} readOnly value={makeToolUrl('leaderboard', activeEvent.id)} />
+                        Event link
+                        <input className={fieldClasses} readOnly value={makeToolUrl('events', activeEvent.id)} />
                       </label>
                     </div>
                   </div>
@@ -1519,30 +1739,13 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'create' }: Props) => {
           </div>
         )}
 
-        {view === 'leaderboard' && (
-          <div className="space-y-6">
-            {hasExplicitEventQuery && activeEvent ? (
-              renderLeaderboard(activeEvent, Boolean(authUser && activeEvent.ownerUserId === authUser.id))
-            ) : (
-              <div className={panelClasses}>
-                <h2 className="text-2xl font-bold text-gray-950 dark:text-white">Past Catch Events</h2>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {publicEvents.map((event) => (
-                    <a key={event.id} className="rounded-lg border border-gray-200 p-4 hover:border-emerald-500 dark:border-gray-800" href={makeToolUrl('leaderboard', event.id)}>
-                      <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                        {formatLocalDateTime(event.startLocal)} {event.timezone}
-                      </p>
-                    </a>
-                  ))}
-                </div>
-                {publicEvents.length === 0 && (
-                  <p className="mt-4 text-gray-600 dark:text-gray-300">No published catch event leaderboards yet.</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        <datalist id="timezone-options">
+          {timezoneOptions.map((timezone) => (
+            <option key={timezone.value} value={timezone.value}>
+              {timezone.label}
+            </option>
+          ))}
+        </datalist>
       </section>
       {selectedProof && (
         <div

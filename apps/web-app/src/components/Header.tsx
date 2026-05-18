@@ -12,7 +12,7 @@ import {
 
 const toolsLinks = [
   {
-    href: '/tools/catch-events/create',
+    href: '/tools/catch-events',
     label: 'Catch Event Manager',
   },
   {

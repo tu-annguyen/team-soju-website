@@ -10,7 +10,7 @@ const ToolsIndexContent = ({ locale }: Props) => {
   const activeLocale = getClientLocale(locale);
   const messages = getTranslations(activeLocale);
   const feebasHref = getLocaleParamPath('/feebas-tile-checker', activeLocale);
-  const catchEventsHref = getLocaleParamPath('/tools/catch-events/create', activeLocale);
+  const catchEventsHref = getLocaleParamPath('/tools/catch-events', activeLocale);
 
   return (
     <>
