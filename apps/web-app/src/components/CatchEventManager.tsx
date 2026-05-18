@@ -175,6 +175,14 @@ function formatLocalDateTime(value: string) {
   return `${month}/${day}/${year} ${hour}:${minute}`;
 }
 
+function formatEventTimeForBrowser(value: string, eventTimezone: string, browserTimezone: string) {
+  try {
+    return formatDateTime(zonedLocalDateTimeToUtc(value, eventTimezone), browserTimezone);
+  } catch {
+    return `${formatLocalDateTime(value)} ${eventTimezone}`;
+  }
+}
+
 function hasEventStarted(event: Pick<CatchEventConfig, 'startLocal' | 'timezone'>) {
   try {
     return Date.now() >= new Date(zonedLocalDateTimeToUtc(event.startLocal, event.timezone)).getTime();
@@ -1090,11 +1098,17 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events' }: Props) => {
           <div className="mt-4 grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
             <p>
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Starts</span>
-              {formatLocalDateTime(event.startLocal)} {event.timezone}
+              {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone)}
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Event time: {formatLocalDateTime(event.startLocal)} {event.timezone}
+              </span>
             </p>
             <p>
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ends</span>
-              {formatLocalDateTime(event.endLocal)} {event.timezone}
+              {formatEventTimeForBrowser(event.endLocal, event.timezone, browserTimezone)}
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Event time: {formatLocalDateTime(event.endLocal)} {event.timezone}
+              </span>
             </p>
             <p>
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Location</span>
