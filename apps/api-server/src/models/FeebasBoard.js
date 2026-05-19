@@ -1,5 +1,6 @@
 const pool = require('../config/connection');
 const {
+  FEEBAS_RESET_INTERVAL_MS,
   FEEBAS_VOTABLE_STATUSES,
   FeebasRuleError,
   getCycleWindow,
@@ -851,7 +852,23 @@ class FeebasBoard {
       return map;
     }, new Map());
 
-    return {
+    const tiles = locationConfig.tiles.map((tileDefinition) => {
+      const tileVotes = votesByTile.get(tileDefinition.tileId) || [];
+      const voteCounts = {
+        checked: tileVotes.filter((vote) => vote.status === 'checked').length,
+        pending: tileVotes.filter((vote) => vote.status === 'pending').length,
+        confirmed: tileVotes.filter((vote) => vote.status === 'confirmed').length,
+      };
+
+      return {
+        ...tileDefinition,
+        status: this.getDominantStatus(voteCounts),
+        voteCounts,
+        totalVotes: voteCounts.checked + voteCounts.pending + voteCounts.confirmed,
+      };
+    });
+
+    const baseBoard = {
       location: locationConfig.id,
       displayName: locationConfig.displayName,
       description: locationConfig.description,
@@ -881,24 +898,117 @@ class FeebasBoard {
         createdAt: new Date(entry.created_at).toISOString(),
       })),
       ...(includeLeaderboard ? { leaderboard } : {}),
-      tiles: locationConfig.tiles.map((tileDefinition) => {
-        const tileVotes = votesByTile.get(tileDefinition.tileId) || [];
-        const voteCounts = {
-          checked: tileVotes.filter((vote) => vote.status === 'checked').length,
-          pending: tileVotes.filter((vote) => vote.status === 'pending').length,
-          confirmed: tileVotes.filter((vote) => vote.status === 'confirmed').length,
-        };
-        const currentUserVote = actorFingerprint
-          ? tileVotes.find((vote) => vote.actor_fingerprint === actorFingerprint)?.status || 'unchecked'
-          : 'unchecked';
+      tiles,
+    };
 
-        return {
-          ...tileDefinition,
-          status: this.getDominantStatus(voteCounts),
-          voteCounts,
-          totalVotes: voteCounts.checked + voteCounts.pending + voteCounts.confirmed,
-          currentUserVote,
-        };
+    return this.applyActorViewToBoard(baseBoard, votesByTile, actorFingerprint);
+  }
+
+  static async getBoardCacheForCycle(client, location, cycle, now = new Date()) {
+    const locationConfig = getLocationConfig(location);
+    const votesResult = await client.query(`
+      SELECT tile_id, actor_fingerprint, actor_name, status
+      FROM feebas_tile_votes
+      WHERE cycle_id = $1
+    `, [cycle.id]);
+    const previousConfirmedTilesResult = await client.query(`
+      SELECT tile_id, SUM(confirmed_vote_count)::INT AS confirmations
+      FROM feebas_confirmed_tile_snapshots
+      WHERE location = $1
+      GROUP BY tile_id
+    `, [location]);
+    const activityResult = await client.query(`
+      SELECT *
+      FROM feebas_activity_logs
+      WHERE cycle_id = $1
+      ORDER BY created_at DESC, id DESC
+      LIMIT 20
+    `, [cycle.id]);
+
+    const votesByTile = votesResult.rows.reduce((map, row) => {
+      const existing = map.get(row.tile_id) || [];
+      existing.push(row);
+      map.set(row.tile_id, existing);
+      return map;
+    }, new Map());
+
+    const tiles = locationConfig.tiles.map((tileDefinition) => {
+      const tileVotes = votesByTile.get(tileDefinition.tileId) || [];
+      const voteCounts = {
+        checked: tileVotes.filter((vote) => vote.status === 'checked').length,
+        pending: tileVotes.filter((vote) => vote.status === 'pending').length,
+        confirmed: tileVotes.filter((vote) => vote.status === 'confirmed').length,
+      };
+
+      return {
+        ...tileDefinition,
+        status: this.getDominantStatus(voteCounts),
+        voteCounts,
+        totalVotes: voteCounts.checked + voteCounts.pending + voteCounts.confirmed,
+      };
+    });
+
+    return {
+      location: locationConfig.id,
+      displayName: locationConfig.displayName,
+      description: locationConfig.description,
+      cycleStart: new Date(cycle.cycle_start).toISOString(),
+      cycleEnd: new Date(cycle.cycle_end).toISOString(),
+      serverTime: now.toISOString(),
+      resetIntervalMinutes: 45,
+      requiresDistinctConfirmation: false,
+      confirmedTileId: null,
+      isLocked: false,
+      previousConfirmedTiles: previousConfirmedTilesResult.rows.map((entry) => ({
+        tileId: entry.tile_id,
+        confirmations: Number(entry.confirmations) || 0,
+      })),
+      layout: {
+        rows: locationConfig.rows,
+        cols: locationConfig.cols,
+      },
+      activity: activityResult.rows.map((entry) => ({
+        id: entry.id,
+        tileId: entry.tile_id,
+        tileLabel: entry.tile_label,
+        actionType: entry.action_type,
+        previousStatus: entry.previous_status,
+        nextStatus: entry.next_status === 'unchecked' ? null : entry.next_status,
+        actorName: getActivityActorName(entry),
+        createdAt: new Date(entry.created_at).toISOString(),
+      })),
+      tiles,
+      votesByTile,
+    };
+  }
+
+  static applyUserViewToBoardCache(boardCache, actorFingerprint) {
+    if (!actorFingerprint) {
+      const { votesByTile, ...baseBoard } = boardCache;
+      return baseBoard;
+    }
+
+    return {
+      ...boardCache,
+      tiles: boardCache.tiles.map((tile) => {
+        const tileVotes = boardCache.votesByTile.get(tile.tileId) || [];
+        const currentUserVote = tileVotes.find((vote) => vote.actor_fingerprint === actorFingerprint)?.status || 'unchecked';
+        return { ...tile, currentUserVote };
+      }),
+    };
+  }
+
+  static applyActorViewToBoard(baseBoard, votesByTile, actorFingerprint) {
+    if (!actorFingerprint) {
+      return baseBoard;
+    }
+
+    return {
+      ...baseBoard,
+      tiles: baseBoard.tiles.map((tile, index) => {
+        const tileVotes = votesByTile.get(tile.tileId) || [];
+        const currentUserVote = tileVotes.find((vote) => vote.actor_fingerprint === actorFingerprint)?.status || 'unchecked';
+        return { ...tile, currentUserVote };
       }),
     };
   }
