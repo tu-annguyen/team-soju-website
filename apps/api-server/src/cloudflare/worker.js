@@ -1079,13 +1079,13 @@ class FeebasBoardStreamDurableObject {
     }
 
     const repositories = this.createRepositories(this.env);
+    const boardCache = await repositories.feebas.getBoardCache(location);
 
     await Promise.all(subscribers.map(async (subscriber) => {
       try {
-        const board = await repositories.feebas.getBoard(location, {
-          actorFingerprint: subscriber.metadata.actorFingerprint,
-          includeLeaderboard: false,
-        });
+        const board = subscriber.metadata.actorFingerprint
+          ? repositories.feebas.applyUserViewToBoardCache(boardCache, subscriber.metadata.actorFingerprint)
+          : boardCache;
         sendFeebasSocketBoard(subscriber.socket, board);
       } catch {
         try {
@@ -1199,13 +1199,13 @@ function createWorkerApp(options = {}) {
       return;
     }
 
+    const boardCache = await repositories.feebas.getBoardCache(location);
+
     await Promise.all(Array.from(subscribers).map(async (subscriber) => {
       try {
-        const board = await repositories.feebas.getBoard(location, {
-          actorFingerprint: subscriber.actorFingerprint,
-          includeLeaderboard: false,
-        });
-
+        const board = subscriber.actorFingerprint
+          ? repositories.feebas.applyUserViewToBoardCache(boardCache, subscriber.actorFingerprint)
+          : boardCache;
         sendFeebasSocketBoard(subscriber.socket, board);
       } catch {
         subscriber.cleanup?.();
