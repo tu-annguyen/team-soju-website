@@ -85,13 +85,13 @@ export function EventSummary({
 }: EventDisplayProps) {
   return (
     <div className={panelClasses}>
-      <div className="grid gap-5 lg:grid-cols-[1.4fr_0.6fr]">
+      <div className="grid gap-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
             {tr('Selected Event')}
           </p>
           <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">{event.name}</h2>
-          <div className="mt-4 grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 text-sm text-gray-700 dark:text-gray-300 lg:grid-cols-3 sm:grid-cols-2">
             <p>
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{tr('Starts')}</span>
               {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone, locale)}
@@ -127,33 +127,33 @@ export function EventSummary({
               {getSubmissionDisabledReason(event) ? tr(getSubmissionDisabledReason(event)) : tr('Open')}
             </p>
           </div>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{tr('Target Pokemon')}</p>
-          <div className="my-2 flex flex-wrap gap-2">
-            {event.targets.map((target) => (
-              <span key={target} className="rounded-lg bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-200">
-                {translateSpeciesDisplay(target)}
-              </span>
-            ))}
-          </div>
-          <div className="my-2 flex flex-wrap gap-2">
-            <RuleList
-              title={tr('Species Bonuses & Penalties')}
-              bonuses={event.speciesBonuses}
-              penalties={event.speciesPenalties}
-              translateValue={translateSpeciesDisplay}
-              tr={tr}
-            />
-          </div>
-          <div className="my-2 flex flex-wrap gap-2">
-            <RuleList
-              title={tr('Nature Bonuses & Penalties')}
-              bonuses={event.natureBonuses}
-              penalties={event.naturePenalties}
-              translateValue={translateNatureDisplay}
-              tr={tr}
-            />
+          <div className="mt-4 grid grid-gap-3 lg:grid-cols-3 sm:grid-cols-2">
+            <div className="my-2">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{tr('Target Pokemon')}</p>
+              {event.targets.map((target) => (
+                <span key={target} className="mr-2 rounded-lg bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+                  {translateSpeciesDisplay(target)}
+                </span>
+              ))}
+            </div>
+            <div className="my-2 flex flex-wrap gap-2">
+              <RuleList
+                title={tr('Species Bonuses & Penalties')}
+                bonuses={event.speciesBonuses}
+                penalties={event.speciesPenalties}
+                translateValue={translateSpeciesDisplay}
+                tr={tr}
+              />
+            </div>
+            <div className="my-2 flex flex-wrap gap-2">
+              <RuleList
+                title={tr('Nature Bonuses & Penalties')}
+                bonuses={event.natureBonuses}
+                penalties={event.naturePenalties}
+                translateValue={translateNatureDisplay}
+                tr={tr}
+              />
+            </div>
           </div>
         </div>
       </div>
