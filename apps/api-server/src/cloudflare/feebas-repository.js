@@ -11,6 +11,7 @@ const {
 const DEFAULT_LEADERBOARD_LIMIT = 10;
 const MAX_LEADERBOARD_LIMIT = 50;
 const LEADERBOARD_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
 const ACCOUNT_FINGERPRINT_PREFIX = 'account-';
 const LEADERBOARD_SORT_OPTIONS = [
   { key: 'ign', defaultDirection: 'asc' },
@@ -106,6 +107,37 @@ function sortLeaderboardEntries(entries, sortBy, sortDirection) {
   ));
 }
 
+function buildLeaderboardResponse({
+  location,
+  generatedAt,
+  weeklySince,
+  sortBy,
+  sortDirection,
+  rankedEntries,
+  limit,
+  currentUserId,
+}) {
+  const limitedEntries = rankedEntries.slice(0, limit);
+  const currentUserEntry = currentUserId
+    ? rankedEntries.find((entry) => String(entry.userId) === currentUserId)
+    : null;
+  const sortedEntries = currentUserEntry && currentUserEntry.rank > limit
+    ? [...limitedEntries, currentUserEntry]
+    : limitedEntries;
+
+  return {
+    location,
+    generatedAt,
+    weeklySince,
+    sort: {
+      by: sortBy,
+      direction: sortDirection,
+    },
+    sortOptions: LEADERBOARD_SORT_OPTIONS.map((option) => ({ ...option })),
+    entries: sortedEntries,
+  };
+}
+
 function buildCurrentStreaks(rows) {
   const cycleKeysByMostRecent = [];
   const seenCycles = new Set();
@@ -172,6 +204,7 @@ function uniqueActivityKey(activity) {
 }
 
 function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
+  const leaderboardCache = new Map();
   const activeTimestampOrder = dialect === 'd1'
     ? 'datetime(created_at)'
     : 'created_at';
@@ -205,6 +238,12 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (source_cycle_id, tile_id) DO NOTHING`;
+
+  function clearLeaderboardCache(location) {
+    Array.from(leaderboardCache.keys())
+      .filter((key) => key.startsWith(`${location}:`))
+      .forEach((key) => leaderboardCache.delete(key));
+  }
 
   async function getCycleByStart(location, cycleStart) {
     return runOne(`
@@ -375,6 +414,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       actorFingerprint,
       toIsoString(now),
     ]);
+    clearLeaderboardCache(location);
   }
 
   async function getLeaderboard(location, options = {}) {
@@ -388,6 +428,23 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
     const limit = normalizeLeaderboardLimit(options.limit);
     const sortBy = normalizeLeaderboardSortBy(options.sortBy);
     const sortDirection = normalizeLeaderboardSortDirection(options.sortDirection);
+    const currentUserId = options.currentUserId ? String(options.currentUserId) : null;
+    const weeklyCacheKey = options.weeklySince ? weeklySince.toISOString() : 'rolling';
+    const cacheKey = `${location}:${sortBy}:${sortDirection}:${weeklyCacheKey}`;
+    const cachedLeaderboard = leaderboardCache.get(cacheKey);
+
+    if (cachedLeaderboard && cachedLeaderboard.expiresAt > now.getTime()) {
+      return buildLeaderboardResponse({
+        location,
+        generatedAt: cachedLeaderboard.generatedAt,
+        weeklySince: cachedLeaderboard.weeklySince,
+        sortBy,
+        sortDirection,
+        rankedEntries: cachedLeaderboard.rankedEntries,
+        limit,
+        currentUserId,
+      });
+    }
 
     const activityRows = await runSelect(`
       SELECT
@@ -670,26 +727,26 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         pendingReports: toFiniteNumber(entry.pendingReports),
         verifiedReports: toFiniteNumber(entry.verifiedReports),
       }));
-    const limitedEntries = rankedEntries.slice(0, limit);
-    const currentUserId = options.currentUserId ? String(options.currentUserId) : null;
-    const currentUserEntry = currentUserId
-      ? rankedEntries.find((entry) => String(entry.userId) === currentUserId)
-      : null;
-    const sortedEntries = currentUserEntry && currentUserEntry.rank > limit
-      ? [...limitedEntries, currentUserEntry]
-      : limitedEntries;
+    const generatedAt = now.toISOString();
+    const weeklySinceIso = weeklySince.toISOString();
 
-    return {
+    leaderboardCache.set(cacheKey, {
+      generatedAt,
+      weeklySince: weeklySinceIso,
+      rankedEntries,
+      expiresAt: now.getTime() + LEADERBOARD_CACHE_TTL_MS,
+    });
+
+    return buildLeaderboardResponse({
       location,
-      generatedAt: now.toISOString(),
-      weeklySince: weeklySince.toISOString(),
-      sort: {
-        by: sortBy,
-        direction: sortDirection,
-      },
-      sortOptions: LEADERBOARD_SORT_OPTIONS.map((option) => ({ ...option })),
-      entries: sortedEntries,
-    };
+      generatedAt,
+      weeklySince: weeklySinceIso,
+      sortBy,
+      sortDirection,
+      rankedEntries,
+      limit,
+      currentUserId,
+    });
   }
 
   async function getBoardForCycle(location, cycle, now = new Date(), actorFingerprint = null, options = {}) {

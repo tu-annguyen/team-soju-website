@@ -43,4 +43,31 @@ describe('Cloudflare Feebas repository', () => {
       '2026-05-10T00:05:00.000Z',
     ]);
   });
+
+  it('reuses fresh leaderboard results instead of rereading all D1 activity logs', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn().mockResolvedValue(null);
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const repository = createFeebasRepository({
+      dialect: 'd1',
+      parameter: () => '?',
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    const options = {
+      now: '2026-05-10T00:05:00.000Z',
+      limit: 5,
+    };
+
+    const firstLeaderboard = await repository.getLeaderboard('route-119-main', options);
+    const secondLeaderboard = await repository.getLeaderboard('route-119-main', options);
+
+    expect(runSelect).toHaveBeenCalledTimes(2);
+    expect(firstLeaderboard).toEqual(secondLeaderboard);
+    expect(firstLeaderboard.entries).toEqual([]);
+  });
 });
