@@ -4,6 +4,7 @@ import type {
   CatchEventRule,
   CatchEventStatus,
 } from '../../utils/catchEventScoring';
+import type { Locale } from '../../i18n';
 
 export type ViewMode = 'events' | 'host';
 export type LegacyViewMode = ViewMode | 'create' | 'submit' | 'admin' | 'leaderboard';
@@ -129,13 +130,93 @@ export function getTimezoneOptions() {
   });
 }
 
-export function formatDateTime(value: string, timezone?: string) {
+function getIntlLocale(locale: Locale | string = 'en') {
+  if (locale === 'zh') return 'zh-CN';
+  if (locale === 'es') return 'es-ES';
+  return 'en-US';
+}
+
+function getDateParts(date: Date, locale: Locale | string = 'en', timezone?: string) {
+  const parts = new Intl.DateTimeFormat(getIntlLocale(locale), {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  return {
+    year: parts.find((part) => part.type === 'year')?.value || '0000',
+    month: parts.find((part) => part.type === 'month')?.value || '00',
+    day: parts.find((part) => part.type === 'day')?.value || '00',
+  };
+}
+
+const EN_MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const ES_MONTHS = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+function formatNormalizedDateParts(parts: { year: string; month: string; day: string }, locale: Locale | string = 'en') {
+  return locale === 'zh'
+    ? `${parts.year}年${parts.month}月${parts.day}日`
+    : `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatWrittenDateParts(parts: { year: string; month: string; day: string }, locale: Locale | string = 'en') {
+  if (locale === 'zh') {
+    return formatNormalizedDateParts(parts, locale);
+  }
+
+  const monthIndex = Math.max(0, Math.min(11, Number(parts.month) - 1));
+  const day = Number(parts.day);
+
+  if (locale === 'es') {
+    return `${String(day)} de ${ES_MONTHS[monthIndex]} de ${parts.year}`;
+  }
+
+  return `${EN_MONTHS[monthIndex]} ${day}, ${parts.year}`;
+}
+
+function formatTime(date: Date, locale: Locale | string = 'en', timezone?: string) {
+  return new Intl.DateTimeFormat(getIntlLocale(locale), {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: timezone,
+  }).format(date);
+}
+
+export function formatDateTime(value: string, timezone?: string, locale: Locale | string = 'en') {
   if (!value) {
     return 'Unparsed time';
   }
 
   try {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(getIntlLocale(locale), {
       dateStyle: 'medium',
       timeStyle: 'medium',
       timeZone: timezone,
@@ -145,7 +226,18 @@ export function formatDateTime(value: string, timezone?: string) {
   }
 }
 
-export function formatLocalDateTime(value: string) {
+export function formatLocalDate(value: string, locale: Locale | string = 'en') {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+
+  if (!match) {
+    return value;
+  }
+
+  const [, year, month, day] = match;
+  return formatNormalizedDateParts({ year, month, day }, locale);
+}
+
+export function formatLocalDateTime(value: string, locale: Locale | string = 'en') {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
 
   if (!match) {
@@ -153,14 +245,20 @@ export function formatLocalDateTime(value: string) {
   }
 
   const [, year, month, day, hour, minute] = match;
-  return `${month}/${day}/${year} ${hour}:${minute}`;
+  return `${formatNormalizedDateParts({ year, month, day }, locale)} ${hour}:${minute}`;
 }
 
-export function formatEventTimeForBrowser(value: string, eventTimezone: string, browserTimezone: string) {
+export function formatEventTimeForBrowser(
+  value: string,
+  eventTimezone: string,
+  browserTimezone: string,
+  locale: Locale | string = 'en'
+) {
   try {
-    return formatDateTime(zonedLocalDateTimeToUtc(value, eventTimezone), browserTimezone);
+    const date = new Date(zonedLocalDateTimeToUtc(value, eventTimezone));
+    return `${formatWrittenDateParts(getDateParts(date, locale, browserTimezone), locale)} ${formatTime(date, locale, browserTimezone)}`;
   } catch {
-    return `${formatLocalDateTime(value)} ${eventTimezone}`;
+    return `${formatLocalDateTime(value, locale)} ${eventTimezone}`;
   }
 }
 

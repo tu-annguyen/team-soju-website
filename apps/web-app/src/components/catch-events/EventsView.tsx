@@ -5,6 +5,7 @@ import type {
   CatchEventStatus,
   CatchEventSubmission,
 } from '../../utils/catchEventScoring';
+import type { Locale } from '../../i18n';
 import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
 import { EventLeaderboard, EventSummary } from './EventDisplay';
 import { EventSubmissionPanel } from './EventSubmissionPanel';
@@ -42,6 +43,7 @@ type Props = {
   ocrMessage: string;
   isOcrLoading: boolean;
   browserTimezone: string;
+  locale: Locale | string;
   statusLabels: Record<CatchEventStatus, string>;
   tr: (text: string) => string;
   translateSpeciesDisplay: (species: string) => string;
@@ -71,6 +73,7 @@ export function EventsView({
   ocrMessage,
   isOcrLoading,
   browserTimezone,
+  locale,
   statusLabels,
   tr,
   translateSpeciesDisplay,
@@ -152,7 +155,7 @@ export function EventsView({
               >
                 <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone)} {tr('to')} {formatEventTimeForBrowser(event.endLocal, event.timezone, browserTimezone)}
+                  {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone, locale)} {tr('to')} {formatEventTimeForBrowser(event.endLocal, event.timezone, browserTimezone, locale)}
                 </p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                   {translateLocation(event.route)}, {translateRegion(event.region)} - {tr('Hosted by')} {event.ownerIgn || tr('Team Soju')}
@@ -180,6 +183,7 @@ export function EventsView({
         <EventSummary
           event={activeEvent}
           browserTimezone={browserTimezone}
+          locale={locale}
           tr={tr}
           translateSpeciesDisplay={translateSpeciesDisplay}
           translateNatureDisplay={translateNatureDisplay}
@@ -248,6 +252,7 @@ export function EventsView({
               submissions={submissions}
               showUnpublished={Boolean(authUser && activeEvent.ownerUserId === authUser.id)}
               statusLabels={statusLabels}
+              locale={locale}
               tr={tr}
               translateSpeciesDisplay={translateSpeciesDisplay}
               translateNatureDisplay={translateNatureDisplay}

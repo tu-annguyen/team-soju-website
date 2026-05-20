@@ -9,6 +9,7 @@ import type {
   CatchEventStatus,
   CatchEventSubmission,
 } from '../../utils/catchEventScoring';
+import type { Locale } from '../../i18n';
 import {
   formatDateTime,
   formatEventTimeForBrowser,
@@ -24,6 +25,7 @@ type ValueTranslator = (value: string) => string;
 type EventDisplayProps = {
   event: CatchEventConfig;
   browserTimezone: string;
+  locale: Locale | string;
   tr: Translate;
   translateSpeciesDisplay: ValueTranslator;
   translateNatureDisplay: ValueTranslator;
@@ -74,6 +76,7 @@ function RuleList({
 export function EventSummary({
   event,
   browserTimezone,
+  locale,
   tr,
   translateSpeciesDisplay,
   translateNatureDisplay,
@@ -91,16 +94,16 @@ export function EventSummary({
           <div className="mt-4 grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
             <p>
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{tr('Starts')}</span>
-              {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone)}
+              {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone, locale)}
               <span className="block text-xs text-gray-500 dark:text-gray-400">
-                {tr('Event time:')} {formatLocalDateTime(event.startLocal)} {event.timezone}
+                {tr('Event time:')} {formatLocalDateTime(event.startLocal, locale)} {event.timezone}
               </span>
             </p>
             <p>
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{tr('Ends')}</span>
-              {formatEventTimeForBrowser(event.endLocal, event.timezone, browserTimezone)}
+              {formatEventTimeForBrowser(event.endLocal, event.timezone, browserTimezone, locale)}
               <span className="block text-xs text-gray-500 dark:text-gray-400">
-                {tr('Event time:')} {formatLocalDateTime(event.endLocal)} {event.timezone}
+                {tr('Event time:')} {formatLocalDateTime(event.endLocal, locale)} {event.timezone}
               </span>
             </p>
             <p>
@@ -163,6 +166,7 @@ type LeaderboardProps = {
   submissions: CatchEventSubmission[];
   showUnpublished: boolean;
   statusLabels: Record<CatchEventStatus, string>;
+  locale: Locale | string;
   tr: Translate;
   translateSpeciesDisplay: ValueTranslator;
   translateNatureDisplay: ValueTranslator;
@@ -173,6 +177,7 @@ export function EventLeaderboard({
   submissions,
   showUnpublished,
   statusLabels,
+  locale,
   tr,
   translateSpeciesDisplay,
   translateNatureDisplay,
@@ -210,7 +215,7 @@ export function EventLeaderboard({
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 {translateSpeciesDisplay(winner.species)}, {translateNatureDisplay(winner.nature)}, {tr('caught at')}{' '}
-                {formatDateTime(winner.catchUtc, event.timezone)}
+                {formatDateTime(winner.catchUtc, event.timezone, locale)}
               </p>
             </div>
           ))}
@@ -244,7 +249,7 @@ export function EventLeaderboard({
                     {translateSpeciesDisplay(submission.species)}, {translateNatureDisplay(submission.nature)}
                   </td>
                   <td className="py-3 pr-4 font-bold">{submission.score}</td>
-                  <td className="py-3 pr-4">{formatDateTime(submission.catchUtc, event.timezone)}</td>
+                  <td className="py-3 pr-4">{formatDateTime(submission.catchUtc, event.timezone, locale)}</td>
                   <td className="py-3 pr-4">{statusLabels[submission.status]}</td>
                 </tr>
               ))}
