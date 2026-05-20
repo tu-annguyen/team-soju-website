@@ -321,6 +321,9 @@ CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_actor_created_at
 CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_location_status_created_at
   ON feebas_activity_logs(location, next_status, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_location_created_at_id
+  ON feebas_activity_logs(location, created_at ASC, id ASC);
+
 CREATE TABLE IF NOT EXISTS feebas_confirmed_tile_snapshots (
   id BIGSERIAL PRIMARY KEY,
   location TEXT NOT NULL,
