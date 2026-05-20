@@ -11,6 +11,7 @@
     "export:d1": "node src/scripts/export-postgres-to-d1.js",
     "dev:worker": "wrangler dev --local --config wrangler.jsonc",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\"",
+    "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",
     "deploy:cf:staging": "wrangler deploy --config wrangler.jsonc --env staging",
     "tail:cf:staging": "wrangler tail --config wrangler.jsonc --env staging --format pretty",
     "migrate": "node src/config/migrate.js",
