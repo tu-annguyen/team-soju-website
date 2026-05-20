@@ -271,7 +271,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         ...event.targets.map(translateSpeciesDisplay),
       ].join(' ').toLowerCase();
       const targetHaystack = [...event.targets, ...event.targets.map(translateSpeciesDisplay)].join(' ').toLowerCase();
-      const dateHaystack = `${event.eventDate} ${event.startLocal} ${event.endLocal} ${formatLocalDateTime(event.startLocal)} ${formatLocalDateTime(event.endLocal)}`.toLowerCase();
+      const dateHaystack = `${event.eventDate} ${event.startLocal} ${event.endLocal} ${formatLocalDateTime(event.startLocal, activeLocale)} ${formatLocalDateTime(event.endLocal, activeLocale)}`.toLowerCase();
       const hostHaystack = `${event.ownerIgn || ''} ${event.ownerUserId || ''}`.toLowerCase();
       return (!search || eventHaystack.includes(search))
         && (!target || targetHaystack.includes(target))
@@ -715,6 +715,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             ocrMessage={ocrMessage}
             isOcrLoading={isOcrLoading}
             browserTimezone={browserTimezone}
+            locale={activeLocale}
             statusLabels={statusLabels}
             tr={tr}
             translateSpeciesDisplay={translateSpeciesDisplay}
@@ -741,6 +742,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             activeSubmissions={activeSubmissions}
             createdEventId={createdEventId}
             statusLabels={statusLabels}
+            locale={activeLocale}
             tr={tr}
             translateSpeciesDisplay={translateSpeciesDisplay}
             translateNatureDisplay={translateNatureDisplay}

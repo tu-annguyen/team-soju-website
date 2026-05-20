@@ -4,6 +4,7 @@ import type {
   CatchEventStatus,
   CatchEventSubmission,
 } from '../../utils/catchEventScoring';
+import type { Locale } from '../../i18n';
 import {
   fieldClasses,
   formatDateTime,
@@ -25,6 +26,7 @@ type Props = {
   activeSubmissions: CatchEventSubmission[];
   createdEventId: string;
   statusLabels: Record<CatchEventStatus, string>;
+  locale: Locale | string;
   tr: (text: string) => string;
   translateSpeciesDisplay: (species: string) => string;
   translateNatureDisplay: (nature: string) => string;
@@ -48,6 +50,7 @@ export function HostManageView({
   activeSubmissions,
   createdEventId,
   statusLabels,
+  locale,
   tr,
   translateSpeciesDisplay,
   translateNatureDisplay,
@@ -101,7 +104,7 @@ export function HostManageView({
             >
               <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                {formatLocalDateTime(event.startLocal)} {tr('to')} {formatLocalDateTime(event.endLocal)} {event.timezone}
+                {formatLocalDateTime(event.startLocal, locale)} {tr('to')} {formatLocalDateTime(event.endLocal, locale)} {event.timezone}
               </p>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                 {translateLocation(event.route)}, {translateRegion(event.region)}
@@ -115,7 +118,7 @@ export function HostManageView({
           <div>
             <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{activeEvent.name}</h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              {formatLocalDateTime(activeEvent.startLocal)} {tr('to')} {formatLocalDateTime(activeEvent.endLocal)} {activeEvent.timezone}
+              {formatLocalDateTime(activeEvent.startLocal, locale)} {tr('to')} {formatLocalDateTime(activeEvent.endLocal, locale)} {activeEvent.timezone}
             </p>
             <p className="mt-1 mb-4 text-sm text-gray-600 dark:text-gray-300">
               {translateLocation(activeEvent.route)}, {translateRegion(activeEvent.region)}
@@ -235,7 +238,7 @@ export function HostManageView({
                   <td className="py-3 pr-4">
                     {submission.route ? translateLocation(submission.route) : tr('Unknown')}, {submission.region ? translateRegion(submission.region) : tr('Unknown')}
                   </td>
-                  <td className="py-3 pr-4">{formatDateTime(submission.catchUtc)}</td>
+                  <td className="py-3 pr-4">{formatDateTime(submission.catchUtc, undefined, locale)}</td>
                   <td className="py-3 pr-4">{submission.flags.length ? submission.flags.join('; ') : tr('None')}</td>
                   <td className="py-3 pr-4">
                     <select className={fieldClasses} value={submission.status} onChange={(event) => updateSubmissionStatus(submission.id, event.target.value as CatchEventStatus)}>
