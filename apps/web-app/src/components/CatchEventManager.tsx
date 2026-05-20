@@ -334,6 +334,7 @@ const defaultEventForm = {
   route: '',
   winnerCount: '4',
   useLowestScoreFinalPlace: true,
+  isPrivate: true,
 };
 
 const defaultSubmissionForm = {
@@ -468,7 +469,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       })(),
       eventDate: current.eventDate || getTodayLocalDate(),
       timezone: current.timezone || detectedTimezone,
-      region: current.region || 'Hoenn',
     }));
     setSpeciesRows((current) => {
       if (current.some((row) => row.name.trim())) {
@@ -686,6 +686,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     () => submissions.filter((submission) => submission.eventId === activeEvent?.id),
     [activeEvent?.id, submissions]
   );
+  const showEventSearch = view === 'events' && !activeEvent?.isPrivate;
 
   function updateRuleRow(kind: 'species' | 'nature', rowId: string, patch: Partial<RuleRow>) {
     const updateRows = (rows: RuleRow[]) =>
@@ -810,6 +811,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
           natureBonuses: natureRules.bonuses,
           naturePenalties: natureRules.penalties,
           useLowestScoreFinalPlace: eventForm.useLowestScoreFinalPlace,
+          isPrivate: eventForm.isPrivate,
           isLeaderboardPublished: false,
         }),
       });
@@ -851,7 +853,12 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       region: submissionForm.region.trim(),
       route: submissionForm.route.trim(),
       screenshotNames: screenshotProofs.map((proof) => proof.name || proof.fileName || tr('screenshot.png')),
-      screenshotProofs,
+      screenshotProofs: screenshotProofs.map((proof) => ({
+        name: proof.name || proof.fileName || tr('screenshot.png'),
+        dataUrl: proof.dataUrl,
+        url: proof.url,
+        fileName: proof.fileName,
+      })),
     };
     const validation = validateCatchEventSubmission(input, activeEvent, browserTimezone);
     const payload = {
@@ -1026,6 +1033,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       route: event.route,
       winnerCount: String(event.winnerCount),
       useLowestScoreFinalPlace: event.useLowestScoreFinalPlace,
+      isPrivate: event.isPrivate ?? true,
     });
     setSpeciesRows(rowsFromRules(event.speciesBonuses, event.speciesPenalties));
     setNatureRows(rowsFromRules(event.natureBonuses, event.naturePenalties));
@@ -1329,7 +1337,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                 {tr('Catch Event Manager')}
               </h1>
               <p className="mt-4 max-w-3xl text-gray-700 dark:text-gray-300">
-                {tr('Create PokeMMO catch events, collect manual entries, calculate scores, and publish final leaderboards when staff is ready.')}
+                {tr('Create PokeMMO catch events, collect submissions, automatically calculate scores, and publish results.')}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -1457,6 +1465,15 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
               <input className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600" type="checkbox" checked={eventForm.useLowestScoreFinalPlace} onChange={(event) => setEventForm({ ...eventForm, useLowestScoreFinalPlace: event.target.checked })} />
               {tr('Reserve the final winner slot for the lowest valid score.')}
             </label>
+            <label className="flex items-start gap-3 text-sm font-medium text-gray-800 dark:text-gray-100">
+              <input className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600" type="checkbox" checked={eventForm.isPrivate} onChange={(event) => setEventForm({ ...eventForm, isPrivate: event.target.checked })} />
+              <span>
+                <span className="block font-semibold">{tr('Private event')}</span>
+                <span className="block text-sm font-normal text-gray-600 dark:text-gray-300">
+                  {tr('Private events require the event link and are hidden from event search.')}
+                </span>
+              </span>
+            </label>
             {createError && (
               <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900 dark:bg-rose-950 dark:text-rose-100">
                 {createError}
@@ -1485,8 +1502,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
 
         {view === 'events' && (
           <div className="space-y-6">
+            {showEventSearch && (
             <div className={panelClasses}>
-              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{tr('Events')}</h2>
+              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{tr('Public Events')}</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <label className={labelClasses}>
                   {tr('Name or keyword')}
@@ -1560,6 +1578,14 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                 <p className="mt-5 text-sm text-gray-600 dark:text-gray-300">{tr('No events match those filters.')}</p>
               )}
             </div>
+            )}
+            {!showEventSearch && activeEvent?.isPrivate && (
+              <div className="flex justify-end">
+                <a className={smallButtonClasses} href={makeToolUrl('events')}>
+                  {tr('Search for Public events')}
+                </a>
+              </div>
+            )}
 
             {activeEvent ? renderEventSummary(activeEvent) : (
               <div className={panelClasses}>{tr('Select an event to view details, submit an entry, or open the leaderboard.')}</div>
@@ -1823,16 +1849,23 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                   </div>
                 </div>
                 <div className={panelClasses}>
-                  <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{activeEvent.name}</h2>
-                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                        {formatLocalDateTime(activeEvent.startLocal)} {tr('to')} {formatLocalDateTime(activeEvent.endLocal)} {activeEvent.timezone}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                        {translateLocation(activeEvent.route)}, {translateRegion(activeEvent.region)}
-                      </p>
-                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <div>
+                    <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{activeEvent.name}</h2>
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                          {formatLocalDateTime(activeEvent.startLocal)} {tr('to')} {formatLocalDateTime(activeEvent.endLocal)} {activeEvent.timezone}
+                        </p>
+                        <p className="mt-1 mb-4 text-sm text-gray-600 dark:text-gray-300">
+                          {translateLocation(activeEvent.route)}, {translateRegion(activeEvent.region)}
+                        </p>
+                        <span className={`mr-4 rounded-lg px-3 py-2 text-sm font-semibold ${
+                          activeEvent.isPrivate
+                            ? 'bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-200'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-950 dark:text-gray-300'
+                        }`}>
+                          {activeEvent.isPrivate ? tr('Private event') : tr('Public event')}
+                        </span>
                         <span className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                           activeEvent.isLeaderboardPublished
                             ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
@@ -1840,50 +1873,44 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                         }`}>
                           {activeEvent.isLeaderboardPublished ? tr('Leaderboard published') : tr('Leaderboard unpublished')}
                         </span>
-                        <button
-                          type="button"
-                          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-                          disabled={activeEvent.isLeaderboardPublished}
-                          onClick={() => updateLeaderboardPublished(activeEvent.id, true)}
-                        >
-                          {tr('Publish leaderboard')}
-                        </button>
-                        {activeEvent.isLeaderboardPublished && (
+                      </div>
+                      <div className="grid gap-3 text-sm">
+                        <label className={labelClasses}>
+                          {tr('Event link')}
+                          <input className={fieldClasses} readOnly value={makeToolUrl('events', activeEvent.id)} />
+                        </label>
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
                           <button
                             type="button"
-                            className={smallButtonClasses}
-                            onClick={() => updateLeaderboardPublished(activeEvent.id, false)}
+                            className={activeEvent.isLeaderboardPublished ? smallButtonClasses : 'rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700'}
+                            onClick={() => updateLeaderboardPublished(activeEvent.id, !activeEvent.isLeaderboardPublished)}
                           >
-                            {tr('Unpublish')}
+                            {activeEvent.isLeaderboardPublished ? tr('Unpublish leaderboard') : tr('Publish leaderboard')}
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className={activeEvent.submissionsClosed ? smallButtonClasses : 'rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700'}
-                          onClick={() => updateSubmissionsClosed(activeEvent.id, !activeEvent.submissionsClosed)}
-                        >
-                          {activeEvent.submissionsClosed ? tr('Reopen submissions') : tr('Close submissions')}
-                        </button>
-                        <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent)}>
-                          {tr('Duplicate setup')}
-                        </button>
-                        <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent, 'edit')}>
-                          {tr('Edit event')}
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700"
-                          onClick={() => deleteEvent(activeEvent)}
-                        >
-                          {tr('Delete event')}
-                        </button>
+                          <button
+                            type="button"
+                            className={activeEvent.submissionsClosed ? smallButtonClasses : 'rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700'}
+                            onClick={() => updateSubmissionsClosed(activeEvent.id, !activeEvent.submissionsClosed)}
+                          >
+                            {activeEvent.submissionsClosed ? tr('Reopen submissions') : tr('Close submissions')}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent, 'edit')}>
+                            {tr('Edit event')}
+                          </button>
+                          <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent)}>
+                            {tr('Duplicate event')}
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700"
+                            onClick={() => deleteEvent(activeEvent)}
+                          >
+                            {tr('Delete event')}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="grid gap-3 text-sm">
-                      <label className={labelClasses}>
-                        {tr('Event link')}
-                        <input className={fieldClasses} readOnly value={makeToolUrl('events', activeEvent.id)} />
-                      </label>
                     </div>
                   </div>
                   {createdEventId === activeEvent.id && (

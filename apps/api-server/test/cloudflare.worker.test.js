@@ -407,6 +407,79 @@ describe('Cloudflare Worker API', () => {
     expect(body.message).toContain('CLOUDFLARE_API_TOKEN');
   });
 
+  it('lists catch events through the public repository view', async () => {
+    const repositories = {
+      members: {},
+      shinies: {},
+      catchEvents: {
+        listEvents: jest.fn().mockResolvedValue([{ id: 'public-event', isPrivate: false }]),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events'), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(repositories.catchEvents.listEvents).toHaveBeenCalledWith({
+      ownerUserId: undefined,
+      publishedOnly: false,
+    });
+    expect(body.data).toEqual([{ id: 'public-event', isPrivate: false }]);
+  });
+
+  it('defaults created catch events to private when the client omits visibility', async () => {
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+          auth_provider: 'password',
+        }),
+      },
+      catchEvents: {
+        createEvent: jest.fn().mockResolvedValue({ id: 'private-event', isPrivate: true }),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'user-1',
+      email: 'trainer@example.com',
+      ign: 'Trainer',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+      body: JSON.stringify({
+        id: 'private-event',
+        slug: 'private-event',
+        name: 'Private Event',
+        eventDate: '2026-05-20',
+        startLocal: '2026-05-20T10:00',
+        endLocal: '2026-05-20T11:00',
+        timezone: 'America/Los_Angeles',
+        region: 'Hoenn',
+        route: 'Route 119',
+        winnerCount: 4,
+        targets: ['Milotic'],
+      }),
+    }), createEnv());
+
+    expect(response.status).toBe(201);
+    expect(repositories.catchEvents.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'user-1' }),
+      expect.objectContaining({ isPrivate: true })
+    );
+  });
+
   it('serves auth/me from the Worker repository contract', async () => {
     const repositories = {
       members: {},
