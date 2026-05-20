@@ -29,6 +29,7 @@ type EventFilters = {
 };
 
 type Props = {
+  isLoading: boolean;
   activeEvent: CatchEventConfig | undefined;
   filteredEvents: CatchEventConfig[];
   submissions: CatchEventSubmission[];
@@ -57,6 +58,7 @@ type Props = {
 };
 
 export function EventsView({
+  isLoading,
   activeEvent,
   filteredEvents,
   submissions,
@@ -83,6 +85,10 @@ export function EventsView({
   onSubmitEntry,
   onAutofillFromScreenshots,
 }: Props) {
+  if (isLoading) {
+    return <EventsSkeleton showSearch={showEventSearch} />;
+  }
+
   return (
     <div className="space-y-6">
       {showEventSearch && (
@@ -256,6 +262,80 @@ export function EventsView({
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+function SkeletonBlock({ className }: { className: string }) {
+  return <div className={`animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800 ${className}`} />;
+}
+
+function EventsSkeleton({ showSearch }: { showSearch: boolean }) {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Loading events">
+      {showSearch && (
+        <div className={panelClasses}>
+          <SkeletonBlock className="h-8 w-48" />
+          <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((item) => (
+              <div key={item}>
+                <SkeletonBlock className="h-4 w-24" />
+                <SkeletonBlock className="mt-2 h-10 w-full" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {[0, 1].map((item) => (
+              <div key={item} className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                <SkeletonBlock className="h-5 w-2/3" />
+                <SkeletonBlock className="mt-3 h-4 w-full" />
+                <SkeletonBlock className="mt-2 h-4 w-3/4" />
+                <SkeletonBlock className="mt-3 h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className={panelClasses}>
+        <div className="grid gap-5 lg:grid-cols-[1.4fr_0.6fr]">
+          <div>
+            <SkeletonBlock className="h-4 w-32" />
+            <SkeletonBlock className="mt-3 h-8 w-2/3" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[0, 1, 2, 3, 4, 5].map((item) => (
+                <div key={item}>
+                  <SkeletonBlock className="h-3 w-20" />
+                  <SkeletonBlock className="mt-2 h-5 w-40" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <SkeletonBlock className="h-4 w-28" />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[0, 1, 2].map((item) => <SkeletonBlock key={item} className="h-7 w-20" />)}
+            </div>
+            <SkeletonBlock className="mt-5 h-4 w-40" />
+            <SkeletonBlock className="mt-3 h-7 w-48" />
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-3">
+        <SkeletonBlock className="h-10 w-24" />
+        <SkeletonBlock className="h-10 w-28" />
+      </div>
+      <div className={panelClasses}>
+        <SkeletonBlock className="h-7 w-48" />
+        <SkeletonBlock className="mt-4 h-4 w-2/3" />
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {[0, 1, 2, 3].map((item) => (
+            <div key={item}>
+              <SkeletonBlock className="h-4 w-28" />
+              <SkeletonBlock className="mt-2 h-10 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

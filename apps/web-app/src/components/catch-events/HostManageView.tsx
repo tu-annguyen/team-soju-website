@@ -18,6 +18,7 @@ import {
 
 type Props = {
   isAuthLoading: boolean;
+  isLoading: boolean;
   authUser: AuthUser | null;
   activeEvent: CatchEventConfig | undefined;
   ownedEvents: CatchEventConfig[];
@@ -40,6 +41,7 @@ type Props = {
 
 export function HostManageView({
   isAuthLoading,
+  isLoading,
   authUser,
   activeEvent,
   ownedEvents,
@@ -59,8 +61,8 @@ export function HostManageView({
   loadEventIntoForm,
   deleteEvent,
 }: Props) {
-  if (isAuthLoading) {
-    return <div className={panelClasses}>{tr('Checking your Team Soju session...')}</div>;
+  if (isAuthLoading || isLoading) {
+    return <HostManageSkeleton />;
   }
 
   if (!authUser) {
@@ -247,6 +249,64 @@ export function HostManageView({
             </tbody>
           </table>
           {activeSubmissions.length === 0 && <p className="py-8 text-center text-gray-600 dark:text-gray-300">{tr('No submissions yet.')}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonBlock({ className }: { className: string }) {
+  return <div className={`animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800 ${className}`} />;
+}
+
+function HostManageSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Loading host events">
+      <div className={panelClasses}>
+        <SkeletonBlock className="h-8 w-44" />
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {[0, 1].map((item) => (
+            <div key={item} className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+              <SkeletonBlock className="h-5 w-2/3" />
+              <SkeletonBlock className="mt-3 h-4 w-full" />
+              <SkeletonBlock className="mt-2 h-4 w-3/4" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className={panelClasses}>
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <div>
+            <SkeletonBlock className="h-8 w-2/3" />
+            <SkeletonBlock className="mt-3 h-4 w-72" />
+            <SkeletonBlock className="mt-2 h-4 w-48" />
+            <div className="mt-4 flex gap-4">
+              <SkeletonBlock className="h-9 w-28" />
+              <SkeletonBlock className="h-9 w-40" />
+            </div>
+          </div>
+          <div>
+            <SkeletonBlock className="h-4 w-24" />
+            <SkeletonBlock className="mt-2 h-10 w-full" />
+            <div className="mt-4 flex flex-wrap gap-3">
+              <SkeletonBlock className="h-10 w-40" />
+              <SkeletonBlock className="h-10 w-36" />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <SkeletonBlock className="h-10 w-24" />
+              <SkeletonBlock className="h-10 w-32" />
+              <SkeletonBlock className="h-10 w-28" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className={panelClasses}>
+        <SkeletonBlock className="h-7 w-36" />
+        <div className="mt-4 overflow-hidden">
+          <div className="min-w-[760px] space-y-3">
+            <SkeletonBlock className="h-8 w-full" />
+            {[0, 1, 2].map((item) => <SkeletonBlock key={item} className="h-14 w-full" />)}
+          </div>
         </div>
       </div>
     </div>

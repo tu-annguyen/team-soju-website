@@ -64,6 +64,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   const [browserTimezone, setBrowserTimezone] = useState(DEFAULT_TIMEZONE);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isEventsLoading, setIsEventsLoading] = useState(true);
+  const [isHostManageLoading, setIsHostManageLoading] = useState(false);
+  const [hasLoadedOwnedEvents, setHasLoadedOwnedEvents] = useState(false);
   const [createdEventId, setCreatedEventId] = useState('');
   const [editingEventId, setEditingEventId] = useState('');
   const [createError, setCreateError] = useState('');
@@ -136,9 +139,13 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   useEffect(() => {
     let isMounted = true;
     async function loadEvents() {
+      const params = new URLSearchParams(window.location.search);
+      const queryEvent = params.get('event') || '';
+      if (view !== 'events' && !queryEvent) {
+        return;
+      }
+      setIsEventsLoading(true);
       try {
-        const params = new URLSearchParams(window.location.search);
-        const queryEvent = params.get('event') || '';
         if (queryEvent) {
           const event = await loadEventDetails(queryEvent, view);
           if (isMounted) {
@@ -153,6 +160,10 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         }
       } catch (error) {
         console.error('Error loading catch events:', error);
+      } finally {
+        if (isMounted) {
+          setIsEventsLoading(false);
+        }
       }
     }
     loadEvents();
@@ -166,6 +177,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     }
     let isMounted = true;
     async function loadOwnedEvents() {
+      setIsHostManageLoading(true);
       try {
         const response = await fetchJson<CatchEventConfig[]>(`${normalizedApiBaseUrl}/catch-events?owner=me`);
         if (isMounted) {
@@ -178,6 +190,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         }
       } catch (error) {
         console.error('Error loading owned catch events:', error);
+      } finally {
+        if (isMounted) {
+          setIsHostManageLoading(false);
+          setHasLoadedOwnedEvents(true);
+        }
       }
     }
     loadOwnedEvents();
@@ -613,7 +630,15 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                       ? 'border-emerald-600 bg-emerald-600 text-white'
                       : 'border-gray-300 bg-white text-gray-800 hover:border-emerald-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100'
                   }`}
-                  onClick={() => setView(mode)}
+                  onClick={() => {
+                    if (mode === 'events') {
+                      setIsEventsLoading(true);
+                    }
+                    if (mode === 'host' && hostTab === 'manage' && authUser && !hasLoadedOwnedEvents) {
+                      setIsHostManageLoading(true);
+                    }
+                    setView(mode);
+                  }}
                 >
                   {mode === 'events' ? tr('Events') : tr('Host')}
                 </button>
@@ -638,6 +663,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                 onClick={() => {
                   if (tab === 'create') {
                     setEditingEventId('');
+                  }
+                  if (tab === 'manage' && authUser && !hasLoadedOwnedEvents) {
+                    setIsHostManageLoading(true);
                   }
                   setHostTab(tab);
                 }}
@@ -674,6 +702,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
 
         {view === 'events' && (
           <EventsView
+            isLoading={isEventsLoading}
             activeEvent={activeEvent}
             filteredEvents={filteredEvents}
             submissions={submissions}
@@ -705,6 +734,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         {view === 'host' && hostTab === 'manage' && (
           <HostManageView
             isAuthLoading={isAuthLoading}
+            isLoading={isHostManageLoading || Boolean(authUser && !hasLoadedOwnedEvents)}
             authUser={authUser}
             activeEvent={activeEvent}
             ownedEvents={ownedEvents}
