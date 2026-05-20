@@ -10,7 +10,7 @@ import { EventLeaderboard, EventSummary } from './EventDisplay';
 import { EventSubmissionPanel } from './EventSubmissionPanel';
 import {
   fieldClasses,
-  formatLocalDateTime,
+  formatEventTimeForBrowser,
   getSubmissionDisabledReason,
   labelClasses,
   makeToolUrl,
@@ -146,7 +146,7 @@ export function EventsView({
               >
                 <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  {formatLocalDateTime(event.startLocal)} {tr('to')} {formatLocalDateTime(event.endLocal)} {event.timezone}
+              {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone)} {tr('to')} {formatEventTimeForBrowser(event.endLocal, event.timezone, browserTimezone)}
                 </p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                   {translateLocation(event.route)}, {translateRegion(event.region)} - {tr('Hosted by')} {event.ownerIgn || tr('Team Soju')}
