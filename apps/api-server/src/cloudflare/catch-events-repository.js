@@ -35,6 +35,7 @@ function normalizeEvent(row, screenshots = []) {
     naturePenalties: parseJson(row.nature_penalties_json, []),
     useLowestScoreFinalPlace: boolFromDb(row.use_lowest_score_final_place),
     isLeaderboardPublished: boolFromDb(row.is_leaderboard_published),
+    isPrivate: boolFromDb(row.is_private),
     submissionsClosed: boolFromDb(row.submissions_closed),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -98,6 +99,14 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
       `);
     }
 
+    if (!columnNames.has('is_private')) {
+      await runCommand(`
+        ALTER TABLE catch_events
+        ADD COLUMN is_private INTEGER NOT NULL DEFAULT 1
+        CHECK (is_private IN (0, 1))
+      `);
+    }
+
     eventSubmissionColumnsReady = true;
   }
 
@@ -110,7 +119,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     if (!columnNames.has('region')) {
       await runCommand(`
         ALTER TABLE catch_event_submissions
-        ADD COLUMN region TEXT NOT NULL DEFAULT 'Hoenn'
+        ADD COLUMN region TEXT NOT NULL
         CHECK (region IN ('Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova'))
       `);
     }
@@ -157,19 +166,20 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
 
   return {
     async createEvent(owner, event) {
+      await ensureEventSubmissionColumns();
       const id = event.id || crypto.randomUUID();
       await runCommand(`
         INSERT INTO catch_events (
           id, owner_user_id, owner_ign, name, slug, event_date, start_local, end_local,
           timezone, region, route, winner_count, targets_json, species_bonuses_json,
           species_penalties_json, nature_bonuses_json, nature_penalties_json,
-          use_lowest_score_final_place, is_leaderboard_published
+          use_lowest_score_final_place, is_leaderboard_published, is_private
         )
         VALUES (
           ${parameter(1)}, ${parameter(2)}, ${parameter(3)}, ${parameter(4)}, ${parameter(5)},
           ${parameter(6)}, ${parameter(7)}, ${parameter(8)}, ${parameter(9)}, ${parameter(10)},
           ${parameter(11)}, ${parameter(12)}, ${parameter(13)}, ${parameter(14)}, ${parameter(15)},
-          ${parameter(16)}, ${parameter(17)}, ${parameter(18)}, ${parameter(19)}
+          ${parameter(16)}, ${parameter(17)}, ${parameter(18)}, ${parameter(19)}, ${parameter(20)}
         )
       `, [
         id,
@@ -191,11 +201,13 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
         JSON.stringify(event.naturePenalties || []),
         event.useLowestScoreFinalPlace ? 1 : 0,
         event.isLeaderboardPublished ? 1 : 0,
+        event.isPrivate === false ? 0 : 1,
       ]);
       return this.getEventById(id, { includeSubmissions: true });
     },
 
     async updateEvent(id, ownerUserId, event) {
+      await ensureEventSubmissionColumns();
       const existing = await this.getEventById(id);
       if (!existing || existing.ownerUserId !== ownerUserId) {
         return null;
@@ -218,6 +230,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
             nature_bonuses_json = ${parameter(15)},
             nature_penalties_json = ${parameter(16)},
             use_lowest_score_final_place = ${parameter(17)},
+            is_private = ${parameter(18)},
             updated_at = ${nowExpression}
         WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
       `, [
@@ -238,6 +251,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
         JSON.stringify(event.natureBonuses || []),
         JSON.stringify(event.naturePenalties || []),
         event.useLowestScoreFinalPlace ? 1 : 0,
+        event.isPrivate === false ? 0 : 1,
       ]);
       return this.getEventById(id, { includeSubmissions: true });
     },
@@ -256,6 +270,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     },
 
     async listEvents({ ownerUserId, publishedOnly } = {}) {
+      await ensureEventSubmissionColumns();
       const clauses = [];
       const params = [];
       if (ownerUserId) {
@@ -264,6 +279,9 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
       }
       if (publishedOnly) {
         clauses.push('is_leaderboard_published = 1');
+      }
+      if (!ownerUserId) {
+        clauses.push('is_private = 0');
       }
       const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
       const rows = await runSelect(`
@@ -276,6 +294,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     },
 
     async getEventById(id, { includeSubmissions = false } = {}) {
+      await ensureEventSubmissionColumns();
       const row = await runOne(`
         SELECT *
         FROM catch_events

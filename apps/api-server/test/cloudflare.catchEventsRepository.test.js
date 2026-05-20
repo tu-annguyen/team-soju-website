@@ -1,6 +1,53 @@
 const { createCatchEventsRepository } = require('../src/cloudflare/catch-events-repository');
 
 describe('Cloudflare catch events repository', () => {
+  it('filters private events out of the public event list', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn();
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([
+        { name: 'id' },
+        { name: 'submissions_closed' },
+        { name: 'is_private' },
+      ])
+      .mockResolvedValueOnce([]);
+    const repository = createCatchEventsRepository({
+      dialect: 'd1',
+      parameter: (index) => `?${index}`,
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    await repository.listEvents();
+
+    expect(runSelect.mock.calls[1][0]).toContain('is_private = 0');
+  });
+
+  it('keeps owner event lists searchable by owner even when events are private', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn();
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([
+        { name: 'id' },
+        { name: 'submissions_closed' },
+        { name: 'is_private' },
+      ])
+      .mockResolvedValueOnce([]);
+    const repository = createCatchEventsRepository({
+      dialect: 'd1',
+      parameter: (index) => `?${index}`,
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    await repository.listEvents({ ownerUserId: 'owner-1' });
+
+    expect(runSelect.mock.calls[1][0]).toContain('owner_user_id = ?1');
+    expect(runSelect.mock.calls[1][0]).not.toContain('is_private = 0');
+  });
+
   it('adds D1 submission location columns before upserting into older local databases', async () => {
     const runCommand = jest.fn().mockResolvedValue({});
     const runOne = jest.fn()

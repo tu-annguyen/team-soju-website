@@ -104,6 +104,7 @@ const catchEventCreateSchema = Joi.object({
   naturePenalties: Joi.array().items(catchEventRuleSchema).max(25).default([]),
   useLowestScoreFinalPlace: Joi.boolean().default(true),
   isLeaderboardPublished: Joi.boolean().default(false),
+  isPrivate: Joi.boolean().default(true),
 });
 const catchEventSubmissionSchema = Joi.object({
   playerIgn: Joi.string().trim().min(1).max(50).required(),
