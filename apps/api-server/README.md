@@ -149,6 +149,17 @@ DISCORD_REDIRECT_URI=http://localhost:8787/api/auth/discord/callback
 
 In the Discord Developer Portal, add the exact redirect URI above for local development and the production callback URL for deployed environments.
 
+When running the Cloudflare Worker locally, use the package script so Wrangler loads the
+repo-root `.env` file:
+
+```bash
+npm run dev:api:worker
+```
+
+If you run Wrangler directly from `apps/api-server`, include `--env-file ../../.env`;
+otherwise local dev will fall back to the values in `wrangler.jsonc`, which are the
+deployed Worker defaults.
+
 ### Bot Tokens
 
 Generate a bot token for development:
