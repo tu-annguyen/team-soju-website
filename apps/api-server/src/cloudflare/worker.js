@@ -105,6 +105,7 @@ const catchEventCreateSchema = Joi.object({
   useLowestScoreFinalPlace: Joi.boolean().default(true),
   isLeaderboardPublished: Joi.boolean().default(false),
   isPrivate: Joi.boolean().default(true),
+  autoCheckEnabled: Joi.boolean().default(false),
 });
 const catchEventSubmissionSchema = Joi.object({
   playerIgn: Joi.string().trim().min(1).max(50).required(),
@@ -117,7 +118,7 @@ const catchEventSubmissionSchema = Joi.object({
   route: Joi.string().trim().min(1).max(120).required(),
   catchUtc: Joi.string().trim().min(8).max(40).required(),
   score: Joi.number().integer().min(-999).max(1186).required(),
-  status: Joi.string().valid('valid', 'needs-review').required(),
+  status: Joi.string().valid('pending-verification', 'auto-checked', 'needs-review').required(),
   flags: Joi.array().items(Joi.string().trim().max(200)).max(20).default([]),
   screenshots: Joi.array().items(Joi.object({
     name: Joi.string().trim().min(1).max(160).required(),
@@ -141,8 +142,11 @@ const catchEventPublishSchema = Joi.object({
 const catchEventSubmissionsClosedSchema = Joi.object({
   submissionsClosed: Joi.boolean().required(),
 });
+const catchEventAutoCheckSchema = Joi.object({
+  autoCheckEnabled: Joi.boolean().required(),
+});
 const catchEventSubmissionStatusSchema = Joi.object({
-  status: Joi.string().valid('valid', 'needs-review', 'invalid', 'disqualified').required(),
+  status: Joi.string().valid('pending-verification', 'auto-checked', 'needs-review', 'verified', 'rejected', 'disqualified').required(),
 });
 
 function getEnvUrl(env, ...keys) {
@@ -2411,6 +2415,34 @@ function createWorkerApp(options = {}) {
       } catch (error) {
         console.error('Error updating catch event submissions:', error);
         return json({ success: false, message: 'Failed to update catch event submissions' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/auto-check$/);
+    if (request.method === 'POST' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventAutoCheckSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const event = await getRepositories().catchEvents.setAutoCheckEnabled(
+          match[1],
+          auth.user.id,
+          value.autoCheckEnabled
+        );
+        if (!event) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: event, message: 'Catch event updated successfully' });
+      } catch (error) {
+        console.error('Error updating catch event auto-check:', error);
+        return json({ success: false, message: 'Failed to update catch event auto-check' }, { status: 500 });
       }
     }
 

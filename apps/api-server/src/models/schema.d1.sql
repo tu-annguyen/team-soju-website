@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS catch_events (
   is_leaderboard_published INTEGER NOT NULL DEFAULT 0 CHECK (is_leaderboard_published IN (0, 1)),
   is_private INTEGER NOT NULL DEFAULT 1 CHECK (is_private IN (0, 1)),
   submissions_closed INTEGER NOT NULL DEFAULT 0 CHECK (submissions_closed IN (0, 1)),
+  auto_check_enabled INTEGER NOT NULL DEFAULT 0 CHECK (auto_check_enabled IN (0, 1)),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   CHECK (trim(name) <> ''),
@@ -224,8 +225,8 @@ CREATE TABLE IF NOT EXISTS catch_event_submissions (
   route TEXT NOT NULL,
   catch_utc TEXT NOT NULL,
   score INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'needs-review'
-    CHECK (status IN ('valid', 'needs-review', 'invalid', 'disqualified')),
+  status TEXT NOT NULL DEFAULT 'pending-verification'
+    CHECK (status IN ('pending-verification', 'auto-checked', 'needs-review', 'verified', 'rejected', 'disqualified')),
   flags_json TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),

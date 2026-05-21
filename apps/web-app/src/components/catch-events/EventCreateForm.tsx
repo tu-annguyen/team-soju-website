@@ -276,7 +276,7 @@ export function EventCreateForm({
       />
       <label className="flex items-start gap-3 text-sm font-medium text-gray-800 dark:text-gray-100">
         <input className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600" type="checkbox" checked={eventForm.useLowestScoreFinalPlace} onChange={(event) => setEventForm({ ...eventForm, useLowestScoreFinalPlace: event.target.checked })} />
-        {tr('Reserve the final winner slot for the lowest valid score.')}
+        {tr('Reserve the final winner slot for the lowest verified score.')}
       </label>
       <label className="flex items-start gap-3 text-sm font-medium text-gray-800 dark:text-gray-100">
         <input className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600" type="checkbox" checked={eventForm.isPrivate} onChange={(event) => setEventForm({ ...eventForm, isPrivate: event.target.checked })} />

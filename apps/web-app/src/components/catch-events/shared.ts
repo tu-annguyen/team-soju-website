@@ -40,9 +40,11 @@ export type ApiResponse<T> = {
 export const DEFAULT_TIMEZONE = 'America/New_York';
 
 export const statusLabelKeys: Record<CatchEventStatus, string> = {
-  valid: 'Valid',
+  'pending-verification': 'Pending Verification',
+  'auto-checked': 'Auto-Checked',
   'needs-review': 'Needs Review',
-  invalid: 'Invalid',
+  verified: 'Verified',
+  rejected: 'Rejected',
   disqualified: 'Disqualified',
 };
 
@@ -412,6 +414,7 @@ export const defaultEventForm = {
   winnerCount: '4',
   useLowestScoreFinalPlace: true,
   isPrivate: true,
+  autoCheckEnabled: false,
 };
 
 export const defaultSubmissionForm = {

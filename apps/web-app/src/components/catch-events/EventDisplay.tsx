@@ -221,7 +221,7 @@ export function EventLeaderboard({
           ))}
         </div>
         {eventWinners.length === 0 && (
-          <p className="mt-4 text-gray-600 dark:text-gray-300">{tr('No valid entries yet.')}</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">{tr('No verified entries yet.')}</p>
         )}
       </div>
       <div className={panelClasses}>

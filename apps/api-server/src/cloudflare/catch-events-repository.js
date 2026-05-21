@@ -13,6 +13,12 @@ function boolFromDb(value) {
   return value === true || value === 1 || value === '1';
 }
 
+function normalizeSubmissionStatus(status) {
+  if (status === 'valid') return 'verified';
+  if (status === 'invalid') return 'rejected';
+  return status || 'pending-verification';
+}
+
 function normalizeEvent(row, screenshots = []) {
   if (!row) return null;
   return {
@@ -37,6 +43,7 @@ function normalizeEvent(row, screenshots = []) {
     isLeaderboardPublished: boolFromDb(row.is_leaderboard_published),
     isPrivate: boolFromDb(row.is_private),
     submissionsClosed: boolFromDb(row.submissions_closed),
+    autoCheckEnabled: boolFromDb(row.auto_check_enabled),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     screenshots,
@@ -58,7 +65,7 @@ function normalizeSubmission(row, screenshots = []) {
     route: row.route,
     catchUtc: row.catch_utc,
     score: Number(row.score) || 0,
-    status: row.status,
+    status: normalizeSubmissionStatus(row.status),
     flags: parseJson(row.flags_json, []),
     screenshotNames: screenshots.map((screenshot) => screenshot.fileName),
     screenshotProofs: screenshots,
@@ -84,6 +91,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
   const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
   let submissionLocationColumnsReady = dialect !== 'd1';
   let eventSubmissionColumnsReady = dialect !== 'd1';
+  let submissionStatusConstraintReady = dialect !== 'd1';
 
   async function ensureEventSubmissionColumns() {
     if (eventSubmissionColumnsReady) return;
@@ -104,6 +112,14 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
         ALTER TABLE catch_events
         ADD COLUMN is_private INTEGER NOT NULL DEFAULT 1
         CHECK (is_private IN (0, 1))
+      `);
+    }
+
+    if (!columnNames.has('auto_check_enabled')) {
+      await runCommand(`
+        ALTER TABLE catch_events
+        ADD COLUMN auto_check_enabled INTEGER NOT NULL DEFAULT 0
+        CHECK (auto_check_enabled IN (0, 1))
       `);
     }
 
@@ -132,6 +148,71 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     }
 
     submissionLocationColumnsReady = true;
+  }
+
+  async function ensureSubmissionStatusConstraint() {
+    if (submissionStatusConstraintReady) return;
+
+    const rows = await runSelect(`
+      SELECT sql
+      FROM sqlite_schema
+      WHERE type = 'table' AND name = 'catch_event_submissions'
+    `);
+    const tableSql = rows[0]?.sql || '';
+
+    if (tableSql.includes("'valid'") || tableSql.includes("'invalid'")) {
+      await runCommand('PRAGMA foreign_keys = OFF');
+      await runCommand(`
+        CREATE TABLE catch_event_submissions_next (
+          id TEXT PRIMARY KEY,
+          event_id TEXT NOT NULL REFERENCES catch_events(id) ON DELETE CASCADE,
+          player_ign TEXT NOT NULL,
+          species TEXT NOT NULL,
+          nature TEXT NOT NULL,
+          total_iv INTEGER NOT NULL CHECK (total_iv BETWEEN 0 AND 186),
+          catch_local TEXT NOT NULL,
+          timezone TEXT NOT NULL,
+          region TEXT NOT NULL CHECK (region IN ('Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova')),
+          route TEXT NOT NULL,
+          catch_utc TEXT NOT NULL,
+          score INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending-verification'
+            CHECK (status IN ('pending-verification', 'auto-checked', 'needs-review', 'verified', 'rejected', 'disqualified')),
+          flags_json TEXT NOT NULL DEFAULT '[]',
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          CHECK (trim(player_ign) <> ''),
+          CHECK (trim(route) <> ''),
+          UNIQUE(event_id, player_ign COLLATE NOCASE)
+        ) STRICT
+      `);
+      await runCommand(`
+        INSERT INTO catch_event_submissions_next (
+          id, event_id, player_ign, species, nature, total_iv, catch_local,
+          timezone, region, route, catch_utc, score, status, flags_json,
+          created_at, updated_at
+        )
+        SELECT
+          id, event_id, player_ign, species, nature, total_iv, catch_local,
+          timezone, region, route, catch_utc, score,
+          CASE status
+            WHEN 'valid' THEN 'verified'
+            WHEN 'invalid' THEN 'rejected'
+            ELSE status
+          END,
+          flags_json, created_at, updated_at
+        FROM catch_event_submissions
+      `);
+      await runCommand('DROP TABLE catch_event_submissions');
+      await runCommand('ALTER TABLE catch_event_submissions_next RENAME TO catch_event_submissions');
+      await runCommand(`
+        CREATE INDEX IF NOT EXISTS idx_catch_event_submissions_event_score
+        ON catch_event_submissions(event_id, score DESC, catch_utc ASC)
+      `);
+      await runCommand('PRAGMA foreign_keys = ON');
+    }
+
+    submissionStatusConstraintReady = true;
   }
 
   async function getScreenshotsBySubmissionIds(submissionIds) {
@@ -173,13 +254,13 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
           id, owner_user_id, owner_ign, name, slug, event_date, start_local, end_local,
           timezone, region, route, winner_count, targets_json, species_bonuses_json,
           species_penalties_json, nature_bonuses_json, nature_penalties_json,
-          use_lowest_score_final_place, is_leaderboard_published, is_private
+          use_lowest_score_final_place, is_leaderboard_published, is_private, auto_check_enabled
         )
         VALUES (
           ${parameter(1)}, ${parameter(2)}, ${parameter(3)}, ${parameter(4)}, ${parameter(5)},
           ${parameter(6)}, ${parameter(7)}, ${parameter(8)}, ${parameter(9)}, ${parameter(10)},
           ${parameter(11)}, ${parameter(12)}, ${parameter(13)}, ${parameter(14)}, ${parameter(15)},
-          ${parameter(16)}, ${parameter(17)}, ${parameter(18)}, ${parameter(19)}, ${parameter(20)}
+          ${parameter(16)}, ${parameter(17)}, ${parameter(18)}, ${parameter(19)}, ${parameter(20)}, ${parameter(21)}
         )
       `, [
         id,
@@ -202,6 +283,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
         event.useLowestScoreFinalPlace ? 1 : 0,
         event.isLeaderboardPublished ? 1 : 0,
         event.isPrivate === false ? 0 : 1,
+        event.autoCheckEnabled ? 1 : 0,
       ]);
       return this.getEventById(id, { includeSubmissions: true });
     },
@@ -231,6 +313,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
             nature_penalties_json = ${parameter(16)},
             use_lowest_score_final_place = ${parameter(17)},
             is_private = ${parameter(18)},
+            auto_check_enabled = ${parameter(19)},
             updated_at = ${nowExpression}
         WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
       `, [
@@ -252,6 +335,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
         JSON.stringify(event.naturePenalties || []),
         event.useLowestScoreFinalPlace ? 1 : 0,
         event.isPrivate === false ? 0 : 1,
+        event.autoCheckEnabled ? 1 : 0,
       ]);
       return this.getEventById(id, { includeSubmissions: true });
     },
@@ -340,8 +424,25 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
       return this.getEventById(id, { includeSubmissions: true });
     },
 
+    async setAutoCheckEnabled(id, ownerUserId, autoCheckEnabled) {
+      await ensureEventSubmissionColumns();
+      const existing = await this.getEventById(id);
+      if (!existing || existing.ownerUserId !== ownerUserId) {
+        return null;
+      }
+
+      await runCommand(`
+        UPDATE catch_events
+        SET auto_check_enabled = ${parameter(3)},
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
+      `, [id, ownerUserId, autoCheckEnabled ? 1 : 0]);
+      return this.getEventById(id, { includeSubmissions: true });
+    },
+
     async upsertSubmission(eventId, submission, screenshots = []) {
       await ensureSubmissionLocationColumns();
+      await ensureSubmissionStatusConstraint();
 
       const existing = await runOne(`
         SELECT *
@@ -444,6 +545,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     },
 
     async updateSubmissionStatus(eventId, ownerUserId, submissionId, status) {
+      await ensureSubmissionStatusConstraint();
       await runCommand(`
         UPDATE catch_event_submissions
         SET status = ${parameter(4)},

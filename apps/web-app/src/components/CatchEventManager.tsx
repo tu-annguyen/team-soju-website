@@ -375,6 +375,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             naturePenalties: natureRules.penalties,
             useLowestScoreFinalPlace: eventForm.useLowestScoreFinalPlace,
             isPrivate: eventForm.isPrivate,
+            autoCheckEnabled: eventForm.autoCheckEnabled,
             isLeaderboardPublished: false,
           }),
         }
@@ -465,7 +466,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
           ? tr('Entry submitted. Your previous submission was overwritten.')
           : validation.flags.length
             ? tr('Entry submitted and marked Needs Review.')
-            : tr('Entry submitted successfully.')
+            : validation.status === 'auto-checked'
+              ? tr('Entry submitted and auto-checked.')
+              : tr('Entry submitted and pending verification.')
       );
     } catch (error) {
       setSubmitMessage(error instanceof Error ? error.message : tr('Failed to submit entry.'));
@@ -565,6 +568,21 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       console.error('Error updating catch event submissions:', error);
     }
   }
+  async function updateAutoCheckEnabled(eventId: string, autoCheckEnabled: boolean) {
+    try {
+      const response = await fetchJson<CatchEventConfig>(
+        `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(eventId)}/auto-check`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ autoCheckEnabled }),
+        }
+      );
+      setEvents((current) => current.map((event) => event.id === response.data.id ? response.data : event));
+      setSubmissions(response.data.submissions || []);
+    } catch (error) {
+      console.error('Error updating catch event auto-check:', error);
+    }
+  }
   function loadEventIntoForm(event: CatchEventConfig, mode: 'duplicate' | 'edit' = 'duplicate') {
     setEventForm({
       name: mode === 'edit' ? event.name : `${event.name} ${tr('Copy')}`,
@@ -577,6 +595,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       winnerCount: String(event.winnerCount),
       useLowestScoreFinalPlace: event.useLowestScoreFinalPlace,
       isPrivate: event.isPrivate ?? true,
+      autoCheckEnabled: event.autoCheckEnabled ?? false,
     });
     setSpeciesRows(rowsFromRules(event.speciesBonuses, event.speciesPenalties));
     setNatureRows(rowsFromRules(event.natureBonuses, event.naturePenalties));
@@ -753,6 +772,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             updateSubmissionStatus={updateSubmissionStatus}
             updateLeaderboardPublished={updateLeaderboardPublished}
             updateSubmissionsClosed={updateSubmissionsClosed}
+            updateAutoCheckEnabled={updateAutoCheckEnabled}
             loadEventIntoForm={loadEventIntoForm}
             deleteEvent={deleteEvent}
           />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { selectPrizeRelevantSubmissions } from '../../utils/catchEventScoring';
 import type {
   CatchEventConfig,
   CatchEventStatus,
@@ -37,6 +38,7 @@ type Props = {
   updateSubmissionStatus: (submissionId: string, status: CatchEventStatus) => void;
   updateLeaderboardPublished: (eventId: string, isPublished: boolean) => void;
   updateSubmissionsClosed: (eventId: string, isClosed: boolean) => void;
+  updateAutoCheckEnabled: (eventId: string, autoCheckEnabled: boolean) => void;
   loadEventIntoForm: (event: CatchEventConfig, mode?: 'duplicate' | 'edit') => void;
   deleteEvent: (event: CatchEventConfig) => void;
 };
@@ -61,6 +63,7 @@ export function HostManageView({
   updateSubmissionStatus,
   updateLeaderboardPublished,
   updateSubmissionsClosed,
+  updateAutoCheckEnabled,
   loadEventIntoForm,
   deleteEvent,
 }: Props) {
@@ -85,6 +88,13 @@ export function HostManageView({
   if (!activeEvent) {
     return <div className={panelClasses}>{tr('No events owned by your account yet.')}</div>;
   }
+
+  const prizeRelevantById = new Map(
+    selectPrizeRelevantSubmissions(activeEvent, activeSubmissions).map((submission) => [
+      submission.id,
+      submission.reviewReasons,
+    ])
+  );
 
   return (
     <div className="space-y-6">
@@ -184,6 +194,18 @@ export function HostManageView({
       </div>
       <div className={panelClasses}>
         <h3 className="text-xl font-bold text-gray-950 dark:text-white">{tr('Review Queue')}</h3>
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          <p>
+            {tr('Auto-check lets lower-stakes community events accept clean submissions after the tool checks time, location, screenshots, and score. Keep it off for official or competitive events so every entry stays pending until staff review.')}
+          </p>
+          <button
+            type="button"
+            className={activeEvent.autoCheckEnabled ? `mt-3 ${smallButtonClasses}` : 'mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700'}
+            onClick={() => updateAutoCheckEnabled(activeEvent.id, !activeEvent.autoCheckEnabled)}
+          >
+            {activeEvent.autoCheckEnabled ? tr('Disable auto-check') : tr('Enable auto-check')}
+          </button>
+        </div>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[1120px] text-left text-sm">
             <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-gray-800">
@@ -199,7 +221,10 @@ export function HostManageView({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {activeSubmissions.map((submission) => (
+              {activeSubmissions.map((submission) => {
+                const prizeReasons = prizeRelevantById.get(submission.id) || [];
+
+                return (
                 <tr key={submission.id}>
                   <td className="py-3 pr-4 font-semibold text-gray-950 dark:text-white">{submission.playerIgn}</td>
                   <td className="py-3 pr-4 text-gray-700 dark:text-gray-300">
@@ -239,7 +264,14 @@ export function HostManageView({
                     {submission.route ? translateLocation(submission.route) : tr('Unknown')}, {submission.region ? translateRegion(submission.region) : tr('Unknown')}
                   </td>
                   <td className="py-3 pr-4">{formatDateTime(submission.catchUtc, undefined, locale)}</td>
-                  <td className="py-3 pr-4">{submission.flags.length ? submission.flags.join('; ') : tr('None')}</td>
+                  <td className="py-3 pr-4">
+                    <span className="block">{submission.flags.length ? submission.flags.map((flag) => tr(flag)).join('; ') : tr('None')}</span>
+                    {prizeReasons.length > 0 && (
+                      <span className="mt-1 block text-xs font-semibold text-amber-700 dark:text-amber-300">
+                        {tr('Prize review:')} {prizeReasons.map((reason) => tr(reason)).join('; ')}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-3 pr-4">
                     <select className={fieldClasses} value={submission.status} onChange={(event) => updateSubmissionStatus(submission.id, event.target.value as CatchEventStatus)}>
                       {Object.entries(statusLabels).map(([status, label]) => (
@@ -248,7 +280,8 @@ export function HostManageView({
                     </select>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {activeSubmissions.length === 0 && <p className="py-8 text-center text-gray-600 dark:text-gray-300">{tr('No submissions yet.')}</p>}

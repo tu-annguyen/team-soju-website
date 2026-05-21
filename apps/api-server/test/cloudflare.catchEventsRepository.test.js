@@ -9,6 +9,7 @@ describe('Cloudflare catch events repository', () => {
         { name: 'id' },
         { name: 'submissions_closed' },
         { name: 'is_private' },
+        { name: 'auto_check_enabled' },
       ])
       .mockResolvedValueOnce([]);
     const repository = createCatchEventsRepository({
@@ -32,6 +33,7 @@ describe('Cloudflare catch events repository', () => {
         { name: 'id' },
         { name: 'submissions_closed' },
         { name: 'is_private' },
+        { name: 'auto_check_enabled' },
       ])
       .mockResolvedValueOnce([]);
     const repository = createCatchEventsRepository({
@@ -65,7 +67,7 @@ describe('Cloudflare catch events repository', () => {
         route: 'Route 119',
         catch_utc: '2026-05-18T17:00:00Z',
         score: 140,
-        status: 'valid',
+        status: 'verified',
         flags_json: '[]',
         created_at: '2026-05-18T17:00:00Z',
         updated_at: '2026-05-18T17:00:00Z',
@@ -75,6 +77,9 @@ describe('Cloudflare catch events repository', () => {
         { name: 'id' },
         { name: 'event_id' },
         { name: 'player_ign' },
+      ])
+      .mockResolvedValueOnce([
+        { sql: "CREATE TABLE catch_event_submissions (status TEXT CHECK (status IN ('pending-verification', 'auto-checked', 'needs-review', 'verified', 'rejected', 'disqualified')))" },
       ])
       .mockResolvedValueOnce([]);
     const repository = createCatchEventsRepository({
@@ -96,7 +101,7 @@ describe('Cloudflare catch events repository', () => {
       route: 'Route 119',
       catchUtc: '2026-05-18T17:00:00Z',
       score: 140,
-      status: 'valid',
+      status: 'pending-verification',
       flags: [],
     });
 
