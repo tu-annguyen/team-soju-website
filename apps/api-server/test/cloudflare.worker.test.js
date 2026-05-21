@@ -322,6 +322,40 @@ describe('Cloudflare Worker API', () => {
     }));
   });
 
+  it('does not let null total IV results mask the IV screenshot value', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn()
+      .mockResolvedValueOnce({ response: JSON.stringify({ playerIgn: 'tunacore', species: 'Weezing', totalIv: null, confidence: 0.9, warnings: [] }) })
+      .mockResolvedValueOnce({ response: JSON.stringify({ totalIv: 116, confidence: 0.8, warnings: [] }) })
+      .mockResolvedValueOnce({ response: JSON.stringify({ catchLocal: '2026-04-12T23:31:35', totalIv: null, confidence: 0.7, warnings: [] }) });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'summary.png', contentType: 'image/png', role: 'nature-ot', dataUrl: 'data:image/png;base64,AAAA' },
+          { name: 'ivs.png', contentType: 'image/png', role: 'ivs', dataUrl: 'data:image/png;base64,BBBB' },
+          { name: 'info.png', contentType: 'image/png', role: 'information', dataUrl: 'data:image/png;base64,CCCC' },
+        ],
+      }),
+    }), createEnv({ AI: { run: aiRun } }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual(expect.objectContaining({
+      species: 'Weezing',
+      totalIv: 116,
+      catchLocal: '2026-04-12T23:31:35',
+    }));
+  });
+
   it('falls back to Workers AI REST when the local AI binding cannot run', async () => {
     const app = createWorkerApp({
       repositories: {

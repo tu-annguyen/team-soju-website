@@ -447,8 +447,12 @@ function normalizeCatchEventOcrResult(parsed, fallbackDateOrder = null) {
     ? parsed.warnings.map((warning) => cleanNullableString(warning, 200)).filter(Boolean)
     : [];
   const confidence = Number(parsed?.confidence);
-  const totalIv = Number(parsed?.totalIv);
-  const pokedexNumber = Number(parsed?.pokedexNumber);
+  const totalIv = parsed?.totalIv === null || parsed?.totalIv === undefined || parsed?.totalIv === ''
+    ? null
+    : Number(parsed.totalIv);
+  const pokedexNumber = parsed?.pokedexNumber === null || parsed?.pokedexNumber === undefined || parsed?.pokedexNumber === ''
+    ? null
+    : Number(parsed.pokedexNumber);
   const dateOrder = ['mdy', 'dmy', 'ymd'].includes(String(parsed?.dateOrder || '').toLowerCase())
     ? String(parsed.dateOrder).toLowerCase()
     : fallbackDateOrder;
