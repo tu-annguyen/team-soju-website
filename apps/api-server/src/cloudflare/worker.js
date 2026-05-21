@@ -155,7 +155,7 @@ function getWebAppUrl(env) {
 }
 
 function getApiOrigin(env) {
-  return String(env.API_ORIGIN || env.API_BASE_URL || 'http://localhost:3001')
+  return String(env.API_ORIGIN || env.API_BASE_URL || 'http://localhost:8787')
     .replace(/\/api\/?$/, '')
     .replace(/\/+$/, '');
 }

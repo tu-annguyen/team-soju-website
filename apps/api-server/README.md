@@ -141,10 +141,10 @@ Required environment variables:
 ```env
 JWT_SECRET=your-session-signing-secret
 WEB_APP_URL=http://localhost:4321
-API_ORIGIN=http://localhost:3001
+API_ORIGIN=http://localhost:8787
 DISCORD_CLIENT_ID=your-discord-client-id
 DISCORD_CLIENT_SECRET=your-discord-client-secret
-DISCORD_REDIRECT_URI=http://localhost:3001/api/auth/discord/callback
+DISCORD_REDIRECT_URI=http://localhost:8787/api/auth/discord/callback
 ```
 
 In the Discord Developer Portal, add the exact redirect URI above for local development and the production callback URL for deployed environments.
@@ -154,8 +154,8 @@ In the Discord Developer Portal, add the exact redirect URI above for local deve
 Generate a bot token for development:
 
 ```bash
-# Visit http://localhost:3001/generate-bot-token (development only)
-curl http://localhost:3001/generate-bot-token
+# Visit http://localhost:8787/generate-bot-token (development only)
+curl http://localhost:8787/generate-bot-token
 ```
 
 Add this token to the root `.env` file:
@@ -170,7 +170,7 @@ BOT_API_TOKEN=your-bot-token
 ### Adding a Team Member via API
 
 ```bash
-curl -X POST http://localhost:3001/api/members \
+curl -X POST http://localhost:8787/api/members \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $BOT_API_TOKEN" \
   -d '{
@@ -183,7 +183,7 @@ curl -X POST http://localhost:3001/api/members \
 ### Adding a Shiny via API
 
 ```bash
-curl -X POST http://localhost:3001/api/shinies \
+curl -X POST http://localhost:8787/api/shinies \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $BOT_API_TOKEN" \
   -d '{

@@ -84,7 +84,7 @@ const SummaryChip = ({
 const MonthlyShiniesResults = ({
   date,
   searchTerm,
-  apiBaseUrl = 'http://localhost:3001/api',
+  apiBaseUrl = 'http://localhost:8787/api',
 }: MonthlyShiniesResultsProps) => {
   const [shinyData, setShinyData] = useState<MonthlyShiny[]>([]);
   const [loading, setLoading] = useState(true);
