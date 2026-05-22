@@ -2,6 +2,7 @@ import React from 'react';
 import { selectPrizeRelevantSubmissions } from '../../utils/catchEventScoring';
 import type {
   CatchEventConfig,
+  CatchEventCollaborator,
   CatchEventStatus,
   CatchEventSubmission,
 } from '../../utils/catchEventScoring';
@@ -23,9 +24,11 @@ type Props = {
   isLoading: boolean;
   authUser: AuthUser | null;
   activeEvent: CatchEventConfig | undefined;
-  ownedEvents: CatchEventConfig[];
+  manageableEvents: CatchEventConfig[];
   activeSubmissions: CatchEventSubmission[];
   createdEventId: string;
+  collaboratorIdentifier: string;
+  collaboratorMessage: string;
   statusLabels: Record<CatchEventStatus, string>;
   locale: Locale | string;
   tr: (text: string) => string;
@@ -39,6 +42,9 @@ type Props = {
   updateLeaderboardPublished: (eventId: string, isPublished: boolean) => void;
   updateSubmissionsClosed: (eventId: string, isClosed: boolean) => void;
   updateAutoCheckEnabled: (eventId: string, autoCheckEnabled: boolean) => void;
+  setCollaboratorIdentifier: (identifier: string) => void;
+  addCollaborator: (event: React.FormEvent<HTMLFormElement>) => void;
+  removeCollaborator: (collaborator: CatchEventCollaborator) => void;
   loadEventIntoForm: (event: CatchEventConfig, mode?: 'duplicate' | 'edit') => void;
   deleteEvent: (event: CatchEventConfig) => void;
 };
@@ -48,9 +54,11 @@ export function HostManageView({
   isLoading,
   authUser,
   activeEvent,
-  ownedEvents,
+  manageableEvents,
   activeSubmissions,
   createdEventId,
+  collaboratorIdentifier,
+  collaboratorMessage,
   statusLabels,
   locale,
   tr,
@@ -64,6 +72,9 @@ export function HostManageView({
   updateLeaderboardPublished,
   updateSubmissionsClosed,
   updateAutoCheckEnabled,
+  setCollaboratorIdentifier,
+  addCollaborator,
+  removeCollaborator,
   loadEventIntoForm,
   deleteEvent,
 }: Props) {
@@ -76,7 +87,7 @@ export function HostManageView({
       <div className={panelClasses}>
         <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{tr('Sign In Required')}</h2>
         <p className="mt-2 text-gray-600 dark:text-gray-300">
-          {tr('Event management is only available to the account that created the event.')}
+          {tr('Event management is only available to the owner and shared admins.')}
         </p>
         <a className="mt-4 inline-flex rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700" href="/auth">
           {tr('Sign in')}
@@ -86,7 +97,7 @@ export function HostManageView({
   }
 
   if (!activeEvent) {
-    return <div className={panelClasses}>{tr('No events owned by your account yet.')}</div>;
+    return <div className={panelClasses}>{tr('No events available to manage yet.')}</div>;
   }
 
   const prizeRelevantById = new Map(
@@ -95,32 +106,40 @@ export function HostManageView({
       submission.reviewReasons,
     ])
   );
+  const isOwner = Boolean(authUser && activeEvent.ownerUserId === authUser.id);
+  const collaborators = activeEvent.collaborators || [];
 
   return (
     <div className="space-y-6">
       <div className={panelClasses}>
         <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{tr('Manage Events')}</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {ownedEvents.map((event) => (
-            <button
-              key={event.id}
-              type="button"
-              className={`rounded-lg border p-4 text-left transition-colors ${
-                activeEvent.id === event.id
-                  ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
-                  : 'border-gray-200 hover:border-emerald-500 dark:border-gray-800'
-              }`}
-              onClick={() => setActiveEventId(event.id)}
-            >
-              <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                {formatLocalDateTime(event.startLocal, locale)} {tr('to')} {formatLocalDateTime(event.endLocal, locale)} {event.timezone}
-              </p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                {translateLocation(event.route)}, {translateRegion(event.region)}
-              </p>
-            </button>
-          ))}
+          {manageableEvents.map((event) => {
+            const eventIsOwner = Boolean(authUser && event.ownerUserId === authUser.id);
+            return (
+              <button
+                key={event.id}
+                type="button"
+                className={`rounded-lg border p-4 text-left transition-colors ${
+                  activeEvent.id === event.id
+                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
+                    : 'border-gray-200 hover:border-emerald-500 dark:border-gray-800'
+                }`}
+                onClick={() => setActiveEventId(event.id)}
+              >
+                <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  {formatLocalDateTime(event.startLocal, locale)} {tr('to')} {formatLocalDateTime(event.endLocal, locale)} {event.timezone}
+                </p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  {translateLocation(event.route)}, {translateRegion(event.region)}
+                </p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {eventIsOwner ? tr('Owner') : tr('Shared admin')}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className={panelClasses}>
@@ -170,19 +189,23 @@ export function HostManageView({
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent, 'edit')}>
-                {tr('Edit event')}
-              </button>
+              {isOwner && (
+                <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent, 'edit')}>
+                  {tr('Edit event')}
+                </button>
+              )}
               <button type="button" className={smallButtonClasses} onClick={() => loadEventIntoForm(activeEvent)}>
                 {tr('Duplicate event')}
               </button>
-              <button
-                type="button"
-                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700"
-                onClick={() => deleteEvent(activeEvent)}
-              >
-                {tr('Delete event')}
-              </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700"
+                  onClick={() => deleteEvent(activeEvent)}
+                >
+                  {tr('Delete event')}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -192,6 +215,49 @@ export function HostManageView({
           </p>
         )}
       </div>
+      {isOwner && (
+        <div className={panelClasses}>
+          <h3 className="text-xl font-bold text-gray-950 dark:text-white">{tr('Shared admins')}</h3>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            {tr('Add an existing Team Soju account by email or IGN so they can help review and operate this event.')}
+          </p>
+          <form className="mt-4 flex flex-col gap-3 sm:flex-row" onSubmit={addCollaborator}>
+            <label className={`${labelClasses} flex-1`}>
+              {tr('Account email or IGN')}
+              <input
+                className={fieldClasses}
+                value={collaboratorIdentifier}
+                onChange={(event) => setCollaboratorIdentifier(event.target.value)}
+                placeholder={tr('trainer@example.com or TrainerIGN')}
+              />
+            </label>
+            <button type="submit" className="self-end rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700">
+              {tr('Add shared admin')}
+            </button>
+          </form>
+          {collaboratorMessage && (
+            <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+              {collaboratorMessage}
+            </p>
+          )}
+          <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+            {collaborators.map((collaborator) => (
+              <div key={collaborator.userId} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <div>
+                  <p className="font-semibold text-gray-950 dark:text-white">{collaborator.ign}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{collaborator.email}</p>
+                </div>
+                <button type="button" className={smallButtonClasses} onClick={() => removeCollaborator(collaborator)}>
+                  {tr('Remove')}
+                </button>
+              </div>
+            ))}
+            {collaborators.length === 0 && (
+              <p className="p-4 text-sm text-gray-600 dark:text-gray-300">{tr('No shared admins yet.')}</p>
+            )}
+          </div>
+        </div>
+      )}
       <div className={panelClasses}>
         <h3 className="text-xl font-bold text-gray-950 dark:text-white">{tr('Review Queue')}</h3>
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">

@@ -148,6 +148,9 @@ const catchEventAutoCheckSchema = Joi.object({
 const catchEventSubmissionStatusSchema = Joi.object({
   status: Joi.string().valid('pending-verification', 'auto-checked', 'needs-review', 'verified', 'rejected', 'disqualified').required(),
 });
+const catchEventCollaboratorSchema = Joi.object({
+  identifier: Joi.string().trim().min(1).max(254).required(),
+});
 
 function getEnvUrl(env, ...keys) {
   const value = keys.map((key) => env[key]).find(Boolean);
@@ -2241,7 +2244,7 @@ function createWorkerApp(options = {}) {
         }
 
         const events = await getRepositories().catchEvents.listEvents({
-          ownerUserId: ownerOnly ? authenticatedUser.id : undefined,
+          manageableByUserId: ownerOnly ? authenticatedUser.id : undefined,
           publishedOnly: url.searchParams.get('published') === 'true',
         });
         return json({ success: true, data: events });
@@ -2309,6 +2312,87 @@ function createWorkerApp(options = {}) {
       } catch (error) {
         console.error('Error deleting catch event:', error);
         return json({ success: false, message: 'Failed to delete catch event' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/collaborators$/);
+    if (request.method === 'GET' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const collaborators = await getRepositories().catchEvents.listCollaborators(match[1], auth.user.id);
+        if (!collaborators) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: collaborators });
+      } catch (error) {
+        console.error('Error listing catch event collaborators:', error);
+        return json({ success: false, message: 'Failed to list shared admins' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/collaborators$/);
+    if (request.method === 'POST' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventCollaboratorSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        let user;
+        try {
+          user = await getRepositories().users.findByEmailOrIgn(value.identifier);
+        } catch (lookupError) {
+          if (lookupError.code === 'AMBIGUOUS_ACCOUNT_IDENTIFIER') {
+            return json({ success: false, message: lookupError.message }, { status: 409 });
+          }
+          throw lookupError;
+        }
+
+        if (!user) {
+          return json({ success: false, message: 'Team Soju account not found' }, { status: 404 });
+        }
+
+        const collaborators = await getRepositories().catchEvents.addCollaborator(match[1], auth.user.id, user);
+        if (!collaborators) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: collaborators, message: 'Shared admin added successfully' }, { status: 201 });
+      } catch (error) {
+        if (error.code === 'SELF_COLLABORATOR') {
+          return json({ success: false, message: error.message }, { status: 400 });
+        }
+        console.error('Error adding catch event collaborator:', error);
+        return json({ success: false, message: 'Failed to add shared admin' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/collaborators\/([^/]+)$/);
+    if (request.method === 'DELETE' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const collaborators = await getRepositories().catchEvents.removeCollaborator(
+          match[1],
+          auth.user.id,
+          decodeURIComponent(match[2])
+        );
+        if (!collaborators) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: collaborators, message: 'Shared admin removed successfully' });
+      } catch (error) {
+        console.error('Error removing catch event collaborator:', error);
+        return json({ success: false, message: 'Failed to remove shared admin' }, { status: 500 });
       }
     }
 
@@ -2530,8 +2614,15 @@ function createWorkerApp(options = {}) {
           return json({ success: false, message: 'Catch event not found' }, { status: 404 });
         }
 
-        const isOwner = authenticatedUser?.id && authenticatedUser.id === event.ownerUserId;
-        if (!event.isLeaderboardPublished && !isOwner) {
+        const access = authenticatedUser?.id && getRepositories().catchEvents.getEventAccess
+          ? await getRepositories().catchEvents.getEventAccess(match[1], authenticatedUser.id)
+          : {
+              isOwner: Boolean(authenticatedUser?.id && authenticatedUser.id === event.ownerUserId),
+              canManage: Boolean(authenticatedUser?.id && authenticatedUser.id === event.ownerUserId),
+            };
+        const isOwner = Boolean(access?.isOwner);
+        const canManage = Boolean(access?.canManage);
+        if (!event.isLeaderboardPublished && !canManage) {
           return json({
             success: true,
             data: {
@@ -2542,7 +2633,15 @@ function createWorkerApp(options = {}) {
           });
         }
 
-        return json({ success: true, data: event });
+        return json({
+          success: true,
+          data: isOwner
+            ? await getRepositories().catchEvents.getEventById(match[1], {
+                includeSubmissions: true,
+                includeCollaborators: true,
+              })
+            : event,
+        });
       } catch (error) {
         console.error('Error fetching catch event:', error);
         return json({ success: false, message: 'Failed to fetch catch event' }, { status: 500 });

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { POKEMON_NATURES, calculateCatchEventScore, slugifyEventName, validateCatchEventSubmission } from '../utils/catchEventScoring';
-import type { CatchEventConfig, CatchEventStatus, CatchEventSubmission } from '../utils/catchEventScoring';
+import type { CatchEventCollaborator, CatchEventConfig, CatchEventStatus, CatchEventSubmission } from '../utils/catchEventScoring';
 import { CATCH_EVENT_REGIONS, type CatchEventRegion } from '../utils/catchEventLocations';
 import { getClientLocale, getTranslations, type Locale } from '../i18n';
 import { POKEMON_SPECIES_NAME_SET, POKEMON_SPECIES_NAMES } from '../utils/pokemonSpecies';
@@ -67,8 +67,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   const [isEventsLoading, setIsEventsLoading] = useState(true);
   const [isHostManageLoading, setIsHostManageLoading] = useState(false);
   const [hasLoadedOwnedEvents, setHasLoadedOwnedEvents] = useState(false);
+  const [manageableEventIds, setManageableEventIds] = useState<Set<string>>(new Set());
   const [createdEventId, setCreatedEventId] = useState('');
   const [editingEventId, setEditingEventId] = useState('');
+  const [collaboratorIdentifier, setCollaboratorIdentifier] = useState('');
+  const [collaboratorMessage, setCollaboratorMessage] = useState('');
   const [createError, setCreateError] = useState('');
   const [submitMessage, setSubmitMessage] = useState('');
   const [ocrMessage, setOcrMessage] = useState('');
@@ -181,6 +184,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       try {
         const response = await fetchJson<CatchEventConfig[]>(`${normalizedApiBaseUrl}/catch-events?owner=me`);
         if (isMounted) {
+          setManageableEventIds(new Set(response.data.map((event) => event.id)));
           setEvents(response.data);
           const nextActiveEventId = activeEventId || response.data[0]?.id || '';
           setActiveEventId(nextActiveEventId);
@@ -246,11 +250,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       isMounted = false;
     };
   }, [normalizedApiBaseUrl]);
-  const ownedEvents = useMemo(
-    () => events.filter((event) => event.ownerUserId && event.ownerUserId === authUser?.id),
-    [authUser?.id, events]
+  const manageableEvents = useMemo(
+    () => events.filter((event) => manageableEventIds.has(event.id) || (event.ownerUserId && event.ownerUserId === authUser?.id)),
+    [authUser?.id, events, manageableEventIds]
   );
-  const eventOptions = view === 'host' && hostTab === 'manage' ? ownedEvents : events;
+  const eventOptions = view === 'host' && hostTab === 'manage' ? manageableEvents : events;
   const filteredEvents = useMemo(() => {
     const search = eventFilters.search.trim().toLowerCase();
     const target = eventFilters.target.trim().toLowerCase();
@@ -381,6 +385,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         }
       );
       setEvents([response.data, ...events.filter((storedEvent) => storedEvent.id !== response.data.id)]);
+      setManageableEventIds((current) => new Set([...current, response.data.id]));
       setSubmissions(response.data.submissions || []);
       setActiveEventId(response.data.id);
       setCreatedEventId(response.data.id);
@@ -583,6 +588,45 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       console.error('Error updating catch event auto-check:', error);
     }
   }
+  function updateActiveEventCollaborators(eventId: string, collaborators: CatchEventCollaborator[]) {
+    setEvents((current) => current.map((event) => event.id === eventId ? { ...event, collaborators } : event));
+  }
+  async function addCollaborator(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!activeEvent) return;
+    const identifier = collaboratorIdentifier.trim();
+    if (!identifier) {
+      setCollaboratorMessage(tr('Enter an email or IGN to share this event.'));
+      return;
+    }
+    try {
+      const response = await fetchJson<CatchEventCollaborator[]>(
+        `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(activeEvent.id)}/collaborators`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ identifier }),
+        }
+      );
+      updateActiveEventCollaborators(activeEvent.id, response.data);
+      setCollaboratorIdentifier('');
+      setCollaboratorMessage(tr('Shared admin added.'));
+    } catch (error) {
+      setCollaboratorMessage(error instanceof Error ? error.message : tr('Failed to add shared admin.'));
+    }
+  }
+  async function removeCollaborator(collaborator: CatchEventCollaborator) {
+    if (!activeEvent) return;
+    try {
+      const response = await fetchJson<CatchEventCollaborator[]>(
+        `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(activeEvent.id)}/collaborators/${encodeURIComponent(collaborator.userId)}`,
+        { method: 'DELETE' }
+      );
+      updateActiveEventCollaborators(activeEvent.id, response.data);
+      setCollaboratorMessage(tr('Shared admin removed.'));
+    } catch (error) {
+      setCollaboratorMessage(error instanceof Error ? error.message : tr('Failed to remove shared admin.'));
+    }
+  }
   function loadEventIntoForm(event: CatchEventConfig, mode: 'duplicate' | 'edit' = 'duplicate') {
     setEventForm({
       name: mode === 'edit' ? event.name : `${event.name} ${tr('Copy')}`,
@@ -617,6 +661,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         { method: 'DELETE' }
       );
       setEvents((current) => current.filter((storedEvent) => storedEvent.id !== event.id));
+      setManageableEventIds((current) => {
+        const next = new Set(current);
+        next.delete(event.id);
+        return next;
+      });
       setSubmissions((current) => current.filter((submission) => submission.eventId !== event.id));
       setActiveEventId((current) => current === event.id ? '' : current);
     } catch (error) {
@@ -757,9 +806,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             isLoading={isHostManageLoading || Boolean(authUser && !hasLoadedOwnedEvents)}
             authUser={authUser}
             activeEvent={activeEvent}
-            ownedEvents={ownedEvents}
+            manageableEvents={manageableEvents}
             activeSubmissions={activeSubmissions}
             createdEventId={createdEventId}
+            collaboratorIdentifier={collaboratorIdentifier}
+            collaboratorMessage={collaboratorMessage}
             statusLabels={statusLabels}
             locale={activeLocale}
             tr={tr}
@@ -773,6 +824,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             updateLeaderboardPublished={updateLeaderboardPublished}
             updateSubmissionsClosed={updateSubmissionsClosed}
             updateAutoCheckEnabled={updateAutoCheckEnabled}
+            setCollaboratorIdentifier={setCollaboratorIdentifier}
+            addCollaborator={addCollaborator}
+            removeCollaborator={removeCollaborator}
             loadEventIntoForm={loadEventIntoForm}
             deleteEvent={deleteEvent}
           />

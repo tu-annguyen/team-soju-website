@@ -11,6 +11,14 @@ export type CatchEventRule = {
   points: number;
 };
 
+export type CatchEventCollaborator = {
+  userId: string;
+  email: string;
+  ign: string;
+  role: 'co-host';
+  createdAt?: string;
+};
+
 export type CatchEventConfig = {
   id: string;
   name: string;
@@ -36,6 +44,7 @@ export type CatchEventConfig = {
   createdAt: string;
   updatedAt?: string;
   submissions?: CatchEventSubmission[];
+  collaborators?: CatchEventCollaborator[];
   leaderboardHidden?: boolean;
 };
 

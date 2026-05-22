@@ -456,7 +456,7 @@ describe('Cloudflare Worker API', () => {
 
     expect(response.status).toBe(200);
     expect(repositories.catchEvents.listEvents).toHaveBeenCalledWith({
-      ownerUserId: undefined,
+      manageableByUserId: undefined,
       publishedOnly: false,
     });
     expect(body.data).toEqual([{ id: 'public-event', isPrivate: false }]);
@@ -512,6 +512,220 @@ describe('Cloudflare Worker API', () => {
       expect.objectContaining({ id: 'user-1' }),
       expect.objectContaining({ isPrivate: true })
     );
+  });
+
+  it('lets an owner add and remove catch event shared admins by email or IGN', async () => {
+    const owner = {
+      id: 'owner-1',
+      email: 'owner@example.com',
+      ign: 'Owner',
+      auth_provider: 'password',
+    };
+    const collaborator = {
+      id: 'cohost-1',
+      email: 'cohost@example.com',
+      ign: 'CoHost',
+      auth_provider: 'password',
+    };
+    const collaborators = [{
+      userId: 'cohost-1',
+      email: 'cohost@example.com',
+      ign: 'CoHost',
+      role: 'co-host',
+    }];
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue(owner),
+        findByEmailOrIgn: jest.fn().mockResolvedValue(collaborator),
+      },
+      catchEvents: {
+        addCollaborator: jest.fn().mockResolvedValue(collaborators),
+        removeCollaborator: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'owner-1',
+      email: 'owner@example.com',
+      ign: 'Owner',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const addResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/collaborators', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+      body: JSON.stringify({ identifier: 'CoHost' }),
+    }), createEnv());
+    const removeResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/collaborators/cohost-1', {
+      method: 'DELETE',
+      headers: {
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+    }), createEnv());
+
+    expect(addResponse.status).toBe(201);
+    expect(removeResponse.status).toBe(200);
+    expect(repositories.users.findByEmailOrIgn).toHaveBeenCalledWith('CoHost');
+    expect(repositories.catchEvents.addCollaborator).toHaveBeenCalledWith('event-1', 'owner-1', collaborator);
+    expect(repositories.catchEvents.removeCollaborator).toHaveBeenCalledWith('event-1', 'owner-1', 'cohost-1');
+  });
+
+  it('rejects missing shared-admin accounts and self-sharing', async () => {
+    const owner = {
+      id: 'owner-1',
+      email: 'owner@example.com',
+      ign: 'Owner',
+      auth_provider: 'password',
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue(owner),
+        findByEmailOrIgn: jest.fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(owner),
+      },
+      catchEvents: {
+        addCollaborator: jest.fn()
+          .mockImplementationOnce(() => {
+            throw Object.assign(new Error('Owners already have access to their event.'), { code: 'SELF_COLLABORATOR' });
+          }),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'owner-1',
+      email: 'owner@example.com',
+      ign: 'Owner',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const missingResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/collaborators', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+      body: JSON.stringify({ identifier: 'missing@example.com' }),
+    }), createEnv());
+    const selfResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/collaborators', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+      body: JSON.stringify({ identifier: 'Owner' }),
+    }), createEnv());
+
+    expect(missingResponse.status).toBe(404);
+    expect(selfResponse.status).toBe(400);
+  });
+
+  it('lets co-hosts view unpublished admin submissions and update operational controls', async () => {
+    const cohost = {
+      id: 'cohost-1',
+      email: 'cohost@example.com',
+      ign: 'CoHost',
+      auth_provider: 'password',
+    };
+    const event = {
+      id: 'event-1',
+      ownerUserId: 'owner-1',
+      name: 'Shared Event',
+      isLeaderboardPublished: false,
+      submissions: [{ id: 'submission-1', eventId: 'event-1', playerIgn: 'Trainer' }],
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue(cohost),
+      },
+      catchEvents: {
+        getEventById: jest.fn().mockResolvedValue(event),
+        getEventAccess: jest.fn().mockResolvedValue({
+          isOwner: false,
+          isCollaborator: true,
+          canManage: true,
+        }),
+        setSubmissionsClosed: jest.fn().mockResolvedValue({ ...event, submissionsClosed: true }),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'cohost-1',
+      email: 'cohost@example.com',
+      ign: 'CoHost',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const viewResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1', {
+      headers: {
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+    }), createEnv());
+    const updateResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/submissions-closed', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+      body: JSON.stringify({ submissionsClosed: true }),
+    }), createEnv());
+    const body = await viewResponse.json();
+
+    expect(viewResponse.status).toBe(200);
+    expect(body.data.submissions).toEqual(event.submissions);
+    expect(updateResponse.status).toBe(200);
+    expect(repositories.catchEvents.setSubmissionsClosed).toHaveBeenCalledWith('event-1', 'cohost-1', true);
+  });
+
+  it('keeps owner-only catch event actions unavailable to co-hosts', async () => {
+    const cohost = {
+      id: 'cohost-1',
+      email: 'cohost@example.com',
+      ign: 'CoHost',
+      auth_provider: 'password',
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue(cohost),
+      },
+      catchEvents: {
+        deleteEvent: jest.fn().mockResolvedValue(null),
+        listCollaborators: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'cohost-1',
+      email: 'cohost@example.com',
+      ign: 'CoHost',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const deleteResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1', {
+      method: 'DELETE',
+      headers: {
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+    }), createEnv());
+    const shareResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/collaborators', {
+      headers: {
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+    }), createEnv());
+
+    expect(deleteResponse.status).toBe(404);
+    expect(shareResponse.status).toBe(404);
   });
 
   it('serves auth/me from the Worker repository contract', async () => {

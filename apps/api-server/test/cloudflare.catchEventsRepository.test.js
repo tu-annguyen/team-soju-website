@@ -50,6 +50,113 @@ describe('Cloudflare catch events repository', () => {
     expect(runSelect.mock.calls[1][0]).not.toContain('is_private = 0');
   });
 
+  it('creates the D1 collaborator table before listing manageable events', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn();
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([
+        { name: 'id' },
+        { name: 'submissions_closed' },
+        { name: 'is_private' },
+        { name: 'auto_check_enabled' },
+      ])
+      .mockResolvedValueOnce([]);
+    const repository = createCatchEventsRepository({
+      dialect: 'd1',
+      parameter: (index) => `?${index}`,
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    await repository.listEvents({ manageableByUserId: 'user-1' });
+
+    expect(runCommand.mock.calls[0][0]).toContain('CREATE TABLE IF NOT EXISTS catch_event_collaborators');
+    expect(runSelect.mock.calls[1][0]).toContain('owner_user_id = ?1');
+    expect(runSelect.mock.calls[1][0]).toContain('FROM catch_event_collaborators');
+    expect(runSelect.mock.calls[1][0]).not.toContain('is_private = 0');
+  });
+
+  it('allows collaborators to update operational event controls', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn()
+      .mockResolvedValueOnce({
+        owner_user_id: 'owner-1',
+        collaborator_user_id: 'user-1',
+      })
+      .mockResolvedValueOnce({
+        id: 'event-1',
+        owner_user_id: 'owner-1',
+        owner_ign: 'Owner',
+        name: 'Shared Event',
+        slug: 'shared-event',
+        event_date: '2026-05-20',
+        start_local: '2026-05-20T10:00',
+        end_local: '2026-05-20T11:00',
+        timezone: 'America/Los_Angeles',
+        region: 'Hoenn',
+        route: 'Route 119',
+        winner_count: 4,
+        targets_json: '[]',
+        species_bonuses_json: '[]',
+        species_penalties_json: '[]',
+        nature_bonuses_json: '[]',
+        nature_penalties_json: '[]',
+        use_lowest_score_final_place: 1,
+        is_leaderboard_published: 0,
+        is_private: 1,
+        submissions_closed: 1,
+        auto_check_enabled: 0,
+        created_at: '2026-05-20T17:00:00Z',
+      });
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([
+        { name: 'id' },
+        { name: 'submissions_closed' },
+        { name: 'is_private' },
+        { name: 'auto_check_enabled' },
+      ])
+      .mockResolvedValueOnce([]);
+    const repository = createCatchEventsRepository({
+      dialect: 'd1',
+      parameter: (index) => `?${index}`,
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    const event = await repository.setSubmissionsClosed('event-1', 'user-1', true);
+
+    expect(event.id).toBe('event-1');
+    expect(runCommand.mock.calls.some((call) => call[0].includes('SET submissions_closed'))).toBe(true);
+  });
+
+  it('rejects operational event controls without owner or collaborator access', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn().mockResolvedValueOnce({
+      owner_user_id: 'owner-1',
+      collaborator_user_id: null,
+    });
+    const runSelect = jest.fn().mockResolvedValueOnce([
+      { name: 'id' },
+      { name: 'submissions_closed' },
+      { name: 'is_private' },
+      { name: 'auto_check_enabled' },
+    ]);
+    const repository = createCatchEventsRepository({
+      dialect: 'd1',
+      parameter: (index) => `?${index}`,
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    const event = await repository.setSubmissionsClosed('event-1', 'user-1', true);
+
+    expect(event).toBeNull();
+    expect(runCommand.mock.calls.some((call) => call[0].includes('SET submissions_closed'))).toBe(false);
+  });
+
   it('adds D1 submission location columns before upserting into older local databases', async () => {
     const runCommand = jest.fn().mockResolvedValue({});
     const runOne = jest.fn()

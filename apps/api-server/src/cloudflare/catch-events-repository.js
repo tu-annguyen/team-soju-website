@@ -87,11 +87,23 @@ function normalizeScreenshot(row) {
   };
 }
 
+function normalizeCollaborator(row) {
+  if (!row) return null;
+  return {
+    userId: row.user_id,
+    email: row.email,
+    ign: row.ign,
+    role: row.role || 'co-host',
+    createdAt: row.created_at,
+  };
+}
+
 function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
   let submissionLocationColumnsReady = dialect !== 'd1';
   let eventSubmissionColumnsReady = dialect !== 'd1';
   let submissionStatusConstraintReady = dialect !== 'd1';
+  let collaboratorsTableReady = dialect !== 'd1';
 
   async function ensureEventSubmissionColumns() {
     if (eventSubmissionColumnsReady) return;
@@ -124,6 +136,27 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     }
 
     eventSubmissionColumnsReady = true;
+  }
+
+  async function ensureCollaboratorsTable() {
+    if (collaboratorsTableReady) return;
+
+    await runCommand(`
+      CREATE TABLE IF NOT EXISTS catch_event_collaborators (
+        event_id TEXT NOT NULL REFERENCES catch_events(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+        role TEXT NOT NULL DEFAULT 'co-host' CHECK (role IN ('co-host')),
+        created_by_user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (event_id, user_id)
+      ) STRICT
+    `);
+    await runCommand(`
+      CREATE INDEX IF NOT EXISTS idx_catch_event_collaborators_user_created_at
+      ON catch_event_collaborators(user_id, created_at DESC)
+    `);
+
+    collaboratorsTableReady = true;
   }
 
   async function ensureSubmissionLocationColumns() {
@@ -245,6 +278,49 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
     return rows.map((row) => normalizeSubmission(row, screenshotsBySubmission.get(row.id) || []));
   }
 
+  async function listCollaborators(eventId) {
+    await ensureCollaboratorsTable();
+    const rows = await runSelect(`
+      SELECT
+        c.event_id,
+        c.user_id,
+        c.role,
+        c.created_at,
+        u.email,
+        u.ign
+      FROM catch_event_collaborators c
+      INNER JOIN app_users u ON u.id = c.user_id
+      WHERE c.event_id = ${parameter(1)}
+      ORDER BY LOWER(u.ign) ASC, LOWER(u.email) ASC
+    `, [eventId]);
+    return rows.map(normalizeCollaborator);
+  }
+
+  async function getEventAccess(eventId, userId) {
+    if (!eventId || !userId) {
+      return { isOwner: false, isCollaborator: false, canManage: false };
+    }
+
+    await ensureCollaboratorsTable();
+    const row = await runOne(`
+      SELECT
+        e.owner_user_id,
+        c.user_id AS collaborator_user_id
+      FROM catch_events e
+      LEFT JOIN catch_event_collaborators c
+        ON c.event_id = e.id AND c.user_id = ${parameter(2)}
+      WHERE e.id = ${parameter(1)}
+      LIMIT 1
+    `, [eventId, userId]);
+    const isOwner = row?.owner_user_id === userId;
+    const isCollaborator = row?.collaborator_user_id === userId;
+    return {
+      isOwner,
+      isCollaborator,
+      canManage: Boolean(isOwner || isCollaborator),
+    };
+  }
+
   return {
     async createEvent(owner, event) {
       await ensureEventSubmissionColumns();
@@ -353,18 +429,32 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
       return event;
     },
 
-    async listEvents({ ownerUserId, publishedOnly } = {}) {
+    async listEvents({ ownerUserId, manageableByUserId, publishedOnly } = {}) {
       await ensureEventSubmissionColumns();
       const clauses = [];
       const params = [];
-      if (ownerUserId) {
+      if (manageableByUserId) {
+        await ensureCollaboratorsTable();
+        params.push(manageableByUserId);
+        const ownerParameter = parameter(params.length);
+        params.push(manageableByUserId);
+        const collaboratorParameter = parameter(params.length);
+        clauses.push(`(
+          owner_user_id = ${ownerParameter}
+          OR id IN (
+            SELECT event_id
+            FROM catch_event_collaborators
+            WHERE user_id = ${collaboratorParameter}
+          )
+        )`);
+      } else if (ownerUserId) {
         params.push(ownerUserId);
         clauses.push(`owner_user_id = ${parameter(params.length)}`);
       }
       if (publishedOnly) {
         clauses.push('is_leaderboard_published = 1');
       }
-      if (!ownerUserId) {
+      if (!ownerUserId && !manageableByUserId) {
         clauses.push('is_private = 0');
       }
       const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
@@ -377,7 +467,7 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
       return rows.map((row) => normalizeEvent(row));
     },
 
-    async getEventById(id, { includeSubmissions = false } = {}) {
+    async getEventById(id, { includeSubmissions = false, includeCollaborators = false } = {}) {
       await ensureEventSubmissionColumns();
       const row = await runOne(`
         SELECT *
@@ -386,57 +476,65 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
         LIMIT 1
       `, [id]);
       const event = normalizeEvent(row);
-      if (!event || !includeSubmissions) return event;
-      return {
-        ...event,
-        submissions: await listSubmissions(event.id),
-      };
+      if (!event) return event;
+      const additions = {};
+      if (includeSubmissions) {
+        additions.submissions = await listSubmissions(event.id);
+      }
+      if (includeCollaborators) {
+        additions.collaborators = await listCollaborators(event.id);
+      }
+      return Object.keys(additions).length ? { ...event, ...additions } : event;
     },
 
-    async setLeaderboardPublished(id, ownerUserId, isPublished) {
-      const existing = await this.getEventById(id);
-      if (!existing || existing.ownerUserId !== ownerUserId) {
+    async getEventAccess(id, userId) {
+      return getEventAccess(id, userId);
+    },
+
+    async setLeaderboardPublished(id, managerUserId, isPublished) {
+      const access = await getEventAccess(id, managerUserId);
+      if (!access.canManage) {
         return null;
       }
 
       await runCommand(`
         UPDATE catch_events
-        SET is_leaderboard_published = ${parameter(3)},
+        SET is_leaderboard_published = ${parameter(2)},
             updated_at = ${nowExpression}
-        WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
-      `, [id, ownerUserId, isPublished ? 1 : 0]);
+        WHERE id = ${parameter(1)}
+      `, [id, isPublished ? 1 : 0]);
       return this.getEventById(id, { includeSubmissions: true });
     },
 
-    async setSubmissionsClosed(id, ownerUserId, isClosed) {
+    async setSubmissionsClosed(id, managerUserId, isClosed) {
       await ensureEventSubmissionColumns();
-      const existing = await this.getEventById(id);
-      if (!existing || existing.ownerUserId !== ownerUserId) {
+      const access = await getEventAccess(id, managerUserId);
+      if (!access.canManage) {
         return null;
       }
 
       await runCommand(`
         UPDATE catch_events
-        SET submissions_closed = ${parameter(3)},
+        SET submissions_closed = ${parameter(2)},
             updated_at = ${nowExpression}
-        WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
-      `, [id, ownerUserId, isClosed ? 1 : 0]);
+        WHERE id = ${parameter(1)}
+      `, [id, isClosed ? 1 : 0]);
       return this.getEventById(id, { includeSubmissions: true });
     },
 
-    async setAutoCheckEnabled(id, ownerUserId, autoCheckEnabled) {
+    async setAutoCheckEnabled(id, managerUserId, autoCheckEnabled) {
       await ensureEventSubmissionColumns();
-      const existing = await this.getEventById(id);
-      if (!existing || existing.ownerUserId !== ownerUserId) {
+      const access = await getEventAccess(id, managerUserId);
+      if (!access.canManage) {
         return null;
       }
 
       await runCommand(`
         UPDATE catch_events
-        SET auto_check_enabled = ${parameter(3)},
+        SET auto_check_enabled = ${parameter(2)},
             updated_at = ${nowExpression}
-        WHERE id = ${parameter(1)} AND owner_user_id = ${parameter(2)}
-      `, [id, ownerUserId, autoCheckEnabled ? 1 : 0]);
+        WHERE id = ${parameter(1)}
+      `, [id, autoCheckEnabled ? 1 : 0]);
       return this.getEventById(id, { includeSubmissions: true });
     },
 
@@ -544,19 +642,71 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
       };
     },
 
-    async updateSubmissionStatus(eventId, ownerUserId, submissionId, status) {
+    async updateSubmissionStatus(eventId, managerUserId, submissionId, status) {
       await ensureSubmissionStatusConstraint();
+      const access = await getEventAccess(eventId, managerUserId);
+      if (!access.canManage) {
+        return null;
+      }
       await runCommand(`
         UPDATE catch_event_submissions
-        SET status = ${parameter(4)},
+        SET status = ${parameter(3)},
             updated_at = ${nowExpression}
         WHERE id = ${parameter(1)}
           AND event_id = ${parameter(2)}
-          AND event_id IN (
-            SELECT id FROM catch_events WHERE owner_user_id = ${parameter(3)}
-          )
-      `, [submissionId, eventId, ownerUserId, status]);
+      `, [submissionId, eventId, status]);
       return this.getEventById(eventId, { includeSubmissions: true });
+    },
+
+    async listCollaborators(eventId, ownerUserId) {
+      const event = await this.getEventById(eventId);
+      if (!event || event.ownerUserId !== ownerUserId) {
+        return null;
+      }
+      return listCollaborators(eventId);
+    },
+
+    async addCollaborator(eventId, ownerUserId, user) {
+      await ensureCollaboratorsTable();
+      const event = await this.getEventById(eventId);
+      if (!event || event.ownerUserId !== ownerUserId) {
+        return null;
+      }
+      if (user.id === ownerUserId) {
+        const error = new Error('Owners already have access to their event.');
+        error.code = 'SELF_COLLABORATOR';
+        throw error;
+      }
+
+      const insertConflictClause = dialect === 'd1' ? 'INSERT OR IGNORE' : 'INSERT';
+      const conflictSuffix = dialect === 'd1' ? '' : ' ON CONFLICT (event_id, user_id) DO NOTHING';
+      await runCommand(`
+        ${insertConflictClause} INTO catch_event_collaborators (
+          event_id,
+          user_id,
+          role,
+          created_by_user_id
+        )
+        VALUES (${parameter(1)}, ${parameter(2)}, 'co-host', ${parameter(3)})
+        ${conflictSuffix}
+      `, [eventId, user.id, ownerUserId]);
+
+      return listCollaborators(eventId);
+    },
+
+    async removeCollaborator(eventId, ownerUserId, userId) {
+      await ensureCollaboratorsTable();
+      const event = await this.getEventById(eventId);
+      if (!event || event.ownerUserId !== ownerUserId) {
+        return null;
+      }
+
+      await runCommand(`
+        DELETE FROM catch_event_collaborators
+        WHERE event_id = ${parameter(1)} AND user_id = ${parameter(2)}
+      `, [eventId, userId]);
+
+      return listCollaborators(eventId);
     },
 
     async getScreenshotById(id) {

@@ -212,6 +212,18 @@ CREATE INDEX IF NOT EXISTS idx_catch_events_published_created_at
 CREATE INDEX IF NOT EXISTS idx_catch_events_private_created_at
   ON catch_events(is_private, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS catch_event_collaborators (
+  event_id TEXT NOT NULL REFERENCES catch_events(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'co-host' CHECK (role IN ('co-host')),
+  created_by_user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (event_id, user_id)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_catch_event_collaborators_user_created_at
+  ON catch_event_collaborators(user_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS catch_event_submissions (
   id TEXT PRIMARY KEY,
   event_id TEXT NOT NULL REFERENCES catch_events(id) ON DELETE CASCADE,

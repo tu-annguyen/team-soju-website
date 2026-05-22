@@ -588,6 +588,26 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
       `, [normalizeEmail(email)]);
     },
 
+    async findByEmailOrIgn(identifier) {
+      const normalizedIdentifier = String(identifier || '').trim();
+      const rows = await runSelect(`
+        SELECT *
+        FROM app_users
+        WHERE LOWER(email) = LOWER(${parameter(1)})
+           OR LOWER(ign) = LOWER(${parameter(2)})
+        ORDER BY
+          CASE WHEN LOWER(email) = LOWER(${parameter(1)}) THEN 0 ELSE 1 END,
+          LOWER(ign) ASC
+        LIMIT 2
+      `, [normalizeEmail(normalizedIdentifier), normalizeIgn(normalizedIdentifier)]);
+      if (rows.length > 1) {
+        const error = new Error('Identifier matches multiple Team Soju accounts.');
+        error.code = 'AMBIGUOUS_ACCOUNT_IDENTIFIER';
+        throw error;
+      }
+      return rows[0] || null;
+    },
+
     async findByDiscordId(discordId) {
       return runOne(`
         SELECT *
