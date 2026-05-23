@@ -41,7 +41,7 @@ A dynamic, content-driven frontend built with React.js and Astro components.
 - Set `PUBLIC_API_BASE_URL` for the frontend so the auth page and header can reach the API:
 
   ```env
-  PUBLIC_API_BASE_URL=http://localhost:3001/api
+  PUBLIC_API_BASE_URL=http://localhost:8787/api
   ```
 
 - Discord registration uses the IGN entered on the create-account tab before redirecting to Discord.

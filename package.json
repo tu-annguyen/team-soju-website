@@ -20,7 +20,7 @@
     "dev:web:staging": "PUBLIC_API_BASE_URL=https://team-soju-api-staging.tunacore.workers.dev/api npm run dev:web",
     "tail:api:staging": "npm run tail:cf:staging --workspace=@team-soju/api-server",
     "tail:bot:staging": "npm run tail:cf:staging --workspace=@team-soju/discord-bot",
-    "dev": "concurrently --kill-others-on-fail -n web,api,bot-tail -c cyan,green,magenta \"npm run dev:web\" \"npm run dev:api:worker\" \"npm run tail:bot:staging\"",
+    "dev": "concurrently --kill-others-on-fail -n web,api -c cyan,green \"npm run dev:web\" \"npm run dev:api:worker\"",
     "dev:staging": "concurrently --kill-others-on-fail -n web,api-tail,bot-tail -c cyan,green,magenta \"npm run dev:web:staging\" \"npm run tail:api:staging\" \"npm run tail:bot:staging\"",
     "dev:local": "concurrently \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:bot\"",
     "dev:worker": "concurrently \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:api:worker\"",
@@ -48,6 +48,6 @@
     "concurrently": "^9.2.1"
   },
   "engines": {
-    "node": "20.x"
+    "node": ">=20"
   }
 }

@@ -33,7 +33,7 @@ All commands are run from the root of the project:
 | :------------------------ | :-------------------------------------------------------------------- |
 | `npm install`             | Installs dependencies for all apps                                    |
 | `npm run dev:web`         | Starts dev server at `localhost:4321` for the frontend                |
-| `npm run dev:api`         | Starts dev server at `localhost:3001` for the API                     |
+| `npm run dev:api`         | Starts dev server at `localhost:8787` for the API                     |
 | `npm run dev:bot`         | Starts the Discord bot (watch mode)                                   |
 | `npm run dev`             | Concurrently starts dev servers for web and API                       |
 | `npm run dev:all`         | Concurrently starts dev servers for web, API, and Discord bot         |

@@ -6,7 +6,7 @@ interface MonthlyShiniesProps {
 }
 
 const MonthlyShinies = ({
-  apiBaseUrl = 'http://localhost:3001/api',
+  apiBaseUrl = 'http://localhost:8787/api',
 }: MonthlyShiniesProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [date, setDate] = useState<Date>(new Date());
