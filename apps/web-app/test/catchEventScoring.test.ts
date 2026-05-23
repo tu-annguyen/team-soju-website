@@ -35,7 +35,7 @@ function makeSubmission(
   id: string,
   score: number,
   catchUtc: string,
-  status: CatchEventSubmission['status'] = 'valid'
+  status: CatchEventSubmission['status'] = 'verified'
 ): CatchEventSubmission {
   return {
     id,
@@ -138,7 +138,7 @@ describe('catch event scoring', () => {
       makeSubmission('later', 166, '2026-05-19T19:09:10.000Z'),
       makeSubmission('earlier', 166, '2026-05-19T19:04:44.000Z'),
       makeSubmission('winner', 168, '2026-05-19T19:12:04.000Z'),
-      makeSubmission('ignored', 180, '2026-05-19T19:01:00.000Z', 'invalid'),
+      makeSubmission('ignored', 180, '2026-05-19T19:01:00.000Z', 'rejected'),
     ]);
 
     expect(ranked.map((submission) => submission.id)).toEqual(['winner', 'earlier', 'later']);
@@ -161,10 +161,10 @@ describe('catch event scoring', () => {
     ]);
   });
 
-  it('only selects valid submissions for winner output', () => {
+  it('only selects verified submissions for winner output', () => {
     const winners = selectCatchEventWinners(eventFixture, [
       makeSubmission('needs-review-high', 186, '2026-05-19T19:01:00.000Z', 'needs-review'),
-      makeSubmission('invalid-high', 185, '2026-05-19T19:02:00.000Z', 'invalid'),
+      makeSubmission('rejected-high', 185, '2026-05-19T19:02:00.000Z', 'rejected'),
       makeSubmission('valid-first', 160, '2026-05-19T19:03:00.000Z'),
       makeSubmission('valid-second', 120, '2026-05-19T19:04:00.000Z'),
       makeSubmission('needs-review-low', 1, '2026-05-19T19:05:00.000Z', 'needs-review'),

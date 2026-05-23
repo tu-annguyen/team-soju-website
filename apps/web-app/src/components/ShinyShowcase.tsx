@@ -277,7 +277,7 @@ const applyTrainerFiltersAndSort = (
 };
 
 const ShinyShowcase = ({
-  apiBaseUrl = 'http://localhost:3001/api',
+  apiBaseUrl = 'http://localhost:8787/api',
 }: ShinyShowcaseProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [allTrainerData, setAllTrainerData] = useState<Trainer[]>([]);

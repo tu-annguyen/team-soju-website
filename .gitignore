@@ -39,5 +39,9 @@ pnpm-debug.log*
 #ignore Codex files
 .codex
 
+#ignore Claude Code files
+.claude/*
+logs/*
+
 #ignore Wrangler files
 .wrangler

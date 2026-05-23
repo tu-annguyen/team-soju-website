@@ -1,5 +1,9 @@
 import React from 'react';
+<<<<<<< HEAD
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+=======
 import { render, screen, waitFor } from '@testing-library/react';
+>>>>>>> 29857c9aee7f9b95d18235a691d091a040724dec
 import CatchEventManager from '../src/components/CatchEventManager';
 
 describe('CatchEventManager', () => {
@@ -98,4 +102,121 @@ describe('CatchEventManager', () => {
       'http://localhost/tools/catch-events?view=events'
     );
   });
+<<<<<<< HEAD
+
+  it('shows shared events in host manage for a co-host without owner-only controls', async () => {
+    window.history.replaceState({}, '', '/tools/catch-events?view=host&tab=manage&event=private-event');
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith('/auth/me')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: { id: 'user-id', email: 'trainer@example.com', ign: 'Trainer' },
+          }),
+        };
+      }
+
+      if (url.endsWith('/catch-events?owner=me')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [privateEvent] }),
+        };
+      }
+
+      if (url.endsWith('/catch-events/private-event')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: privateEvent }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+
+    render(<CatchEventManager apiBaseUrl="http://localhost:3001/api" initialView="admin" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Linked Private Catch').length).toBeGreaterThan(0);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Shared admin')).toBeInTheDocument();
+      expect(screen.getByText('Duplicate event')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Shared admins')).not.toBeInTheDocument();
+    expect(screen.queryByText('Edit event')).not.toBeInTheDocument();
+    expect(screen.queryByText('Delete event')).not.toBeInTheDocument();
+  });
+
+  it('lets the owner add a shared admin by email or IGN', async () => {
+    const ownerEvent = {
+      ...privateEvent,
+      ownerUserId: 'user-id',
+      collaborators: [],
+    };
+    window.history.replaceState({}, '', '/tools/catch-events?view=host&tab=manage&event=private-event');
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/auth/me')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: { id: 'user-id', email: 'trainer@example.com', ign: 'Trainer' },
+          }),
+        };
+      }
+
+      if (url.endsWith('/catch-events?owner=me')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [ownerEvent] }),
+        };
+      }
+
+      if (url.endsWith('/catch-events/private-event/collaborators') && init?.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [{ userId: 'cohost-1', email: 'cohost@example.com', ign: 'CoHost', role: 'co-host' }],
+          }),
+        };
+      }
+
+      if (url.endsWith('/catch-events/private-event')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: ownerEvent }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+
+    render(<CatchEventManager apiBaseUrl="http://localhost:3001/api" initialView="admin" />);
+
+    const collaboratorInput = await screen.findByPlaceholderText('trainer@example.com or TrainerIGN');
+
+    fireEvent.change(collaboratorInput, {
+      target: { value: 'CoHost' },
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add shared admin' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add shared admin' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('CoHost')).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3001/api/catch-events/private-event/collaborators',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'CoHost' }),
+      })
+    );
+  });
+=======
+>>>>>>> 29857c9aee7f9b95d18235a691d091a040724dec
 });

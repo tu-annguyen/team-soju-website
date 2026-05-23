@@ -105,6 +105,7 @@ const catchEventCreateSchema = Joi.object({
   useLowestScoreFinalPlace: Joi.boolean().default(true),
   isLeaderboardPublished: Joi.boolean().default(false),
   isPrivate: Joi.boolean().default(true),
+  autoCheckEnabled: Joi.boolean().default(false),
 });
 const catchEventSubmissionSchema = Joi.object({
   playerIgn: Joi.string().trim().min(1).max(50).required(),
@@ -117,7 +118,7 @@ const catchEventSubmissionSchema = Joi.object({
   route: Joi.string().trim().min(1).max(120).required(),
   catchUtc: Joi.string().trim().min(8).max(40).required(),
   score: Joi.number().integer().min(-999).max(1186).required(),
-  status: Joi.string().valid('valid', 'needs-review').required(),
+  status: Joi.string().valid('pending-verification', 'auto-checked', 'needs-review').required(),
   flags: Joi.array().items(Joi.string().trim().max(200)).max(20).default([]),
   screenshots: Joi.array().items(Joi.object({
     name: Joi.string().trim().min(1).max(160).required(),
@@ -141,8 +142,14 @@ const catchEventPublishSchema = Joi.object({
 const catchEventSubmissionsClosedSchema = Joi.object({
   submissionsClosed: Joi.boolean().required(),
 });
+const catchEventAutoCheckSchema = Joi.object({
+  autoCheckEnabled: Joi.boolean().required(),
+});
 const catchEventSubmissionStatusSchema = Joi.object({
-  status: Joi.string().valid('valid', 'needs-review', 'invalid', 'disqualified').required(),
+  status: Joi.string().valid('pending-verification', 'auto-checked', 'needs-review', 'verified', 'rejected', 'disqualified').required(),
+});
+const catchEventCollaboratorSchema = Joi.object({
+  identifier: Joi.string().trim().min(1).max(254).required(),
 });
 
 function getEnvUrl(env, ...keys) {
@@ -155,7 +162,7 @@ function getWebAppUrl(env) {
 }
 
 function getApiOrigin(env) {
-  return String(env.API_ORIGIN || env.API_BASE_URL || 'http://localhost:3001')
+  return String(env.API_ORIGIN || env.API_BASE_URL || 'http://localhost:8787')
     .replace(/\/api\/?$/, '')
     .replace(/\/+$/, '');
 }
@@ -443,8 +450,12 @@ function normalizeCatchEventOcrResult(parsed, fallbackDateOrder = null) {
     ? parsed.warnings.map((warning) => cleanNullableString(warning, 200)).filter(Boolean)
     : [];
   const confidence = Number(parsed?.confidence);
-  const totalIv = Number(parsed?.totalIv);
-  const pokedexNumber = Number(parsed?.pokedexNumber);
+  const totalIv = parsed?.totalIv === null || parsed?.totalIv === undefined || parsed?.totalIv === ''
+    ? null
+    : Number(parsed.totalIv);
+  const pokedexNumber = parsed?.pokedexNumber === null || parsed?.pokedexNumber === undefined || parsed?.pokedexNumber === ''
+    ? null
+    : Number(parsed.pokedexNumber);
   const dateOrder = ['mdy', 'dmy', 'ymd'].includes(String(parsed?.dateOrder || '').toLowerCase())
     ? String(parsed.dateOrder).toLowerCase()
     : fallbackDateOrder;
@@ -2233,7 +2244,7 @@ function createWorkerApp(options = {}) {
         }
 
         const events = await getRepositories().catchEvents.listEvents({
-          ownerUserId: ownerOnly ? authenticatedUser.id : undefined,
+          manageableByUserId: ownerOnly ? authenticatedUser.id : undefined,
           publishedOnly: url.searchParams.get('published') === 'true',
         });
         return json({ success: true, data: events });
@@ -2301,6 +2312,87 @@ function createWorkerApp(options = {}) {
       } catch (error) {
         console.error('Error deleting catch event:', error);
         return json({ success: false, message: 'Failed to delete catch event' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/collaborators$/);
+    if (request.method === 'GET' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const collaborators = await getRepositories().catchEvents.listCollaborators(match[1], auth.user.id);
+        if (!collaborators) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: collaborators });
+      } catch (error) {
+        console.error('Error listing catch event collaborators:', error);
+        return json({ success: false, message: 'Failed to list shared admins' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/collaborators$/);
+    if (request.method === 'POST' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventCollaboratorSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        let user;
+        try {
+          user = await getRepositories().users.findByEmailOrIgn(value.identifier);
+        } catch (lookupError) {
+          if (lookupError.code === 'AMBIGUOUS_ACCOUNT_IDENTIFIER') {
+            return json({ success: false, message: lookupError.message }, { status: 409 });
+          }
+          throw lookupError;
+        }
+
+        if (!user) {
+          return json({ success: false, message: 'Team Soju account not found' }, { status: 404 });
+        }
+
+        const collaborators = await getRepositories().catchEvents.addCollaborator(match[1], auth.user.id, user);
+        if (!collaborators) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: collaborators, message: 'Shared admin added successfully' }, { status: 201 });
+      } catch (error) {
+        if (error.code === 'SELF_COLLABORATOR') {
+          return json({ success: false, message: error.message }, { status: 400 });
+        }
+        console.error('Error adding catch event collaborator:', error);
+        return json({ success: false, message: 'Failed to add shared admin' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/collaborators\/([^/]+)$/);
+    if (request.method === 'DELETE' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const collaborators = await getRepositories().catchEvents.removeCollaborator(
+          match[1],
+          auth.user.id,
+          decodeURIComponent(match[2])
+        );
+        if (!collaborators) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: collaborators, message: 'Shared admin removed successfully' });
+      } catch (error) {
+        console.error('Error removing catch event collaborator:', error);
+        return json({ success: false, message: 'Failed to remove shared admin' }, { status: 500 });
       }
     }
 
@@ -2414,6 +2506,34 @@ function createWorkerApp(options = {}) {
       }
     }
 
+    match = pathname.match(/^\/api\/catch-events\/([^/]+)\/auto-check$/);
+    if (request.method === 'POST' && match) {
+      const auth = await requireUser(request, env, getRepositories());
+      if (auth.response) return auth.response;
+
+      try {
+        const body = await readJson(request);
+        const { error, value } = catchEventAutoCheckSchema.validate(body);
+        if (error) {
+          return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
+        }
+
+        const event = await getRepositories().catchEvents.setAutoCheckEnabled(
+          match[1],
+          auth.user.id,
+          value.autoCheckEnabled
+        );
+        if (!event) {
+          return json({ success: false, message: 'Catch event not found' }, { status: 404 });
+        }
+
+        return json({ success: true, data: event, message: 'Catch event updated successfully' });
+      } catch (error) {
+        console.error('Error updating catch event auto-check:', error);
+        return json({ success: false, message: 'Failed to update catch event auto-check' }, { status: 500 });
+      }
+    }
+
     match = pathname.match(/^\/api\/catch-events\/([^/]+)\/submissions\/([^/]+)\/status$/);
     if (request.method === 'POST' && match) {
       const auth = await requireUser(request, env, getRepositories());
@@ -2494,8 +2614,15 @@ function createWorkerApp(options = {}) {
           return json({ success: false, message: 'Catch event not found' }, { status: 404 });
         }
 
-        const isOwner = authenticatedUser?.id && authenticatedUser.id === event.ownerUserId;
-        if (!event.isLeaderboardPublished && !isOwner) {
+        const access = authenticatedUser?.id && getRepositories().catchEvents.getEventAccess
+          ? await getRepositories().catchEvents.getEventAccess(match[1], authenticatedUser.id)
+          : {
+              isOwner: Boolean(authenticatedUser?.id && authenticatedUser.id === event.ownerUserId),
+              canManage: Boolean(authenticatedUser?.id && authenticatedUser.id === event.ownerUserId),
+            };
+        const isOwner = Boolean(access?.isOwner);
+        const canManage = Boolean(access?.canManage);
+        if (!event.isLeaderboardPublished && !canManage) {
           return json({
             success: true,
             data: {
@@ -2506,7 +2633,15 @@ function createWorkerApp(options = {}) {
           });
         }
 
-        return json({ success: true, data: event });
+        return json({
+          success: true,
+          data: isOwner
+            ? await getRepositories().catchEvents.getEventById(match[1], {
+                includeSubmissions: true,
+                includeCollaborators: true,
+              })
+            : event,
+        });
       } catch (error) {
         console.error('Error fetching catch event:', error);
         return json({ success: false, message: 'Failed to fetch catch event' }, { status: 500 });

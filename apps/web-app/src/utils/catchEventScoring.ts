@@ -1,8 +1,22 @@
-export type CatchEventStatus = 'valid' | 'needs-review' | 'invalid' | 'disqualified';
+export type CatchEventStatus =
+  | 'pending-verification'
+  | 'auto-checked'
+  | 'needs-review'
+  | 'verified'
+  | 'rejected'
+  | 'disqualified';
 
 export type CatchEventRule = {
   name: string;
   points: number;
+};
+
+export type CatchEventCollaborator = {
+  userId: string;
+  email: string;
+  ign: string;
+  role: 'co-host';
+  createdAt?: string;
 };
 
 export type CatchEventConfig = {
@@ -26,9 +40,11 @@ export type CatchEventConfig = {
   isLeaderboardPublished: boolean;
   isPrivate?: boolean;
   submissionsClosed?: boolean;
+  autoCheckEnabled?: boolean;
   createdAt: string;
   updatedAt?: string;
   submissions?: CatchEventSubmission[];
+  collaborators?: CatchEventCollaborator[];
   leaderboardHidden?: boolean;
 };
 
@@ -62,6 +78,10 @@ export type CatchEventSubmission = CatchEventSubmissionInput & {
 
 export type RankedCatchEventSubmission = CatchEventSubmission & {
   rank: number;
+};
+
+export type PrizeRelevantCatchEventSubmission = CatchEventSubmission & {
+  reviewReasons: string[];
 };
 
 export const POKEMON_NATURES = [
@@ -279,13 +299,24 @@ export function validateCatchEventSubmission(
   return {
     catchUtc,
     flags,
-    status: flags.length > 0 ? ('needs-review' as const) : ('valid' as const),
+    status: flags.length > 0
+      ? ('needs-review' as const)
+      : event.autoCheckEnabled
+        ? ('auto-checked' as const)
+        : ('pending-verification' as const),
   };
+}
+
+function isProvisionalLeaderboardStatus(status: CatchEventStatus) {
+  return status === 'pending-verification'
+    || status === 'auto-checked'
+    || status === 'needs-review'
+    || status === 'verified';
 }
 
 export function rankCatchEventSubmissions(submissions: CatchEventSubmission[]) {
   return submissions
-    .filter((submission) => submission.status === 'valid' || submission.status === 'needs-review')
+    .filter((submission) => isProvisionalLeaderboardStatus(submission.status))
     .slice()
     .sort((a, b) => {
       if (b.score !== a.score) {
@@ -304,7 +335,7 @@ export function selectCatchEventWinners(
   event: Pick<CatchEventConfig, 'winnerCount' | 'useLowestScoreFinalPlace'>,
   submissions: CatchEventSubmission[]
 ) {
-  const validSubmissions = submissions.filter((submission) => submission.status === 'valid');
+  const validSubmissions = submissions.filter((submission) => submission.status === 'verified');
   const ranked = rankCatchEventSubmissions(validSubmissions);
 
   if (!event.useLowestScoreFinalPlace || event.winnerCount < 2) {
@@ -317,7 +348,7 @@ export function selectCatchEventWinners(
   const lowestScoreWinner = submissions
     .filter(
       (submission) =>
-        submission.status === 'valid' && !excludedIds.has(submission.id)
+        submission.status === 'verified' && !excludedIds.has(submission.id)
     )
     .sort((a, b) => {
       if (a.score !== b.score) {
@@ -331,4 +362,63 @@ export function selectCatchEventWinners(
     ...highScoreWinners,
     ...(lowestScoreWinner ? [{ ...lowestScoreWinner, rank: event.winnerCount }] : []),
   ];
+}
+
+export function selectPrizeRelevantSubmissions(
+  event: Pick<CatchEventConfig, 'winnerCount' | 'useLowestScoreFinalPlace'>,
+  submissions: CatchEventSubmission[]
+): PrizeRelevantCatchEventSubmission[] {
+  const ranked = rankCatchEventSubmissions(submissions);
+  const byId = new Map<string, Set<string>>();
+  const addReason = (submission: CatchEventSubmission | undefined, reason: string) => {
+    if (!submission) return;
+    const reasons = byId.get(submission.id) || new Set<string>();
+    reasons.add(reason);
+    byId.set(submission.id, reasons);
+  };
+
+  const highPrizeSlots = event.useLowestScoreFinalPlace
+    ? Math.max(event.winnerCount - 1, 0)
+    : event.winnerCount;
+  ranked.slice(0, highPrizeSlots).forEach((submission, index) => {
+    addReason(submission, `${index + 1}${index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'} place candidate`);
+  });
+  ranked.slice(0, Math.max(8, highPrizeSlots)).forEach((submission) => addReason(submission, 'Top 5-8 high-score candidate'));
+
+  if (event.useLowestScoreFinalPlace && event.winnerCount > 1) {
+    const highPrizeIds = new Set(ranked.slice(0, highPrizeSlots).map((submission) => submission.id));
+    const lowRanked = ranked
+      .filter((submission) => !highPrizeIds.has(submission.id))
+      .slice()
+      .sort((left, right) => {
+        if (left.score !== right.score) return left.score - right.score;
+        return left.catchUtc.localeCompare(right.catchUtc);
+      });
+    addReason(lowRanked[0], `${event.winnerCount}th place lowest-score candidate`);
+    lowRanked.slice(0, 5).forEach((submission) => addReason(submission, 'Bottom 3-5 low-score candidate'));
+  }
+
+  const cutoffScores = new Set<number>();
+  if (ranked[highPrizeSlots - 1]) cutoffScores.add(ranked[highPrizeSlots - 1].score);
+  if (ranked[highPrizeSlots]) cutoffScores.add(ranked[highPrizeSlots].score);
+  ranked.forEach((submission) => {
+    if (cutoffScores.has(submission.score)) {
+      const tied = ranked.filter((candidate) => candidate.score === submission.score);
+      if (tied.length > 1) addReason(submission, 'Tie around prize cutoff');
+    }
+  });
+
+  ranked.forEach((submission) => {
+    const isCloseToHighPrize = ranked[highPrizeSlots - 1]
+      && Math.abs(submission.score - ranked[highPrizeSlots - 1].score) <= 3;
+    if (isCloseToHighPrize) addReason(submission, 'Close to winning');
+    if (submission.flags.length || submission.status === 'needs-review') addReason(submission, 'System flag');
+  });
+
+  return submissions
+    .filter((submission) => byId.has(submission.id))
+    .map((submission) => ({
+      ...submission,
+      reviewReasons: Array.from(byId.get(submission.id) || []),
+    }));
 }

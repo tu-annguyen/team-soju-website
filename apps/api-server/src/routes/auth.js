@@ -94,7 +94,7 @@ function getWebAppUrl() {
 }
 
 function getDiscordRedirectUri() {
-  const apiOrigin = (process.env.API_ORIGIN || process.env.API_BASE_URL || 'http://localhost:3001')
+  const apiOrigin = (process.env.API_ORIGIN || process.env.API_BASE_URL || 'http://localhost:8787')
     .replace(/\/api\/?$/, '')
     .replace(/\/+$/, '');
 
