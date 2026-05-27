@@ -167,7 +167,6 @@ const catchEventManager = {
     "Disable auto-check": "Desactivar auto-revisión",
     "Entry": "Participación",
     "Proof": "Prueba",
-    "Catch UTC": "Captura UTC",
     "Flags": "Alertas",
     "Missing OT / IGN": "Falta EO / IGN",
     "Species is not allowed for this event": "La especie no está permitida para este evento",

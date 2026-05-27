@@ -170,7 +170,6 @@ const catchEventManager = {
     "Disable auto-check": "Disable auto-check",
     "Entry": "Entry",
     "Proof": "Proof",
-    "Catch UTC": "Catch UTC",
     "Flags": "Flags",
     "Prize Review": "Prize Review",
     "Missing OT / IGN": "Missing OT / IGN",

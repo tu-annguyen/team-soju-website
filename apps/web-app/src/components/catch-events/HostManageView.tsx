@@ -324,7 +324,7 @@ export function HostManageView({
                 <th className="py-3 pr-4">{tr('Proof')}</th>
                 <th className="py-3 pr-4">{tr('Score')}</th>
                 <th className="py-3 pr-4">{tr('Location')}</th>
-                <th className="py-3 pr-4">{tr('Catch UTC')}</th>
+                <th className="py-3 pr-4">{tr('Catch Time')}</th>
                 <th className="py-3 pr-4">{tr('Prize Review')}</th>
                 <th className="py-3 pr-4">{tr('Status')}</th>
               </tr>
