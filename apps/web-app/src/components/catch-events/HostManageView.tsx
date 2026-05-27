@@ -154,7 +154,12 @@ export function HostManageView({
       setSubmissionEditForm(null);
       setSubmissionEditError('');
     } catch (error) {
-      setSubmissionEditError(error instanceof Error ? error.message : tr('Failed to update submission.'));
+      const apiError = error as Error & { errors?: string[] };
+      if (Array.isArray(apiError.errors) && apiError.errors.length > 0) {
+        setSubmissionEditError(apiError.errors.map((error) => tr(error)).join('; '));
+      } else {
+        setSubmissionEditError(error instanceof Error ? error.message : tr('Failed to update submission.'));
+      }
     }
   };
 

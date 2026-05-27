@@ -2704,7 +2704,7 @@ function createWorkerApp(options = {}) {
         if (validation.errors.length > 0) {
           return json({
             success: false,
-            message: validation.errors.join(' '),
+            message: validation.errors.join('; '),
             errors: validation.errors,
           }, { status: 400 });
         }
@@ -2753,7 +2753,7 @@ function createWorkerApp(options = {}) {
         if (validation.errors.length > 0) {
           return json({
             success: false,
-            message: validation.errors.join(' '),
+            message: validation.errors.join('; '),
             errors: validation.errors,
           }, { status: 400 });
         }

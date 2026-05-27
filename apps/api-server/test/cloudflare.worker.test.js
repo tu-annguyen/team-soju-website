@@ -566,6 +566,7 @@ describe('Cloudflare Worker API', () => {
       'Species is not allowed for this event',
       'Catch time is outside the event window',
     ]));
+    expect(body.message).toBe('Species is not allowed for this event; Catch time is outside the event window');
     expect(repositories.catchEvents.upsertSubmission).not.toHaveBeenCalled();
   });
 

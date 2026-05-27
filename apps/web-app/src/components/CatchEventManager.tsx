@@ -516,7 +516,12 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       );
     } catch (error) {
       setSubmitMessageTone('error');
-      setSubmitMessage(error instanceof Error ? error.message : tr('Failed to submit entry.'));
+      const apiError = error as Error & { errors?: string[] };
+      if (Array.isArray(apiError.errors) && apiError.errors.length > 0) {
+        setSubmitMessage(apiError.errors.map((error) => tr(error)).join('; '));
+      } else {
+        setSubmitMessage(error instanceof Error ? error.message : tr('Failed to submit entry.'));
+      }
     }
   }
   async function handleAutofillFromScreenshots() {
