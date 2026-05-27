@@ -4,13 +4,13 @@ import { POKEMON_NATURES, calculateCatchEventScore, slugifyEventName, validateCa
 import type { CatchEventCollaborator, CatchEventConfig, CatchEventStatus, CatchEventSubmission } from '../utils/catchEventScoring';
 import { CATCH_EVENT_REGIONS, type CatchEventRegion } from '../utils/catchEventLocations';
 import { getClientLocale, getTranslations, type Locale } from '../i18n';
-import { POKEMON_SPECIES_NAME_SET, POKEMON_SPECIES_NAMES } from '../utils/pokemonSpecies';
+import { POKEMON_SPECIES_NAME_SET } from '../utils/pokemonSpecies';
 import { EventCreateForm } from './catch-events/EventCreateForm';
 import { EventsView } from './catch-events/EventsView';
 import { HostManageView } from './catch-events/HostManageView';
 import type { SubmissionEditForm } from './catch-events/HostManageView';
 import { ProofModal } from './catch-events/ProofModal';
-import { DEFAULT_TIMEZONE, defaultEventForm, defaultNatureRows, defaultSpeciesRows, defaultSubmissionForm, fetchJson, formatLocalDateTime, getBrowserTimezone, getDefaultEventWindow, getSubmissionDisabledReason, getSubmissionProofs, getTimezoneOptions, getTodayLocalDate, normalizeHostTab, normalizeQueryView, pickRandomItems, rowsFromRules, splitRules, statusLabelKeys, type AuthUser, type CatchEventOcrResult, type EventTab, type HostTab, type LegacyViewMode, type RuleRow, type ScreenshotProof, type ViewMode } from './catch-events/shared';
+import { DEFAULT_TIMEZONE, defaultEventForm, defaultNatureRows, defaultSpeciesRows, defaultSubmissionForm, fetchJson, formatLocalDateTime, getBrowserTimezone, getDefaultEventWindow, getSubmissionDisabledReason, getSubmissionProofs, getTimezoneOptions, getTodayLocalDate, normalizeHostTab, normalizeQueryView, rowsFromRules, splitRules, statusLabelKeys, type AuthUser, type CatchEventOcrResult, type EventTab, type HostTab, type LegacyViewMode, type RuleRow, type ScreenshotProof, type ViewMode } from './catch-events/shared';
 type Props = { apiBaseUrl: string; initialView?: LegacyViewMode; locale?: Locale | string };
 const NATURE_SET = new Set<string>(POKEMON_NATURES.map((nature) => nature.toLowerCase()));
 const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props) => {
@@ -113,27 +113,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         eventDate: current.eventDate || getTodayLocalDate(),
         timezone: current.timezone || detectedTimezone,
       };
-    });
-    setSpeciesRows((current) => {
-      if (current.some((row) => row.name.trim())) {
-        return current;
-      }
-      const [bonusSpecies, neutralSpecies, penaltySpecies] = pickRandomItems(POKEMON_SPECIES_NAMES, 3);
-      return [
-        { id: `species-${Date.now().toString(36)}-bonus`, name: bonusSpecies, points: '5' },
-        { id: `species-${Date.now().toString(36)}-neutral`, name: neutralSpecies, points: '0' },
-        { id: `species-${Date.now().toString(36)}-penalty`, name: penaltySpecies, points: '-5' },
-      ];
-    });
-    setNatureRows((current) => {
-      if (current.some((row) => row.name.trim())) {
-        return current;
-      }
-      const [bonusNature, penaltyNature] = pickRandomItems(POKEMON_NATURES, 2);
-      return [
-        { id: `nature-${Date.now().toString(36)}-bonus`, name: bonusNature, points: '5' },
-        { id: `nature-${Date.now().toString(36)}-penalty`, name: penaltyNature, points: '-5' },
-      ];
     });
     setSubmissionForm((current) => ({ ...current, timezone: detectedTimezone }));
     if (queryView && ['events', 'host', 'create', 'submit', 'admin', 'leaderboard'].includes(queryView)) {

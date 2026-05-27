@@ -116,6 +116,7 @@ function RuleEditor({
               <input
                 className={fieldClasses}
                 list={kind === 'species' ? 'pokemon-species-options' : 'nature-options'}
+                placeholder={kind === 'species' ? 'Abomasnow, Abra, etc.' : 'Hardy, Lonely, etc.'}
                 value={row.name}
                 onChange={(event) => updateRuleRow(row.id, { name: event.target.value })}
                 required
