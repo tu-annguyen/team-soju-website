@@ -2,6 +2,7 @@ import React from 'react';
 import type { FormEvent } from 'react';
 import { POKEMON_NATURES, calculateCatchEventScore } from '../../utils/catchEventScoring';
 import type { CatchEventConfig } from '../../utils/catchEventScoring';
+import type { Locale } from '../../i18n';
 import {
   CATCH_EVENT_REGIONS,
   CATCH_EVENT_ROUTES_BY_REGION,
@@ -17,14 +18,17 @@ import {
   smallButtonClasses,
   type SubmissionForm,
 } from './shared';
+import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
 
 type Props = {
   activeEvent: CatchEventConfig;
   submissionForm: SubmissionForm;
   submitMessage: string;
+  submitMessageTone: 'success' | 'error';
   ocrMessage: string;
   isOcrLoading: boolean;
   browserTimezone: string;
+  locale: Locale | string;
   tr: (text: string) => string;
   translateSpeciesDisplay: (species: string) => string;
   translateNatureDisplay: (nature: string) => string;
@@ -40,9 +44,11 @@ export function EventSubmissionPanel({
   activeEvent,
   submissionForm,
   submitMessage,
+  submitMessageTone,
   ocrMessage,
   isOcrLoading,
   browserTimezone,
+  locale,
   tr,
   translateSpeciesDisplay,
   translateNatureDisplay,
@@ -60,7 +66,7 @@ export function EventSubmissionPanel({
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{tr('Player Submission')}</h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          {tr("Upload your submission Pokemon's summary, IVs, and catch time as screenshots.")}
+          {tr('Required fields are marked. Screenshots are optional proof and can speed up host review or autofill.')}
         </p>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
           {tr('Browser timezone suggestion:')} {browserTimezone}
@@ -74,7 +80,7 @@ export function EventSubmissionPanel({
       <form className="space-y-5" onSubmit={onSubmit}>
         <fieldset className="space-y-5" disabled={Boolean(disabledReason)}>
           <label className={labelClasses}>
-            {tr('Nature/OT screenshot')}
+            {tr('Nature/OT screenshot')} <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
             <input
               className={fieldClasses}
               type="file"
@@ -91,7 +97,7 @@ export function EventSubmissionPanel({
             />
           </label>
           <label className={labelClasses}>
-            {tr('IVs screenshot')}
+            {tr('IVs screenshot')} <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
             <input
               className={fieldClasses}
               type="file"
@@ -108,7 +114,7 @@ export function EventSubmissionPanel({
             />
           </label>
           <label className={labelClasses}>
-            {tr('Catch time/location screenshot')}
+            {tr('Catch time/location screenshot')} <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
             <input
               className={fieldClasses}
               type="file"
@@ -139,11 +145,11 @@ export function EventSubmissionPanel({
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <label className={labelClasses}>
-              {tr('Player IGN / OT')}
+              {tr('Player IGN / OT')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} value={submissionForm.playerIgn} onChange={(event) => setSubmissionForm({ ...submissionForm, playerIgn: event.target.value })} required />
             </label>
             <label className={labelClasses}>
-              {tr('Pokemon species')}
+              {tr('Pokemon species')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} list="catch-event-targets" value={submissionForm.species} onChange={(event) => setSubmissionForm({ ...submissionForm, species: event.target.value })} required />
               <datalist id="catch-event-targets">
                 {activeEvent.targets.map((target) => (
@@ -152,7 +158,7 @@ export function EventSubmissionPanel({
               </datalist>
             </label>
             <label className={labelClasses}>
-              {tr('Nature')}
+              {tr('Nature')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} list="submission-nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required />
               <datalist id="submission-nature-options">
                 {POKEMON_NATURES.map((nature) => (
@@ -161,19 +167,19 @@ export function EventSubmissionPanel({
               </datalist>
             </label>
             <label className={labelClasses}>
-              {tr('Total IV')}
+              {tr('Total IV')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} min={0} max={186} type="number" value={submissionForm.totalIv} onChange={(event) => setSubmissionForm({ ...submissionForm, totalIv: Number(event.target.value) })} required />
             </label>
             <label className={labelClasses}>
-              {tr('Catch date/time')}
-              <input className={fieldClasses} type="datetime-local" step={1} value={submissionForm.catchLocal} onChange={(event) => setSubmissionForm({ ...submissionForm, catchLocal: event.target.value })} required />
+              {tr('Catch date/time')} <span className="text-rose-600">*</span>
+              <CatchEventDateTimeInput value={submissionForm.catchLocal} locale={locale} onChange={(catchLocal) => setSubmissionForm({ ...submissionForm, catchLocal })} required ariaLabel={tr('Catch date/time')} />
             </label>
             <label className={labelClasses}>
-              {tr('Player timezone')}
+              {tr('Player timezone')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} list="timezone-options" value={submissionForm.timezone} onChange={(event) => setSubmissionForm({ ...submissionForm, timezone: event.target.value })} required />
             </label>
             <label className={labelClasses}>
-              {tr('Catch region')}
+              {tr('Catch region')} <span className="text-rose-600">*</span>
               <input
                 className={fieldClasses}
                 list="submission-region-options"
@@ -188,7 +194,7 @@ export function EventSubmissionPanel({
               </datalist>
             </label>
             <label className={labelClasses}>
-              {tr('Catch route/location')}
+              {tr('Catch route/location')} <span className="text-rose-600">*</span>
               <input
                 className={fieldClasses}
                 list="submission-route-options"
@@ -217,7 +223,9 @@ export function EventSubmissionPanel({
             {tr('Submit entry')}
           </button>
           {submitMessage && (
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{submitMessage}</p>
+            <p className={`text-sm font-semibold ${submitMessageTone === 'error' ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'}`}>
+              {submitMessage}
+            </p>
           )}
         </fieldset>
       </form>

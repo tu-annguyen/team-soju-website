@@ -1,9 +1,5 @@
 import React from 'react';
-<<<<<<< HEAD
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-=======
-import { render, screen, waitFor } from '@testing-library/react';
->>>>>>> 29857c9aee7f9b95d18235a691d091a040724dec
 import CatchEventManager from '../src/components/CatchEventManager';
 
 describe('CatchEventManager', () => {
@@ -56,6 +52,13 @@ describe('CatchEventManager', () => {
         };
       }
 
+      if (url.endsWith('/catch-events?owner=me')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [] }),
+        };
+      }
+
       if (url.endsWith('/catch-events')) {
         return {
           ok: true,
@@ -102,7 +105,6 @@ describe('CatchEventManager', () => {
       'http://localhost/tools/catch-events?view=events'
     );
   });
-<<<<<<< HEAD
 
   it('shows shared events in host manage for a co-host without owner-only controls', async () => {
     window.history.replaceState({}, '', '/tools/catch-events?view=host&tab=manage&event=private-event');
@@ -217,6 +219,4 @@ describe('CatchEventManager', () => {
       })
     );
   });
-=======
->>>>>>> 29857c9aee7f9b95d18235a691d091a040724dec
 });

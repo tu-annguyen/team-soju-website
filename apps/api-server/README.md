@@ -156,6 +156,24 @@ repo-root `.env` file:
 npm run dev:api:worker
 ```
 
+## Staging cookie configuration
+
+If your staging preview uses a different host (for example Vercel previews) and you need the API-set session cookie to be usable across subdomains, set these environment variables for the API deployment (e.g. in Vercel or Cloudflare Worker environment):
+
+```env
+# Optional: make cookies valid for the parent domain (e.g. .teamsoju.com)
+AUTH_COOKIE_DOMAIN=.teamsoju.com
+
+# Optional overrides (defaults: SameSite=None in production, Secure=true in production)
+AUTH_COOKIE_SAMESITE=None
+AUTH_COOKIE_SECURE=true
+```
+
+Notes:
+- These env vars only affect the environment you set them in (staging, preview, or production). Changing staging environment variables will not alter production settings.
+- Browsers only accept a `Domain` attribute that is a parent of the response host. The API responses must be served from a host that is within the `AUTH_COOKIE_DOMAIN` scope (for example `api.staging.teamsoju.com` can set `.teamsoju.com`). If your API is on an unrelated host, you must either proxy the API under your `teamsoju.com` domain or use a different session approach.
+- Local development (`localhost`) will remain unchanged unless you set these variables locally; the README defaults and `.env.example` are safe for localhost testing.
+
 If you run Wrangler directly from `apps/api-server`, include `--env-file ../../.env`;
 otherwise local dev will fall back to the values in `wrangler.jsonc`, which are the
 deployed Worker defaults.

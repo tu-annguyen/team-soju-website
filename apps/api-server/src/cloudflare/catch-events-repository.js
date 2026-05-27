@@ -658,6 +658,50 @@ function createCatchEventsRepository({ dialect, parameter, runCommand, runOne, r
       return this.getEventById(eventId, { includeSubmissions: true });
     },
 
+    async updateSubmission(eventId, managerUserId, submissionId, submission) {
+      await ensureSubmissionLocationColumns();
+      await ensureSubmissionStatusConstraint();
+      const access = await getEventAccess(eventId, managerUserId);
+      if (!access.canManage) {
+        return null;
+      }
+
+      await runCommand(`
+        UPDATE catch_event_submissions
+        SET player_ign = ${parameter(3)},
+            species = ${parameter(4)},
+            nature = ${parameter(5)},
+            total_iv = ${parameter(6)},
+            catch_local = ${parameter(7)},
+            timezone = ${parameter(8)},
+            region = ${parameter(9)},
+            route = ${parameter(10)},
+            catch_utc = ${parameter(11)},
+            score = ${parameter(12)},
+            status = ${parameter(13)},
+            flags_json = ${parameter(14)},
+            updated_at = ${nowExpression}
+        WHERE id = ${parameter(1)}
+          AND event_id = ${parameter(2)}
+      `, [
+        submissionId,
+        eventId,
+        submission.playerIgn,
+        submission.species,
+        submission.nature,
+        submission.totalIv,
+        submission.catchLocal,
+        submission.timezone,
+        submission.region,
+        submission.route,
+        submission.catchUtc,
+        submission.score,
+        submission.status,
+        JSON.stringify(submission.flags || []),
+      ]);
+      return this.getEventById(eventId, { includeSubmissions: true });
+    },
+
     async listCollaborators(eventId, ownerUserId) {
       const event = await this.getEventById(eventId);
       if (!event || event.ownerUserId !== ownerUserId) {

@@ -4,12 +4,13 @@ import { POKEMON_NATURES, calculateCatchEventScore, slugifyEventName, validateCa
 import type { CatchEventCollaborator, CatchEventConfig, CatchEventStatus, CatchEventSubmission } from '../utils/catchEventScoring';
 import { CATCH_EVENT_REGIONS, type CatchEventRegion } from '../utils/catchEventLocations';
 import { getClientLocale, getTranslations, type Locale } from '../i18n';
-import { POKEMON_SPECIES_NAME_SET, POKEMON_SPECIES_NAMES } from '../utils/pokemonSpecies';
+import { POKEMON_SPECIES_NAME_SET } from '../utils/pokemonSpecies';
 import { EventCreateForm } from './catch-events/EventCreateForm';
 import { EventsView } from './catch-events/EventsView';
 import { HostManageView } from './catch-events/HostManageView';
+import type { SubmissionEditForm } from './catch-events/HostManageView';
 import { ProofModal } from './catch-events/ProofModal';
-import { DEFAULT_TIMEZONE, defaultEventForm, defaultNatureRows, defaultSpeciesRows, defaultSubmissionForm, fetchJson, formatLocalDateTime, getBrowserTimezone, getDefaultEventWindow, getSubmissionDisabledReason, getSubmissionProofs, getTimezoneOptions, getTodayLocalDate, normalizeHostTab, normalizeQueryView, pickRandomItems, rowsFromRules, splitRules, statusLabelKeys, type AuthUser, type CatchEventOcrResult, type EventTab, type HostTab, type LegacyViewMode, type RuleRow, type ScreenshotProof, type ViewMode } from './catch-events/shared';
+import { DEFAULT_TIMEZONE, defaultEventForm, defaultNatureRows, defaultSpeciesRows, defaultSubmissionForm, fetchJson, formatLocalDateTime, getBrowserTimezone, getDefaultEventWindow, getSubmissionDisabledReason, getSubmissionProofs, getTimezoneOptions, getTodayLocalDate, normalizeHostTab, normalizeQueryView, rowsFromRules, splitRules, statusLabelKeys, type AuthUser, type CatchEventOcrResult, type EventTab, type HostTab, type LegacyViewMode, type RuleRow, type ScreenshotProof, type ViewMode } from './catch-events/shared';
 type Props = { apiBaseUrl: string; initialView?: LegacyViewMode; locale?: Locale | string };
 const NATURE_SET = new Set<string>(POKEMON_NATURES.map((nature) => nature.toLowerCase()));
 const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props) => {
@@ -67,6 +68,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   const [isEventsLoading, setIsEventsLoading] = useState(true);
   const [isHostManageLoading, setIsHostManageLoading] = useState(false);
   const [hasLoadedOwnedEvents, setHasLoadedOwnedEvents] = useState(false);
+  const [hasLoadedManageableEventIds, setHasLoadedManageableEventIds] = useState(false);
   const [manageableEventIds, setManageableEventIds] = useState<Set<string>>(new Set());
   const [createdEventId, setCreatedEventId] = useState('');
   const [editingEventId, setEditingEventId] = useState('');
@@ -74,6 +76,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   const [collaboratorMessage, setCollaboratorMessage] = useState('');
   const [createError, setCreateError] = useState('');
   const [submitMessage, setSubmitMessage] = useState('');
+  const [submitMessageTone, setSubmitMessageTone] = useState<'success' | 'error'>('success');
   const [ocrMessage, setOcrMessage] = useState('');
   const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [selectedProof, setSelectedProof] = useState<ScreenshotProof | null>(null);
@@ -110,27 +113,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         eventDate: current.eventDate || getTodayLocalDate(),
         timezone: current.timezone || detectedTimezone,
       };
-    });
-    setSpeciesRows((current) => {
-      if (current.some((row) => row.name.trim())) {
-        return current;
-      }
-      const [bonusSpecies, neutralSpecies, penaltySpecies] = pickRandomItems(POKEMON_SPECIES_NAMES, 3);
-      return [
-        { id: `species-${Date.now().toString(36)}-bonus`, name: bonusSpecies, points: '5' },
-        { id: `species-${Date.now().toString(36)}-neutral`, name: neutralSpecies, points: '0' },
-        { id: `species-${Date.now().toString(36)}-penalty`, name: penaltySpecies, points: '-5' },
-      ];
-    });
-    setNatureRows((current) => {
-      if (current.some((row) => row.name.trim())) {
-        return current;
-      }
-      const [bonusNature, penaltyNature] = pickRandomItems(POKEMON_NATURES, 2);
-      return [
-        { id: `nature-${Date.now().toString(36)}-bonus`, name: bonusNature, points: '5' },
-        { id: `nature-${Date.now().toString(36)}-penalty`, name: penaltyNature, points: '-5' },
-      ];
     });
     setSubmissionForm((current) => ({ ...current, timezone: detectedTimezone }));
     if (queryView && ['events', 'host', 'create', 'submit', 'admin', 'leaderboard'].includes(queryView)) {
@@ -206,6 +188,30 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       isMounted = false;
     };
   }, [activeEventId, authUser, hostTab, loadEventDetails, normalizedApiBaseUrl, view]);
+  useEffect(() => {
+    if (!authUser || hasLoadedManageableEventIds) {
+      return;
+    }
+    let isMounted = true;
+    async function loadManageableEventIds() {
+      try {
+        const response = await fetchJson<CatchEventConfig[]>(`${normalizedApiBaseUrl}/catch-events?owner=me`);
+        if (isMounted) {
+          setManageableEventIds(new Set(response.data.map((event) => event.id)));
+          setHasLoadedManageableEventIds(true);
+        }
+      } catch (error) {
+        console.error('Error loading manageable catch events:', error);
+        if (isMounted) {
+          setHasLoadedManageableEventIds(true);
+        }
+      }
+    }
+    loadManageableEventIds();
+    return () => {
+      isMounted = false;
+    };
+  }, [authUser, hasLoadedManageableEventIds, normalizedApiBaseUrl]);
   useEffect(() => {
     if (!activeEventId) {
       setSubmissions([]);
@@ -291,7 +297,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     () => submissions.filter((submission) => submission.eventId === activeEvent?.id),
     [activeEvent?.id, submissions]
   );
-  const showEventSearch = view === 'events' && !activeEvent?.isPrivate;
+  const openedByEventLink = useMemo(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('event'),
+    []
+  );
+  const showEventSearch = view === 'events' && !openedByEventLink && !activeEvent?.isPrivate;
   useEffect(() => {
     if (!activeEvent) return;
     setSubmissionForm((current) => ({
@@ -400,11 +410,13 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   async function handleSubmitEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!activeEvent) {
+      setSubmitMessageTone('error');
       setSubmitMessage(tr('Create or select an event before submitting an entry.'));
       return;
     }
     const disabledReason = getSubmissionDisabledReason(activeEvent);
     if (disabledReason) {
+      setSubmitMessageTone('error');
       setSubmitMessage(tr(disabledReason));
       return;
     }
@@ -427,6 +439,11 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       })),
     };
     const validation = validateCatchEventSubmission(input, activeEvent, browserTimezone);
+    if (validation.errors.length > 0) {
+      setSubmitMessageTone('error');
+      setSubmitMessage(validation.errors.map((error) => tr(error)).join('; '));
+      return;
+    }
     try {
       const response = await fetchJson<CatchEventSubmission>(
         `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(activeEvent.id)}/submissions`,
@@ -466,6 +483,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         species: activeEvent.targets[0] ?? '',
         nature: 'Jolly',
       });
+      setSubmitMessageTone('success');
       setSubmitMessage(
         response.replaced
           ? tr('Entry submitted. Your previous submission was overwritten.')
@@ -476,7 +494,13 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
               : tr('Entry submitted and pending verification.')
       );
     } catch (error) {
-      setSubmitMessage(error instanceof Error ? error.message : tr('Failed to submit entry.'));
+      setSubmitMessageTone('error');
+      const apiError = error as Error & { errors?: string[] };
+      if (Array.isArray(apiError.errors) && apiError.errors.length > 0) {
+        setSubmitMessage(apiError.errors.map((error) => tr(error)).join('; '));
+      } else {
+        setSubmitMessage(error instanceof Error ? error.message : tr('Failed to submit entry.'));
+      }
     }
   }
   async function handleAutofillFromScreenshots() {
@@ -542,6 +566,27 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     } catch (error) {
       console.error('Error updating submission status:', error);
     }
+  }
+  async function updateSubmission(submissionId: string, submission: SubmissionEditForm) {
+    if (!activeEvent) return;
+    const response = await fetchJson<CatchEventConfig>(
+      `${normalizedApiBaseUrl}/catch-events/${encodeURIComponent(activeEvent.id)}/submissions/${encodeURIComponent(submissionId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          playerIgn: submission.playerIgn.trim(),
+          species: submission.species.trim(),
+          nature: submission.nature.trim(),
+          totalIv: Number(submission.totalIv),
+          catchLocal: submission.catchLocal,
+          timezone: submission.timezone,
+          region: submission.region.trim(),
+          route: submission.route.trim(),
+        }),
+      }
+    );
+    setEvents((current) => current.map((event) => event.id === response.data.id ? response.data : event));
+    setSubmissions(response.data.submissions || []);
   }
   async function updateLeaderboardPublished(eventId: string, isLeaderboardPublished: boolean) {
     try {
@@ -753,6 +798,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             speciesRows={speciesRows}
             natureRows={natureRows}
             createError={createError}
+            locale={activeLocale}
             tr={tr}
             translateSpeciesDisplay={translateSpeciesDisplay}
             translateNatureDisplay={translateNatureDisplay}
@@ -778,8 +824,10 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             eventTab={eventTab}
             showEventSearch={showEventSearch}
             authUser={authUser}
+            manageableEventIds={manageableEventIds}
             submissionForm={submissionForm}
             submitMessage={submitMessage}
+            submitMessageTone={submitMessageTone}
             ocrMessage={ocrMessage}
             isOcrLoading={isOcrLoading}
             browserTimezone={browserTimezone}
@@ -821,6 +869,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             setActiveEventId={setActiveEventId}
             setSelectedProof={setSelectedProof}
             updateSubmissionStatus={updateSubmissionStatus}
+            updateSubmission={updateSubmission}
             updateLeaderboardPublished={updateLeaderboardPublished}
             updateSubmissionsClosed={updateSubmissionsClosed}
             updateAutoCheckEnabled={updateAutoCheckEnabled}

@@ -315,7 +315,11 @@ export async function fetchJson<T>(url: string, init?: RequestInit) {
   const body = (await response.json()) as ApiResponse<T>;
 
   if (!response.ok || !body.success) {
-    throw new Error(body.message || 'Request failed.');
+    const apiError = new Error(body.message || 'Request failed.');
+    if ((body as any).errors) {
+      (apiError as any).errors = (body as any).errors;
+    }
+    throw apiError;
   }
 
   return body;

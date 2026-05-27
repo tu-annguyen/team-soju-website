@@ -204,6 +204,9 @@ function serializeCookie(name, value, options = {}) {
   if (options.sameSite) {
     segments.push(`SameSite=${options.sameSite}`);
   }
+  if (options.domain) {
+    segments.push(`Domain=${options.domain}`);
+  }
 
   return segments.join('; ');
 }
@@ -211,11 +214,17 @@ function serializeCookie(name, value, options = {}) {
 function getAuthCookieOptions(env = {}) {
   const isProduction = env.NODE_ENV === 'production';
 
+  // Allow overriding cookie settings via env to support staging previews
+  const overrideSameSite = typeof env.AUTH_COOKIE_SAMESITE === 'string' ? env.AUTH_COOKIE_SAMESITE : null;
+  const overrideSecure = typeof env.AUTH_COOKIE_SECURE === 'string' ? env.AUTH_COOKIE_SECURE === 'true' : null;
+  const domain = typeof env.AUTH_COOKIE_DOMAIN === 'string' && env.AUTH_COOKIE_DOMAIN.trim() ? env.AUTH_COOKIE_DOMAIN.trim() : undefined;
+
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'None' : 'Lax',
+    secure: overrideSecure !== null ? overrideSecure : isProduction,
+    sameSite: overrideSameSite || (isProduction ? 'None' : 'Lax'),
     path: '/',
+    domain,
   };
 }
 
