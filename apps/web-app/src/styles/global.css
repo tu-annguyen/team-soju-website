@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Poppins:wght@600;700&display=swap');
+@import 'flatpickr/dist/flatpickr.css';
 
 @tailwind base;
 @tailwind components;
@@ -68,5 +69,40 @@
     image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
+  }
+
+  .flatpickr-calendar {
+    @apply border border-gray-200 bg-white text-gray-900 shadow-lg dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100;
+  }
+
+  .flatpickr-months,
+  .flatpickr-weekdays,
+  .flatpickr-current-month .flatpickr-monthDropdown-months,
+  .flatpickr-current-month input.cur-year,
+  .flatpickr-time,
+  .flatpickr-time input,
+  .flatpickr-time .flatpickr-am-pm {
+    @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+  }
+
+  .flatpickr-day {
+    @apply text-gray-900 dark:text-gray-100;
+  }
+
+  .flatpickr-day:hover,
+  .flatpickr-day:focus {
+    @apply border-emerald-500 bg-emerald-50 dark:bg-emerald-950;
+  }
+
+  .flatpickr-day.selected,
+  .flatpickr-day.startRange,
+  .flatpickr-day.endRange {
+    @apply border-emerald-600 bg-emerald-600 text-white;
+  }
+
+  .flatpickr-day.flatpickr-disabled,
+  .flatpickr-day.prevMonthDay,
+  .flatpickr-day.nextMonthDay {
+    @apply text-gray-400 dark:text-gray-600;
   }
 }

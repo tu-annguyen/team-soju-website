@@ -167,7 +167,6 @@ const catchEventManager = {
     "Disable auto-check": "关闭自动检查",
     "Entry": "记录",
     "Proof": "证明",
-    "Catch UTC": "捕捉 UTC",
     "Flags": "标记",
     "Missing OT / IGN": "缺少 OT / IGN",
     "Species is not allowed for this event": "该种类不允许用于此活动",

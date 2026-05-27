@@ -2,6 +2,7 @@ import React from 'react';
 import type { FormEvent } from 'react';
 import { POKEMON_NATURES } from '../../utils/catchEventScoring';
 import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
+import type { Locale } from '../../i18n';
 import {
   CATCH_EVENT_REGIONS,
   CATCH_EVENT_ROUTES_BY_REGION,
@@ -15,6 +16,7 @@ import {
   panelClasses,
   smallButtonClasses,
 } from './shared';
+import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
 
 type Props = {
   editingEventId: string;
@@ -24,6 +26,7 @@ type Props = {
   speciesRows: RuleRow[];
   natureRows: RuleRow[];
   createError: string;
+  locale: Locale | string;
   tr: (text: string) => string;
   translateSpeciesDisplay: (species: string) => string;
   translateNatureDisplay: (nature: string) => string;
@@ -165,6 +168,7 @@ export function EventCreateForm({
   speciesRows,
   natureRows,
   createError,
+  locale,
   tr,
   translateSpeciesDisplay,
   translateNatureDisplay,
@@ -198,11 +202,11 @@ export function EventCreateForm({
         </label>
         <label className={labelClasses}>
           {tr('Start time')}
-          <input className={fieldClasses} type="datetime-local" value={eventForm.startLocal} onChange={(event) => setEventForm({ ...eventForm, startLocal: event.target.value })} required />
+          <CatchEventDateTimeInput value={eventForm.startLocal} locale={locale} onChange={(startLocal) => setEventForm({ ...eventForm, startLocal })} required ariaLabel={tr('Start time')} />
         </label>
         <label className={labelClasses}>
           {tr('End time')}
-          <input className={fieldClasses} type="datetime-local" value={eventForm.endLocal} onChange={(event) => setEventForm({ ...eventForm, endLocal: event.target.value })} required />
+          <CatchEventDateTimeInput value={eventForm.endLocal} locale={locale} onChange={(endLocal) => setEventForm({ ...eventForm, endLocal })} required ariaLabel={tr('End time')} />
         </label>
         <label className={labelClasses}>
           {tr('Event timezone')}
