@@ -38,6 +38,7 @@ type Props = {
   eventTab: EventTab;
   showEventSearch: boolean;
   authUser: AuthUser | null;
+  manageableEventIds: Set<string>;
   submissionForm: SubmissionForm;
   submitMessage: string;
   ocrMessage: string;
@@ -68,6 +69,7 @@ export function EventsView({
   eventTab,
   showEventSearch,
   authUser,
+  manageableEventIds,
   submissionForm,
   submitMessage,
   ocrMessage,
@@ -143,27 +145,32 @@ export function EventsView({
           </datalist>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {filteredEvents.map((event) => (
-              <button
+              <div
                 key={event.id}
-                type="button"
                 className={`rounded-lg border p-4 text-left transition-colors ${
                   activeEvent?.id === event.id
                     ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
                     : 'border-gray-200 hover:border-emerald-500 dark:border-gray-800'
                 }`}
-                onClick={() => setActiveEventId(event.id)}
               >
-                <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone, locale)} {tr('to')} {formatEventTimeForBrowser(event.endLocal, event.timezone, browserTimezone, locale)}
-                </p>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  {translateLocation(event.route)}, {translateRegion(event.region)} - {tr('Hosted by')} {event.ownerIgn || tr('Team Soju')}
-                </p>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  {event.targets.map(translateSpeciesDisplay).join(', ')}
-                </p>
-              </button>
+                <button type="button" className="block w-full text-left" onClick={() => setActiveEventId(event.id)}>
+                  <p className="font-bold text-gray-950 dark:text-white">{event.name}</p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    {formatEventTimeForBrowser(event.startLocal, event.timezone, browserTimezone, locale)} {tr('to')} {formatEventTimeForBrowser(event.endLocal, event.timezone, browserTimezone, locale)}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    {translateLocation(event.route)}, {translateRegion(event.region)} - {tr('Hosted by')} {event.ownerIgn || tr('Team Soju')}
+                  </p>
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {event.targets.map(translateSpeciesDisplay).join(', ')}
+                  </p>
+                </button>
+                {(manageableEventIds.has(event.id) || (authUser && event.ownerUserId === authUser.id)) && (
+                  <a className={`mt-3 inline-flex ${smallButtonClasses}`} href={makeToolUrl('host', event.id, 'manage')}>
+                    {tr('Manage')}
+                  </a>
+                )}
+              </div>
             ))}
           </div>
           {filteredEvents.length === 0 && (

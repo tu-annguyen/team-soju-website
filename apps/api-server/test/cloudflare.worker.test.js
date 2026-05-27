@@ -514,6 +514,123 @@ describe('Cloudflare Worker API', () => {
     );
   });
 
+  it('rejects catch event submissions with event-critical mismatches before storing them', async () => {
+    const event = {
+      id: 'event-1',
+      startLocal: '2026-05-23T01:00',
+      endLocal: '2026-05-23T02:30',
+      timezone: 'America/Los_Angeles',
+      region: 'Sinnoh',
+      route: 'Mt. Coronet',
+      targets: ['Feebas'],
+      speciesBonuses: [],
+      speciesPenalties: [],
+      natureBonuses: [],
+      naturePenalties: [],
+      autoCheckEnabled: true,
+      submissionsClosed: false,
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      catchEvents: {
+        getEventById: jest.fn().mockResolvedValue(event),
+        upsertSubmission: jest.fn(),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/submissions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        playerIgn: 'pearpear',
+        species: 'Milotic',
+        nature: 'Docile',
+        totalIv: 141,
+        catchLocal: '2023-05-23T02:20:58',
+        timezone: 'America/Los_Angeles',
+        region: 'Sinnoh',
+        route: 'Mt. Coronet',
+        catchUtc: '2023-05-23T09:20:58.000Z',
+        score: 999,
+        status: 'auto-checked',
+        flags: [],
+        screenshots: [],
+      }),
+    }), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toEqual(expect.arrayContaining([
+      'Species is not allowed for this event',
+      'Catch time is outside the event window',
+    ]));
+    expect(repositories.catchEvents.upsertSubmission).not.toHaveBeenCalled();
+  });
+
+  it('recomputes accepted catch event submission score and status server-side', async () => {
+    const event = {
+      id: 'event-1',
+      startLocal: '2026-05-23T01:00',
+      endLocal: '2026-05-23T02:30',
+      timezone: 'America/Los_Angeles',
+      region: 'Sinnoh',
+      route: 'Mt. Coronet',
+      targets: ['Feebas'],
+      speciesBonuses: [{ name: 'Feebas', points: 5 }],
+      speciesPenalties: [],
+      natureBonuses: [],
+      naturePenalties: [],
+      autoCheckEnabled: true,
+      submissionsClosed: false,
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      catchEvents: {
+        getEventById: jest.fn().mockResolvedValue(event),
+        upsertSubmission: jest.fn().mockResolvedValue({
+          submission: { id: 'submission-1' },
+          replaced: false,
+        }),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/submissions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        playerIgn: 'pearpear',
+        species: 'Feebas',
+        nature: 'Docile',
+        totalIv: 141,
+        catchLocal: '2026-05-23T02:20:58',
+        timezone: 'America/Los_Angeles',
+        region: 'Sinnoh',
+        route: 'Mt. Coronet',
+        catchUtc: '2020-01-01T00:00:00.000Z',
+        score: 1,
+        status: 'needs-review',
+        flags: ['client flag'],
+        screenshots: [],
+      }),
+    }), createEnv());
+
+    expect(response.status).toBe(201);
+    expect(repositories.catchEvents.upsertSubmission).toHaveBeenCalledWith(
+      'event-1',
+      expect.objectContaining({
+        catchUtc: '2026-05-23T09:20:58.000Z',
+        score: 146,
+        status: 'auto-checked',
+        flags: [],
+      }),
+      []
+    );
+  });
+
   it('lets an owner add and remove catch event shared admins by email or IGN', async () => {
     const owner = {
       id: 'owner-1',
@@ -639,6 +756,17 @@ describe('Cloudflare Worker API', () => {
       ownerUserId: 'owner-1',
       name: 'Shared Event',
       isLeaderboardPublished: false,
+      startLocal: '2026-05-23T01:00',
+      endLocal: '2026-05-23T02:30',
+      timezone: 'America/Los_Angeles',
+      region: 'Sinnoh',
+      route: 'Mt. Coronet',
+      targets: ['Feebas'],
+      speciesBonuses: [],
+      speciesPenalties: [],
+      natureBonuses: [],
+      naturePenalties: [],
+      autoCheckEnabled: false,
       submissions: [{ id: 'submission-1', eventId: 'event-1', playerIgn: 'Trainer' }],
     };
     const repositories = {
@@ -655,6 +783,7 @@ describe('Cloudflare Worker API', () => {
           canManage: true,
         }),
         setSubmissionsClosed: jest.fn().mockResolvedValue({ ...event, submissionsClosed: true }),
+        updateSubmission: jest.fn().mockResolvedValue({ ...event, submissions: [{ id: 'submission-1', score: 146 }] }),
       },
     };
     const app = createWorkerApp({ repositories });
@@ -678,12 +807,39 @@ describe('Cloudflare Worker API', () => {
       },
       body: JSON.stringify({ submissionsClosed: true }),
     }), createEnv());
+    const editResponse = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/submissions/submission-1', {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+      body: JSON.stringify({
+        playerIgn: 'Trainer',
+        species: 'Feebas',
+        nature: 'Docile',
+        totalIv: 141,
+        catchLocal: '2026-05-23T02:20:58',
+        timezone: 'America/Los_Angeles',
+        region: 'Sinnoh',
+        route: 'Mt. Coronet',
+      }),
+    }), createEnv());
     const body = await viewResponse.json();
 
     expect(viewResponse.status).toBe(200);
     expect(body.data.submissions).toEqual(event.submissions);
     expect(updateResponse.status).toBe(200);
+    expect(editResponse.status).toBe(200);
     expect(repositories.catchEvents.setSubmissionsClosed).toHaveBeenCalledWith('event-1', 'cohost-1', true);
+    expect(repositories.catchEvents.updateSubmission).toHaveBeenCalledWith(
+      'event-1',
+      'cohost-1',
+      'submission-1',
+      expect.objectContaining({
+        score: 141,
+        status: 'pending-verification',
+      })
+    );
   });
 
   it('keeps owner-only catch event actions unavailable to co-hosts', async () => {

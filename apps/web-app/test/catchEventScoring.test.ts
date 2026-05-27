@@ -46,6 +46,8 @@ function makeSubmission(
     totalIv: score,
     catchLocal: '2026-05-19T15:15',
     timezone: 'America/New_York',
+    region: 'Hoenn',
+    route: 'Route 119',
     screenshotNames: ['summary.png'],
     score,
     catchUtc,
@@ -115,6 +117,8 @@ describe('catch event scoring', () => {
         totalIv: 187,
         catchLocal: '2026-05-19T14:59',
         timezone: 'America/Los_Angeles',
+        region: 'Kanto',
+        route: 'Route 1',
         screenshotNames: [],
       },
       eventFixture,
@@ -122,15 +126,45 @@ describe('catch event scoring', () => {
     );
 
     expect(result.status).toBe('needs-review');
-    expect(result.flags).toEqual(
+    expect(result.errors).toEqual(
       expect.arrayContaining([
         'Species is not allowed for this event',
         'Total IV must be between 0 and 186',
-        'No screenshots attached',
-        'Timezone differs from browser-detected timezone',
+        'Catch region differs from event location',
+        'Catch route/location differs from event location',
         'Catch time is outside the event window',
       ])
     );
+    expect(result.flags).toEqual(['Timezone differs from browser-detected timezone']);
+  });
+
+  it('identifies a catch date from a different year as outside the event window', () => {
+    const result = validateCatchEventSubmission(
+      {
+        playerIgn: 'pearpear',
+        species: 'Feebas',
+        nature: 'Docile',
+        totalIv: 141,
+        catchLocal: '2023-05-23T02:20:58',
+        timezone: 'America/Los_Angeles',
+        region: 'Sinnoh',
+        route: 'Mt. Coronet',
+        screenshotNames: ['summary.png', 'ivs.png', 'info.png'],
+      },
+      {
+        ...eventFixture,
+        name: 'Feebas Fiesta',
+        startLocal: '2026-05-23T01:00',
+        endLocal: '2026-05-23T02:30',
+        timezone: 'America/Los_Angeles',
+        region: 'Sinnoh',
+        route: 'Mt. Coronet',
+        targets: ['Feebas'],
+      },
+      'America/Los_Angeles'
+    );
+
+    expect(result.errors).toContain('Catch time is outside the event window');
   });
 
   it('ranks by highest score with earliest catch time as the tie-break', () => {

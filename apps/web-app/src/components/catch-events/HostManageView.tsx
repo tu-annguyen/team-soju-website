@@ -19,6 +19,17 @@ import {
   type ScreenshotProof,
 } from './shared';
 
+export type SubmissionEditForm = {
+  playerIgn: string;
+  species: string;
+  nature: string;
+  totalIv: string;
+  catchLocal: string;
+  timezone: string;
+  region: string;
+  route: string;
+};
+
 type Props = {
   isAuthLoading: boolean;
   isLoading: boolean;
@@ -39,6 +50,7 @@ type Props = {
   setActiveEventId: (eventId: string) => void;
   setSelectedProof: (proof: ScreenshotProof) => void;
   updateSubmissionStatus: (submissionId: string, status: CatchEventStatus) => void;
+  updateSubmission: (submissionId: string, submission: SubmissionEditForm) => Promise<void>;
   updateLeaderboardPublished: (eventId: string, isPublished: boolean) => void;
   updateSubmissionsClosed: (eventId: string, isClosed: boolean) => void;
   updateAutoCheckEnabled: (eventId: string, autoCheckEnabled: boolean) => void;
@@ -69,6 +81,7 @@ export function HostManageView({
   setActiveEventId,
   setSelectedProof,
   updateSubmissionStatus,
+  updateSubmission,
   updateLeaderboardPublished,
   updateSubmissionsClosed,
   updateAutoCheckEnabled,
@@ -78,6 +91,10 @@ export function HostManageView({
   loadEventIntoForm,
   deleteEvent,
 }: Props) {
+  const [editingSubmissionId, setEditingSubmissionId] = React.useState('');
+  const [submissionEditForm, setSubmissionEditForm] = React.useState<SubmissionEditForm | null>(null);
+  const [submissionEditError, setSubmissionEditError] = React.useState('');
+
   if (isAuthLoading || isLoading) {
     return <HostManageSkeleton />;
   }
@@ -108,6 +125,31 @@ export function HostManageView({
   );
   const isOwner = Boolean(authUser && activeEvent.ownerUserId === authUser.id);
   const collaborators = activeEvent.collaborators || [];
+  const startEditingSubmission = (submission: CatchEventSubmission) => {
+    setEditingSubmissionId(submission.id);
+    setSubmissionEditForm({
+      playerIgn: submission.playerIgn,
+      species: submission.species,
+      nature: submission.nature,
+      totalIv: String(submission.totalIv),
+      catchLocal: submission.catchLocal,
+      timezone: submission.timezone,
+      region: submission.region,
+      route: submission.route,
+    });
+    setSubmissionEditError('');
+  };
+  const saveSubmissionEdit = async () => {
+    if (!editingSubmissionId || !submissionEditForm) return;
+    try {
+      await updateSubmission(editingSubmissionId, submissionEditForm);
+      setEditingSubmissionId('');
+      setSubmissionEditForm(null);
+      setSubmissionEditError('');
+    } catch (error) {
+      setSubmissionEditError(error instanceof Error ? error.message : tr('Failed to update submission.'));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -262,7 +304,7 @@ export function HostManageView({
         <h3 className="text-xl font-bold text-gray-950 dark:text-white">{tr('Review Queue')}</h3>
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
           <p>
-            {tr('Auto-check lets lower-stakes community events accept clean submissions after the tool checks time, location, screenshots, and score. Keep it off for official or competitive events so every entry stays pending until staff review.')}
+            {tr('Auto-check lets lower-stakes community events accept clean submissions after the tool checks Pokemon, time, location, and score. Keep it off for official or competitive events so every entry stays pending until staff review.')}
           </p>
           <button
             type="button"
@@ -282,20 +324,35 @@ export function HostManageView({
                 <th className="py-3 pr-4">{tr('Score')}</th>
                 <th className="py-3 pr-4">{tr('Location')}</th>
                 <th className="py-3 pr-4">{tr('Catch UTC')}</th>
-                <th className="py-3 pr-4">{tr('Flags')}</th>
+                <th className="py-3 pr-4">{tr('Prize Review')}</th>
                 <th className="py-3 pr-4">{tr('Status')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {activeSubmissions.map((submission) => {
                 const prizeReasons = prizeRelevantById.get(submission.id) || [];
+                const isEditing = editingSubmissionId === submission.id && submissionEditForm;
 
                 return (
                 <tr key={submission.id}>
-                  <td className="py-3 pr-4 font-semibold text-gray-950 dark:text-white">{submission.playerIgn}</td>
+                  <td className="py-3 pr-4 font-semibold text-gray-950 dark:text-white">
+                    {isEditing ? (
+                      <input className={fieldClasses} value={submissionEditForm.playerIgn} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, playerIgn: event.target.value })} />
+                    ) : submission.playerIgn}
+                  </td>
                   <td className="py-3 pr-4 text-gray-700 dark:text-gray-300">
-                    {translateSpeciesDisplay(submission.species)}, {translateNatureDisplay(submission.nature)}, {submission.totalIv} {tr('IV')}
-                    <span className="block text-xs">{submission.screenshotNames.length} {tr('screenshot(s)')}</span>
+                    {isEditing ? (
+                      <div className="grid min-w-52 gap-2">
+                        <input className={fieldClasses} list="host-submission-targets" value={submissionEditForm.species} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, species: event.target.value })} />
+                        <input className={fieldClasses} value={submissionEditForm.nature} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, nature: event.target.value })} />
+                        <input className={fieldClasses} min={0} max={186} type="number" value={submissionEditForm.totalIv} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, totalIv: event.target.value })} />
+                      </div>
+                    ) : (
+                      <>
+                        {translateSpeciesDisplay(submission.species)}, {translateNatureDisplay(submission.nature)}, {submission.totalIv} {tr('IV')}
+                        <span className="block text-xs">{submission.screenshotNames.length} {tr('screenshot(s)')}</span>
+                      </>
+                    )}
                   </td>
                   <td className="py-3 pr-4">
                     {submission.screenshotProofs?.length ? (
@@ -327,29 +384,62 @@ export function HostManageView({
                   </td>
                   <td className="py-3 pr-4 font-bold">{submission.score}</td>
                   <td className="py-3 pr-4">
-                    {submission.route ? translateLocation(submission.route) : tr('Unknown')}, {submission.region ? translateRegion(submission.region) : tr('Unknown')}
-                  </td>
-                  <td className="py-3 pr-4">{formatDateTime(submission.catchUtc, undefined, locale)}</td>
-                  <td className="py-3 pr-4">
-                    <span className="block">{submission.flags.length ? submission.flags.map((flag) => tr(flag)).join('; ') : tr('None')}</span>
-                    {prizeReasons.length > 0 && (
-                      <span className="mt-1 block text-xs font-semibold text-amber-700 dark:text-amber-300">
-                        {tr('Prize review:')} {prizeReasons.map((reason) => tr(reason)).join('; ')}
-                      </span>
+                    {isEditing ? (
+                      <div className="grid min-w-52 gap-2">
+                        <input className={fieldClasses} value={submissionEditForm.region} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, region: event.target.value })} />
+                        <input className={fieldClasses} value={submissionEditForm.route} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, route: event.target.value })} />
+                      </div>
+                    ) : (
+                      <>{submission.route ? translateLocation(submission.route) : tr('Unknown')}, {submission.region ? translateRegion(submission.region) : tr('Unknown')}</>
                     )}
                   </td>
                   <td className="py-3 pr-4">
-                    <select className={fieldClasses} value={submission.status} onChange={(event) => updateSubmissionStatus(submission.id, event.target.value as CatchEventStatus)}>
-                      {Object.entries(statusLabels).map(([status, label]) => (
-                        <option key={status} value={status}>{label}</option>
-                      ))}
-                    </select>
+                    {isEditing ? (
+                      <div className="grid min-w-56 gap-2">
+                        <input className={fieldClasses} type="datetime-local" step={1} placeholder="YYYY-MM-DD HH:MM:SS" value={submissionEditForm.catchLocal} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, catchLocal: event.target.value })} />
+                        <input className={fieldClasses} list="timezone-options" value={submissionEditForm.timezone} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, timezone: event.target.value })} />
+                      </div>
+                    ) : formatDateTime(submission.catchUtc, undefined, locale)}
+                  </td>
+                  <td className="py-3 pr-4">
+                    {[...submission.flags, ...prizeReasons].length ? (
+                      <span className="block text-xs font-semibold text-amber-700 dark:text-amber-300">
+                        {[...submission.flags, ...prizeReasons].map((reason) => tr(reason)).join('; ')}
+                      </span>
+                    ) : tr('None')}
+                  </td>
+                  <td className="py-3 pr-4">
+                    <div className="grid gap-2">
+                      <select className={fieldClasses} value={submission.status} onChange={(event) => updateSubmissionStatus(submission.id, event.target.value as CatchEventStatus)}>
+                        {Object.entries(statusLabels).map(([status, label]) => (
+                          <option key={status} value={status}>{label}</option>
+                        ))}
+                      </select>
+                      {isEditing ? (
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" className={smallButtonClasses} onClick={saveSubmissionEdit}>{tr('Save')}</button>
+                          <button type="button" className={smallButtonClasses} onClick={() => { setEditingSubmissionId(''); setSubmissionEditForm(null); }}>{tr('Cancel')}</button>
+                        </div>
+                      ) : (
+                        <button type="button" className={smallButtonClasses} onClick={() => startEditingSubmission(submission)}>
+                          {tr('Edit')}
+                        </button>
+                      )}
+                      {isEditing && submissionEditError && (
+                        <span className="text-xs font-semibold text-rose-600 dark:text-rose-300">{submissionEditError}</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
                 );
               })}
             </tbody>
           </table>
+          <datalist id="host-submission-targets">
+            {activeEvent.targets.map((target) => (
+              <option key={target} value={target} label={translateSpeciesDisplay(target)} />
+            ))}
+          </datalist>
           {activeSubmissions.length === 0 && <p className="py-8 text-center text-gray-600 dark:text-gray-300">{tr('No submissions yet.')}</p>}
         </div>
       </div>

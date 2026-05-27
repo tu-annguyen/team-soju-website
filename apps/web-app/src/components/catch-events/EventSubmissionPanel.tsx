@@ -54,13 +54,22 @@ export function EventSubmissionPanel({
   onAutofill,
 }: Props) {
   const disabledReason = getSubmissionDisabledReason(activeEvent);
+  const [catchDate = '', catchTime = ''] = submissionForm.catchLocal.split('T');
+  const updateCatchDateTimePart = (part: 'date' | 'time', value: string) => {
+    const nextDate = part === 'date' ? value : catchDate;
+    const nextTime = part === 'time' ? value : catchTime;
+    setSubmissionForm({
+      ...submissionForm,
+      catchLocal: nextDate && nextTime ? `${nextDate}T${nextTime}` : submissionForm.catchLocal,
+    });
+  };
 
   return (
     <div className={`${panelClasses} ${disabledReason ? 'opacity-60' : ''}`}>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-950 dark:text-white">{tr('Player Submission')}</h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          {tr("Upload your submission Pokemon's summary, IVs, and catch time as screenshots.")}
+          {tr('Required fields are marked. Screenshots are optional proof and can speed up host review or autofill.')}
         </p>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
           {tr('Browser timezone suggestion:')} {browserTimezone}
@@ -74,7 +83,7 @@ export function EventSubmissionPanel({
       <form className="space-y-5" onSubmit={onSubmit}>
         <fieldset className="space-y-5" disabled={Boolean(disabledReason)}>
           <label className={labelClasses}>
-            {tr('Nature/OT screenshot')}
+            {tr('Nature/OT screenshot')} <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
             <input
               className={fieldClasses}
               type="file"
@@ -91,7 +100,7 @@ export function EventSubmissionPanel({
             />
           </label>
           <label className={labelClasses}>
-            {tr('IVs screenshot')}
+            {tr('IVs screenshot')} <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
             <input
               className={fieldClasses}
               type="file"
@@ -108,7 +117,7 @@ export function EventSubmissionPanel({
             />
           </label>
           <label className={labelClasses}>
-            {tr('Catch time/location screenshot')}
+            {tr('Catch time/location screenshot')} <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
             <input
               className={fieldClasses}
               type="file"
@@ -139,11 +148,11 @@ export function EventSubmissionPanel({
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <label className={labelClasses}>
-              {tr('Player IGN / OT')}
+              {tr('Player IGN / OT')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} value={submissionForm.playerIgn} onChange={(event) => setSubmissionForm({ ...submissionForm, playerIgn: event.target.value })} required />
             </label>
             <label className={labelClasses}>
-              {tr('Pokemon species')}
+              {tr('Pokemon species')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} list="catch-event-targets" value={submissionForm.species} onChange={(event) => setSubmissionForm({ ...submissionForm, species: event.target.value })} required />
               <datalist id="catch-event-targets">
                 {activeEvent.targets.map((target) => (
@@ -152,7 +161,7 @@ export function EventSubmissionPanel({
               </datalist>
             </label>
             <label className={labelClasses}>
-              {tr('Nature')}
+              {tr('Nature')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} list="submission-nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required />
               <datalist id="submission-nature-options">
                 {POKEMON_NATURES.map((nature) => (
@@ -161,19 +170,45 @@ export function EventSubmissionPanel({
               </datalist>
             </label>
             <label className={labelClasses}>
-              {tr('Total IV')}
+              {tr('Total IV')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} min={0} max={186} type="number" value={submissionForm.totalIv} onChange={(event) => setSubmissionForm({ ...submissionForm, totalIv: Number(event.target.value) })} required />
             </label>
             <label className={labelClasses}>
-              {tr('Catch date/time')}
-              <input className={fieldClasses} type="datetime-local" step={1} value={submissionForm.catchLocal} onChange={(event) => setSubmissionForm({ ...submissionForm, catchLocal: event.target.value })} required />
+              {tr('Catch date/time')} <span className="text-rose-600">*</span>
+              <input
+                className={fieldClasses}
+                type="datetime-local"
+                step={1}
+                value={submissionForm.catchLocal}
+                onChange={(event) => setSubmissionForm({ ...submissionForm, catchLocal: event.target.value })}
+                placeholder="YYYY-MM-DD HH:MM:SS"
+                required
+              />
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <input
+                  className={fieldClasses.replace('mt-2 ', '')}
+                  type="date"
+                  value={catchDate}
+                  onChange={(event) => updateCatchDateTimePart('date', event.target.value)}
+                  aria-label={tr('Catch date picker')}
+                />
+                <input
+                  className={fieldClasses.replace('mt-2 ', '')}
+                  type="time"
+                  step={1}
+                  value={catchTime}
+                  onChange={(event) => updateCatchDateTimePart('time', event.target.value)}
+                  aria-label={tr('Catch time picker')}
+                  placeholder="HH:MM:SS"
+                />
+              </div>
             </label>
             <label className={labelClasses}>
-              {tr('Player timezone')}
+              {tr('Player timezone')} <span className="text-rose-600">*</span>
               <input className={fieldClasses} list="timezone-options" value={submissionForm.timezone} onChange={(event) => setSubmissionForm({ ...submissionForm, timezone: event.target.value })} required />
             </label>
             <label className={labelClasses}>
-              {tr('Catch region')}
+              {tr('Catch region')} <span className="text-rose-600">*</span>
               <input
                 className={fieldClasses}
                 list="submission-region-options"
@@ -188,7 +223,7 @@ export function EventSubmissionPanel({
               </datalist>
             </label>
             <label className={labelClasses}>
-              {tr('Catch route/location')}
+              {tr('Catch route/location')} <span className="text-rose-600">*</span>
               <input
                 className={fieldClasses}
                 list="submission-route-options"

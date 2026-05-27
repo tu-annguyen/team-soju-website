@@ -198,11 +198,11 @@ export function EventCreateForm({
         </label>
         <label className={labelClasses}>
           {tr('Start time')}
-          <input className={fieldClasses} type="datetime-local" value={eventForm.startLocal} onChange={(event) => setEventForm({ ...eventForm, startLocal: event.target.value })} required />
+          <input className={fieldClasses} type="datetime-local" step={1} placeholder="YYYY-MM-DD HH:MM:SS" value={eventForm.startLocal} onChange={(event) => setEventForm({ ...eventForm, startLocal: event.target.value })} required />
         </label>
         <label className={labelClasses}>
           {tr('End time')}
-          <input className={fieldClasses} type="datetime-local" value={eventForm.endLocal} onChange={(event) => setEventForm({ ...eventForm, endLocal: event.target.value })} required />
+          <input className={fieldClasses} type="datetime-local" step={1} placeholder="YYYY-MM-DD HH:MM:SS" value={eventForm.endLocal} onChange={(event) => setEventForm({ ...eventForm, endLocal: event.target.value })} required />
         </label>
         <label className={labelClasses}>
           {tr('Event timezone')}

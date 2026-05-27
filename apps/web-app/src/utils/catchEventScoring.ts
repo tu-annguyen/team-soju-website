@@ -84,6 +84,13 @@ export type PrizeRelevantCatchEventSubmission = CatchEventSubmission & {
   reviewReasons: string[];
 };
 
+export type CatchEventSubmissionValidation = {
+  catchUtc: string;
+  errors: string[];
+  flags: string[];
+  status: CatchEventStatus;
+};
+
 export const POKEMON_NATURES = [
   'Hardy',
   'Lonely',
@@ -241,42 +248,39 @@ export function validateCatchEventSubmission(
   input: CatchEventSubmissionInput,
   event: CatchEventConfig,
   browserTimezone?: string
-) {
+): CatchEventSubmissionValidation {
+  const errors: string[] = [];
   const flags: string[] = [];
 
   if (!input.playerIgn.trim()) {
-    flags.push('Missing OT / IGN');
+    errors.push('Missing OT / IGN');
   }
 
   if (!event.targets.map(normalizeName).includes(normalizeName(input.species))) {
-    flags.push('Species is not allowed for this event');
+    errors.push('Species is not allowed for this event');
   }
 
   if (input.totalIv < 0 || input.totalIv > 186) {
-    flags.push('Total IV must be between 0 and 186');
+    errors.push('Total IV must be between 0 and 186');
   }
 
   if (!natureSet.has(normalizeName(input.nature))) {
-    flags.push('Nature is not one of the standard Pokemon natures');
-  }
-
-  if (input.screenshotNames.length === 0) {
-    flags.push('No screenshots attached');
+    errors.push('Nature is not one of the standard Pokemon natures');
   }
 
   const inputRegion = input.region?.trim() || '';
   const inputRoute = input.route?.trim() || '';
 
   if (!inputRegion) {
-    flags.push('Missing catch region');
+    errors.push('Missing catch region');
   } else if (normalizeName(inputRegion) !== normalizeName(event.region)) {
-    flags.push('Catch region differs from event location');
+    errors.push('Catch region differs from event location');
   }
 
   if (!inputRoute) {
-    flags.push('Missing catch route/location');
+    errors.push('Missing catch route/location');
   } else if (normalizeName(inputRoute) !== normalizeName(event.route)) {
-    flags.push('Catch route/location differs from event location');
+    errors.push('Catch route/location differs from event location');
   }
 
   if (browserTimezone && input.timezone !== browserTimezone) {
@@ -290,16 +294,17 @@ export function validateCatchEventSubmission(
     const endUtc = zonedLocalDateTimeToUtc(event.endLocal, event.timezone);
 
     if (catchUtc < startUtc || catchUtc > endUtc) {
-      flags.push('Catch time is outside the event window');
+      errors.push('Catch time is outside the event window');
     }
   } catch {
-    flags.push('Catch time or timezone could not be parsed');
+    errors.push('Catch time or timezone could not be parsed');
   }
 
   return {
     catchUtc,
+    errors,
     flags,
-    status: flags.length > 0
+    status: errors.length > 0 || flags.length > 0
       ? ('needs-review' as const)
       : event.autoCheckEnabled
         ? ('auto-checked' as const)
