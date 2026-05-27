@@ -10,7 +10,7 @@ import { resolveLocale, type Locale } from '../../i18n';
 import { fieldClasses } from './shared';
 
 const FLATPICKR_DATE_FORMAT = 'M j, Y H:i:S';
-export const CATCH_EVENT_DATETIME_PLACEHOLDER = 'May 23, 2026 02:20:58';
+export const CATCH_EVENT_DATETIME_PLACEHOLDER = 'Dec 31, 2026 23:59:59';
 
 type Props = {
   value: string;
@@ -29,8 +29,8 @@ function padDatePart(value: number) {
 function getFlatpickrLocale(localeInput: Locale | string = 'en'): FlatpickrLocale | undefined {
   const locale = resolveLocale(localeInput);
 
-  if (locale === 'es') return Spanish;
-  if (locale === 'zh') return Mandarin;
+  if (locale === 'es') return Spanish as FlatpickrLocale;
+  if (locale === 'zh') return Mandarin as FlatpickrLocale;
 
   return undefined;
 }
@@ -58,7 +58,13 @@ export function catchEventDateTimeValueToDisplay(value: string, locale: Locale |
     Number(second)
   );
 
-  return flatpickr.formatDate(date, FLATPICKR_DATE_FORMAT, getFlatpickrLocale(locale));
+  const flatpickrLocale = getFlatpickrLocale(locale);
+  const instance = flatpickr(document.createElement('input'), {
+    locale: flatpickrLocale,
+  });
+  const formatted = instance.formatDate(date, FLATPICKR_DATE_FORMAT);
+  instance.destroy();
+  return formatted;
 }
 
 function createLocalizedParser(locale: Locale | string) {

@@ -19,6 +19,12 @@ import {
   type ScreenshotProof,
 } from './shared';
 import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
+import { POKEMON_NATURES } from '../../utils/catchEventScoring';
+import {
+  CATCH_EVENT_REGIONS,
+  CATCH_EVENT_ROUTES_BY_REGION,
+  type CatchEventRegion,
+} from '../../utils/catchEventLocations';
 
 export type SubmissionEditForm = {
   playerIgn: string;
@@ -345,7 +351,12 @@ export function HostManageView({
                     {isEditing ? (
                       <div className="grid min-w-52 gap-2">
                         <input className={fieldClasses} list="host-submission-targets" value={submissionEditForm.species} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, species: event.target.value })} />
-                        <input className={fieldClasses} value={submissionEditForm.nature} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, nature: event.target.value })} />
+                        <input className={fieldClasses} list="submission-nature-options" value={submissionEditForm.nature} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, nature: event.target.value })} required />
+                        <datalist id="submission-nature-options">
+                          {POKEMON_NATURES.map((nature) => (
+                            <option key={nature} value={nature} label={translateNatureDisplay(nature)} />
+                          ))}
+                        </datalist>
                         <input className={fieldClasses} min={0} max={186} type="number" value={submissionEditForm.totalIv} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, totalIv: event.target.value })} />
                       </div>
                     ) : (
@@ -387,8 +398,30 @@ export function HostManageView({
                   <td className="py-3 pr-4">
                     {isEditing ? (
                       <div className="grid min-w-52 gap-2">
-                        <input className={fieldClasses} value={submissionEditForm.region} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, region: event.target.value })} />
-                        <input className={fieldClasses} value={submissionEditForm.route} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, route: event.target.value })} />
+                        <input
+                          className={fieldClasses}
+                          list="submission-region-options"
+                          value={submissionEditForm.region}
+                          onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, region: event.target.value, route: '' })}
+                          required
+                        />
+                        <datalist id="submission-region-options">
+                          {CATCH_EVENT_REGIONS.map((region) => (
+                            <option key={region} value={region} label={translateRegion(region)} />
+                          ))}
+                        </datalist>
+                        <input
+                          className={fieldClasses}
+                          list="submission-route-options"
+                          value={submissionEditForm.route}
+                          onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, route: event.target.value })}
+                          required
+                        />
+                        <datalist id="submission-route-options">
+                          {(CATCH_EVENT_ROUTES_BY_REGION[submissionEditForm.region as CatchEventRegion] || []).map((route) => (
+                            <option key={route} value={route} label={translateLocation(route)} />
+                          ))}
+                        </datalist>
                       </div>
                     ) : (
                       <>{submission.route ? translateLocation(submission.route) : tr('Unknown')}, {submission.region ? translateRegion(submission.region) : tr('Unknown')}</>
