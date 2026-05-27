@@ -76,6 +76,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   const [collaboratorMessage, setCollaboratorMessage] = useState('');
   const [createError, setCreateError] = useState('');
   const [submitMessage, setSubmitMessage] = useState('');
+  const [submitMessageTone, setSubmitMessageTone] = useState<'success' | 'error'>('success');
   const [ocrMessage, setOcrMessage] = useState('');
   const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [selectedProof, setSelectedProof] = useState<ScreenshotProof | null>(null);
@@ -430,11 +431,13 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   async function handleSubmitEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!activeEvent) {
+      setSubmitMessageTone('error');
       setSubmitMessage(tr('Create or select an event before submitting an entry.'));
       return;
     }
     const disabledReason = getSubmissionDisabledReason(activeEvent);
     if (disabledReason) {
+      setSubmitMessageTone('error');
       setSubmitMessage(tr(disabledReason));
       return;
     }
@@ -458,7 +461,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     };
     const validation = validateCatchEventSubmission(input, activeEvent, browserTimezone);
     if (validation.errors.length > 0) {
-      setSubmitMessage(validation.errors.map((error) => tr(error)).join(' '));
+      setSubmitMessageTone('error');
+      setSubmitMessage(validation.errors.map((error) => tr(error)).join('; '));
       return;
     }
     try {
@@ -500,6 +504,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         species: activeEvent.targets[0] ?? '',
         nature: 'Jolly',
       });
+      setSubmitMessageTone('success');
       setSubmitMessage(
         response.replaced
           ? tr('Entry submitted. Your previous submission was overwritten.')
@@ -510,6 +515,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
               : tr('Entry submitted and pending verification.')
       );
     } catch (error) {
+      setSubmitMessageTone('error');
       setSubmitMessage(error instanceof Error ? error.message : tr('Failed to submit entry.'));
     }
   }
@@ -836,6 +842,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             manageableEventIds={manageableEventIds}
             submissionForm={submissionForm}
             submitMessage={submitMessage}
+            submitMessageTone={submitMessageTone}
             ocrMessage={ocrMessage}
             isOcrLoading={isOcrLoading}
             browserTimezone={browserTimezone}

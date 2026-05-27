@@ -22,6 +22,7 @@ type Props = {
   activeEvent: CatchEventConfig;
   submissionForm: SubmissionForm;
   submitMessage: string;
+  submitMessageTone: 'success' | 'error';
   ocrMessage: string;
   isOcrLoading: boolean;
   browserTimezone: string;
@@ -40,6 +41,7 @@ export function EventSubmissionPanel({
   activeEvent,
   submissionForm,
   submitMessage,
+  submitMessageTone,
   ocrMessage,
   isOcrLoading,
   browserTimezone,
@@ -54,10 +56,14 @@ export function EventSubmissionPanel({
   onAutofill,
 }: Props) {
   const disabledReason = getSubmissionDisabledReason(activeEvent);
+  const [isCatchPickerOpen, setIsCatchPickerOpen] = React.useState(false);
   const [catchDate = '', catchTime = ''] = submissionForm.catchLocal.split('T');
+  const catchTimeWithSeconds = catchTime.length === 5 ? `${catchTime}:00` : catchTime;
+  const displayCatchLocal = submissionForm.catchLocal.replace('T', ' ');
+  const normalizeCatchLocalInput = (value: string) => value.trim().replace(/\s+/, 'T');
   const updateCatchDateTimePart = (part: 'date' | 'time', value: string) => {
     const nextDate = part === 'date' ? value : catchDate;
-    const nextTime = part === 'time' ? value : catchTime;
+    const nextTime = part === 'time' ? value : catchTimeWithSeconds;
     setSubmissionForm({
       ...submissionForm,
       catchLocal: nextDate && nextTime ? `${nextDate}T${nextTime}` : submissionForm.catchLocal,
@@ -175,32 +181,46 @@ export function EventSubmissionPanel({
             </label>
             <label className={labelClasses}>
               {tr('Catch date/time')} <span className="text-rose-600">*</span>
-              <input
-                className={fieldClasses}
-                type="datetime-local"
-                step={1}
-                value={submissionForm.catchLocal}
-                onChange={(event) => setSubmissionForm({ ...submissionForm, catchLocal: event.target.value })}
-                placeholder="YYYY-MM-DD HH:MM:SS"
-                required
-              />
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div className="relative">
                 <input
-                  className={fieldClasses.replace('mt-2 ', '')}
-                  type="date"
-                  value={catchDate}
-                  onChange={(event) => updateCatchDateTimePart('date', event.target.value)}
-                  aria-label={tr('Catch date picker')}
+                  className={`${fieldClasses} pr-12`}
+                  type="text"
+                  inputMode="numeric"
+                  value={displayCatchLocal}
+                  onChange={(event) => setSubmissionForm({ ...submissionForm, catchLocal: normalizeCatchLocalInput(event.target.value) })}
+                  placeholder="YYYY-MM-DD HH:MM:SS"
+                  required
                 />
-                <input
-                  className={fieldClasses.replace('mt-2 ', '')}
-                  type="time"
-                  step={1}
-                  value={catchTime}
-                  onChange={(event) => updateCatchDateTimePart('time', event.target.value)}
-                  aria-label={tr('Catch time picker')}
-                  placeholder="HH:MM:SS"
-                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-4 rounded-md border border-gray-300 px-2 py-1 text-xs font-bold text-gray-700 hover:border-emerald-500 dark:border-gray-700 dark:text-gray-200"
+                  aria-label={tr('Open date and time picker')}
+                  onClick={() => setIsCatchPickerOpen((current) => !current)}
+                >
+                  {tr('Pick')}
+                </button>
+                {isCatchPickerOpen && (
+                  <div className="absolute z-20 mt-2 grid w-full gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-950 sm:grid-cols-[1fr_1fr_auto]">
+                    <input
+                      className={fieldClasses.replace('mt-2 ', '')}
+                      type="date"
+                      value={catchDate}
+                      onChange={(event) => updateCatchDateTimePart('date', event.target.value)}
+                      aria-label={tr('Catch date picker')}
+                    />
+                    <input
+                      className={fieldClasses.replace('mt-2 ', '')}
+                      type="time"
+                      step={1}
+                      value={catchTimeWithSeconds}
+                      onChange={(event) => updateCatchDateTimePart('time', event.target.value)}
+                      aria-label={tr('Catch time picker')}
+                    />
+                    <button type="button" className={smallButtonClasses} onClick={() => setIsCatchPickerOpen(false)}>
+                      {tr('Done')}
+                    </button>
+                  </div>
+                )}
               </div>
             </label>
             <label className={labelClasses}>
@@ -252,7 +272,9 @@ export function EventSubmissionPanel({
             {tr('Submit entry')}
           </button>
           {submitMessage && (
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{submitMessage}</p>
+            <p className={`text-sm font-semibold ${submitMessageTone === 'error' ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'}`}>
+              {submitMessage}
+            </p>
           )}
         </fieldset>
       </form>

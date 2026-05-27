@@ -41,6 +41,7 @@ type Props = {
   manageableEventIds: Set<string>;
   submissionForm: SubmissionForm;
   submitMessage: string;
+  submitMessageTone: 'success' | 'error';
   ocrMessage: string;
   isOcrLoading: boolean;
   browserTimezone: string;
@@ -72,6 +73,7 @@ export function EventsView({
   manageableEventIds,
   submissionForm,
   submitMessage,
+  submitMessageTone,
   ocrMessage,
   isOcrLoading,
   browserTimezone,
@@ -239,6 +241,7 @@ export function EventsView({
               activeEvent={activeEvent}
               submissionForm={submissionForm}
               submitMessage={submitMessage}
+              submitMessageTone={submitMessageTone}
               ocrMessage={ocrMessage}
               isOcrLoading={isOcrLoading}
               browserTimezone={browserTimezone}
