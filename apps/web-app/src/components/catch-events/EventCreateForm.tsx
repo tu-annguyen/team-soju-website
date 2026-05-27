@@ -15,6 +15,7 @@ import {
   panelClasses,
   smallButtonClasses,
 } from './shared';
+import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
 
 type Props = {
   editingEventId: string;
@@ -198,11 +199,11 @@ export function EventCreateForm({
         </label>
         <label className={labelClasses}>
           {tr('Start time')}
-          <input className={fieldClasses} type="datetime-local" step={1} placeholder="YYYY-MM-DD HH:MM:SS" value={eventForm.startLocal} onChange={(event) => setEventForm({ ...eventForm, startLocal: event.target.value })} required />
+          <CatchEventDateTimeInput value={eventForm.startLocal} onChange={(startLocal) => setEventForm({ ...eventForm, startLocal })} required ariaLabel={tr('Start time')} />
         </label>
         <label className={labelClasses}>
           {tr('End time')}
-          <input className={fieldClasses} type="datetime-local" step={1} placeholder="YYYY-MM-DD HH:MM:SS" value={eventForm.endLocal} onChange={(event) => setEventForm({ ...eventForm, endLocal: event.target.value })} required />
+          <CatchEventDateTimeInput value={eventForm.endLocal} onChange={(endLocal) => setEventForm({ ...eventForm, endLocal })} required ariaLabel={tr('End time')} />
         </label>
         <label className={labelClasses}>
           {tr('Event timezone')}

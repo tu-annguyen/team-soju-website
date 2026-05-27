@@ -18,6 +18,7 @@ import {
   type AuthUser,
   type ScreenshotProof,
 } from './shared';
+import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
 
 export type SubmissionEditForm = {
   playerIgn: string;
@@ -396,7 +397,7 @@ export function HostManageView({
                   <td className="py-3 pr-4">
                     {isEditing ? (
                       <div className="grid min-w-56 gap-2">
-                        <input className={fieldClasses} type="datetime-local" step={1} placeholder="YYYY-MM-DD HH:MM:SS" value={submissionEditForm.catchLocal} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, catchLocal: event.target.value })} />
+                        <CatchEventDateTimeInput value={submissionEditForm.catchLocal} onChange={(catchLocal) => setSubmissionEditForm({ ...submissionEditForm, catchLocal })} ariaLabel={tr('Catch date/time')} />
                         <input className={fieldClasses} list="timezone-options" value={submissionEditForm.timezone} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, timezone: event.target.value })} />
                       </div>
                     ) : formatDateTime(submission.catchUtc, undefined, locale)}
