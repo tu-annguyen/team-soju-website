@@ -79,6 +79,8 @@
 				"DISCORD_REDIRECT_URI": "https://team-soju-api-staging.tunacore.workers.dev/api/auth/discord/callback",
 				"WEB_APP_URL": "https://staging.teamsoju.com",
 				"API_ORIGIN": "https://team-soju-api-staging.tunacore.workers.dev",
+				"AUTH_COOKIE_SAMESITE": "None",
+				"AUTH_COOKIE_SECURE": "true",
 				"EMAIL_PROVIDER": "resend",
 				"EMAIL_FROM": "Team Soju <no-reply@teamsoju.com>"
 			},
