@@ -2,6 +2,7 @@ import React from 'react';
 import type { FormEvent } from 'react';
 import { POKEMON_NATURES } from '../../utils/catchEventScoring';
 import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
+import type { Locale } from '../../i18n';
 import {
   CATCH_EVENT_REGIONS,
   CATCH_EVENT_ROUTES_BY_REGION,
@@ -25,6 +26,7 @@ type Props = {
   speciesRows: RuleRow[];
   natureRows: RuleRow[];
   createError: string;
+  locale: Locale | string;
   tr: (text: string) => string;
   translateSpeciesDisplay: (species: string) => string;
   translateNatureDisplay: (nature: string) => string;
@@ -166,6 +168,7 @@ export function EventCreateForm({
   speciesRows,
   natureRows,
   createError,
+  locale,
   tr,
   translateSpeciesDisplay,
   translateNatureDisplay,
@@ -199,11 +202,11 @@ export function EventCreateForm({
         </label>
         <label className={labelClasses}>
           {tr('Start time')}
-          <CatchEventDateTimeInput value={eventForm.startLocal} onChange={(startLocal) => setEventForm({ ...eventForm, startLocal })} required ariaLabel={tr('Start time')} />
+          <CatchEventDateTimeInput value={eventForm.startLocal} locale={locale} onChange={(startLocal) => setEventForm({ ...eventForm, startLocal })} required ariaLabel={tr('Start time')} />
         </label>
         <label className={labelClasses}>
           {tr('End time')}
-          <CatchEventDateTimeInput value={eventForm.endLocal} onChange={(endLocal) => setEventForm({ ...eventForm, endLocal })} required ariaLabel={tr('End time')} />
+          <CatchEventDateTimeInput value={eventForm.endLocal} locale={locale} onChange={(endLocal) => setEventForm({ ...eventForm, endLocal })} required ariaLabel={tr('End time')} />
         </label>
         <label className={labelClasses}>
           {tr('Event timezone')}

@@ -814,6 +814,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             speciesRows={speciesRows}
             natureRows={natureRows}
             createError={createError}
+            locale={activeLocale}
             tr={tr}
             translateSpeciesDisplay={translateSpeciesDisplay}
             translateNatureDisplay={translateNatureDisplay}

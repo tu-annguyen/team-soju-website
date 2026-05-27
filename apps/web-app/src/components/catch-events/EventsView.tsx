@@ -245,6 +245,7 @@ export function EventsView({
               ocrMessage={ocrMessage}
               isOcrLoading={isOcrLoading}
               browserTimezone={browserTimezone}
+              locale={locale}
               tr={tr}
               translateSpeciesDisplay={translateSpeciesDisplay}
               translateNatureDisplay={translateNatureDisplay}

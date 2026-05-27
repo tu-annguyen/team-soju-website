@@ -21,4 +21,25 @@ describe('CatchEventDateTimeInput formatting', () => {
       '2026-04-07T09:04:05'
     );
   });
+
+  it('formats month names with the Spanish Flatpickr locale', () => {
+    expect(catchEventDateTimeValueToDisplay('2026-04-07T09:04:05', 'es')).toBe(
+      'Abr 7, 2026 09:04:05'
+    );
+  });
+
+  it('parses Spanish month names with Flatpickr parseDate', () => {
+    expect(catchEventDateTimeDisplayToValue('Abr 7, 2026 09:04:05', 'es')).toBe(
+      '2026-04-07T09:04:05'
+    );
+  });
+
+  it('formats and parses Chinese month names with the Mandarin Flatpickr locale', () => {
+    expect(catchEventDateTimeValueToDisplay('2026-04-07T09:04:05', 'zh')).toBe(
+      '四月 7, 2026 09:04:05'
+    );
+    expect(catchEventDateTimeDisplayToValue('四月 7, 2026 09:04:05', 'zh')).toBe(
+      '2026-04-07T09:04:05'
+    );
+  });
 });

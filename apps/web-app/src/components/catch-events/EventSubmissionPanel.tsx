@@ -2,6 +2,7 @@ import React from 'react';
 import type { FormEvent } from 'react';
 import { POKEMON_NATURES, calculateCatchEventScore } from '../../utils/catchEventScoring';
 import type { CatchEventConfig } from '../../utils/catchEventScoring';
+import type { Locale } from '../../i18n';
 import {
   CATCH_EVENT_REGIONS,
   CATCH_EVENT_ROUTES_BY_REGION,
@@ -27,6 +28,7 @@ type Props = {
   ocrMessage: string;
   isOcrLoading: boolean;
   browserTimezone: string;
+  locale: Locale | string;
   tr: (text: string) => string;
   translateSpeciesDisplay: (species: string) => string;
   translateNatureDisplay: (nature: string) => string;
@@ -46,6 +48,7 @@ export function EventSubmissionPanel({
   ocrMessage,
   isOcrLoading,
   browserTimezone,
+  locale,
   tr,
   translateSpeciesDisplay,
   translateNatureDisplay,
@@ -169,7 +172,7 @@ export function EventSubmissionPanel({
             </label>
             <label className={labelClasses}>
               {tr('Catch date/time')} <span className="text-rose-600">*</span>
-              <CatchEventDateTimeInput value={submissionForm.catchLocal} onChange={(catchLocal) => setSubmissionForm({ ...submissionForm, catchLocal })} required ariaLabel={tr('Catch date/time')} />
+              <CatchEventDateTimeInput value={submissionForm.catchLocal} locale={locale} onChange={(catchLocal) => setSubmissionForm({ ...submissionForm, catchLocal })} required ariaLabel={tr('Catch date/time')} />
             </label>
             <label className={labelClasses}>
               {tr('Player timezone')} <span className="text-rose-600">*</span>

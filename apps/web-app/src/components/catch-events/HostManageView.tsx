@@ -397,7 +397,7 @@ export function HostManageView({
                   <td className="py-3 pr-4">
                     {isEditing ? (
                       <div className="grid min-w-56 gap-2">
-                        <CatchEventDateTimeInput value={submissionEditForm.catchLocal} onChange={(catchLocal) => setSubmissionEditForm({ ...submissionEditForm, catchLocal })} ariaLabel={tr('Catch date/time')} />
+                        <CatchEventDateTimeInput value={submissionEditForm.catchLocal} locale={locale} onChange={(catchLocal) => setSubmissionEditForm({ ...submissionEditForm, catchLocal })} ariaLabel={tr('Catch date/time')} />
                         <input className={fieldClasses} list="timezone-options" value={submissionEditForm.timezone} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, timezone: event.target.value })} />
                       </div>
                     ) : formatDateTime(submission.catchUtc, undefined, locale)}
