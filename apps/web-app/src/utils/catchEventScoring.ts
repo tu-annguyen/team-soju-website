@@ -417,7 +417,6 @@ export function selectPrizeRelevantSubmissions(
     const isCloseToHighPrize = ranked[highPrizeSlots - 1]
       && Math.abs(submission.score - ranked[highPrizeSlots - 1].score) <= 3;
     if (isCloseToHighPrize) addReason(submission, 'Close to winning');
-    if (submission.flags.length || submission.status === 'needs-review') addReason(submission, 'System flag');
   });
 
   return submissions
