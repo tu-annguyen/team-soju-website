@@ -6,10 +6,10 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 }
 
-const membersRoutes = require('./routes/members');
-const shiniesRoutes = require('./routes/shinies');
-const feebasRoutes = require('./routes/feebas');
-const authRoutes = require('./routes/auth');
+const membersRoutes = require('./express/routes/members');
+const shiniesRoutes = require('./express/routes/shinies');
+const feebasRoutes = require('./express/routes/feebas');
+const authRoutes = require('./express/routes/auth');
 const { generateBotToken } = require('./middleware/auth');
 
 const app = express();

@@ -10,7 +10,7 @@ process.env.DISCORD_REDIRECT_URI = 'http://localhost:3001/api/auth/discord/callb
 process.env.WEB_APP_URL = 'http://localhost:4321';
 
 const app = require('../src/server');
-const User = require('../src/models/User');
+const User = require('../src/express/models/User');
 const bcrypt = require('bcrypt');
 const axios = require('axios');
 const {
@@ -19,7 +19,7 @@ const {
 } = require('../src/services/email');
 const { AUTH_COOKIE_NAME, signUserToken } = require('../src/middleware/auth');
 
-jest.mock('../src/models/User');
+jest.mock('../src/express/models/User');
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
   hash: jest.fn(),

@@ -2,7 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const TeamMember = require('../models/TeamMember');
 const router = express.Router();
-const { authenticateBot } = require('../middleware/auth');
+const { authenticateBot } = require('../../middleware/auth');
 
 // Validation schemas
 const memberSchema = Joi.object({

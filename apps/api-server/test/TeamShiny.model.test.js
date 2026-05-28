@@ -1,5 +1,5 @@
 const pool = require('../src/config/connection');
-const TeamShiny = require('../src/models/TeamShiny');
+const TeamShiny = require('../src/express/models/TeamShiny');
 
 jest.mock('../src/config/connection', () => ({
   query: jest.fn(),

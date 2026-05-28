@@ -1,4 +1,4 @@
-const pool = require('../config/connection');
+const pool = require('../../config/connection');
 
 class TeamMember {
   static async findAll() {

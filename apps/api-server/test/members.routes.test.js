@@ -2,9 +2,9 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 
 const app = require('../src/server');
-const TeamMember = require('../src/models/TeamMember');
+const TeamMember = require('../src/express/models/TeamMember');
 
-jest.mock('../src/models/TeamMember');
+jest.mock('../src/express/models/TeamMember');
 
 process.env.JWT_SECRET = 'test-secret';
 const BOT_TOKEN = jwt.sign({ type: 'discord_bot' }, process.env.JWT_SECRET);
@@ -68,7 +68,7 @@ describe('Members routes', () => {
       const res = await withBotAuth(request(app)
         .post('/api/members')
         .set('Authorization', `Bearer ${BOT_TOKEN}`)
-        .send({}); // missing ign
+        .send({})); // missing ign
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);

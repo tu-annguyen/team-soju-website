@@ -1,5 +1,5 @@
 const pool = require('../src/config/connection');
-const TeamMember = require('../src/models/TeamMember');
+const TeamMember = require('../src/express/models/TeamMember');
 
 jest.mock('../src/config/connection', () => ({
   query: jest.fn(),

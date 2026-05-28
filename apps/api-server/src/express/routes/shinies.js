@@ -5,9 +5,9 @@ const path = require('path');
 const { capitalize, getNationalNumber, getSpriteUrl, greyscale, getPokemonVariants } = require('@team-soju/utils');
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
-const { parseMobileStatsPanel } = require('../utils/mobileStatsParser');
+const { parseMobileStatsPanel } = require('../../utils/mobileStatsParser');
 const router = express.Router();
-const { authenticateBot, generateBotToken } = require('../middleware/auth');
+const { authenticateBot, generateBotToken } = require('../../middleware/auth');
 
 const NATURE_CHOICES = [
   'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
@@ -162,7 +162,7 @@ async function createOcrWorker(Tesseract) {
     return null;
   }
 
-  const localOcrDataRoot = path.resolve(__dirname, '../..');
+  const localOcrDataRoot = path.resolve(__dirname, '../../..');
   const localEnglishData = path.join(localOcrDataRoot, 'eng.traineddata');
   const workerOptions = fs.existsSync(localEnglishData)
     ? {

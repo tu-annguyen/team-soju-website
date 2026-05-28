@@ -14,12 +14,12 @@ const {
   setAuthCookie,
   signUserToken,
   verifyUserToken,
-} = require('../middleware/auth');
+} = require('../../middleware/auth');
 const {
   sendEmailVerificationEmail,
   sendPasswordResetEmail,
-} = require('../services/email');
-const { isIgnBlacklisted } = require('../utils/ignModeration');
+} = require('../../services/email');
+const { isIgnBlacklisted } = require('../../utils/ignModeration');
 
 const router = express.Router();
 

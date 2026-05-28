@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { parseMobileStatsPanel } = require('../src/utils/mobileStatsParser');
-const shiniesRouter = require('../src/routes/shinies');
+const shiniesRouter = require('../src/express/routes/shinies');
 
 function expectEncounterDigitMatch(actual, expected) {
   expect(Number.isInteger(actual)).toBe(true);

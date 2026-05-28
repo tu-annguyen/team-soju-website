@@ -12,11 +12,11 @@ jest.mock('@team-soju/utils', () => ({
 process.env.JWT_SECRET = 'test-secret';
 
 const app = require('../src/server');
-const shiniesRouter = require('../src/routes/shinies');
-const TeamShiny = require('../src/models/TeamShiny');
+const shiniesRouter = require('../src/express/routes/shinies');
+const TeamShiny = require('../src/express/models/TeamShiny');
 const { getPokemonVariants } = require('@team-soju/utils');
 
-jest.mock('../src/models/TeamShiny');
+jest.mock('../src/express/models/TeamShiny');
 
 const BOT_TOKEN = jwt.sign({ type: 'discord_bot' }, process.env.JWT_SECRET);
 const withBotAuth = (testRequest) => testRequest.set('Authorization', `Bearer ${BOT_TOKEN}`);

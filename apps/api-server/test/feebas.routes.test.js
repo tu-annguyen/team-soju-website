@@ -2,7 +2,7 @@ const request = require('supertest');
 
 process.env.JWT_SECRET = 'test-secret';
 
-jest.mock('../src/models/FeebasBoard', () => ({
+jest.mock('../src/express/models/FeebasBoard', () => ({
   getBoard: jest.fn(),
   getLeaderboard: jest.fn(),
   getLeaderboardSortOptions: jest.fn(() => [
@@ -21,13 +21,13 @@ jest.mock('../src/models/FeebasBoard', () => ({
   updateTile: jest.fn(),
 }));
 
-jest.mock('../src/models/User', () => ({
+jest.mock('../src/express/models/User', () => ({
   findById: jest.fn(),
 }));
 
 const app = require('../src/server');
-const FeebasBoard = require('../src/models/FeebasBoard');
-const User = require('../src/models/User');
+const FeebasBoard = require('../src/express/models/FeebasBoard');
+const User = require('../src/express/models/User');
 const { AUTH_COOKIE_NAME, signUserToken } = require('../src/middleware/auth');
 
 const boardFixture = {
