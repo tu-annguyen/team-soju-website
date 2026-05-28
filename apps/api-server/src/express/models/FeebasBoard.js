@@ -1,4 +1,4 @@
-const pool = require('../config/connection');
+const pool = require('../../config/connection');
 const {
   FEEBAS_RESET_INTERVAL_MS,
   FEEBAS_VOTABLE_STATUSES,
@@ -8,7 +8,7 @@ const {
   sanitizeActorName,
   sanitizeFingerprint,
   validateStatus,
-} = require('../utils/feebas');
+} = require('../../utils/feebas');
 
 const DEFAULT_LEADERBOARD_LIMIT = 10;
 const MAX_LEADERBOARD_LIMIT = 50;

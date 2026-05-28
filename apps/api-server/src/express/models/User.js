@@ -1,4 +1,4 @@
-const pool = require('../config/connection');
+const pool = require('../../config/connection');
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();

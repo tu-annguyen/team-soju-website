@@ -1,4 +1,4 @@
-const User = require('../src/models/User');
+const User = require('../src/express/models/User');
 
 jest.mock('../src/config/connection', () => ({
   query: jest.fn(),

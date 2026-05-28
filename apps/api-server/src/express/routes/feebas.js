@@ -1,10 +1,10 @@
 const express = require('express');
 const Joi = require('joi');
 const FeebasBoard = require('../models/FeebasBoard');
-const { FeebasRuleError, getLocationConfig } = require('../utils/feebas');
-const { getTokenFromRequest, verifyUserToken } = require('../middleware/auth');
+const { FeebasRuleError, getLocationConfig } = require('../../utils/feebas');
+const { getTokenFromRequest, verifyUserToken } = require('../../middleware/auth');
 const User = require('../models/User');
-const { isIgnBlacklisted } = require('../utils/ignModeration');
+const { isIgnBlacklisted } = require('../../utils/ignModeration');
 
 const router = express.Router();
 const subscribersByLocation = new Map();
