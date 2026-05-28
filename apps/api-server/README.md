@@ -1,19 +1,11 @@
-# Team Soju Backend API
+# Team Soju API Server
 
-A Node.js backend API with PostgreSQL database for managing Team Soju members and shiny Pokemon data, with Discord bot integration.
+Backend API for Team Soju website data, auth, Feebas tools, catch events, and shiny screenshot OCR.
 
-This app now also includes a Cloudflare Worker runtime under [src/cloudflare/worker.js](/root/repos/team-soju-website/apps/api-server/src/cloudflare/worker.js) so the CRUD API can move to Workers first while screenshot/OCR and non-`/me` auth flows remain on the legacy Node server during migration. Feebas live updates are served from the Worker with a hibernating Durable Object WebSocket.
+The API currently has two runtimes:
 
----
-
-## Features
-
-- **Team Member Management**: Add, update, delete, and retrieve team member information
-- **Shiny Pokemon Tracking**: Comprehensive shiny Pokemon database with detailed stats
-- **Discord Bot Integration**: Slash commands for easy data management through Discord
-- **RESTful API**: Clean API endpoints for frontend integration
-- **Data Validation**: Input validation using Joi
-- **Database Migrations**: Automated database setup and seeding
+- **Cloudflare Worker** in `src/cloudflare/`: the migration target for most API traffic. It supports Postgres or D1 through the Cloudflare repository layer, plus Feebas live updates through a Durable Object.
+- **Legacy Express server** in `src/express/` plus `src/server.js`: the original Node/Postgres API. It still owns screenshot OCR/sprite endpoints and remains useful for local Node development and migration fallback.
 
 ---
 
@@ -21,122 +13,196 @@ This app now also includes a Cloudflare Worker runtime under [src/cloudflare/wor
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- PostgreSQL (v12 or higher)
-- Discord Bot Token (for bot functionality)
+- Node.js
+- PostgreSQL for the Express server and Worker Postgres backend
+- Wrangler for Cloudflare Worker development/deploys
+- Discord OAuth credentials for web auth
 
-### Installation
+### Install
 
-1. **Clone and setup**:
-   ```bash
-   cd server
-   npm install
-   ```
+```bash
+cd apps/api-server
+npm install
+```
 
-2. **Environment Configuration**:
-   ```bash
-   # Run at project root
-   cp .env.example .env
-   # Edit .env with your database and Discord credentials
-   ```
+Create the repo-root `.env` from the example and fill in database, auth, Discord, and Cloudflare values.
 
-3. **Database Setup**:
-   ```bash
-   # Create your PostgreSQL database first
-   createdb -U postgres team_soju
+```bash
+cp ../../.env.example ../../.env
+```
 
-   # Run migrations
-   npm run migrate
+### Express Development
 
-   # Seed with initial data (optional)
-   npm run seed
-   ```
+```bash
+createdb -U postgres team_soju
+npm run migrate
+npm run seed
+npm run dev
+```
 
-4. **Start the server**:
-   ```bash
-   # Development mode
-   npm run dev
+Default Express port is `3001`.
 
-   # Production mode
-   npm start
-   ```
+### Worker Development
+
+```bash
+npm run dev:worker
+```
+
+The Worker dev script runs:
+
+```bash
+wrangler dev --local --config wrangler.jsonc --env-file ../../.env
+```
+
+Default Worker port is assigned by Wrangler, commonly `8787`.
+
+---
+
+## Runtime Ownership
+
+### Cloudflare Worker
+
+The Worker directly handles:
+
+- Health and dev bot-token generation
+- Auth: register, login, logout, current user, email verification, password reset, email/password changes, Discord OAuth
+- Members CRUD
+- Shinies CRUD and aggregate views
+- Catch event management, submissions, collaborators, OCR, screenshots
+- Feebas board REST, leaderboard, reset, tile updates, and WebSocket stream
+
+The Worker proxies legacy-only endpoints when `LEGACY_API_BASE_URL` is configured:
+
+- `POST /api/shinies/from-screenshot`
+- `POST /api/shinies/from-screenshot/async`
+- `GET /api/shinies/sprites/:nationalNumber/greyscale`
+- `GET /api/shinies/sprites/:nationalNumber/greyscale.gif`
+- Any `/api/auth/*` path not implemented by the Worker
+
+### Express Server
+
+The Express server handles the same legacy members, shinies, auth, and Feebas routes for Node deployments. It also owns the screenshot OCR and greyscale sprite routes.
 
 ---
 
 ## API Endpoints
 
-### Team Members
+### System
 
-- `GET /api/members` - Get all team members
-- `GET /api/members/:id` - Get member by ID
-- `GET /api/members/ign/:ign` - Get member by IGN
-- `GET /api/members/ign/inactive/:ign` - Get member by IGN (including inactive members)
-- `GET /api/members/discord/:discordId` - Get member by Discord ID
-- `POST /api/members` - Create new member
-- `PUT /api/members/:id` - Update member
-- `DELETE /api/members/:id` - Deactivate member
-- `PUT /api/members/reactivate/:id` - Reactivate member
-- `GET /api/members/:id/stats` - Get member's shiny statistics
+- `GET /health` - Runtime health check
+- `GET /generate-bot-token` - Generate a development bot JWT; disabled in production
 
-### Team Shinies
+### Auth
 
-- `GET /api/shinies` - Get all shinies (with filters)
-- `GET /api/shinies/:id` - Get shiny by ID
-- `POST /api/shinies` - Add new shiny
-- `PUT /api/shinies/:id` - Update shiny
-- `DELETE /api/shinies/:id` - Delete shiny
-- `GET /api/shinies/stats` - Get team shiny statistics
-- `GET /api/shinies/leaderboard` - Get top trainers
-
-### Query Parameters for Shinies
-
-- `trainer_id` - Filter by trainer UUID
-- `pokemon_name` - Filter by Pokemon name
-- `encounter_type` - Filter by encounter type
-- `is_secret` - Filter secret shinies (true/false)
-- `is_alpha` - Filter alpha shinies (true/false)
-- `catch_date_after` - Filter shinies caught after a date (YYYY-MM-DD)
-- `catch_date_before` - Filter shinies caught before a date (YYYY-MM-DD)
-- `sort_by` - Sort by `catch_date` or `total_encounters`
-- `sort_order` - Ascending or descending sort order
-- `limit` - Limit number of results
-
-## Database Schema
-
-### Team Members
-- Basic member info (IGN, Discord ID, rank, join date)
-- Activity status tracking
-- Relationship to shinies
-
-### Team Shinies
-- Complete Pokemon data (Pokedex number, trainer, catch date)
-- Encounter details (type, location, encounters)
-- Pokemon stats (IVs, nature, level)
-- Special flags (secret, safari)
-- Screenshots and notes
-
-### Pokemon Species
-- Reference table for Pokemon data
-- Pokedex numbers, names, types, generation
-
-## Authentication
-
-The API supports two authentication paths:
-
-- Web users can create accounts with email, password, and IGN.
-- Web users can sign in or register with Discord OAuth2.
-- Discord bot mutations still use bot-scoped JWT bearer tokens.
-
-### Web User Endpoints
-
-- `POST /api/auth/register` - Create an email/password account and set the session cookie
+- `POST /api/auth/register` - Create an email/password account and send email verification
 - `POST /api/auth/login` - Sign in with email/password
 - `POST /api/auth/logout` - Clear the session cookie
 - `GET /api/auth/me` - Return the current signed-in user, or `null`
-- `GET /api/auth/discord` - Start Discord OAuth2
-- `GET /api/auth/discord/callback` - Discord OAuth2 callback
+- `POST /api/auth/forgot-password` - Request a password reset email
+- `POST /api/auth/reset-password` - Reset password with a reset token
+- `POST /api/auth/change-email` - Change the signed-in user's email and send verification
+- `POST /api/auth/change-password` - Change or add a password for the signed-in user
+- `GET /api/auth/verify-email` - Verify an email token
+- `GET /api/auth/discord` - Start Discord OAuth
+- `GET /api/auth/discord/callback` - Discord OAuth callback
+- `POST /api/auth/discord/session` - Exchange a Discord OAuth handoff token for a browser session
 
-Required environment variables:
+### Members
+
+- `GET /api/members` - List active team members
+- `GET /api/members/:id` - Get member by ID
+- `GET /api/members/:id/stats` - Get a member's shiny stats
+- `GET /api/members/ign/:ign` - Get active member by IGN
+- `GET /api/members/ign/inactive/:ign` - Get inactive or active member by IGN
+- `GET /api/members/discord/:discordId` - Get member by Discord ID
+- `POST /api/members` - Create a member; bot token required
+- `PUT /api/members/:id` - Update a member; bot token required
+- `DELETE /api/members/:id` - Deactivate a member; bot token required
+- `PUT /api/members/reactivate/:id` - Reactivate a member; bot token required
+
+### Shinies
+
+- `GET /api/shinies` - List shinies with filters
+- `GET /api/shinies/:id` - Get shiny by ID
+- `GET /api/shinies/stats` - Get team shiny stats
+- `GET /api/shinies/leaderboard` - Get top trainers
+- `POST /api/shinies` - Create a shiny; bot token required
+- `PUT /api/shinies/:id` - Update a shiny; bot token required
+- `DELETE /api/shinies/:id` - Delete a shiny; bot token required
+
+Shiny list query parameters:
+
+- `active`
+- `trainer_id`
+- `pokemon_name`
+- `encounter_type`
+- `is_secret`
+- `is_alpha`
+- `catch_date_after`
+- `catch_date_before`
+- `sort_by`
+- `sort_order`
+- `secondary_sort_by`
+- `secondary_sort_order`
+- `limit`
+
+### Screenshot OCR and Sprites
+
+These are legacy Express-owned endpoints. The Worker proxies them when `LEGACY_API_BASE_URL` is set.
+
+- `POST /api/shinies/from-screenshot` - Parse shiny details from screenshot data; bot token required
+- `POST /api/shinies/from-screenshot/async` - Parse screenshots asynchronously; bot token required
+- `GET /api/shinies/sprites/:nationalNumber/greyscale` - Generate a greyscale Pokemon sprite
+- `GET /api/shinies/sprites/:nationalNumber/greyscale.gif` - Generate a greyscale Pokemon GIF sprite
+
+### Catch Events
+
+Worker-owned.
+
+- `GET /api/catch-events` - List catch events
+- `POST /api/catch-events` - Create a catch event; user session required
+- `GET /api/catch-events/:id` - Get a catch event
+- `PUT /api/catch-events/:id` - Update a catch event; owner required
+- `DELETE /api/catch-events/:id` - Delete a catch event; owner required
+- `GET /api/catch-events/:id/collaborators` - List shared admins; manager required
+- `POST /api/catch-events/:id/collaborators` - Add shared admin; owner required
+- `DELETE /api/catch-events/:id/collaborators/:userId` - Remove shared admin; owner required
+- `POST /api/catch-events/ocr` - Extract catch fields from screenshots
+- `GET /api/catch-events/screenshots/:screenshotId` - Fetch stored submission screenshot
+- `POST /api/catch-events/:id/publish` - Publish or hide leaderboard; manager required
+- `POST /api/catch-events/:id/submissions-closed` - Open or close submissions; manager required
+- `POST /api/catch-events/:id/auto-check` - Enable or disable auto-check; manager required
+- `POST /api/catch-events/:id/submissions` - Submit or replace an event catch
+- `PUT /api/catch-events/:id/submissions/:submissionId` - Edit submission; manager required
+- `POST /api/catch-events/:id/submissions/:submissionId/status` - Update submission status; manager required
+
+Catch event list query parameters:
+
+- `owner=me` - List events manageable by the signed-in user
+- `published=true` - List published events only
+
+### Feebas
+
+- `GET /api/feebas/:location` - Get Feebas board
+- `GET /api/feebas/:location/leaderboard` - Get Feebas leaderboard
+- `GET /api/feebas/:location/stream` - WebSocket stream for live board updates
+- `POST /api/feebas/:location/tiles/:tileId` - Update a tile
+- `POST /api/feebas/:location/reset` - Reset board; disabled in production
+
+Feebas query parameters:
+
+- `actorFingerprint` - Personalizes board view for the current browser/client
+- `limit` - Leaderboard limit
+- `sortBy` - Leaderboard sort key
+- `sortDirection` - `asc` or `desc`
+
+---
+
+## Authentication
+
+The API supports browser sessions and bot-scoped bearer tokens.
+
+Browser sessions are signed JWT cookies. Required environment variables:
 
 ```env
 JWT_SECRET=your-session-signing-secret
@@ -147,201 +213,142 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 DISCORD_REDIRECT_URI=http://localhost:8787/api/auth/discord/callback
 ```
 
-In the Discord Developer Portal, add the exact redirect URI above for local development and the production callback URL for deployed environments.
-
-When running the Cloudflare Worker locally, use the package script so Wrangler loads the
-repo-root `.env` file:
+Discord bot mutations use bot JWTs:
 
 ```bash
-npm run dev:api:worker
-```
-
-## Staging cookie configuration
-
-If your staging preview uses a different host (for example Vercel previews) and you need the API-set session cookie to be usable across subdomains, set these environment variables for the API deployment (e.g. in Vercel or Cloudflare Worker environment):
-
-```env
-# Optional: make cookies valid for the parent domain (e.g. .teamsoju.com)
-AUTH_COOKIE_DOMAIN=.teamsoju.com
-
-# Optional overrides (defaults: SameSite=None in production, Secure=true in production)
-AUTH_COOKIE_SAMESITE=None
-AUTH_COOKIE_SECURE=true
-```
-
-Notes:
-- These env vars only affect the environment you set them in (staging, preview, or production). Changing staging environment variables will not alter production settings.
-- Browsers only accept a `Domain` attribute that is a parent of the response host. The API responses must be served from a host that is within the `AUTH_COOKIE_DOMAIN` scope (for example `api.staging.teamsoju.com` can set `.teamsoju.com`). If your API is on an unrelated host, you must either proxy the API under your `teamsoju.com` domain or use a different session approach.
-- Local development (`localhost`) will remain unchanged unless you set these variables locally; the README defaults and `.env.example` are safe for localhost testing.
-
-If you run Wrangler directly from `apps/api-server`, include `--env-file ../../.env`;
-otherwise local dev will fall back to the values in `wrangler.jsonc`, which are the
-deployed Worker defaults.
-
-### Bot Tokens
-
-Generate a bot token for development:
-
-```bash
-# Visit http://localhost:8787/generate-bot-token (development only)
 curl http://localhost:8787/generate-bot-token
 ```
 
-Add this token to the root `.env` file:
+Set the result in the root `.env` when needed:
+
 ```env
 BOT_API_TOKEN=your-bot-token
 ```
 
----
+### Cookie Configuration
 
-## Example Usage
+For preview/staging deployments that need cookies shared across subdomains:
 
-### Adding a Team Member via API
-
-```bash
-curl -X POST http://localhost:8787/api/members \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $BOT_API_TOKEN" \
-  -d '{
-    "ign": "TrainerName",
-    "discord_id": "123456789012345678",
-    "rank": "Member"
-  }'
+```env
+AUTH_COOKIE_DOMAIN=.teamsoju.com
+AUTH_COOKIE_SAMESITE=None
+AUTH_COOKIE_SECURE=true
 ```
 
-### Adding a Shiny via API
+Browsers only accept a `Domain` attribute that is a parent of the response host.
+
+---
+
+## Data and Storage
+
+### Postgres
+
+- Express uses Postgres through `src/config/connection.js`.
+- Express schema lives at `src/express/models/schema.sql`.
+- `npm run migrate` applies the Express/Postgres schema.
+
+### Cloudflare D1
+
+- Worker D1 schema lives at `src/cloudflare/schema.d1.sql`.
+- Set `DB_BACKEND=d1` and bind `DB` to use D1.
+- Default Worker backend is Postgres through `DATABASE_URL`.
+
+Postgres-to-D1 helpers:
+
+- `src/scripts/postgresToD1.js`
+- `src/scripts/export-postgres-to-d1.js`
+
+Example staging export/import:
 
 ```bash
-curl -X POST http://localhost:8787/api/shinies \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $BOT_API_TOKEN" \
-  -d '{
-    "national_number": 25,
-    "pokemon": "pikachu",
-    "original_trainer": "uuid-of-trainer",
-    "catch_date": "2024-01-15",
-    "total_encounters": 1247,
-    "species_encounters": 1247,
-    "encounter_type": "single",
-    "location": "Route 1",
-    "nature": "Adamant",
-    "iv_hp": 31,
-    "iv_attack": 31,
-    "iv_defense": 25,
-    "iv_sp_attack": 12,
-    "iv_sp_defense": 28,
-    "iv_speed": 31,
-    "is_secret": false
-    "is_alpha": false
-  }'
+npm run export:d1 -- --wipe --out /tmp/team-soju-staging-import.sql
+npx wrangler d1 execute team-soju-staging --remote --file=/tmp/team-soju-staging-import.sql
 ```
 
 ---
 
-## Development
+## Project Structure
 
-### Testing
-
-- All backend Jest tests live under `test/`.
-- Run the full backend test suite (with coverage) from the monorepo root `team-soju-website/`:
-
-  ```bash
-  npm run test:api
-  ```
-
-- Route tests use `supertest` against the Express app and mock the database layer.
-- Model and config script tests mock the PostgreSQL pool and filesystem/`path` as needed.
-
-### Cloudflare Worker Runtime
-
-- Worker entrypoint: `src/cloudflare/worker.js`
-- Worker config: `wrangler.jsonc`
-- Start local Worker dev server:
-
-  ```bash
-  npm run dev:worker
-  ```
-
-- The Worker dev script uses `wrangler dev --local` because Cloudflare edge
-  preview does not support the `FEEBAS_BOARD_STREAM` Durable Object binding.
-- Workers AI does not have a local simulation. To use catch-event screenshot
-  autofill in local worker dev, set `CLOUDFLARE_ACCOUNT_ID` and
-  `CLOUDFLARE_API_TOKEN` in your local environment so the Worker can call
-  Workers AI through Cloudflare's REST API when the local `AI` binding refuses
-  to run.
-- Default Worker database backend is Postgres via `DATABASE_URL`.
-- Set `DB_BACKEND=d1` and bind `DB` to switch the Worker to D1. The D1 schema covers team members, shinies, app users for `GET /api/auth/me`, and Feebas board REST tables.
-- Older local D1 catch-event databases are upgraded lazily on the next
-  submission if they are missing submission `region` or `route` columns.
-- Set `LEGACY_API_BASE_URL` during migration to proxy legacy-only runtime routes:
-  - `POST /api/shinies/from-screenshot`
-  - `POST /api/shinies/from-screenshot/async`
-  - `GET /api/shinies/sprites/:nationalNumber/greyscale(.gif)`
-- To keep screenshot OCR on the legacy Node/Render runtime while using Worker/D1 data, set `SCREENSHOT_DATA_API_BASE_URL` on the Node service to the Worker API base URL, for example `https://team-soju-api.tunacore.workers.dev/api`.
-- If the Node service and Worker do not share `JWT_SECRET`, also set `SCREENSHOT_DATA_API_BOT_TOKEN` on the Node service to a bot token accepted by the Worker.
-
-### D1 Compatibility
-
-- D1 schema lives in `src/cloudflare/schema.d1.sql`.
-- Postgres export helpers live in `src/scripts/postgresToD1.js` and `src/scripts/export-postgres-to-d1.js`; they support members, shinies, app users, and Feebas board history.
-- The Worker repository layer supports both Postgres and D1 so the HTTP contract stays unchanged while the storage backend changes.
-- To replace staging D1 with current Postgres data:
-
-  ```bash
-  cd apps/api-server
-  npm run export:d1 -- --wipe --out /tmp/team-soju-staging-import.sql
-  npx wrangler d1 execute team-soju-staging --remote --file=/tmp/team-soju-staging-import.sql
-  ```
-
-  `--wipe` only writes DELETE statements into the generated SQL file; staging is changed when the file is executed with Wrangler.
-
-### Project Structure
-
-```
-backend/
+```text
+apps/api-server/
 ├── src/
-│   ├── config/           # Database connection, migrations, seeds
-│   ├── models/           # Data models (TeamMember, TeamShiny)
-│   │   └── schema.sql    # Database schema
-│   ├── routes/           # API route handlers
-│   ├── middleware/       # Authentication and other middleware
-│   └── server.js         # Main server file
-├── test/                 # Backend Jest tests
+│   ├── cloudflare/
+│   │   ├── contracts/       # Worker API validation and payload contracts
+│   │   ├── models/          # Worker domain rules, not persistence
+│   │   ├── repositories/    # Worker Postgres/D1 data access
+│   │   ├── routes/          # Worker route groups
+│   │   ├── services/        # Worker shared services/helpers
+│   │   ├── schema.d1.sql
+│   │   ├── worker.js
+│   │   └── worker-entry.mjs
+│   ├── config/              # Express Postgres connection, migrations, seeds
+│   ├── express/
+│   │   ├── models/          # Legacy Express/Postgres models and schema.sql
+│   │   └── routes/          # Legacy Express route handlers
+│   ├── middleware/          # Express middleware
+│   ├── scripts/             # Data export/import helpers
+│   ├── services/            # Express services
+│   ├── utils/               # Shared API utilities
+│   └── server.js            # Express app entry
+├── test/
+├── wrangler.jsonc
 ├── package.json
 └── README.md
 ```
 
-### Adding New Features
+---
 
-1. **Database Changes**: Update `schema.sql` and run migrations
-2. **API Endpoints**: Add routes in the appropriate route file
-3. **Discord Commands**: Add commands in `discord/bot.js`
-4. **Models**: Update model files for new database operations
+## Development Notes
+
+- Keep components under 600 lines when practical. Some legacy Express and repository files still exceed this and should be split when touched.
+- Prefer adding Worker code under `src/cloudflare/routes`, `src/cloudflare/services`, `src/cloudflare/repositories`, `src/cloudflare/contracts`, or `src/cloudflare/models` based on responsibility.
+- Add Express-only changes under `src/express`.
+- When adding schema changes, update the appropriate schema:
+  - Express/Postgres: `src/express/models/schema.sql`
+  - Worker/D1: `src/cloudflare/schema.d1.sql`
+
+### Testing
+
+Run all backend tests from the monorepo root:
+
+```bash
+npm run test:api
+```
+
+Run API-server tests directly:
+
+```bash
+cd apps/api-server
+npm test
+```
+
+Focused examples:
+
+```bash
+npm test -- --runTestsByPath test/cloudflare.worker.test.js
+npm test -- --runTestsByPath test/auth.routes.test.js
+```
 
 ---
 
 ## Deployment
 
-For production deployment:
+### Express
 
-1. Set up PostgreSQL database
-2. Configure environment variables
-3. Run migrations: `npm run migrate`
-4. Start with PM2 or similar: `pm2 start src/server.js`
-5. Set up reverse proxy (nginx) if needed
+1. Configure Postgres and environment variables.
+2. Run migrations with `npm run migrate`.
+3. Start with `npm start` or a process manager.
 
----
+### Cloudflare Worker
 
-## Contributing
+```bash
+npm run deploy:cf
+npm run deploy:cf:staging
+```
 
-1. Follow the existing code structure
-2. Add proper error handling
-3. Validate all inputs
-4. Test API endpoints
-5. Update documentation
+Useful Worker commands:
 
----
-
-## Support
-
-For issues or questions about the Team Soju backend, please contact the development team or create an issue in the repository.
+```bash
+npm run deploy:cf:preview
+npm run tail:cf:staging
+```
