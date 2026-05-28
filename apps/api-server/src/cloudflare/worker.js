@@ -118,7 +118,7 @@ const catchEventSubmissionSchema = Joi.object({
   route: Joi.string().trim().min(1).max(120).required(),
   catchUtc: Joi.string().trim().min(8).max(40).required(),
   score: Joi.number().integer().min(-999).max(1186).required(),
-  status: Joi.string().valid('pending-verification', 'auto-checked', 'needs-review').required(),
+  status: Joi.string().valid('pending-verification', 'auto-checked').required(),
   flags: Joi.array().items(Joi.string().trim().max(200)).max(20).default([]),
   screenshots: Joi.array().items(Joi.object({
     name: Joi.string().trim().min(1).max(160).required(),
@@ -146,7 +146,7 @@ const catchEventAutoCheckSchema = Joi.object({
   autoCheckEnabled: Joi.boolean().required(),
 });
 const catchEventSubmissionStatusSchema = Joi.object({
-  status: Joi.string().valid('pending-verification', 'auto-checked', 'needs-review', 'verified', 'rejected', 'disqualified').required(),
+  status: Joi.string().valid('pending-verification', 'auto-checked', 'verified', 'rejected', 'disqualified').required(),
 });
 const catchEventSubmissionUpdateSchema = Joi.object({
   playerIgn: Joi.string().trim().min(1).max(50).required(),
@@ -265,11 +265,9 @@ function validateCatchEventSubmissionPayload(input, event) {
     errors,
     flags,
     score: calculateCatchEventScore(input, event),
-    status: flags.length > 0
-      ? 'needs-review'
-      : event.autoCheckEnabled
-        ? 'auto-checked'
-        : 'pending-verification',
+    status: event.autoCheckEnabled
+      ? 'auto-checked'
+      : 'pending-verification',
   };
 }
 

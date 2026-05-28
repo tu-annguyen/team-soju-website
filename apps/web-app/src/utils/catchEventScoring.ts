@@ -304,11 +304,9 @@ export function validateCatchEventSubmission(
     catchUtc,
     errors,
     flags,
-    status: errors.length > 0 || flags.length > 0
-      ? ('needs-review' as const)
-      : event.autoCheckEnabled
-        ? ('auto-checked' as const)
-        : ('pending-verification' as const),
+    status: event.autoCheckEnabled
+      ? ('auto-checked' as const)
+      : ('pending-verification' as const),
   };
 }
 
