@@ -189,7 +189,6 @@ const catchEventManager = {
     "Bottom 3-5 low-score candidate": "后 3-5 名低分候选",
     "Tie around prize cutoff": "奖项分界附近并列",
     "Close to winning": "接近获奖",
-    "System flag": "系统标记",
     "screenshot(s)": "张截图",
     "None": "无",
     "Unknown": "未知",

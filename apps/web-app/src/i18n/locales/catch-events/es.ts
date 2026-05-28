@@ -189,7 +189,6 @@ const catchEventManager = {
     "Bottom 3-5 low-score candidate": "Candidato entre los 3-5 puntajes más bajos",
     "Tie around prize cutoff": "Empate cerca del corte de premios",
     "Close to winning": "Cerca de ganar",
-    "System flag": "Alerta del sistema",
     "screenshot(s)": "captura(s)",
     "None": "Ninguno",
     "Unknown": "Desconocido",
