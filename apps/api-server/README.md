@@ -282,7 +282,7 @@ curl -X POST http://localhost:8787/api/shinies \
 
 ### D1 Compatibility
 
-- D1 schema lives in `src/models/schema.d1.sql`.
+- D1 schema lives in `src/cloudflare/schema.d1.sql`.
 - Postgres export helpers live in `src/scripts/postgresToD1.js` and `src/scripts/export-postgres-to-d1.js`; they support members, shinies, app users, and Feebas board history.
 - The Worker repository layer supports both Postgres and D1 so the HTTP contract stays unchanged while the storage backend changes.
 - To replace staging D1 with current Postgres data:

@@ -4,7 +4,7 @@ jest.mock('../src/config/connection', () => ({
 }));
 
 const pool = require('../src/config/connection');
-const FeebasBoard = require('../src/models/FeebasBoard');
+const FeebasBoard = require('../src/express/models/FeebasBoard');
 
 describe('FeebasBoard model', () => {
   beforeEach(() => {

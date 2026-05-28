@@ -1,4 +1,4 @@
-const shiniesRouter = require('../src/routes/shinies');
+const shiniesRouter = require('../src/express/routes/shinies');
 
 describe('shiny OCR parsing', () => {
   it('prefers OCR encounter values when mobile encounter confidence is worse', () => {

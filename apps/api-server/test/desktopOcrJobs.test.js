@@ -1,4 +1,4 @@
-const shiniesRouter = require('../src/routes/shinies');
+const shiniesRouter = require('../src/express/routes/shinies');
 
 describe('desktop OCR jobs', () => {
   it('adds targeted desktop OCR passes for header, main text, and stats', async () => {
