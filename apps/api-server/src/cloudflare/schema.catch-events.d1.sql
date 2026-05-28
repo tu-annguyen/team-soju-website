@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS catch_event_submissions (
   route TEXT NOT NULL,
   catch_utc TEXT NOT NULL,
   score INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'needs-review'
-    CHECK (status IN ('valid', 'needs-review', 'invalid', 'disqualified')),
+  status TEXT NOT NULL DEFAULT 'pending-verification'
+    CHECK (status IN ('pending-verification', 'auto-checked', 'needs-review', 'verified', 'rejected', 'disqualified')),
   flags_json TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),

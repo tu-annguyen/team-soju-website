@@ -25,7 +25,6 @@ const catchEventManager = {
     "Create or select an event before submitting an entry.": "Create or select an event before submitting an entry.",
     "screenshot.png": "screenshot.png",
     "Entry submitted. Your previous submission was overwritten.": "Entry submitted. Your previous submission was overwritten.",
-    "Entry submitted and marked Needs Review.": "Entry submitted and marked Needs Review.",
     "Entry submitted and auto-checked.": "Entry submitted and auto-checked.",
     "Entry submitted and pending verification.": "Entry submitted and pending verification.",
     "Entry submitted successfully.": "Entry submitted successfully.",

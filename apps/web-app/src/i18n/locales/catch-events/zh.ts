@@ -25,7 +25,6 @@ const catchEventManager = {
     "Create or select an event before submitting an entry.": "提交前请先创建或选择一个活动。",
     "screenshot.png": "截图.png",
     "Entry submitted. Your previous submission was overwritten.": "提交成功。你之前的提交已被覆盖。",
-    "Entry submitted and marked Needs Review.": "提交成功，并标记为需要审核。",
     "Entry submitted and auto-checked.": "提交成功，并已自动检查。",
     "Entry submitted and pending verification.": "提交成功，等待验证。",
     "Entry submitted successfully.": "提交成功。",

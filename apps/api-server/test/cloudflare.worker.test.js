@@ -570,7 +570,7 @@ describe('Cloudflare Worker API', () => {
     expect(repositories.catchEvents.upsertSubmission).not.toHaveBeenCalled();
   });
 
-  it('recomputes accepted catch event submission score and status server-side', async () => {
+  it('recomputes accepted catch event submission score, status, and flags server-side', async () => {
     const event = {
       id: 'event-1',
       startLocal: '2026-05-23T01:00',
@@ -613,7 +613,7 @@ describe('Cloudflare Worker API', () => {
         route: 'Mt. Coronet',
         catchUtc: '2020-01-01T00:00:00.000Z',
         score: 1,
-        status: 'needs-review',
+        status: 'pending-verification',
         flags: ['client flag'],
         screenshots: [],
       }),
@@ -630,6 +630,44 @@ describe('Cloudflare Worker API', () => {
       }),
       []
     );
+  });
+
+  it('rejects manual catch event status updates to needs-review', async () => {
+    const manager = {
+      id: 'owner-1',
+      email: 'owner@example.com',
+      ign: 'Owner',
+      auth_provider: 'password',
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue(manager),
+      },
+      catchEvents: {
+        updateSubmissionStatus: jest.fn(),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const token = jwt.sign({
+      type: 'web_user',
+      sub: 'owner-1',
+      email: 'owner@example.com',
+      ign: 'Owner',
+    }, 'test-secret', { expiresIn: '14d' });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/submissions/submission-1/status', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${AUTH_COOKIE_NAME}=${token}`,
+      },
+      body: JSON.stringify({ status: 'needs-review' }),
+    }), createEnv());
+
+    expect(response.status).toBe(400);
+    expect(repositories.catchEvents.updateSubmissionStatus).not.toHaveBeenCalled();
   });
 
   it('lets an owner add and remove catch event shared admins by email or IGN', async () => {

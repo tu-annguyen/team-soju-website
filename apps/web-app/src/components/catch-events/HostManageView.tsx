@@ -450,7 +450,10 @@ export function HostManageView({
                   <td className="py-3 pr-4">
                     <div className="grid gap-2">
                       <select className={fieldClasses} value={submission.status} onChange={(event) => updateSubmissionStatus(submission.id, event.target.value as CatchEventStatus)}>
-                        {Object.entries(statusLabels).map(([status, label]) => (
+                        {submission.status === 'needs-review' && (
+                          <option value="needs-review" disabled>{statusLabels['needs-review']}</option>
+                        )}
+                        {Object.entries(statusLabels).filter(([status]) => status !== 'needs-review').map(([status, label]) => (
                           <option key={status} value={status}>{label}</option>
                         ))}
                       </select>

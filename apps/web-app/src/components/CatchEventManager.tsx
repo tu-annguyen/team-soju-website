@@ -487,9 +487,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       setSubmitMessage(
         response.replaced
           ? tr('Entry submitted. Your previous submission was overwritten.')
-          : validation.flags.length
-            ? tr('Entry submitted and marked Needs Review.')
-            : validation.status === 'auto-checked'
+          : nextSubmission.status === 'auto-checked'
               ? tr('Entry submitted and auto-checked.')
               : tr('Entry submitted and pending verification.')
       );

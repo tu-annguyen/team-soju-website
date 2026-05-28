@@ -25,7 +25,6 @@ const catchEventManager = {
     "Create or select an event before submitting an entry.": "Crea o selecciona un evento antes de enviar una participación.",
     "screenshot.png": "captura.png",
     "Entry submitted. Your previous submission was overwritten.": "Participación enviada. Tu envío anterior fue reemplazado.",
-    "Entry submitted and marked Needs Review.": "Participación enviada y marcada como Necesita revisión.",
     "Entry submitted and auto-checked.": "Participación enviada y auto-revisada.",
     "Entry submitted and pending verification.": "Participación enviada y pendiente de verificación.",
     "Entry submitted successfully.": "Participación enviada correctamente.",

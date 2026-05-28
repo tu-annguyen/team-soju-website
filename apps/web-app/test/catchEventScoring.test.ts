@@ -108,7 +108,7 @@ describe('catch event scoring', () => {
     );
   });
 
-  it('flags invalid or suspicious submissions for review', () => {
+  it('reports validation errors and flags without assigning needs-review', () => {
     const result = validateCatchEventSubmission(
       {
         playerIgn: 'tunacore',
@@ -125,7 +125,7 @@ describe('catch event scoring', () => {
       'America/New_York'
     );
 
-    expect(result.status).toBe('needs-review');
+    expect(result.status).toBe('pending-verification');
     expect(result.errors).toEqual(
       expect.arrayContaining([
         'Species is not allowed for this event',
@@ -136,6 +136,31 @@ describe('catch event scoring', () => {
       ])
     );
     expect(result.flags).toEqual(['Timezone differs from browser-detected timezone']);
+  });
+
+  it('keeps accepted flagged submissions in the active automated status flow', () => {
+    const result = validateCatchEventSubmission(
+      {
+        playerIgn: 'tunacore',
+        species: 'Zubat',
+        nature: 'Bold',
+        totalIv: 140,
+        catchLocal: '2026-05-19T12:15',
+        timezone: 'America/Los_Angeles',
+        region: 'Hoenn',
+        route: 'Route 119',
+        screenshotNames: [],
+      },
+      {
+        ...eventFixture,
+        autoCheckEnabled: true,
+      },
+      'America/New_York'
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(result.flags).toEqual(['Timezone differs from browser-detected timezone']);
+    expect(result.status).toBe('auto-checked');
   });
 
   it('identifies a catch date from a different year as outside the event window', () => {
