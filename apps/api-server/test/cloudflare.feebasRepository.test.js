@@ -1,4 +1,4 @@
-const { createFeebasRepository } = require('../src/cloudflare/feebas-repository');
+const { createFeebasRepository } = require('../src/cloudflare/repositories/feebas');
 
 describe('Cloudflare Feebas repository', () => {
   it('binds both created_at and updated_at values when inserting D1 tile votes', async () => {

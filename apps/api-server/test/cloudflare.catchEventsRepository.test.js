@@ -1,4 +1,4 @@
-const { createCatchEventsRepository } = require('../src/cloudflare/catch-events-repository');
+const { createCatchEventsRepository } = require('../src/cloudflare/repositories/catch-events');
 
 describe('Cloudflare catch events repository', () => {
   it('filters private events out of the public event list', async () => {
