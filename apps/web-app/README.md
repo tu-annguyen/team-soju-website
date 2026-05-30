@@ -9,7 +9,7 @@ A dynamic, content-driven frontend built with React.js and Astro components.
 ```text
 /
 ├── public/
-│   └── favicon.svg
+│   └── favicon.png
 │   └── images/
 ├── src/
 │   ├── components/   # React.js components

@@ -24,6 +24,8 @@ const resolvedTitle = title ?? messages.meta.defaultTitle;
 const resolvedDescription = description ?? messages.meta.defaultDescription;
 const localeStorageKey = 'team-soju-locale';
 const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8787/api';
+const siteUrl = "https://teamsoju.com";
+const imageUrl = `${siteUrl}/banner.png`;
 ---
 
 <!doctype html>
@@ -31,10 +33,20 @@ const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8787
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.png" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={resolvedDescription} />
     <title>{resolvedTitle}</title>
+
+    <meta property="og:title" content={resolvedTitle} />
+    <meta property="og:description" content={resolvedDescription} />
+    <meta property="og:url" content={siteUrl} />
+    <meta property="og:type" content="website" />
+
+    <!-- Embed images -->
+    <meta property="og:image" content={imageUrl} />
+    <meta property="twitter:image" content={imageUrl} />
+    <meta property="twitter:card" content="summary_large_image" />
     
     <!-- Prevent flash of unstyled content -->
     <script is:inline>
