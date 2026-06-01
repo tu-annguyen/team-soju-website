@@ -236,6 +236,7 @@ AUTH_COOKIE_SECURE=true
 ```
 
 Browsers only accept a `Domain` attribute that is a parent of the response host.
+When no cookie domain is set, secure `SameSite=None` cookies are automatically marked `Partitioned` so Chrome can persist cross-site API sessions under the Team Soju site.
 
 ---
 

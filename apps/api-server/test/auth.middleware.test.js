@@ -156,6 +156,19 @@ describe('web user auth helpers', () => {
     expect(res.headers['Set-Cookie']).toContain('SameSite=Lax');
   });
 
+  it('marks production cross-site auth cookies as partitioned for Chrome mobile persistence', () => {
+    process.env.NODE_ENV = 'production';
+
+    const res = createResponse();
+    const token = signUserToken({ id: 'user-id', email: 'a@example.com', ign: 'Trainer' });
+
+    setAuthCookie(res, token);
+
+    expect(res.headers['Set-Cookie']).toContain('Secure');
+    expect(res.headers['Set-Cookie']).toContain('SameSite=None');
+    expect(res.headers['Set-Cookie']).toContain('Partitioned');
+  });
+
   it('parses cookies from a request header', () => {
     expect(parseCookies('a=one; team_soju_session=token-value')).toEqual({
       a: 'one',

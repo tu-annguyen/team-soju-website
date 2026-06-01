@@ -56,17 +56,30 @@ function serializeCookie(name, value, options = {}) {
     segments.push(`SameSite=${options.sameSite}`);
   }
 
+  if (options.partitioned) {
+    segments.push('Partitioned');
+  }
+
   return segments.join('; ');
 }
 
 function getAuthCookieOptions() {
   const isProduction = process.env.NODE_ENV === 'production';
+  const secure = isProduction;
+  const sameSite = isProduction ? 'None' : 'Lax';
+  const overridePartitioned = typeof process.env.AUTH_COOKIE_PARTITIONED === 'string'
+    ? process.env.AUTH_COOKIE_PARTITIONED === 'true'
+    : null;
+  const partitioned = overridePartitioned !== null
+    ? overridePartitioned
+    : secure && sameSite.toLowerCase() === 'none';
 
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'None' : 'Lax',
+    secure,
+    sameSite,
     path: '/',
+    partitioned,
   };
 }
 
