@@ -1188,6 +1188,7 @@ describe('Cloudflare Worker API', () => {
     expect(response.headers.get('set-cookie')).toContain(`${AUTH_COOKIE_NAME}=`);
     expect(response.headers.get('set-cookie')).toContain('SameSite=None');
     expect(response.headers.get('set-cookie')).toContain('Secure');
+    expect(response.headers.get('set-cookie')).toContain('Partitioned');
     expect(repositories.users.findById).toHaveBeenCalledWith('user-1');
   });
 
