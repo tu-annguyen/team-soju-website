@@ -1,5 +1,5 @@
 import React from 'react';
-import { getLocaleParamPath, getRuntimeLocale, getTranslations } from '../i18n';
+import { getClientLocale, getLocaleParamPath, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
 import LanguagePicker from './LanguagePicker';
 
@@ -9,7 +9,7 @@ type Props = {
 
 const Footer = ({ locale = 'en' }: Props) => {
   const currentYear = new Date().getFullYear();
-  const activeLocale = getRuntimeLocale(locale);
+  const activeLocale = getClientLocale(locale);
   const messages = getTranslations(activeLocale);
   const homeHref = getLocaleParamPath('/', activeLocale);
   const shinyShowcaseHref = getLocaleParamPath('/shiny-showcase', activeLocale);
@@ -25,7 +25,7 @@ const Footer = ({ locale = 'en' }: Props) => {
             <div className="flex items-center gap-2 mb-4">
               <img 
                 src="/images/team-soju-icon.png" 
-                alt="Team Soju Logo" 
+                alt={messages.home.hero.logoAlt} 
                 className="w-8 h-8 object-contain"
               />
               <span className="font-display text-lg font-bold text-primary-600 dark:text-primary-400">
