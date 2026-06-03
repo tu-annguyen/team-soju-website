@@ -3,7 +3,7 @@ import catchEventManager from './catch-events/zh';
 const zh = {
   meta: {
     defaultTitle: 'Team Soju - PokeMMO 团队',
-    defaultDescription: 'Team Soju 是一个重视社区、实力与对 Pokemon 对战热情的 PokeMMO 团队。',
+    defaultDescription: 'Team Soju 是一个重视社区、实力与对宝可梦对战热情的 PokeMMO 团队。',
   },
   nav: {
     home: '首页',
@@ -86,7 +86,7 @@ const zh = {
     applyNow: '立即申请',
     rightsReserved: '保留所有权利。',
     legal:
-      'Pokemon 是 Nintendo、Creatures, Inc. 和 GAME FREAK inc. 的注册商标。本网站与 Nintendo、Creatures, Inc.、GAME FREAK inc. 或 PokeMMO 无任何隶属关系。',
+      '宝可梦是 Nintendo、Creatures, Inc. 和 GAME FREAK inc. 的注册商标。本网站与 Nintendo、Creatures, Inc.、GAME FREAK inc. 或 PokeMMO 无任何隶属关系。',
   },
   home: {
     title: 'Team Soju - PokeMMO 团队',
@@ -117,9 +117,9 @@ const zh = {
         liveCoordination: '实时协作',
       },
       catchEventsCard: {
-        title: '捕捉活动管理器',
+        title: '限时抓宠管理器',
         description:
-          '创建捕捉活动，收集玩家提交，计算种族和性格加分，并生成供管理人员审核的排名结果。',
+          '创建限时抓宠活动，收集玩家提交，计算宝可梦种类和性格加分，并生成供管理人员审核的排名结果。',
       },
       feebasCard: {
         title: '丑丑鱼格子追踪器',

@@ -9,35 +9,12 @@ import {
   navigateToLocaleOverride,
   type Locale,
 } from '../i18n';
-
-const toolsLinks = [
-  {
-    href: '/tools/catch-events',
-    label: 'Catch Event Manager',
-  },
-  {
-    href: '/feebas-tile-checker',
-    label: 'Feebas Tile Tracker',
-  },
-];
-
-const localeStorageKey = 'team-soju-locale';
-
-const languageOptions: Array<{ value: Locale; label: string; code: string }> = [
-  { value: 'en', label: 'English', code: 'EN' },
-  { value: 'es', label: 'Español', code: 'ES' },
-  { value: 'zh', label: '中文', code: 'ZH' },
-];
+import { languageOptions, localeStorageKey, toolsLinks, type AuthUser } from './Header.config';
+import { LanguageIcon, UserIcon } from './HeaderIcons';
 
 type Props = {
   locale?: Locale | string;
   apiBaseUrl?: string;
-};
-
-type AuthUser = {
-  id: string;
-  email: string;
-  ign: string;
 };
 
 const Header = ({ locale, apiBaseUrl }: Props) => {
@@ -59,6 +36,7 @@ const Header = ({ locale, apiBaseUrl }: Props) => {
   const localizedToolLinks = toolsLinks.map((link) => ({
     ...link,
     href: getLocaleParamPath(link.href, activeLocale),
+    label: messages.tools.index[link.labelKey].title,
   }));
   const activeLanguageOption = languageOptions.find((option) => option.value === activeLocale) || languageOptions[0];
 
@@ -157,22 +135,6 @@ const Header = ({ locale, apiBaseUrl }: Props) => {
     window.dispatchEvent(new CustomEvent('team-soju-auth-updated', { detail: null }));
   };
 
-  const UserIcon = () => (
-    <i className="fa-solid fa-user flex h-5 w-5 items-center justify-center" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-3.31 0-6 2.02-6 4.5 0 .83.67 1.5 1.5 1.5h9c.83 0 1.5-.67 1.5-1.5 0-2.48-2.69-4.5-6-4.5Z" />
-      </svg>
-    </i>
-  );
-
-  const LanguageIcon = () => (
-    <i className="fa-solid fa-language flex h-5 w-5 items-center justify-center" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-        <path d="M12.87 15.07 10.33 12.56l.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v1.99h11.17A15.7 15.7 0 0 1 9 11.35 15.58 15.58 0 0 1 6.69 8H4.69a17.52 17.52 0 0 0 2.98 4.55l-5.08 5.02L4 19l5-5 3.11 3.11.76-2.04ZM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12Zm-2.62 7 1.62-4.33L19.12 17h-3.24Z" />
-      </svg>
-    </i>
-  );
-
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -185,7 +147,7 @@ const Header = ({ locale, apiBaseUrl }: Props) => {
         <a href={homeHref} className="flex items-center gap-2 min-[1010px]:justify-self-start">
           <img 
             src="/images/team-soju-icon.png" 
-            alt="Team Soju Logo" 
+            alt={messages.home.hero.logoAlt} 
             className="w-10 h-10 object-contain"
           />
           <span className="font-display text-xl font-bold text-primary-600 dark:text-primary-400">
