@@ -70,7 +70,7 @@ src/
    npm run dev:api
    ```
 
-   Generate a bot token for development by visiting [http://localhost:3001/generate-bot-token](http://localhost:3001/generate-bot-token) and add it to `.env`:
+   Generate a bot token for development by visiting [http://localhost:8787/generate-bot-token](http://localhost:8787/generate-bot-token) and add it to `.env`. If an existing local token returns `Invalid token.`, regenerate it from the API server using the same `JWT_SECRET`.
    ```env
    BOT_API_TOKEN=your-bot-token
    ```

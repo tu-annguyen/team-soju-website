@@ -63,12 +63,14 @@ async function verifySignature(secret, payload, signature) {
 
 async function signJwt(payload, secret, options = {}) {
   const nowSeconds = Math.floor((options.now || Date.now()) / 1000);
-  const exp = nowSeconds + parseExpiresIn(options.expiresIn || '30d');
   const fullPayload = {
     ...payload,
     iat: nowSeconds,
-    exp,
   };
+
+  if (options.expiresIn) {
+    fullPayload.exp = nowSeconds + parseExpiresIn(options.expiresIn);
+  }
 
   const encodedHeader = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
@@ -110,8 +112,7 @@ async function generateBotToken(secret) {
       type: BOT_TOKEN_TYPE,
       permissions: ['read', 'write', 'delete'],
     },
-    secret,
-    { expiresIn: '30d' }
+    secret
   );
 }
 

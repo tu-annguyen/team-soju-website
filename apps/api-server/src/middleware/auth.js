@@ -177,8 +177,7 @@ const generateBotToken = () => {
       type: BOT_TOKEN_TYPE,
       permissions: ['read', 'write', 'delete']
     },
-    getJwtSecret(),
-    { expiresIn: '30d' }
+    getJwtSecret()
   );
 };
 
