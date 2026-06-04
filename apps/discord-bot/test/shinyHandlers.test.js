@@ -553,7 +553,6 @@ describe('shinyHandlers', () => {
   it('updates a shiny from advanced text modal submission', async () => {
     const interaction = createMockInteraction({
       customId: 'shm:advanced:encounters:selected-id',
-      reply: jest.fn().mockResolvedValue(undefined),
       fields: {
         getTextInputValue: jest.fn((name) => ({
           encounters: '10,5',
@@ -599,11 +598,16 @@ describe('shinyHandlers', () => {
       }),
       expect.any(Object)
     );
-    expect(interaction.reply).toHaveBeenCalledWith(
+    expect(interaction.deferUpdate).toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
+        content: 'Shiny updated.',
         embeds: expect.any(Array),
-        flags: MessageFlags.Ephemeral,
+        components: expect.any(Array),
       })
+    );
+    expect(interaction.reply).not.toHaveBeenCalledWith(
+      expect.objectContaining({ flags: MessageFlags.Ephemeral })
     );
   });
 
