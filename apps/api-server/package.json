@@ -5,7 +5,7 @@
   "private": true,
   "main": "src/server.js",
   "scripts": {
-    "start": "npm run dev:worker",
+    "start": "node src/server.js",
     "start:express": "node src/server.js",
     "dev": "npm run dev:worker",
     "dev:express": "nodemon src/server.js",
@@ -16,6 +16,7 @@
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\"",
     "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",
     "deploy:cf:staging": "wrangler deploy --config wrangler.jsonc --env staging",
+    "tail:cf": "wrangler tail --config wrangler.jsonc --format pretty",
     "tail:cf:staging": "wrangler tail --config wrangler.jsonc --env staging --format pretty",
     "migrate": "node src/config/migrate.js",
     "clear-shinies": "node src/config/clear-shinies.js",
