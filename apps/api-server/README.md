@@ -338,7 +338,7 @@ npm test -- --runTestsByPath test/auth.routes.test.js
 
 1. Configure Postgres and environment variables.
 2. Run migrations with `npm run migrate`.
-3. Start with `npm start` or a process manager.
+3. On Render, run `npm start` from `apps/api-server`; this intentionally starts the legacy Express server with `node src/server.js`.
 
 ### Cloudflare Worker
 

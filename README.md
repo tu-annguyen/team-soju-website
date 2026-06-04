@@ -34,13 +34,14 @@ All commands are run from the root of the project:
 | `npm install`             | Installs dependencies for all apps                                    |
 | `npm run dev:web`         | Starts dev server at `localhost:4321` for the frontend                |
 | `npm run dev:api`         | Starts dev server at `localhost:8787` for the API                     |
-| `npm run dev:bot`         | Starts the Discord bot (watch mode)                                   |
-| `npm run dev`             | Concurrently starts dev servers for web and API                       |
-| `npm run dev:all`         | Concurrently starts dev servers for web, API, and Discord bot         |
-| `npm run start:bot`       | Starts the Discord bot in production mode                             |
+| `npm run dev:bot`         | Starts the Discord bot Worker locally                                 |
+| `npm run dev`             | Concurrently starts local dev servers for web, API Worker, and bot Worker |
+| `npm run dev:staging`     | Starts local dev servers with staging Worker configuration            |
+| `npm run dev:api:express` | Starts the legacy Express API locally                                 |
 | `npm run test:web`        | Tests frontend web application                                        |
 | `npm run test:api`        | Tests backend API                                                     |
-| `npm run test`            | Concurrently tests frontend and backend                               |
+| `npm run test:api`        | Tests Discord bot
+| `npm run test`            | Concurrently tests frontend, backend, and bot                         |
 | `npm run build`           | Build the web production site to `./dist/`                            |
 
 ---
@@ -64,8 +65,8 @@ The Discord bot provides slash commands for managing team members and tracking s
    ```
 3. Start the bot:
    ```bash
-   npm run dev:bot     # Development with auto-reload
-   npm run start:bot   # Production mode
+   npm run dev:bot     # Local Worker development
+   npm run deploy:cf --workspace=@team-soju/discord-bot
    ```
 
 For detailed documentation, see [apps/discord-bot/README.md](apps/discord-bot/README.md)

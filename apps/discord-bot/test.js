@@ -43,7 +43,7 @@ try {
   console.log(`\n📝 Next steps:`);
   console.log(`  1. Copy .env.example to .env`);
   console.log(`  2. Add your Discord credentials to .env`);
-  console.log(`  3. Run: npm start`);
+  console.log(`  3. Run: npm run dev`);
 
 } catch (error) {
   console.error(`\n❌ Verification failed:`);
