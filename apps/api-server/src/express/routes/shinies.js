@@ -38,6 +38,8 @@ const ENCOUNTER_TYPE_CHOICES = [
 const SHINY_STATUS_CHOICES = ['Owned', 'Sold', 'Fled', 'Died', 'Bred'];
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
 const SHINY_WARS_2025_RELEASE_DATE = '2025-07-11';
+const HEADER_OCR_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/.:,!- ';
+const STATS_OCR_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ';
 
 function getScreenshotDataApiBaseUrl() {
   return (process.env.SCREENSHOT_DATA_API_BASE_URL || '').trim().replace(/\/+$/, '');
@@ -493,52 +495,109 @@ function scoreDateCandidate({ format, first, second, third, separator, index, te
   return score;
 }
 
+function getDateInterpretations(rawFirst, rawSecond, rawThird) {
+  const first = parseInt(rawFirst, 10);
+  const second = parseInt(rawSecond, 10);
+  const third = parseInt(rawThird, 10);
+
+  if ([first, second, third].some((value) => Number.isNaN(value))) {
+    return { first, second, third, interpretations: [], isAmbiguous: false };
+  }
+
+  if (rawFirst.length !== 4 && first <= 12 && second <= 12) {
+    return { first, second, third, interpretations: [], isAmbiguous: true };
+  }
+
+  const interpretations = rawFirst.length === 4
+    ? [{ format: 'YMD', year: first, month: second, day: third }]
+    : [
+      first > 12
+        ? { format: 'DMY', year: normalizeScreenshotYear(rawThird), month: second, day: first }
+        : { format: 'MDY', year: normalizeScreenshotYear(rawThird), month: first, day: second },
+    ];
+
+  return { first, second, third, interpretations, isAmbiguous: false };
+}
+
+function addDateCandidate({ candidates, text, rawFirst, rawSecond, rawThird, separator, index }) {
+  const {
+    first,
+    second,
+    third,
+    interpretations,
+    isAmbiguous,
+  } = getDateInterpretations(rawFirst, rawSecond, rawThird);
+
+  if (isAmbiguous) return true;
+
+  for (const interpretation of interpretations) {
+    if (!isValidDateParts(interpretation.year, interpretation.month, interpretation.day)) continue;
+
+    candidates.push({
+      isoDate: formatIsoDate(interpretation.year, interpretation.month, interpretation.day),
+      score: scoreDateCandidate({
+        format: interpretation.format,
+        first,
+        second,
+        third,
+        separator,
+        index,
+        text,
+      }),
+    });
+  }
+
+  return false;
+}
+
 function extractDateFromOcr(text) {
-  const pattern = /\b(\d{1,4})([\/.-])(\d{1,2})\2(\d{1,4})\b/g;
+  const separatedPattern = /\b(\d{1,4})([\/.-])(\d{1,2})\2(\d{1,4})\b/g;
+  const commaPattern = /\b(\d{1,4}),(\d{1,2}),(\d{1,4})\b(?=\s*,?\s+(?:\d{1,2}:\d{2}|[A-Za-z]))/g;
+  const compactPattern = /\b(\d{6}|\d{8})\b(?=\s*,?\s+(?:\d{1,2}:\d{2}|[A-Za-z]))/g;
   const candidates = [];
   let hasAmbiguousCandidate = false;
 
-  for (const match of text.matchAll(pattern)) {
-    const rawFirst = match[1];
-    const separator = match[2];
-    const rawSecond = match[3];
-    const rawThird = match[4];
-    const first = parseInt(rawFirst, 10);
-    const second = parseInt(rawSecond, 10);
-    const third = parseInt(rawThird, 10);
-    const index = match.index || 0;
+  for (const match of text.matchAll(separatedPattern)) {
+    hasAmbiguousCandidate = addDateCandidate({
+      candidates,
+      text,
+      rawFirst: match[1],
+      separator: match[2],
+      rawSecond: match[3],
+      rawThird: match[4],
+      index: match.index || 0,
+    }) || hasAmbiguousCandidate;
+  }
 
-    if ([first, second, third].some((value) => Number.isNaN(value))) continue;
+  for (const match of text.matchAll(commaPattern)) {
+    hasAmbiguousCandidate = addDateCandidate({
+      candidates,
+      text,
+      rawFirst: match[1],
+      separator: ',',
+      rawSecond: match[2],
+      rawThird: match[3],
+      index: match.index || 0,
+    }) || hasAmbiguousCandidate;
+  }
 
-    if (rawFirst.length !== 4 && first <= 12 && second <= 12) {
-      hasAmbiguousCandidate = true;
-      continue;
-    }
+  for (const match of text.matchAll(compactPattern)) {
+    const value = match[1];
+    const parts = value.length === 8 && value.startsWith('20')
+      ? [value.slice(0, 4), value.slice(4, 6), value.slice(6, 8)]
+      : value.length === 8
+        ? [value.slice(0, 2), value.slice(2, 4), value.slice(4, 8)]
+        : [value.slice(0, 2), value.slice(2, 4), value.slice(4, 6)];
 
-    const interpretations = rawFirst.length === 4
-      ? [{ format: 'YMD', year: first, month: second, day: third }]
-      : [
-        first > 12
-          ? { format: 'DMY', year: normalizeScreenshotYear(rawThird), month: second, day: first }
-          : { format: 'MDY', year: normalizeScreenshotYear(rawThird), month: first, day: second },
-      ];
-
-    for (const interpretation of interpretations) {
-      if (!isValidDateParts(interpretation.year, interpretation.month, interpretation.day)) continue;
-
-      candidates.push({
-        isoDate: formatIsoDate(interpretation.year, interpretation.month, interpretation.day),
-        score: scoreDateCandidate({
-          format: interpretation.format,
-          first,
-          second,
-          third,
-          separator,
-          index,
-          text,
-        }),
-      });
-    }
+    hasAmbiguousCandidate = addDateCandidate({
+      candidates,
+      text,
+      rawFirst: parts[0],
+      separator: '',
+      rawSecond: parts[1],
+      rawThird: parts[2],
+      index: match.index || 0,
+    }) || hasAmbiguousCandidate;
   }
 
   candidates.sort((left, right) => right.score - left.score);
@@ -828,7 +887,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '7',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/,:!- ',
+        tessedit_char_whitelist: HEADER_OCR_WHITELIST,
       }
     ));
 
@@ -846,7 +905,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '6',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+        tessedit_char_whitelist: STATS_OCR_WHITELIST,
       }
     ));
 
@@ -863,7 +922,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '6',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+        tessedit_char_whitelist: STATS_OCR_WHITELIST,
       }
     ));
   } else {
@@ -889,7 +948,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '6',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,!- ',
+        tessedit_char_whitelist: HEADER_OCR_WHITELIST,
       }
     ));
 
@@ -904,7 +963,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '11',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,!- ',
+        tessedit_char_whitelist: HEADER_OCR_WHITELIST,
       }
     ));
 
@@ -921,7 +980,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '11',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:,!- ',
+        tessedit_char_whitelist: HEADER_OCR_WHITELIST,
       }
     ));
 
@@ -944,7 +1003,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '6',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+        tessedit_char_whitelist: STATS_OCR_WHITELIST,
       }
     ));
 
@@ -966,7 +1025,7 @@ async function buildOcrJobs(imageBuffer, sharp) {
       {
         tessedit_pageseg_mode: '6',
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/: ',
+        tessedit_char_whitelist: STATS_OCR_WHITELIST,
       }
     ));
   }
@@ -1619,6 +1678,7 @@ router._test = {
   mergeParsedStats,
   parseDataFromOcr,
   pickEncounterCandidate,
+  HEADER_OCR_WHITELIST,
   chooseEncounterValue,
 };
 

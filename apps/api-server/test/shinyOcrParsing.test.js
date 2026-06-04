@@ -99,10 +99,46 @@ describe('shiny OCR parsing', () => {
     expect(parsed.date).toBe('2026-03-16');
   });
 
+  it('parses dot-separated dates when the day makes the format unambiguous', () => {
+    const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Ditto was caught by Gnomkind! 21.05.26, 16:38');
+
+    expect(parsed.date).toBe('2026-05-21');
+    expect(parsed.dateWasAmbiguous).toBe(false);
+  });
+
+  it('parses comma-substituted dot dates when the day makes the format unambiguous', () => {
+    const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Ditto was caught by Gnomkind! 21,05,26, 16:38');
+
+    expect(parsed.date).toBe('2026-05-21');
+    expect(parsed.dateWasAmbiguous).toBe(false);
+  });
+
+  it('parses compact dates when the day makes the format unambiguous', () => {
+    const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Ditto was caught by Gnomkind! 210526, 16:38');
+
+    expect(parsed.date).toBe('2026-05-21');
+    expect(parsed.dateWasAmbiguous).toBe(false);
+  });
+
   it('flags ambiguous slash dates instead of guessing them', () => {
     const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Woobat was caught by Pokio! 03/04/26, 3:03 PM');
 
     expect(parsed.date).toBeNull();
     expect(parsed.dateWasAmbiguous).toBe(true);
+  });
+
+  it.each([
+    '02.06.26, 18:26',
+    '02,06,26, 18:26',
+    '020626, 18:26',
+  ])('flags ambiguous dot-style OCR date %s instead of guessing it', (dateText) => {
+    const parsed = shiniesRouter._test.parseDataFromOcr(`Shiny Deino was caught by Gnomkind! ${dateText}`);
+
+    expect(parsed.date).toBeNull();
+    expect(parsed.dateWasAmbiguous).toBe(true);
+  });
+
+  it('allows periods in header OCR text recognition', () => {
+    expect(shiniesRouter._test.HEADER_OCR_WHITELIST).toContain('.');
   });
 });
