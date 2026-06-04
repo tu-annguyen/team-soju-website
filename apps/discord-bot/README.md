@@ -77,16 +77,16 @@ src/
 
 ### Running the Bot
 
-**Development** (local HTTP endpoint with auto-reload):
+**Development** (local Worker endpoint):
 ```bash
 npm run dev
 ```
 
-By default the local interaction server listens on `8787`. Override it with `DISCORD_BOT_PORT`.
+By default Wrangler listens on `8787`. From the repo root, `npm run dev` runs the bot Worker on `8788` so it can run alongside the API Worker.
 
-From the repo root, `npm run dev:bot` now starts the bot dev server and `ngrok http 8787` together so Discord can reach your local interactions endpoint. `npm run bot` is an alias for the same workflow.
+For the old Node interaction server, use `npm run dev:express`.
 
-This assumes the `ngrok` CLI is already installed and authenticated on your machine.
+If Discord needs to reach your local Worker endpoint, run `ngrok` separately against the Worker port you are using.
 
 **Register slash commands**:
 ```bash
@@ -95,16 +95,10 @@ npm run register
 
 `npm run deploy:cf` now performs both steps for production: it deploys the Worker to the top-level Wrangler environment with `--env=""` and then re-registers the Discord slash commands so new commands become available.
 
-**Local server**:
+Production Discord bot deployments use Cloudflare Workers:
 ```bash
-npm start
-```
-
-From the repo root, `npm run start:bot` starts the local interaction server and `ngrok http 8787` together.
-
-You should see:
-```
-Discord interaction dev server listening on http://0.0.0.0:8787
+npm run deploy:cf
+npm run deploy:cf:staging
 ```
 
 Point your Discord Interactions Endpoint URL at the deployed Worker URL.

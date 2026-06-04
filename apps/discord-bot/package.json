@@ -4,8 +4,6 @@
   "description": "Discord bot for Team Soju - manages team members and shiny Pokemon",
   "main": "src/worker.js",
   "scripts": {
-    "start": "npm run dev",
-    "start:express": "node src/devServer.js",
     "dev": "wrangler dev --local --config wrangler.jsonc --env-file ../../.env --inspector-port 9231",
     "dev:local": "wrangler dev --local --config wrangler.jsonc --env-file ../../.env --port 8788 --inspector-port 9231",
     "dev:staging": "wrangler dev --local --config wrangler.jsonc --env staging --env-file ../../.env --inspector-port 9231",
@@ -16,6 +14,7 @@
     "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",
     "deploy:cf:staging": "wrangler deploy --config wrangler.jsonc --env staging && npm run register",
     "deploy:cf:staging:preview": "wrangler versions upload --config wrangler.jsonc --env staging",
+    "tail:cf": "wrangler tail --config wrangler.jsonc --format pretty",
     "tail:cf:staging": "wrangler tail --config wrangler.jsonc --env staging --format pretty",
     "test": "jest --runInBand --coverage"
   },

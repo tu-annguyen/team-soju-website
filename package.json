@@ -29,16 +29,10 @@
     "dev:staging": "concurrently --kill-others-on-fail -n web,api,bot -c cyan,green,magenta \"npm run dev:web:staging\" \"npm run dev:api:staging\" \"npm run dev:bot:staging:local\"",
     "dev:worker": "npm run dev",
     "build": "npm run build --workspace=@team-soju/web-app",
-    "start": "npm run start:api",
-    "start:api": "npm run start --workspace=@team-soju/api-server",
-    "start:api:express": "npm run start:express --workspace=@team-soju/api-server",
-    "start:bot": "npm run start --workspace=@team-soju/discord-bot",
-    "start:bot:express": "npm run start:express --workspace=@team-soju/discord-bot",
-    "start:bot:tunnel": "ngrok http 8787",
     "test:web": "npm run test --workspace=@team-soju/web-app -- --runInBand --coverage",
     "test:api": "npm run test --workspace=@team-soju/api-server -- --runInBand --coverage",
     "test:bot": "npm run test --workspace=@team-soju/discord-bot -- --runInBand --coverage",
-    "test": "concurrently \"npm run test:api\" \"npm run test:web\""
+    "test": "concurrently --kill-others-on-fail -n api,web,bot -c cyan,green,magenta \"npm run test:api\" \"npm run test:web\" \"npm run test:bot\""
   },
   "keywords": [
     "pokemmo",
