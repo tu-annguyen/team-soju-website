@@ -1,5 +1,5 @@
 const path = require('path');
-if (process.env.NODE_ENV !== 'production') {
+if (typeof __dirname !== 'undefined' && process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 }
 
