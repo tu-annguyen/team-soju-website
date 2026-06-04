@@ -216,6 +216,17 @@ describe('Cloudflare Worker API', () => {
     expect(body.message).toBe('Shiny entry created successfully');
   });
 
+  it('generates long-lived bot tokens for Worker auth', async () => {
+    const token = await generateBotToken('test-secret');
+    const decoded = jwt.verify(token, 'test-secret');
+
+    expect(decoded).toEqual(expect.objectContaining({
+      type: 'discord_bot',
+      permissions: expect.arrayContaining(['read', 'write', 'delete']),
+    }));
+    expect(decoded.exp).toBeUndefined();
+  });
+
   it('proxies legacy screenshot endpoints when configured', async () => {
     const fetchMock = jest.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), {
       status: 202,
