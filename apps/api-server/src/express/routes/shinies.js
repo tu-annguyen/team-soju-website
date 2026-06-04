@@ -1136,16 +1136,16 @@ async function createShinyFromScreenshotValue(value) {
     if (mergedParsed.dateWasAmbiguous) {
       const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
       mergedParsed.date = fallbackDate;
-      notes.push(`Ambiguous date was found in screenshot. The caught date was set to today's date (${fallbackDate}), instead. Select **Edit** > **Edit Text Fields** to change.`);
+      notes.push(`Ambiguous date was found in screenshot. The caught date was set to today's date (${fallbackDate}), instead. Select **Edit** > **Catch Date** to change.`);
     }
 
     if (isBeforeIsoDate(mergedParsed.date, SHINY_WARS_2025_RELEASE_DATE)) {
-      notes.push(`The date was read as ${mergedParsed.date}, which is before ${SHINY_WARS_2025_RELEASE_DATE}. Screenshots from the Encounter Tracker should only exist after the Shiny Wars 2025 update, so please double-check the date. Select **Edit** > **Edit Text Fields** to change.`);
+      notes.push(`The date was read as ${mergedParsed.date}, which is before ${SHINY_WARS_2025_RELEASE_DATE}. Screenshots from the Encounter Tracker should only exist after the Shiny Wars 2025 update, so please double-check the date. Select **Edit** > **Catch Date** to change.`);
     }
 
     if (isAfterIsoDate(mergedParsed.date, getLatestPossibleTodayIso())) {
       const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
-      notes.push(`The date was read as ${mergedParsed.date}, which is in the future. The caught date was set to today's date (${fallbackDate}), instead. Please double-check the date. Select **Edit** > **Edit Text Fields** to change.`);
+      notes.push(`The date was read as ${mergedParsed.date}, which is in the future. The caught date was set to today's date (${fallbackDate}), instead. Please double-check the date. Select **Edit** > **Catch Date** to change.`);
       mergedParsed.date = fallbackDate;
     }
 
