@@ -607,7 +607,7 @@ function normalizeNatureInput(input) {
     throw new Error(`Nature must be one of: ${allowedValues.join(', ')}.`);
   }
 
-  return String(typeof matchedNature === 'string' ? matchedNature : matchedNature.value).toLowerCase();
+  return String(typeof matchedNature === 'string' ? matchedNature : matchedNature.value);
 }
 
 function buildChoiceOptions(choices, currentValue) {
@@ -851,7 +851,7 @@ function getFieldPickerConfig(field, shiny) {
       placeholder: 'Nature',
       currentValue: shiny.nature,
       choices: NATURE_CHOICES,
-      toUpdates: (value) => ({ nature: String(value || '').toLowerCase() }),
+      toUpdates: (value) => ({ nature: normalizeNatureInput(value) }),
     },
     special: {
       title: 'Choose Secret/Alpha',
