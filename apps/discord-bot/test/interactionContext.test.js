@@ -54,6 +54,22 @@ describe('DiscordInteractionContext', () => {
     });
   });
 
+  it('stores a deferred message update response for component-backed modals', async () => {
+    const interaction = new DiscordInteractionContext({
+      application_id: 'app-123',
+      token: 'interaction-token',
+      type: 5,
+      data: { custom_id: 'shm:advanced:encounters:selected-id' },
+      member: { user: { id: 'user-1' }, roles: [] },
+    }, { DISCORD_CLIENT_ID: 'env-app-id' });
+
+    await interaction.deferUpdate();
+
+    expect(interaction.initialResponse).toEqual({
+      type: InteractionResponseType.DeferredUpdateMessage,
+    });
+  });
+
   it('captures the focused autocomplete option and responds with choices', async () => {
     const interaction = new DiscordInteractionContext({
       application_id: 'app-123',
