@@ -28,6 +28,7 @@ describe('generateBotToken', () => {
     expect(decoded.type).toBe('discord_bot');
     expect(Array.isArray(decoded.permissions)).toBe(true);
     expect(decoded.permissions).toContain('read');
+    expect(decoded.exp).toBeUndefined();
   });
 });
 
