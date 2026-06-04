@@ -1343,4 +1343,52 @@ describe('shinyHandlers', () => {
       })
     );
   });
+
+  it('updates nature from the field picker using the API-valid nature value', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:fp:nature:pick:selected-id',
+      values: ['Hardy'],
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'pikachu',
+          pokemon_name: 'Pikachu',
+          national_number: 25,
+          trainer_name: 'T1',
+          trainer_id: 'trainer-1',
+          status: 'Owned',
+          encounter_type: 'horde',
+          nature: 'Hardy',
+          is_secret: false,
+          is_alpha: false,
+        },
+      },
+    });
+    fetchClient.put.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          nature: 'Hardy',
+        },
+      },
+    });
+
+    await handleShinyComponent(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({ nature: 'Hardy' }),
+      expect.any(Object)
+    );
+    expect(interaction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'Shiny updated.',
+      })
+    );
+  });
 });
