@@ -1612,6 +1612,7 @@ async function handleShinyEditModal(interaction) {
   }
 
   try {
+    await interaction.deferUpdate();
     await requireOwnedShiny(interaction, shinyId);
 
     const updates = {};
@@ -1622,15 +1623,24 @@ async function handleShinyEditModal(interaction) {
     if (field === 'encounters' && value) Object.assign(updates, parseEncounterInput(value));
 
     if (Object.keys(updates).length === 0) {
-      await interaction.reply({ content: 'No updates provided.', flags: MessageFlags.Ephemeral });
+      await interaction.followUp({ content: 'No updates provided.', flags: MessageFlags.Ephemeral });
       return;
     }
 
-    const shiny = await updateShinyRecord(shinyId, updates);
-    const payload = await buildShinyDisplayPayload(shiny, 'Shiny Updated Successfully');
-    await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+    await updateShinyRecord(shinyId, updates);
+    await interaction.editReply(await buildEditControlsPayload(interaction, {
+      scope: 'all',
+      page: 1,
+      pageSize: PAGE_SIZE_FALLBACK,
+      shinyId,
+    }, 'Shiny updated.'));
   } catch (error) {
-    await interaction.reply({ content: `Error: ${error.message}`, flags: MessageFlags.Ephemeral });
+    const payload = { content: `Error: ${error.message}`, flags: MessageFlags.Ephemeral };
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(payload);
+    } else {
+      await interaction.reply(payload);
+    }
   }
 }
 

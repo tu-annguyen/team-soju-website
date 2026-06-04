@@ -185,6 +185,13 @@ class DiscordInteractionContext {
     });
   }
 
+  async deferUpdate() {
+    this.deferred = true;
+    this.setInitialResponse({
+      type: InteractionResponseType.DeferredUpdateMessage,
+    });
+  }
+
   async reply(payload = {}) {
     const data = serializePayload(payload);
 

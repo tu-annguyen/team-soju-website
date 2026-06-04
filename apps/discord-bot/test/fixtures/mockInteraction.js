@@ -40,6 +40,7 @@ function createMockInteraction(overrides = {}) {
     },
     reply: jest.fn().mockResolvedValue(undefined),
     deferReply: jest.fn().mockResolvedValue(undefined),
+    deferUpdate: jest.fn().mockResolvedValue(undefined),
     editReply: jest.fn().mockResolvedValue(undefined),
     fetchReply: jest.fn().mockResolvedValue({
       createMessageComponentCollector: () => ({ on: jest.fn() })
