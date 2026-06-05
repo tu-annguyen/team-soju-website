@@ -1,6 +1,6 @@
 import React from 'react';
-import { getClientLocale, getTranslations } from '../i18n';
-import type { Locale } from '../i18n';
+import { getClientLocale, getTranslations } from '../../i18n';
+import type { Locale } from '../../i18n';
 
 type Props = {
   locale?: Locale | string;

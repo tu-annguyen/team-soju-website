@@ -45,6 +45,8 @@ class FeebasBoardStreamDurableObject {
     this.state = state;
     this.env = env;
     this.createRepositories = options.createRepositories || createRepositories;
+    this.boardCacheByLocation = new Map(); // location -> { board, expiresAt, isFetching }
+    this.BOARD_CACHE_TTL_MS = 3000; // 3 second cache to reduce DB queries during concurrent broadcasts
   }
 
   async fetch(request) {
@@ -120,9 +122,30 @@ class FeebasBoardStreamDurableObject {
     }
 
     const repositories = this.createRepositories(this.env);
-    const boardCache = typeof repositories.feebas.getBoardCache === 'function'
-      ? await repositories.feebas.getBoardCache(location)
-      : null;
+    const now = Date.now();
+    let boardCache = null;
+
+    // Check if we have a valid cached board to avoid excessive DB queries
+    const cached = this.boardCacheByLocation.get(location);
+    if (cached && cached.expiresAt > now && !cached.isFetching) {
+      boardCache = cached.board;
+    } else if (!cached || cached.expiresAt <= now) {
+      // Fetch fresh board and mark cache as being updated
+      const cacheEntry = { isFetching: true, expiresAt: now };
+      this.boardCacheByLocation.set(location, cacheEntry);
+
+      try {
+        if (typeof repositories.feebas.getBoardCache === 'function') {
+          boardCache = await repositories.feebas.getBoardCache(location);
+          cacheEntry.board = boardCache;
+          cacheEntry.expiresAt = now + this.BOARD_CACHE_TTL_MS;
+          cacheEntry.isFetching = false;
+        }
+      } catch (error) {
+        cacheEntry.isFetching = false;
+        console.error('Error fetching Feebas board cache:', error);
+      }
+    }
 
     await Promise.all(subscribers.map(async (subscriber) => {
       try {
