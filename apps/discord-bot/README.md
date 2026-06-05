@@ -116,6 +116,19 @@ Point your Discord Interactions Endpoint URL at the deployed Worker URL.
 ### Shiny Management
 Only Soju members can run these commands.
 
+#### `/myshinies`
+List shinies for the Discord account linked to your member profile.
+
+**Options:**
+- `limit` (optional): Page size (default: 10)
+
+Each page includes a selector for the visible shinies plus `View`, `Edit`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
+
+**Example:**
+```
+/myshinies limit:10
+```
+
 #### `/shinies`
 List recent shiny catches with interactive pagination.
 
@@ -129,19 +142,6 @@ Each page includes a selector for the visible shinies plus `View`, `Edit`, and `
 **Example:**
 ```
 /shinies trainer:tunacore limit:20
-```
-
-#### `/myshinies`
-List shinies for the Discord account linked to your member profile.
-
-**Options:**
-- `limit` (optional): Page size (default: 10)
-
-Each page includes a selector for the visible shinies plus `View`, `Edit`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
-
-**Example:**
-```
-/myshinies limit:10
 ```
 
 #### `/addshiny`
@@ -240,6 +240,17 @@ View details about a specific shiny.
 ### Member Management
 Only Champions and Elite 4 can run these commands.
 
+#### `/member`
+Display information about a team member.
+
+**Options:**
+- `ign` (required): IGN to lookup
+
+**Example:**
+```
+/member ign:tunacore
+```
+
 #### `/addmember`
 Add a new team member to the roster.
 
@@ -287,17 +298,6 @@ Reactivate a previously removed team member.
 **Example:**
 ```
 /reactivatemember ign:oldplayer
-```
-
-#### `/member`
-Display information about a team member.
-
-**Options:**
-- `ign` (required): IGN to lookup
-
-**Example:**
-```
-/member ign:tunacore
 ```
 
 ### Statistics
