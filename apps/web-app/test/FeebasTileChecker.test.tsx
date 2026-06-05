@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import FeebasTileChecker from '../src/components/FeebasTileChecker';
+import FeebasTileChecker from '../src/components/feebas-tile-checker/FeebasTileChecker';
 
 const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
 const DISPLAY_MODE_HOTKEY_STORAGE_KEY = 'feebas-tile-checker-display-mode-hotkey';

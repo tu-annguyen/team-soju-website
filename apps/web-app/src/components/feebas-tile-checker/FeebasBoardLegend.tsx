@@ -1,4 +1,4 @@
-import { formatFeebasDisplayModeHotkey } from '../utils/feebasHotkey';
+import { formatFeebasDisplayModeHotkey } from '../../utils/feebasHotkey';
 
 export type FeebasBoardDisplayMode = 'voting' | 'heatmap';
 
