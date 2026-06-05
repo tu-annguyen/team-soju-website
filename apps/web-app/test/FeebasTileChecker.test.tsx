@@ -137,6 +137,7 @@ class MockWebSocket {
 
   url: string;
   onmessage: ((event: { data: string }) => void) | null = null;
+  onopen: (() => void) | null = null;
   onerror: (() => void) | null = null;
   onclose: (() => void) | null = null;
   closed = false;
@@ -158,6 +159,12 @@ class MockWebSocket {
   emit(payload: unknown) {
     if (!this.closed) {
       this.onmessage?.({ data: JSON.stringify(payload) });
+    }
+  }
+
+  fail() {
+    if (!this.closed) {
+      this.onerror?.();
     }
   }
 }
@@ -776,6 +783,40 @@ describe('FeebasTileChecker', () => {
 
     expect(route119Stream.closed).toBe(true);
     expect(screen.queryByText(/Brendan nominated B2 at Route 119, Hoenn/i)).not.toBeInTheDocument();
+  });
+
+  it('stops reconnecting after repeated live update stream failures', async () => {
+    jest.useFakeTimers();
+    (global as any).WebSocket = MockWebSocket;
+
+    try {
+      render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+      await waitFor(() =>
+        expect(MockWebSocket.instances[0]?.url).toContain('/feebas/route-119-main/stream')
+      );
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        act(() => {
+          MockWebSocket.instances[attempt].fail();
+        });
+
+        if (attempt < 3) {
+          act(() => {
+            jest.advanceTimersByTime(5000 * (2 ** attempt));
+          });
+          await waitFor(() => expect(MockWebSocket.instances).toHaveLength(attempt + 2));
+        }
+      }
+
+      act(() => {
+        jest.advanceTimersByTime(60000);
+      });
+
+      expect(MockWebSocket.instances).toHaveLength(4);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('shows the self notification after this session sends a pending nomination', async () => {

@@ -156,6 +156,7 @@ export const LEADERBOARD_SIGN_IN_CTA_CLASSES =
 export const PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS = 6000;
 export const RESET_REFRESH_RETRY_MS = 1000;
 export const FEEBAS_LIVE_UPDATES_RECONNECT_MS = 5000;
+export const FEEBAS_LIVE_UPDATES_MAX_RECONNECT_ATTEMPTS = 3;
 
 export function formatCopy(template: string, values: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FeebasTileCheckerView } from './FeebasTileCheckerView';
+import { useFeebasLiveUpdates } from './useFeebasLiveUpdates';
 import {
   DEFAULT_FEEBAS_DISPLAY_MODE_HOTKEY,
   getStoredFeebasDisplayModeHotkey,
@@ -13,10 +14,9 @@ import { DEFAULT_LOCATION, getLocalizedLocationOptions } from './locations';
 import { DEFAULT_LEADERBOARD_SORT } from './leaderboard';
 import type { AuthResponse, AuthUser, BoardDisplayMode, BoardResponse, FeebasBoard as FeebasBoardType, FeebasTile, FeebasTileCheckerProps, PendingNominationNotification, TileStatus } from './shared';
 import {
-  ACTIVE_LOCATION_STORAGE_KEY, ACTIVITY_PAGE_SIZE, buildFeebasLiveUpdatesUrl, CLIENT_ID_STORAGE_KEY, createClientId,
-  FEEBAS_LIVE_UPDATES_RECONNECT_MS, formatActorName, formatCopy, formatCountdown, getBoardMinWidth, getInitialLocationId,
-  getPendingActivityEntries, getTileLabel, isAuthUser, PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS, RESET_REFRESH_RETRY_MS,
-  resolveLocationId,
+  ACTIVE_LOCATION_STORAGE_KEY, ACTIVITY_PAGE_SIZE, CLIENT_ID_STORAGE_KEY, createClientId, formatActorName, formatCopy,
+  formatCountdown, getBoardMinWidth, getInitialLocationId, getPendingActivityEntries, getTileLabel, isAuthUser,
+  PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS, RESET_REFRESH_RETRY_MS, resolveLocationId,
 } from './shared';
 
 const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerProps) => {
@@ -333,77 +333,19 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     };
   }, [actorFingerprint, clearResetRetryTimeout, fetchBoard, isAuthLoading, messages.errors.loadBoard]);
 
-  useEffect(() => {
-    if (typeof WebSocket === 'undefined') return undefined;
-    if (!actorFingerprint || isAuthLoading) return undefined;
-
-    let isStopped = false;
-    let reconnectTimeout: number | null = null;
-    let liveUpdatesSocket: WebSocket | null = null;
-
-    const clearReconnectTimeout = () => {
-      if (reconnectTimeout !== null) {
-        window.clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
-    };
-
-    const connect = () => {
-      if (isStopped) return;
-
-      const socket = new WebSocket(buildFeebasLiveUpdatesUrl(normalizedApiBaseUrl, activeLocation, actorFingerprint));
-      liveUpdatesSocket = socket;
-
-      socket.onmessage = (event) => {
-        if (socket !== liveUpdatesSocket || isStopped) return;
-
-        try {
-          const payload: BoardResponse = JSON.parse(String(event.data));
-          if (payload.success) {
-            applyBoardUpdate(payload.data);
-            setCountdown(formatCountdown(payload.data.cycleEnd));
-            lastFetchedCycleEndRef.current = payload.data.cycleEnd;
-            resetRefreshInFlightRef.current = false;
-            clearResetRetryTimeout();
-            setError(null);
-          }
-        } catch {
-          // Ignore malformed event payloads and rely on the next valid update.
-        }
-      };
-
-      socket.onerror = () => {
-        if (!isStopped && socket === liveUpdatesSocket) {
-          setError((currentError) => currentError || messages.errors.liveUpdatesDisconnected);
-          socket.close();
-        }
-      };
-
-      socket.onclose = () => {
-        if (isStopped || socket !== liveUpdatesSocket) return;
-
-        setError((currentError) => currentError || messages.errors.liveUpdatesDisconnected);
-        clearReconnectTimeout();
-        reconnectTimeout = window.setTimeout(connect, FEEBAS_LIVE_UPDATES_RECONNECT_MS);
-      };
-    };
-
-    connect();
-
-    return () => {
-      isStopped = true;
-      clearReconnectTimeout();
-      liveUpdatesSocket?.close();
-    };
-  }, [
+  useFeebasLiveUpdates({
     activeLocation,
     actorFingerprint,
+    isAuthLoading,
+    liveUpdatesDisconnectedMessage: messages.errors.liveUpdatesDisconnected,
+    normalizedApiBaseUrl,
+    lastFetchedCycleEndRef,
+    resetRefreshInFlightRef,
     applyBoardUpdate,
     clearResetRetryTimeout,
-    isAuthLoading,
-    messages.errors.liveUpdatesDisconnected,
-    normalizedApiBaseUrl,
-  ]);
+    setCountdown,
+    setError,
+  });
 
   useEffect(() => {
     const timer = window.setInterval(() => {
