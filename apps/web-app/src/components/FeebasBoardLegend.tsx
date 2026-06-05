@@ -1,3 +1,5 @@
+import { formatFeebasDisplayModeHotkey } from '../utils/feebasHotkey';
+
 export type FeebasBoardDisplayMode = 'voting' | 'heatmap';
 
 type FeebasBoardLegendMessages = {
@@ -5,6 +7,11 @@ type FeebasBoardLegendMessages = {
     scrollHint: string;
   };
   heatmap: {
+    changeShortcut: string;
+    invalidShortcut: string;
+    resetShortcut: string;
+    shortcutCaptureHint: string;
+    shortcutLabel: string;
     description: string;
     heatmapMode: string;
     highLegend: string;
@@ -22,18 +29,30 @@ type FeebasBoardLegendMessages = {
 
 type Props = {
   displayMode: FeebasBoardDisplayMode;
+  displayModeHotkey: string;
+  hotkeyCaptureError: string | null;
+  isHotkeyCaptureActive: boolean;
   messages: FeebasBoardLegendMessages;
+  onResetHotkey: () => void;
   onDisplayModeChange: (displayMode: FeebasBoardDisplayMode) => void;
+  onStartHotkeyCapture: () => void;
   placement?: 'top' | 'bottom';
 };
 
 const FeebasBoardLegend = ({
   displayMode,
+  displayModeHotkey,
+  hotkeyCaptureError,
+  isHotkeyCaptureActive,
   messages,
+  onResetHotkey,
   onDisplayModeChange,
+  onStartHotkeyCapture,
   placement = 'top',
 }: Props) => {
   const borderClass = placement === 'bottom' ? 'border-t' : 'border-b';
+  const formattedHotkey = formatFeebasDisplayModeHotkey(displayModeHotkey);
+  const shortcutLabel = messages.heatmap.shortcutLabel.replace('{key}', formattedHotkey);
 
   return (
     <div
@@ -59,37 +78,68 @@ const FeebasBoardLegend = ({
             </>
           )}
         </div>
-        <div
-          className="inline-flex rounded-full border border-slate-300 bg-white/80 p-1 text-sm shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80"
-          role="group"
-          aria-label={messages.heatmap.toggleLabel}
-        >
-          <button
-            type="button"
-            onClick={() => onDisplayModeChange('voting')}
-            aria-pressed={displayMode === 'voting'}
-            className={`rounded-full px-3 py-1.5 font-semibold transition ${
-              displayMode === 'voting'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
-                : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-            }`}
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex rounded-full border border-slate-300 bg-white/80 p-1 text-sm shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80"
+            role="group"
+            aria-label={messages.heatmap.toggleLabel}
           >
-            {messages.heatmap.votingMode}
-          </button>
-          <button
-            type="button"
-            onClick={() => onDisplayModeChange('heatmap')}
-            aria-pressed={displayMode === 'heatmap'}
-            className={`rounded-full px-3 py-1.5 font-semibold transition ${
-              displayMode === 'heatmap'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
-                : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-            }`}
+            <button
+              type="button"
+              onClick={() => onDisplayModeChange('voting')}
+              aria-pressed={displayMode === 'voting'}
+              className={`rounded-full px-3 py-1.5 font-semibold transition ${
+                displayMode === 'voting'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                  : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              {messages.heatmap.votingMode}
+            </button>
+            <button
+              type="button"
+              onClick={() => onDisplayModeChange('heatmap')}
+              aria-pressed={displayMode === 'heatmap'}
+              className={`rounded-full px-3 py-1.5 font-semibold transition ${
+                displayMode === 'heatmap'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                  : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              {messages.heatmap.heatmapMode}
+            </button>
+          </div>
+          <div
+            className="inline-flex flex-wrap items-center gap-1 rounded-full border border-slate-300 bg-white/80 p-1 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200"
+            aria-live="polite"
           >
-            {messages.heatmap.heatmapMode}
-          </button>
+            <span className="px-2">{shortcutLabel}</span>
+            <button
+              type="button"
+              onClick={onStartHotkeyCapture}
+              className={`rounded-full px-2 py-1 transition ${
+                isHotkeyCaptureActive
+                  ? 'bg-amber-400 text-slate-950'
+                  : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              {isHotkeyCaptureActive ? messages.heatmap.shortcutCaptureHint : messages.heatmap.changeShortcut}
+            </button>
+            <button
+              type="button"
+              onClick={onResetHotkey}
+              className="rounded-full px-2 py-1 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              {messages.heatmap.resetShortcut}
+            </button>
+          </div>
         </div>
       </div>
+      {hotkeyCaptureError ? (
+        <p className="mt-3 text-xs font-semibold text-rose-700 dark:text-rose-300">
+          {hotkeyCaptureError}
+        </p>
+      ) : null}
       <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-300 sm:hidden">
         {messages.general.scrollHint}
       </p>
