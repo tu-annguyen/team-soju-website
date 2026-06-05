@@ -113,6 +113,130 @@ Point your Discord Interactions Endpoint URL at the deployed Worker URL.
 
 ## Commands
 
+### Shiny Management
+Only Soju members can run these commands.
+
+#### `/shinies`
+List recent shiny catches with interactive pagination.
+
+**Options:**
+- `trainer` (optional): Filter by trainer IGN
+- `limit` (optional): Page size (default: 10). Use buttons below the response to navigate between pages.
+
+Each page includes a selector for the visible shinies plus `View`, `Edit`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
+`View` is public. `Edit` and `Delete` require `Soju`, `Elite 4`, or `Champion` role(s). Only `Elite 4` and `Champion` can mutate shinies that are not their own.
+
+**Example:**
+```
+/shinies trainer:tunacore limit:20
+```
+
+#### `/myshinies`
+List shinies for the Discord account linked to your member profile.
+
+**Options:**
+- `limit` (optional): Page size (default: 10)
+
+Each page includes a selector for the visible shinies plus `View`, `Edit`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
+
+**Example:**
+```
+/myshinies limit:10
+```
+
+#### `/addshiny`
+Record a new shiny Pokemon catch.
+
+**Options:**
+- `trainer` (required): Trainer's IGN
+- `pokemon` (required): Pokemon name
+- `pokedex_number` (required): National Pokedex number
+- `encounter_type` (required): How it was encountered
+- `catch_date` (optional): Date of the catch (YYYY-MM-DD) (default: today)
+- `status` (optional): Status of the shiny (`Owned`, `Sold`, `Fled`, `Died`, `Bred`)
+- `secret` (optional): Is this a secret shiny?
+- `total_encounters` (optional): Total encounters before catch
+- `specie_encounters` (optional): Species encounters before catch
+- `nature` (optional): Nature of the Pokemon
+- `ivs` (optional): Comma-separated IVs in the order: HP, ATK, DEF, SPATK, SPDEF, SPEED 
+
+**Example:**
+```
+/addshiny trainer:tunacore pokemon:dratini encounter_type:Horde catch_date:2026-01-15 total_encounters:20374 species_encounters:3332 nature:Bold ivs:11,1,15,31,14,4
+```
+
+**Notable optional fields:**
+
+#### `/addshinyscreenshot`
+Record a new shiny Pokemon catch with an uploaded screenshot.
+
+**Options:**
+- `screenshot` (required): Screenshot of the shiny Pokemon's share page
+- `encounter_type` (required): How it was encountered
+- `secret` (optional): Is this a secret shiny?
+- `alpha` (optional): Is this an alpha shiny?
+
+**Date handling:**
+- The bot auto-detects screenshot dates when the format is unambiguous, including common forms like `MM/DD/YY`, `DD/MM/YYYY`, and `YYYY-MM-DD`.
+- If the screenshot date is ambiguous, such as `03/04/26`, the OCR flow does not guess. It uses the date the command was called instead and adds an `ambiguous date` note before the success embed.
+
+**Example:**
+```
+/addshinyscreenshot screenshot:image.png encounter_type:Horde secret:False
+```
+
+#### `/editshiny` (⚠️Deprecated) 
+> Warning: this command is deprecated. Use `/myshinies` to edit your shinies, instead.
+Update an existing shiny entry.
+
+**Options:**
+- `shiny_id` (required): ID of shiny to edit
+- All other options are optional for updating
+- `variant` (optional): Pokemon form slug. This must be a valid name from PokeAPI's `pokemon-form` route, such as `deerling-winter` or `basculin-blue-striped`.
+- `status` (optional): Dropdown with `Owned`, `Sold`, `Fled`, `Died`, `Bred`
+
+**Example:**
+```
+/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 variant:deerling-winter total_encounters:2000 secret:true
+```
+
+#### `/failshiny` (⚠️Deprecated)
+> Warning: this command is deprecated. Use `/myshinies` to fail your shinies, instead.
+Mark a shiny entry with a non-owned status.
+
+**Options:**
+- `shiny_id` (required): ID of shiny to edit
+- `status` (required): Dropdown with `Sold`, `Fled`, `Died`, `Bred`
+
+**Example:**
+```
+/failshiny shiny_id:060df408-f200-48b6-addc-f4b8fa98b25a status:Fled
+```
+
+#### `/deleteshiny` (⚠️Deprecated)
+> Warning: this command is deprecated. Use `/myshinies` to delete your shinies, instead.
+Delete a shiny entry.
+
+**Options:**
+- `shiny_id` (required): ID of shiny to delete
+
+**Example:**
+```
+/deleteshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817
+```
+
+#### `/shiny` (⚠️Deprecated)
+> Warning: this command is deprecated. Use `/myshinies` to view your shinies, instead.
+View details about a specific shiny.
+
+**Options:**
+- `id` (required): Shiny ID
+
+**Example:**
+```
+/shiny id:4f645599-a184-4f17-97f5-a8ccd18f2817
+```
+
 ### Member Management
 Only Champions and Elite 4 can run these commands.
 
@@ -174,126 +298,6 @@ Display information about a team member.
 **Example:**
 ```
 /member ign:tunacore
-```
-
-### Shiny Management
-Only Soju members can run these commands.
-
-#### `/addshiny`
-Record a new shiny Pokemon catch.
-
-**Options:**
-- `trainer` (required): Trainer's IGN
-- `pokemon` (required): Pokemon name
-- `pokedex_number` (required): National Pokedex number
-- `encounter_type` (required): How it was encountered
-- `catch_date` (optional): Date of the catch (YYYY-MM-DD) (default: today)
-- `status` (optional): Status of the shiny (`Owned`, `Sold`, `Fled`, `Died`, `Bred`)
-- `secret` (optional): Is this a secret shiny?
-- `total_encounters` (optional): Total encounters before catch
-- `specie_encounters` (optional): Species encounters before catch
-- `nature` (optional): Nature of the Pokemon
-- `ivs` (optional): Comma-separated IVs in the order: HP, ATK, DEF, SPATK, SPDEF, SPEED 
-
-**Example:**
-```
-/addshiny trainer:tunacore pokemon:dratini encounter_type:Horde catch_date:2026-01-15 total_encounters:20374 species_encounters:3332 nature:Bold ivs:11,1,15,31,14,4
-```
-
-**Notable optional fields:**
-
-#### `/addshinyscreenshot`
-Record a new shiny Pokemon catch with an uploaded screenshot.
-
-**Options:**
-- `screenshot` (required): Screenshot of the shiny Pokemon's share page
-- `encounter_type` (required): How it was encountered
-- `secret` (optional): Is this a secret shiny?
-- `alpha` (optional): Is this an alpha shiny?
-
-**Date handling:**
-- The bot auto-detects screenshot dates when the format is unambiguous, including common forms like `MM/DD/YY`, `DD/MM/YYYY`, and `YYYY-MM-DD`.
-- If the screenshot date is ambiguous, such as `03/04/26`, the OCR flow does not guess. It uses the date the command was called instead and adds an `ambiguous date` note before the success embed.
-
-**Example:**
-```
-/addshinyscreenshot screenshot:image.png encounter_type:Horde secret:False
-```
-
-#### `/editshiny`
-Update an existing shiny entry.
-
-**Options:**
-- `shiny_id` (required): ID of shiny to edit
-- All other options are optional for updating
-- `variant` (optional): Pokemon form slug. This must be a valid name from PokeAPI's `pokemon-form` route, such as `deerling-winter` or `basculin-blue-striped`.
-- `status` (optional): Dropdown with `Owned`, `Sold`, `Fled`, `Died`, `Bred`
-
-**Example:**
-```
-/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 variant:deerling-winter total_encounters:2000 secret:true
-```
-
-#### `/failshiny`
-Mark a shiny entry with a non-owned status.
-
-**Options:**
-- `shiny_id` (required): ID of shiny to edit
-- `status` (required): Dropdown with `Sold`, `Fled`, `Died`, `Bred`
-
-**Example:**
-```
-/failshiny shiny_id:060df408-f200-48b6-addc-f4b8fa98b25a status:Fled
-```
-
-#### `/deleteshiny`
-Delete a shiny entry.
-
-**Options:**
-- `shiny_id` (required): ID of shiny to delete
-
-**Example:**
-```
-/deleteshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817
-```
-
-#### `/shiny`
-View details about a specific shiny.
-
-**Options:**
-- `id` (required): Shiny ID
-
-**Example:**
-```
-/shiny id:4f645599-a184-4f17-97f5-a8ccd18f2817
-```
-
-#### `/shinies`
-List recent shiny catches with interactive pagination.
-
-**Options:**
-- `trainer` (optional): Filter by trainer IGN
-- `limit` (optional): Page size (default: 10). Use buttons below the response to navigate between pages.
-
-Each page includes a selector for the visible shinies plus `View`, `Edit`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
-`View` is public. `Edit` and `Delete` require `Soju`, `Elite 4`, or `Champion` role(s). Only `Elite 4` and `Champion` can mutate shinies that are not their own.
-
-**Example:**
-```
-/shinies trainer:tunacore limit:20
-```
-
-#### `/myshinies`
-List shinies for the Discord account linked to your member profile.
-
-**Options:**
-- `limit` (optional): Page size (default: 10)
-
-Each page includes a selector for the visible shinies plus `View`, `Edit`, and `Delete` actions. `Edit` opens a modal so mobile users can update a shiny without copying the UUID.
-
-**Example:**
-```
-/myshinies limit:10
 ```
 
 ### Statistics
