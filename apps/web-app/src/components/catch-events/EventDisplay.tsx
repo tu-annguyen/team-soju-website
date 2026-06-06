@@ -214,7 +214,7 @@ export function EventLeaderboard({
                 {winner.playerIgn} - {winner.score} {tr('points')}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                {translateSpeciesDisplay(winner.species)}, {translateNatureDisplay(winner.nature)}, {tr('caught at')}{' '}
+                {[translateSpeciesDisplay(winner.species), winner.nature ? translateNatureDisplay(winner.nature) : ''].filter(Boolean).join(', ')}, {tr('caught at')}{' '}
                 {formatDateTime(winner.catchUtc, event.timezone, locale)}
               </p>
             </div>
@@ -246,7 +246,7 @@ export function EventLeaderboard({
                     {submission.playerIgn}
                   </td>
                   <td className="py-3 pr-4">
-                    {translateSpeciesDisplay(submission.species)}, {translateNatureDisplay(submission.nature)}
+                    {[translateSpeciesDisplay(submission.species), submission.nature ? translateNatureDisplay(submission.nature) : ''].filter(Boolean).join(', ')}
                   </td>
                   <td className="py-3 pr-4 font-bold">{submission.score}</td>
                   <td className="py-3 pr-4">{formatDateTime(submission.catchUtc, event.timezone, locale)}</td>

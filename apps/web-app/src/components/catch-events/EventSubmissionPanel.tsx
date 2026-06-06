@@ -1,6 +1,10 @@
 import React from 'react';
 import type { FormEvent } from 'react';
-import { POKEMON_NATURES, calculateCatchEventScore } from '../../utils/catchEventScoring';
+import {
+  POKEMON_NATURES,
+  calculateCatchEventScore,
+  catchEventHasNatureScoring,
+} from '../../utils/catchEventScoring';
 import type { CatchEventConfig } from '../../utils/catchEventScoring';
 import type { Locale } from '../../i18n';
 import {
@@ -60,6 +64,7 @@ export function EventSubmissionPanel({
   onAutofill,
 }: Props) {
   const disabledReason = getSubmissionDisabledReason(activeEvent);
+  const isNatureRequired = catchEventHasNatureScoring(activeEvent);
 
   return (
     <div className={`${panelClasses} ${disabledReason ? 'opacity-60' : ''}`}>
@@ -158,8 +163,13 @@ export function EventSubmissionPanel({
               </datalist>
             </label>
             <label className={labelClasses}>
-              {tr('Nature')} <span className="text-rose-600">*</span>
-              <input className={fieldClasses} list="submission-nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required />
+              {tr('Nature')}{' '}
+              {isNatureRequired ? (
+                <span className="text-rose-600">*</span>
+              ) : (
+                <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
+              )}
+              <input className={fieldClasses} list="submission-nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required={isNatureRequired} />
               <datalist id="submission-nature-options">
                 {POKEMON_NATURES.map((nature) => (
                   <option key={nature} value={nature} label={translateNatureDisplay(nature)} />

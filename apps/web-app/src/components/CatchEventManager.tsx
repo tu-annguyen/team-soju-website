@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { POKEMON_NATURES, calculateCatchEventScore, slugifyEventName, validateCatchEventSubmission } from '../utils/catchEventScoring';
+import { POKEMON_NATURES, calculateCatchEventScore, catchEventHasNatureScoring, slugifyEventName, validateCatchEventSubmission } from '../utils/catchEventScoring';
 import type { CatchEventCollaborator, CatchEventConfig, CatchEventStatus, CatchEventSubmission } from '../utils/catchEventScoring';
 import { CATCH_EVENT_REGIONS, type CatchEventRegion } from '../utils/catchEventLocations';
 import { getClientLocale, getTranslations, type Locale } from '../i18n';
@@ -307,6 +307,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     setSubmissionForm((current) => ({
       ...current,
       species: current.species || activeEvent.targets[0] || '',
+      nature: catchEventHasNatureScoring(activeEvent) ? current.nature || 'Jolly' : '',
       region: current.region || activeEvent.region,
       route: current.route || activeEvent.route,
     }));
@@ -481,7 +482,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
         region: activeEvent.region,
         route: activeEvent.route,
         species: activeEvent.targets[0] ?? '',
-        nature: 'Jolly',
+        nature: catchEventHasNatureScoring(activeEvent) ? 'Jolly' : '',
       });
       setSubmitMessageTone('success');
       setSubmitMessage(
@@ -685,7 +686,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       autoCheckEnabled: event.autoCheckEnabled ?? false,
     });
     setSpeciesRows(rowsFromRules(event.speciesBonuses, event.speciesPenalties));
-    setNatureRows(rowsFromRules(event.natureBonuses, event.naturePenalties));
+    setNatureRows(rowsFromRules(event.natureBonuses, event.naturePenalties, false));
     setEditingEventId(mode === 'edit' ? event.id : '');
     setCreateError('');
     setView('host');
