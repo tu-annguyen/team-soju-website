@@ -76,7 +76,9 @@ function RuleEditor({
   const removeRuleRow = (rowId: string) => {
     const updateRows = (currentRows: RuleRow[], prefix: string) => {
       const nextRows = currentRows.filter((row) => row.id !== rowId);
-      return nextRows.length ? nextRows : [{ id: makeId(prefix), name: '', points: '0' }];
+      return nextRows.length || kind === 'nature'
+        ? nextRows
+        : [{ id: makeId(prefix), name: '', points: '0' }];
     };
 
     if (kind === 'species') {
@@ -119,7 +121,7 @@ function RuleEditor({
                 placeholder={kind === 'species' ? 'Abomasnow, Abra, etc.' : 'Hardy, Lonely, etc.'}
                 value={row.name}
                 onChange={(event) => updateRuleRow(row.id, { name: event.target.value })}
-                required
+                required={kind === 'species'}
               />
             </label>
             <label className={labelClasses}>

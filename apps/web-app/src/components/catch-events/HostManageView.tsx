@@ -137,7 +137,7 @@ export function HostManageView({
     setSubmissionEditForm({
       playerIgn: submission.playerIgn,
       species: submission.species,
-      nature: submission.nature,
+      nature: submission.nature || '',
       totalIv: String(submission.totalIv),
       catchLocal: submission.catchLocal,
       timezone: submission.timezone,
@@ -356,7 +356,7 @@ export function HostManageView({
                     {isEditing ? (
                       <div className="grid min-w-52 gap-2">
                         <input className={fieldClasses} list="host-submission-targets" value={submissionEditForm.species} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, species: event.target.value })} />
-                        <input className={fieldClasses} list="submission-nature-options" value={submissionEditForm.nature} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, nature: event.target.value })} required />
+                        <input className={fieldClasses} list="submission-nature-options" value={submissionEditForm.nature} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, nature: event.target.value })} />
                         <datalist id="submission-nature-options">
                           {POKEMON_NATURES.map((nature) => (
                             <option key={nature} value={nature} label={translateNatureDisplay(nature)} />
@@ -366,7 +366,7 @@ export function HostManageView({
                       </div>
                     ) : (
                       <>
-                        {translateSpeciesDisplay(submission.species)}, {translateNatureDisplay(submission.nature)}, {submission.totalIv} {tr('IV')}
+                        {[translateSpeciesDisplay(submission.species), submission.nature ? translateNatureDisplay(submission.nature) : '', `${submission.totalIv} ${tr('IV')}`].filter(Boolean).join(', ')}
                         <span className="block text-xs">{submission.screenshotNames.length} {tr('screenshot(s)')}</span>
                       </>
                     )}

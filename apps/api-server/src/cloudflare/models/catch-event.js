@@ -64,6 +64,10 @@ function calculateCatchEventScore(submission, event) {
     + findNaturePoints(event.naturePenalties);
 }
 
+function catchEventHasNatureScoring(event) {
+  return Boolean((event.natureBonuses || []).length || (event.naturePenalties || []).length);
+}
+
 function validateCatchEventSubmissionPayload(input, event) {
   const errors = [];
   const flags = [];
@@ -72,7 +76,10 @@ function validateCatchEventSubmissionPayload(input, event) {
   if (!normalizeCatchEventText(input.playerIgn)) errors.push('Missing OT / IGN');
   if (!targets.includes(normalizeCatchEventText(input.species))) errors.push('Species is not allowed for this event');
   if (Number(input.totalIv) < 0 || Number(input.totalIv) > 186) errors.push('Total IV must be between 0 and 186');
-  if (!pokemonNatures.has(normalizeCatchEventText(input.nature))) errors.push('Nature is not one of the standard Pokemon natures');
+  const nature = normalizeCatchEventText(input.nature);
+  if ((catchEventHasNatureScoring(event) || nature) && !pokemonNatures.has(nature)) {
+    errors.push('Nature is not one of the standard Pokemon natures');
+  }
   if (!normalizeCatchEventText(input.region)) {
     errors.push('Missing catch region');
   } else if (normalizeCatchEventText(input.region) !== normalizeCatchEventText(event.region)) {
@@ -109,6 +116,7 @@ function validateCatchEventSubmissionPayload(input, event) {
 
 module.exports = {
   calculateCatchEventScore,
+  catchEventHasNatureScoring,
   getDateTimePartsInZone,
   getTimezoneOffsetMs,
   normalizeCatchEventText,
