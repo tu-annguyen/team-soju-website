@@ -17,6 +17,7 @@ import {
   smallButtonClasses,
 } from './shared';
 import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
+import { FilteredCombobox } from './FilteredCombobox';
 
 type Props = {
   editingEventId: string;
@@ -115,14 +116,25 @@ function RuleEditor({
           <div key={row.id} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
             <label className={labelClasses}>
               {kind === 'species' ? tr('Pokemon species') : tr('Nature')}
-              <input
-                className={fieldClasses}
-                list={kind === 'species' ? 'pokemon-species-options' : 'nature-options'}
-                placeholder={kind === 'species' ? 'Abomasnow, Abra, etc.' : 'Hardy, Lonely, etc.'}
-                value={row.name}
-                onChange={(event) => updateRuleRow(row.id, { name: event.target.value })}
-                required={kind === 'species'}
-              />
+              {kind === 'species' ? (
+                <FilteredCombobox
+                  className={fieldClasses}
+                  options={options}
+                  placeholder="Abomasnow, Abra, etc."
+                  value={row.name}
+                  onChange={(name) => updateRuleRow(row.id, { name })}
+                  required
+                  getOptionLabel={translateSpeciesDisplay}
+                />
+              ) : (
+                <input
+                  className={fieldClasses}
+                  list="nature-options"
+                  placeholder="Hardy, Lonely, etc."
+                  value={row.name}
+                  onChange={(event) => updateRuleRow(row.id, { name: event.target.value })}
+                />
+              )}
             </label>
             <label className={labelClasses}>
               {tr('Points')}
@@ -150,15 +162,13 @@ function RuleEditor({
           </div>
         ))}
       </div>
-      <datalist id={kind === 'species' ? 'pokemon-species-options' : 'nature-options'}>
-        {options.map((option) => (
-          <option
-            key={option}
-            value={option}
-            label={kind === 'species' ? translateSpeciesDisplay(option) : translateNatureDisplay(option)}
-          />
-        ))}
-      </datalist>
+      {kind === 'nature' && (
+        <datalist id="nature-options">
+          {options.map((option) => (
+            <option key={option} value={option} label={translateNatureDisplay(option)} />
+          ))}
+        </datalist>
+      )}
     </div>
   );
 }
@@ -241,18 +251,14 @@ export function EventCreateForm({
         </label>
         <label className={labelClasses}>
           {tr('Route')}
-          <input
+          <FilteredCombobox
             className={fieldClasses}
-            list="catch-event-route-options"
+            options={CATCH_EVENT_ROUTES_BY_REGION[eventForm.region as CatchEventRegion] || []}
             value={eventForm.route}
-            onChange={(event) => setEventForm({ ...eventForm, route: event.target.value })}
+            onChange={(route) => setEventForm({ ...eventForm, route })}
             required
+            getOptionLabel={translateLocation}
           />
-          <datalist id="catch-event-route-options">
-            {(CATCH_EVENT_ROUTES_BY_REGION[eventForm.region as CatchEventRegion] || []).map((route) => (
-              <option key={route} value={route} label={translateLocation(route)} />
-            ))}
-          </datalist>
         </label>
         <label className={labelClasses}>
           {tr('Number of winners')}

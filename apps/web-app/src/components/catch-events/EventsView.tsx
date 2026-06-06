@@ -21,6 +21,7 @@ import {
   type EventTab,
   type SubmissionForm,
 } from './shared';
+import { FilteredCombobox } from './FilteredCombobox';
 
 type EventFilters = {
   search: string;
@@ -113,12 +114,13 @@ export function EventsView({
             </label>
             <label className={labelClasses}>
               {tr('Target Pokemon')}
-              <input
+              <FilteredCombobox
                 className={fieldClasses}
-                list="event-filter-target-options"
+                options={POKEMON_SPECIES_NAMES}
                 value={eventFilters.target}
-                onChange={(event) => setEventFilters({ ...eventFilters, target: event.target.value })}
+                onChange={(target) => setEventFilters({ ...eventFilters, target })}
                 placeholder={tr('Abomasnow, Abra, etc.')}
+                getOptionLabel={translateSpeciesDisplay}
               />
             </label>
             <label className={labelClasses}>
@@ -140,11 +142,6 @@ export function EventsView({
               />
             </label>
           </div>
-          <datalist id="event-filter-target-options">
-            {POKEMON_SPECIES_NAMES.map((species) => (
-              <option key={species} value={species} label={translateSpeciesDisplay(species)} />
-            ))}
-          </datalist>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {filteredEvents.map((event) => (
               <div

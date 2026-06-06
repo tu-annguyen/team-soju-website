@@ -25,6 +25,7 @@ import {
   CATCH_EVENT_ROUTES_BY_REGION,
   type CatchEventRegion,
 } from '../../utils/catchEventLocations';
+import { FilteredCombobox } from './FilteredCombobox';
 
 export type SubmissionEditForm = {
   playerIgn: string;
@@ -355,7 +356,13 @@ export function HostManageView({
                   <td className="py-3 pr-4 text-gray-700 dark:text-gray-300">
                     {isEditing ? (
                       <div className="grid min-w-52 gap-2">
-                        <input className={fieldClasses} list="host-submission-targets" value={submissionEditForm.species} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, species: event.target.value })} />
+                        <FilteredCombobox
+                          className={fieldClasses}
+                          options={activeEvent.targets}
+                          value={submissionEditForm.species}
+                          onChange={(species) => setSubmissionEditForm({ ...submissionEditForm, species })}
+                          getOptionLabel={translateSpeciesDisplay}
+                        />
                         <input className={fieldClasses} list="submission-nature-options" value={submissionEditForm.nature} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, nature: event.target.value })} />
                         <datalist id="submission-nature-options">
                           {POKEMON_NATURES.map((nature) => (
@@ -415,18 +422,14 @@ export function HostManageView({
                             <option key={region} value={region} label={translateRegion(region)} />
                           ))}
                         </datalist>
-                        <input
+                        <FilteredCombobox
                           className={fieldClasses}
-                          list="submission-route-options"
+                          options={CATCH_EVENT_ROUTES_BY_REGION[submissionEditForm.region as CatchEventRegion] || []}
                           value={submissionEditForm.route}
-                          onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, route: event.target.value })}
+                          onChange={(route) => setSubmissionEditForm({ ...submissionEditForm, route })}
                           required
+                          getOptionLabel={translateLocation}
                         />
-                        <datalist id="submission-route-options">
-                          {(CATCH_EVENT_ROUTES_BY_REGION[submissionEditForm.region as CatchEventRegion] || []).map((route) => (
-                            <option key={route} value={route} label={translateLocation(route)} />
-                          ))}
-                        </datalist>
                       </div>
                     ) : (
                       <>{submission.route ? translateLocation(submission.route) : tr('Unknown')}, {submission.region ? translateRegion(submission.region) : tr('Unknown')}</>
@@ -477,11 +480,6 @@ export function HostManageView({
               })}
             </tbody>
           </table>
-          <datalist id="host-submission-targets">
-            {activeEvent.targets.map((target) => (
-              <option key={target} value={target} label={translateSpeciesDisplay(target)} />
-            ))}
-          </datalist>
           {activeSubmissions.length === 0 && <p className="py-8 text-center text-gray-600 dark:text-gray-300">{tr('No submissions yet.')}</p>}
         </div>
       </div>
