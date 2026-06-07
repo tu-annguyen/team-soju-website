@@ -316,6 +316,9 @@ async function handleCatchEventsRoutes(context) {
         const data = await extractCatchEventScreenshotFields(env, value.screenshots, {
           locale: value.locale,
           timezone: value.timezone,
+          eventStartLocal: value.eventStartLocal,
+          eventEndLocal: value.eventEndLocal,
+          eventTimezone: value.eventTimezone,
         });
         return json({ success: true, data });
       } catch (error) {
