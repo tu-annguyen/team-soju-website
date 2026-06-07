@@ -28,6 +28,16 @@ describe('CatchEventManager', () => {
     createdAt: '2026-05-20T17:00:00Z',
     submissions: [],
   };
+  const ownerNeutralEvent = {
+    ...privateEvent,
+    ownerUserId: 'user-id',
+    ownerIgn: 'Trainer',
+    name: 'Neutral Tropius Catch',
+    targets: ['Tropius'],
+    speciesBonuses: [],
+    speciesPenalties: [],
+    collaborators: [],
+  };
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -218,5 +228,188 @@ describe('CatchEventManager', () => {
         body: JSON.stringify({ identifier: 'CoHost' }),
       })
     );
+  });
+
+  it('prefills neutral target Pokemon when editing an owner event', async () => {
+    window.history.replaceState({}, '', '/tools/catch-events?view=host&tab=manage&event=private-event');
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith('/auth/me')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: { id: 'user-id', email: 'trainer@example.com', ign: 'Trainer' },
+          }),
+        };
+      }
+
+      if (url.endsWith('/catch-events?owner=me')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [ownerNeutralEvent] }),
+        };
+      }
+
+      if (url.endsWith('/catch-events/private-event')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: ownerNeutralEvent }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+
+    render(<CatchEventManager apiBaseUrl="http://localhost:3001/api" initialView="admin" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit event' }));
+
+    await screen.findByRole('heading', { name: 'Edit Event' });
+    expect(screen.getByLabelText('Pokemon species')).toHaveValue('Tropius');
+    expect(screen.getByLabelText('Points')).toHaveValue('0');
+  });
+
+  it('saves edits with PUT instead of creating a duplicate event', async () => {
+    window.history.replaceState({}, '', '/tools/catch-events?view=host&tab=manage&event=private-event');
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/auth/me')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: { id: 'user-id', email: 'trainer@example.com', ign: 'Trainer' },
+          }),
+        };
+      }
+
+      if (url.endsWith('/catch-events?owner=me')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [ownerNeutralEvent] }),
+        };
+      }
+
+      if (url.endsWith('/catch-events/private-event') && init?.method === 'PUT') {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: ownerNeutralEvent }),
+        };
+      }
+
+      if (url.endsWith('/catch-events/private-event')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: ownerNeutralEvent }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+
+    render(<CatchEventManager apiBaseUrl="http://localhost:3001/api" initialView="admin" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit event' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Update event' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:3001/api/catch-events/private-event',
+        expect.objectContaining({ method: 'PUT' })
+      );
+    });
+    expect(
+      fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/catch-events') && init?.method === 'POST')
+    ).toBe(false);
+  });
+
+  it('resets Create Event after leaving an edit with no cached draft', async () => {
+    window.history.replaceState({}, '', '/tools/catch-events?view=host&tab=manage&event=private-event');
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith('/auth/me')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: { id: 'user-id', email: 'trainer@example.com', ign: 'Trainer' },
+          }),
+        };
+      }
+
+      if (url.endsWith('/catch-events?owner=me')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [ownerNeutralEvent] }),
+        };
+      }
+
+      if (url.endsWith('/catch-events/private-event')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: ownerNeutralEvent }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+
+    render(<CatchEventManager apiBaseUrl="http://localhost:3001/api" initialView="admin" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit event' }));
+    await screen.findByRole('heading', { name: 'Edit Event' });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    expect(await screen.findByRole('heading', { name: 'Create Event' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Event name')).toHaveValue('');
+    expect(screen.getByLabelText('Region')).toHaveValue('');
+    expect(screen.getByLabelText('Pokemon species')).toHaveValue('');
+  });
+
+  it('restores an in-page Create Event draft after editing another event', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith('/auth/me')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: { id: 'user-id', email: 'trainer@example.com', ign: 'Trainer' },
+          }),
+        };
+      }
+
+      if (url.endsWith('/catch-events?owner=me')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [ownerNeutralEvent] }),
+        };
+      }
+
+      if (url.endsWith('/catch-events/private-event')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: ownerNeutralEvent }),
+        };
+      }
+
+      if (url.endsWith('/catch-events')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [] }),
+        };
+      }
+
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+
+    render(<CatchEventManager apiBaseUrl="http://localhost:3001/api" initialView="create" />);
+
+    const eventNameInput = await screen.findByLabelText('Event name');
+    fireEvent.change(eventNameInput, { target: { value: 'Draft Catch' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Manage' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit event' }));
+    await screen.findByRole('heading', { name: 'Edit Event' });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    expect(await screen.findByRole('heading', { name: 'Create Event' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Event name')).toHaveValue('Draft Catch');
   });
 });

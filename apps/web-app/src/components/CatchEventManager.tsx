@@ -10,9 +10,20 @@ import { EventsView } from './catch-events/EventsView';
 import { HostManageView } from './catch-events/HostManageView';
 import type { SubmissionEditForm } from './catch-events/HostManageView';
 import { ProofModal } from './catch-events/ProofModal';
-import { DEFAULT_TIMEZONE, defaultEventForm, defaultNatureRows, defaultSpeciesRows, defaultSubmissionForm, fetchJson, formatLocalDateTime, getBrowserTimezone, getDefaultEventWindow, getSubmissionDisabledReason, getSubmissionProofs, getTimezoneOptions, getTodayLocalDate, normalizeHostTab, normalizeQueryView, rowsFromRules, splitRules, statusLabelKeys, type AuthUser, type CatchEventOcrResult, type EventTab, type HostTab, type LegacyViewMode, type RuleRow, type ScreenshotProof, type ViewMode } from './catch-events/shared';
+import { DEFAULT_TIMEZONE, defaultEventForm, defaultNatureRows, defaultSpeciesRows, defaultSubmissionForm, fetchJson, formatLocalDateTime, getBrowserTimezone, getDefaultInitializedEventForm, getSubmissionDisabledReason, getSubmissionProofs, getTimezoneOptions, normalizeHostTab, normalizeQueryView, rowsFromRules, speciesRowsFromEvent, splitRules, statusLabelKeys, type AuthUser, type CatchEventOcrResult, type EventForm, type EventTab, type HostTab, type LegacyViewMode, type RuleRow, type ScreenshotProof, type ViewMode } from './catch-events/shared';
 type Props = { apiBaseUrl: string; initialView?: LegacyViewMode; locale?: Locale | string };
 const NATURE_SET = new Set<string>(POKEMON_NATURES.map((nature) => nature.toLowerCase()));
+type EventFormDraft = {
+  eventForm: EventForm;
+  speciesRows: RuleRow[];
+  natureRows: RuleRow[];
+};
+type LoadedEventFormMode = 'create' | 'duplicate' | 'edit';
+
+function cloneRows(rows: RuleRow[]) {
+  return rows.map((row) => ({ ...row }));
+}
+
 const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props) => {
   const normalizedApiBaseUrl = useMemo(() => apiBaseUrl.replace(/\/+$/, ''), [apiBaseUrl]);
   const activeLocale = useMemo(() => getClientLocale(locale), [locale]);
@@ -61,6 +72,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
   const [eventForm, setEventForm] = useState(defaultEventForm);
   const [speciesRows, setSpeciesRows] = useState<RuleRow[]>(defaultSpeciesRows);
   const [natureRows, setNatureRows] = useState<RuleRow[]>(defaultNatureRows);
+  const [createDraft, setCreateDraft] = useState<EventFormDraft | null>(null);
+  const [loadedEventFormMode, setLoadedEventFormMode] = useState<LoadedEventFormMode>('create');
   const [submissionForm, setSubmissionForm] = useState(defaultSubmissionForm);
   const [browserTimezone, setBrowserTimezone] = useState(DEFAULT_TIMEZONE);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -105,13 +118,13 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     setActiveEventId(queryEvent);
     setBrowserTimezone(detectedTimezone);
     setEventForm((current) => {
-      const defaultWindow = getDefaultEventWindow();
+      const initializedDefault = getDefaultInitializedEventForm(detectedTimezone);
       return {
         ...current,
-        startLocal: current.startLocal || defaultWindow.startLocal,
-        endLocal: current.endLocal || defaultWindow.endLocal,
-        eventDate: current.eventDate || getTodayLocalDate(),
-        timezone: current.timezone || detectedTimezone,
+        startLocal: current.startLocal || initializedDefault.startLocal,
+        endLocal: current.endLocal || initializedDefault.endLocal,
+        eventDate: current.eventDate || initializedDefault.eventDate,
+        timezone: current.timezone || initializedDefault.timezone,
       };
     });
     setSubmissionForm((current) => ({ ...current, timezone: detectedTimezone }));
@@ -323,6 +336,48 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       setEventTab('leaderboard');
     }
   }, [activeEvent, authUser, eventTab]);
+  function resetCreateForm() {
+    setEventForm(getDefaultInitializedEventForm(browserTimezone));
+    setSpeciesRows([{ ...defaultSpeciesRows[0] }]);
+    setNatureRows([]);
+    setCreateError('');
+    setEditingEventId('');
+    setLoadedEventFormMode('create');
+  }
+  function restoreCreateForm() {
+    setCreateError('');
+    setEditingEventId('');
+    setLoadedEventFormMode('create');
+
+    if (createDraft) {
+      setEventForm(createDraft.eventForm);
+      setSpeciesRows(cloneRows(createDraft.speciesRows));
+      setNatureRows(cloneRows(createDraft.natureRows));
+      return;
+    }
+
+    resetCreateForm();
+  }
+  function openCreateForm() {
+    if (loadedEventFormMode === 'create') {
+      setCreateError('');
+      setEditingEventId('');
+      return;
+    }
+
+    restoreCreateForm();
+  }
+  function preserveCreateDraft() {
+    if (loadedEventFormMode !== 'create') {
+      return;
+    }
+
+    setCreateDraft({
+      eventForm,
+      speciesRows: cloneRows(speciesRows),
+      natureRows: cloneRows(natureRows),
+    });
+  }
   function validateEventForm() {
     const speciesNames = speciesRows.map((row) => row.name.trim()).filter(Boolean);
     const natureNames = natureRows.map((row) => row.name.trim()).filter(Boolean);
@@ -400,7 +455,8 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       setSubmissions(response.data.submissions || []);
       setActiveEventId(response.data.id);
       setCreatedEventId(response.data.id);
-      setEditingEventId('');
+      setCreateDraft(null);
+      resetCreateForm();
       setCreateError('');
       setView('host');
       setHostTab('manage');
@@ -675,6 +731,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     }
   }
   function loadEventIntoForm(event: CatchEventConfig, mode: 'duplicate' | 'edit' = 'duplicate') {
+    preserveCreateDraft();
     setEventForm({
       name: mode === 'edit' ? event.name : `${event.name} ${tr('Copy')}`,
       eventDate: event.eventDate,
@@ -688,9 +745,10 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
       isPrivate: event.isPrivate ?? true,
       autoCheckEnabled: event.autoCheckEnabled ?? false,
     });
-    setSpeciesRows(rowsFromRules(event.speciesBonuses, event.speciesPenalties));
+    setSpeciesRows(speciesRowsFromEvent(event));
     setNatureRows(rowsFromRules(event.natureBonuses, event.naturePenalties, false));
     setEditingEventId(mode === 'edit' ? event.id : '');
+    setLoadedEventFormMode(mode);
     setCreateError('');
     setView('host');
     setHostTab('create');
@@ -777,7 +835,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
                 }`}
                 onClick={() => {
                   if (tab === 'create') {
-                    setEditingEventId('');
+                    openCreateForm();
                   }
                   if (tab === 'manage' && authUser && !hasLoadedOwnedEvents) {
                     setIsHostManageLoading(true);
