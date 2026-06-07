@@ -15,6 +15,10 @@ export type AuthUser = { id: string; email: string; ign: string };
 export type ScreenshotProof = { name?: string; fileName?: string; dataUrl?: string; url?: string };
 export type EventForm = typeof defaultEventForm;
 export type SubmissionForm = typeof defaultSubmissionForm;
+export type TimezoneOption = {
+  value: string;
+  label: string;
+};
 
 export type CatchEventOcrResult = {
   playerIgn?: string | null;
@@ -110,7 +114,7 @@ export function pickRandomItems<T>(items: readonly T[], count: number) {
   return shuffled.slice(0, count);
 }
 
-export function getTimezoneOptions() {
+export function getTimezoneOptions(): TimezoneOption[] {
   const now = new Date();
   const zones =
     typeof Intl.supportedValuesOf === 'function'

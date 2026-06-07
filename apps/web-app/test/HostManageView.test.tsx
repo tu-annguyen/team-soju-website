@@ -65,6 +65,7 @@ function renderHostManageView() {
       collaboratorIdentifier=""
       collaboratorMessage=""
       statusLabels={statusLabels}
+      timezoneOptions={[{ value: 'America/Los_Angeles', label: 'America/Los_Angeles (UTC-7)' }]}
       locale="en"
       tr={(text) => text}
       translateSpeciesDisplay={(species) => species}

@@ -799,6 +799,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             eventForm={eventForm}
             speciesRows={speciesRows}
             natureRows={natureRows}
+            timezoneOptions={timezoneOptions}
             createError={createError}
             locale={activeLocale}
             tr={tr}
@@ -833,6 +834,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             ocrMessage={ocrMessage}
             isOcrLoading={isOcrLoading}
             browserTimezone={browserTimezone}
+            timezoneOptions={timezoneOptions}
             locale={activeLocale}
             statusLabels={statusLabels}
             tr={tr}
@@ -862,6 +864,7 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
             collaboratorIdentifier={collaboratorIdentifier}
             collaboratorMessage={collaboratorMessage}
             statusLabels={statusLabels}
+            timezoneOptions={timezoneOptions}
             locale={activeLocale}
             tr={tr}
             translateSpeciesDisplay={translateSpeciesDisplay}
@@ -883,13 +886,6 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
           />
         )}
 
-        <datalist id="timezone-options">
-          {timezoneOptions.map((timezone) => (
-            <option key={timezone.value} value={timezone.value}>
-              {timezone.label}
-            </option>
-          ))}
-        </datalist>
       </section>
       <ProofModal proof={selectedProof} tr={tr} onClose={() => setSelectedProof(null)} />
     </div>

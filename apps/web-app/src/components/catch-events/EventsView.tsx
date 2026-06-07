@@ -20,6 +20,7 @@ import {
   type AuthUser,
   type EventTab,
   type SubmissionForm,
+  type TimezoneOption,
 } from './shared';
 import { FilteredCombobox } from './FilteredCombobox';
 
@@ -46,6 +47,7 @@ type Props = {
   ocrMessage: string;
   isOcrLoading: boolean;
   browserTimezone: string;
+  timezoneOptions: TimezoneOption[];
   locale: Locale | string;
   statusLabels: Record<CatchEventStatus, string>;
   tr: (text: string) => string;
@@ -78,6 +80,7 @@ export function EventsView({
   ocrMessage,
   isOcrLoading,
   browserTimezone,
+  timezoneOptions,
   locale,
   statusLabels,
   tr,
@@ -242,6 +245,7 @@ export function EventsView({
               ocrMessage={ocrMessage}
               isOcrLoading={isOcrLoading}
               browserTimezone={browserTimezone}
+              timezoneOptions={timezoneOptions}
               locale={locale}
               tr={tr}
               translateSpeciesDisplay={translateSpeciesDisplay}
