@@ -17,6 +17,7 @@ import {
   smallButtonClasses,
   type AuthUser,
   type ScreenshotProof,
+  type TimezoneOption,
 } from './shared';
 import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
 import { POKEMON_NATURES } from '../../utils/catchEventScoring';
@@ -49,6 +50,7 @@ type Props = {
   collaboratorIdentifier: string;
   collaboratorMessage: string;
   statusLabels: Record<CatchEventStatus, string>;
+  timezoneOptions: TimezoneOption[];
   locale: Locale | string;
   tr: (text: string) => string;
   translateSpeciesDisplay: (species: string) => string;
@@ -80,6 +82,7 @@ export function HostManageView({
   collaboratorIdentifier,
   collaboratorMessage,
   statusLabels,
+  timezoneOptions,
   locale,
   tr,
   translateSpeciesDisplay,
@@ -102,6 +105,14 @@ export function HostManageView({
   const [editingSubmissionId, setEditingSubmissionId] = React.useState('');
   const [submissionEditForm, setSubmissionEditForm] = React.useState<SubmissionEditForm | null>(null);
   const [submissionEditError, setSubmissionEditError] = React.useState('');
+  const timezoneValues = React.useMemo(
+    () => timezoneOptions.map((timezone) => timezone.value),
+    [timezoneOptions]
+  );
+  const getTimezoneLabel = React.useCallback(
+    (timezone: string) => timezoneOptions.find((option) => option.value === timezone)?.label || timezone,
+    [timezoneOptions]
+  );
 
   if (isAuthLoading || isLoading) {
     return <HostManageSkeleton />;
@@ -363,12 +374,13 @@ export function HostManageView({
                           onChange={(species) => setSubmissionEditForm({ ...submissionEditForm, species })}
                           getOptionLabel={translateSpeciesDisplay}
                         />
-                        <input className={fieldClasses} list="submission-nature-options" value={submissionEditForm.nature} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, nature: event.target.value })} />
-                        <datalist id="submission-nature-options">
-                          {POKEMON_NATURES.map((nature) => (
-                            <option key={nature} value={nature} label={translateNatureDisplay(nature)} />
-                          ))}
-                        </datalist>
+                        <FilteredCombobox
+                          className={fieldClasses}
+                          options={POKEMON_NATURES}
+                          value={submissionEditForm.nature}
+                          onChange={(nature) => setSubmissionEditForm({ ...submissionEditForm, nature })}
+                          getOptionLabel={translateNatureDisplay}
+                        />
                         <input className={fieldClasses} min={0} max={186} type="number" value={submissionEditForm.totalIv} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, totalIv: event.target.value })} />
                       </div>
                     ) : (
@@ -410,18 +422,14 @@ export function HostManageView({
                   <td className="py-3 pr-4">
                     {isEditing ? (
                       <div className="grid min-w-52 gap-2">
-                        <input
+                        <FilteredCombobox
                           className={fieldClasses}
-                          list="submission-region-options"
+                          options={CATCH_EVENT_REGIONS}
                           value={submissionEditForm.region}
-                          onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, region: event.target.value, route: '' })}
+                          onChange={(region) => setSubmissionEditForm({ ...submissionEditForm, region, route: '' })}
                           required
+                          getOptionLabel={translateRegion}
                         />
-                        <datalist id="submission-region-options">
-                          {CATCH_EVENT_REGIONS.map((region) => (
-                            <option key={region} value={region} label={translateRegion(region)} />
-                          ))}
-                        </datalist>
                         <FilteredCombobox
                           className={fieldClasses}
                           options={CATCH_EVENT_ROUTES_BY_REGION[submissionEditForm.region as CatchEventRegion] || []}
@@ -439,7 +447,13 @@ export function HostManageView({
                     {isEditing ? (
                       <div className="grid min-w-56 gap-2">
                         <CatchEventDateTimeInput value={submissionEditForm.catchLocal} locale={locale} onChange={(catchLocal) => setSubmissionEditForm({ ...submissionEditForm, catchLocal })} ariaLabel={tr('Catch date/time')} />
-                        <input className={fieldClasses} list="timezone-options" value={submissionEditForm.timezone} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, timezone: event.target.value })} />
+                        <FilteredCombobox
+                          className={fieldClasses}
+                          options={timezoneValues}
+                          value={submissionEditForm.timezone}
+                          onChange={(timezone) => setSubmissionEditForm({ ...submissionEditForm, timezone })}
+                          getOptionLabel={getTimezoneLabel}
+                        />
                       </div>
                     ) : formatDateTime(submission.catchUtc, undefined, locale)}
                   </td>

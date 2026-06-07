@@ -8,7 +8,7 @@ import {
   CATCH_EVENT_ROUTES_BY_REGION,
   type CatchEventRegion,
 } from '../../utils/catchEventLocations';
-import type { AuthUser, EventForm, HostTab, RuleRow } from './shared';
+import type { AuthUser, EventForm, HostTab, RuleRow, TimezoneOption } from './shared';
 import {
   fieldClasses,
   labelClasses,
@@ -26,6 +26,7 @@ type Props = {
   eventForm: EventForm;
   speciesRows: RuleRow[];
   natureRows: RuleRow[];
+  timezoneOptions: TimezoneOption[];
   createError: string;
   locale: Locale | string;
   tr: (text: string) => string;
@@ -127,12 +128,13 @@ function RuleEditor({
                   getOptionLabel={translateSpeciesDisplay}
                 />
               ) : (
-                <input
+                <FilteredCombobox
                   className={fieldClasses}
-                  list="nature-options"
+                  options={options}
                   placeholder="Hardy, Lonely, etc."
                   value={row.name}
-                  onChange={(event) => updateRuleRow(row.id, { name: event.target.value })}
+                  onChange={(name) => updateRuleRow(row.id, { name })}
+                  getOptionLabel={translateNatureDisplay}
                 />
               )}
             </label>
@@ -162,13 +164,6 @@ function RuleEditor({
           </div>
         ))}
       </div>
-      {kind === 'nature' && (
-        <datalist id="nature-options">
-          {options.map((option) => (
-            <option key={option} value={option} label={translateNatureDisplay(option)} />
-          ))}
-        </datalist>
-      )}
     </div>
   );
 }
@@ -180,6 +175,7 @@ export function EventCreateForm({
   eventForm,
   speciesRows,
   natureRows,
+  timezoneOptions,
   createError,
   locale,
   tr,
@@ -195,6 +191,15 @@ export function EventCreateForm({
   setHostTab,
   onSubmit,
 }: Props) {
+  const timezoneValues = React.useMemo(
+    () => timezoneOptions.map((timezone) => timezone.value),
+    [timezoneOptions]
+  );
+  const getTimezoneLabel = React.useCallback(
+    (timezone: string) => timezoneOptions.find((option) => option.value === timezone)?.label || timezone,
+    [timezoneOptions]
+  );
+
   return (
     <form className={`${panelClasses} space-y-6`} onSubmit={onSubmit}>
       <div>
@@ -223,31 +228,34 @@ export function EventCreateForm({
         </label>
         <label className={labelClasses}>
           {tr('Event timezone')}
-          <input className={fieldClasses} list="timezone-options" value={eventForm.timezone} onChange={(event) => setEventForm({ ...eventForm, timezone: event.target.value })} required />
+          <FilteredCombobox
+            className={fieldClasses}
+            options={timezoneValues}
+            placeholder="America/New_York"
+            value={eventForm.timezone}
+            onChange={(timezone) => setEventForm({ ...eventForm, timezone })}
+            required
+            getOptionLabel={getTimezoneLabel}
+          />
         </label>
         <label className={labelClasses}>
           {tr('Region')}
-          <input
+          <FilteredCombobox
             className={fieldClasses}
-            list="catch-event-region-options"
+            options={CATCH_EVENT_REGIONS}
             value={eventForm.region}
-            onChange={(event) => {
-              const nextRegion = event.target.value;
+            onChange={(region) => {
               setEventForm({
                 ...eventForm,
-                region: nextRegion,
-                route: CATCH_EVENT_REGIONS.includes(nextRegion as CatchEventRegion)
+                region,
+                route: CATCH_EVENT_REGIONS.includes(region as CatchEventRegion)
                   ? ''
                   : eventForm.route,
               });
             }}
             required
+            getOptionLabel={translateRegion}
           />
-          <datalist id="catch-event-region-options">
-            {CATCH_EVENT_REGIONS.map((region) => (
-              <option key={region} value={region} label={translateRegion(region)} />
-            ))}
-          </datalist>
         </label>
         <label className={labelClasses}>
           {tr('Route')}

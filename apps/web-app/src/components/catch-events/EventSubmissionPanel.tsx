@@ -21,6 +21,7 @@ import {
   readImageProofs,
   smallButtonClasses,
   type SubmissionForm,
+  type TimezoneOption,
 } from './shared';
 import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
 import { FilteredCombobox } from './FilteredCombobox';
@@ -33,6 +34,7 @@ type Props = {
   ocrMessage: string;
   isOcrLoading: boolean;
   browserTimezone: string;
+  timezoneOptions: TimezoneOption[];
   locale: Locale | string;
   tr: (text: string) => string;
   translateSpeciesDisplay: (species: string) => string;
@@ -53,6 +55,7 @@ export function EventSubmissionPanel({
   ocrMessage,
   isOcrLoading,
   browserTimezone,
+  timezoneOptions,
   locale,
   tr,
   translateSpeciesDisplay,
@@ -66,6 +69,14 @@ export function EventSubmissionPanel({
 }: Props) {
   const disabledReason = getSubmissionDisabledReason(activeEvent);
   const isNatureRequired = catchEventHasNatureScoring(activeEvent);
+  const timezoneValues = React.useMemo(
+    () => timezoneOptions.map((timezone) => timezone.value),
+    [timezoneOptions]
+  );
+  const getTimezoneLabel = React.useCallback(
+    (timezone: string) => timezoneOptions.find((option) => option.value === timezone)?.label || timezone,
+    [timezoneOptions]
+  );
 
   return (
     <div className={`${panelClasses} ${disabledReason ? 'opacity-60' : ''}`}>
@@ -172,12 +183,14 @@ export function EventSubmissionPanel({
               ) : (
                 <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
               )}
-              <input className={fieldClasses} list="submission-nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required={isNatureRequired} />
-              <datalist id="submission-nature-options">
-                {POKEMON_NATURES.map((nature) => (
-                  <option key={nature} value={nature} label={translateNatureDisplay(nature)} />
-                ))}
-              </datalist>
+              <FilteredCombobox
+                className={fieldClasses}
+                options={POKEMON_NATURES}
+                value={submissionForm.nature}
+                onChange={(nature) => setSubmissionForm({ ...submissionForm, nature })}
+                required={isNatureRequired}
+                getOptionLabel={translateNatureDisplay}
+              />
             </label>
             <label className={labelClasses}>
               {tr('Total IV')} <span className="text-rose-600">*</span>
@@ -189,22 +202,25 @@ export function EventSubmissionPanel({
             </label>
             <label className={labelClasses}>
               {tr('Player timezone')} <span className="text-rose-600">*</span>
-              <input className={fieldClasses} list="timezone-options" value={submissionForm.timezone} onChange={(event) => setSubmissionForm({ ...submissionForm, timezone: event.target.value })} required />
+              <FilteredCombobox
+                className={fieldClasses}
+                options={timezoneValues}
+                value={submissionForm.timezone}
+                onChange={(timezone) => setSubmissionForm({ ...submissionForm, timezone })}
+                required
+                getOptionLabel={getTimezoneLabel}
+              />
             </label>
             <label className={labelClasses}>
               {tr('Catch region')} <span className="text-rose-600">*</span>
-              <input
+              <FilteredCombobox
                 className={fieldClasses}
-                list="submission-region-options"
+                options={CATCH_EVENT_REGIONS}
                 value={submissionForm.region}
-                onChange={(event) => setSubmissionForm({ ...submissionForm, region: event.target.value, route: '' })}
+                onChange={(region) => setSubmissionForm({ ...submissionForm, region, route: '' })}
                 required
+                getOptionLabel={translateRegion}
               />
-              <datalist id="submission-region-options">
-                {CATCH_EVENT_REGIONS.map((region) => (
-                  <option key={region} value={region} label={translateRegion(region)} />
-                ))}
-              </datalist>
             </label>
             <label className={labelClasses}>
               {tr('Catch route/location')} <span className="text-rose-600">*</span>
