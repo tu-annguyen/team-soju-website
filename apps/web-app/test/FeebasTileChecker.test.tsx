@@ -1,8 +1,9 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import FeebasTileChecker from '../src/components/FeebasTileChecker';
+import FeebasTileChecker from '../src/components/feebas-tile-checker/FeebasTileChecker';
 
 const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
+const DISPLAY_MODE_HOTKEY_STORAGE_KEY = 'feebas-tile-checker-display-mode-hotkey';
 
 const boardFixture = {
   location: 'route-119-main',
@@ -136,6 +137,7 @@ class MockWebSocket {
 
   url: string;
   onmessage: ((event: { data: string }) => void) | null = null;
+  onopen: (() => void) | null = null;
   onerror: (() => void) | null = null;
   onclose: (() => void) | null = null;
   closed = false;
@@ -157,6 +159,12 @@ class MockWebSocket {
   emit(payload: unknown) {
     if (!this.closed) {
       this.onmessage?.({ data: JSON.stringify(payload) });
+    }
+  }
+
+  fail() {
+    if (!this.closed) {
+      this.onerror?.();
     }
   }
 }
@@ -209,10 +217,90 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument();
     expect(screen.getByText(/Each browser can keep one active vote per tile/i)).toBeInTheDocument();
     expect(screen.getByText(/Scroll sideways to view the full board/i)).toBeInTheDocument();
+    expect(screen.getByText('Shortcut: H')).toBeInTheDocument();
     expect(screen.getAllByText('May').length).toBeGreaterThan(0);
     expect(
       screen.getByText((_, element) => element?.textContent === 'May found Feebas on A1.')
     ).toBeInTheDocument();
+  });
+
+  it('toggles the board display mode with the default hotkey', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument()
+    );
+
+    expect(screen.queryByText(/Historical confirmed Feebas tiles glow brighter/i)).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'h' });
+
+    expect(screen.getByText(/Historical confirmed Feebas tiles glow brighter/i)).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'h' });
+
+    expect(screen.queryByText(/Historical confirmed Feebas tiles glow brighter/i)).not.toBeInTheDocument();
+  });
+
+  it('does not toggle the board display mode while typing in an editable field', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument()
+    );
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(input, { key: 'h' });
+
+    expect(screen.queryByText(/Historical confirmed Feebas tiles glow brighter/i)).not.toBeInTheDocument();
+
+    input.remove();
+  });
+
+  it('stores a changed display mode hotkey and uses it for toggling', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Shortcut: H')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    expect(screen.getByRole('button', { name: 'Press a key' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'j' });
+
+    expect(localStorage.getItem(DISPLAY_MODE_HOTKEY_STORAGE_KEY)).toBe('j');
+    expect(screen.getByText('Shortcut: J')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'h' });
+    expect(screen.queryByText(/Historical confirmed Feebas tiles glow brighter/i)).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'j' });
+    expect(screen.getByText(/Historical confirmed Feebas tiles glow brighter/i)).toBeInTheDocument();
+  });
+
+  it('resets the display mode hotkey to the default shortcut', async () => {
+    localStorage.setItem(DISPLAY_MODE_HOTKEY_STORAGE_KEY, 'j');
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Shortcut: J')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+    expect(localStorage.getItem(DISPLAY_MODE_HOTKEY_STORAGE_KEY)).toBe('h');
+    expect(screen.getByText('Shortcut: H')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'j' });
+    expect(screen.queryByText(/Historical confirmed Feebas tiles glow brighter/i)).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'h' });
+    expect(screen.getByText(/Historical confirmed Feebas tiles glow brighter/i)).toBeInTheDocument();
   });
 
   it('retries the reset refresh when the first boundary fetch still returns the expired cycle', async () => {
@@ -695,6 +783,40 @@ describe('FeebasTileChecker', () => {
 
     expect(route119Stream.closed).toBe(true);
     expect(screen.queryByText(/Brendan nominated B2 at Route 119, Hoenn/i)).not.toBeInTheDocument();
+  });
+
+  it('stops reconnecting after repeated live update stream failures', async () => {
+    jest.useFakeTimers();
+    (global as any).WebSocket = MockWebSocket;
+
+    try {
+      render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+      await waitFor(() =>
+        expect(MockWebSocket.instances[0]?.url).toContain('/feebas/route-119-main/stream')
+      );
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        act(() => {
+          MockWebSocket.instances[attempt].fail();
+        });
+
+        if (attempt < 3) {
+          act(() => {
+            jest.advanceTimersByTime(5000 * (2 ** attempt));
+          });
+          await waitFor(() => expect(MockWebSocket.instances).toHaveLength(attempt + 2));
+        }
+      }
+
+      act(() => {
+        jest.advanceTimersByTime(60000);
+      });
+
+      expect(MockWebSocket.instances).toHaveLength(4);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('shows the self notification after this session sends a pending nomination', async () => {

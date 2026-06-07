@@ -125,6 +125,12 @@ function normalizeName(value: string) {
   return value.trim().toLowerCase();
 }
 
+export function catchEventHasNatureScoring(
+  event: Pick<CatchEventConfig, 'natureBonuses' | 'naturePenalties'>
+) {
+  return Boolean(event.natureBonuses.length || event.naturePenalties.length);
+}
+
 export function slugifyEventName(name: string) {
   const slug = name
     .trim()
@@ -264,7 +270,8 @@ export function validateCatchEventSubmission(
     errors.push('Total IV must be between 0 and 186');
   }
 
-  if (!natureSet.has(normalizeName(input.nature))) {
+  const normalizedNature = normalizeName(input.nature);
+  if ((catchEventHasNatureScoring(event) || normalizedNature) && !natureSet.has(normalizedNature)) {
     errors.push('Nature is not one of the standard Pokemon natures');
   }
 

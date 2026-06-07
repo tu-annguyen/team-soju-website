@@ -581,7 +581,7 @@ describe('Cloudflare Worker API', () => {
     expect(repositories.catchEvents.upsertSubmission).not.toHaveBeenCalled();
   });
 
-  it('recomputes accepted catch event submission score, status, and flags server-side', async () => {
+  it('recomputes accepted catch event submissions without nature scoring server-side', async () => {
     const event = {
       id: 'event-1',
       startLocal: '2026-05-23T01:00',
@@ -616,7 +616,7 @@ describe('Cloudflare Worker API', () => {
       body: JSON.stringify({
         playerIgn: 'pearpear',
         species: 'Feebas',
-        nature: 'Docile',
+        nature: '',
         totalIv: 141,
         catchLocal: '2026-05-23T02:20:58',
         timezone: 'America/Los_Angeles',
@@ -634,6 +634,7 @@ describe('Cloudflare Worker API', () => {
     expect(repositories.catchEvents.upsertSubmission).toHaveBeenCalledWith(
       'event-1',
       expect.objectContaining({
+        nature: '',
         catchUtc: '2026-05-23T09:20:58.000Z',
         score: 146,
         status: 'auto-checked',
@@ -641,6 +642,58 @@ describe('Cloudflare Worker API', () => {
       }),
       []
     );
+  });
+
+  it('rejects blank nature when the catch event has nature scoring', async () => {
+    const event = {
+      id: 'event-1',
+      startLocal: '2026-05-23T01:00',
+      endLocal: '2026-05-23T02:30',
+      timezone: 'America/Los_Angeles',
+      region: 'Sinnoh',
+      route: 'Mt. Coronet',
+      targets: ['Feebas'],
+      speciesBonuses: [],
+      speciesPenalties: [],
+      natureBonuses: [{ name: 'Docile', points: 5 }],
+      naturePenalties: [],
+      autoCheckEnabled: true,
+      submissionsClosed: false,
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      catchEvents: {
+        getEventById: jest.fn().mockResolvedValue(event),
+        upsertSubmission: jest.fn(),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/event-1/submissions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        playerIgn: 'pearpear',
+        species: 'Feebas',
+        nature: '',
+        totalIv: 141,
+        catchLocal: '2026-05-23T02:20:58',
+        timezone: 'America/Los_Angeles',
+        region: 'Sinnoh',
+        route: 'Mt. Coronet',
+        catchUtc: '2020-01-01T00:00:00.000Z',
+        score: 1,
+        status: 'pending-verification',
+        flags: [],
+        screenshots: [],
+      }),
+    }), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.errors).toContain('Nature is not one of the standard Pokemon natures');
+    expect(repositories.catchEvents.upsertSubmission).not.toHaveBeenCalled();
   });
 
   it('rejects manual catch event status updates to needs-review', async () => {

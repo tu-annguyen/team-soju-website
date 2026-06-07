@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom';
 
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 // Provide a basic matchMedia implementation for components that use it
 if (typeof window !== 'undefined' && !window.matchMedia) {
   // @ts-expect-error - jsdom does not define matchMedia by default

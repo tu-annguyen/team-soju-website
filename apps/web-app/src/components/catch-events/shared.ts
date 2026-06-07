@@ -397,14 +397,18 @@ export function splitRules(rows: RuleRow[]) {
   );
 }
 
-export function rowsFromRules(bonuses: CatchEventRule[] = [], penalties: CatchEventRule[] = []) {
+export function rowsFromRules(
+  bonuses: CatchEventRule[] = [],
+  penalties: CatchEventRule[] = [],
+  includeBlankRow = true
+) {
   const rows = [...bonuses, ...penalties].map((rule) => ({
     id: makeId('rule'),
     name: rule.name,
     points: String(rule.points),
   }));
 
-  return rows.length ? rows : [{ id: makeId('rule'), name: '', points: '0' }];
+  return rows.length || !includeBlankRow ? rows : [{ id: makeId('rule'), name: '', points: '0' }];
 }
 
 export const defaultEventForm = {
@@ -424,7 +428,7 @@ export const defaultEventForm = {
 export const defaultSubmissionForm = {
   playerIgn: '',
   species: '',
-  nature: 'Jolly',
+  nature: '',
   totalIv: 0,
   catchLocal: '',
   timezone: '',
@@ -447,6 +451,4 @@ export const defaultSpeciesRows: RuleRow[] = [
   { id: makeId('species'), name: '', points: '0' },
 ];
 
-export const defaultNatureRows: RuleRow[] = [
-  { id: makeId('nature'), name: '', points: '0' },
-];
+export const defaultNatureRows: RuleRow[] = [];

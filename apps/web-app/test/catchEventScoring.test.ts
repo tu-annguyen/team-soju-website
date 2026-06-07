@@ -1,12 +1,14 @@
 import {
-  CatchEventConfig,
-  CatchEventSubmission,
   calculateCatchEventScore,
   parseRuleLines,
   rankCatchEventSubmissions,
   selectCatchEventWinners,
   validateCatchEventSubmission,
   zonedLocalDateTimeToUtc,
+} from '../src/utils/catchEventScoring';
+import type {
+  CatchEventConfig,
+  CatchEventSubmission,
 } from '../src/utils/catchEventScoring';
 
 const eventFixture: CatchEventConfig = {
@@ -161,6 +163,31 @@ describe('catch event scoring', () => {
     expect(result.errors).toEqual([]);
     expect(result.flags).toEqual(['Timezone differs from browser-detected timezone']);
     expect(result.status).toBe('auto-checked');
+  });
+
+  it('allows blank nature only when the event has no nature scoring rules', () => {
+    const input = {
+      playerIgn: 'tunacore',
+      species: 'Zubat',
+      nature: '',
+      totalIv: 140,
+      catchLocal: '2026-05-19T15:15',
+      timezone: 'America/New_York',
+      region: 'Hoenn',
+      route: 'Route 119',
+      screenshotNames: [],
+    };
+
+    expect(
+      validateCatchEventSubmission(
+        input,
+        { ...eventFixture, natureBonuses: [], naturePenalties: [] },
+        'America/New_York'
+      ).errors
+    ).toEqual([]);
+    expect(validateCatchEventSubmission(input, eventFixture, 'America/New_York').errors).toContain(
+      'Nature is not one of the standard Pokemon natures'
+    );
   });
 
   it('identifies a catch date from a different year as outside the event window', () => {

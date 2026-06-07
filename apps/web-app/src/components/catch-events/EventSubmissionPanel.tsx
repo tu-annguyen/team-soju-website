@@ -1,6 +1,10 @@
 import React from 'react';
 import type { FormEvent } from 'react';
-import { POKEMON_NATURES, calculateCatchEventScore } from '../../utils/catchEventScoring';
+import {
+  POKEMON_NATURES,
+  calculateCatchEventScore,
+  catchEventHasNatureScoring,
+} from '../../utils/catchEventScoring';
 import type { CatchEventConfig } from '../../utils/catchEventScoring';
 import type { Locale } from '../../i18n';
 import {
@@ -19,6 +23,7 @@ import {
   type SubmissionForm,
 } from './shared';
 import { CatchEventDateTimeInput } from './CatchEventDateTimeInput';
+import { FilteredCombobox } from './FilteredCombobox';
 
 type Props = {
   activeEvent: CatchEventConfig;
@@ -60,6 +65,7 @@ export function EventSubmissionPanel({
   onAutofill,
 }: Props) {
   const disabledReason = getSubmissionDisabledReason(activeEvent);
+  const isNatureRequired = catchEventHasNatureScoring(activeEvent);
 
   return (
     <div className={`${panelClasses} ${disabledReason ? 'opacity-60' : ''}`}>
@@ -150,16 +156,23 @@ export function EventSubmissionPanel({
             </label>
             <label className={labelClasses}>
               {tr('Pokemon species')} <span className="text-rose-600">*</span>
-              <input className={fieldClasses} list="catch-event-targets" value={submissionForm.species} onChange={(event) => setSubmissionForm({ ...submissionForm, species: event.target.value })} required />
-              <datalist id="catch-event-targets">
-                {activeEvent.targets.map((target) => (
-                  <option key={target} value={target} label={translateSpeciesDisplay(target)} />
-                ))}
-              </datalist>
+              <FilteredCombobox
+                className={fieldClasses}
+                options={activeEvent.targets}
+                value={submissionForm.species}
+                onChange={(species) => setSubmissionForm({ ...submissionForm, species })}
+                required
+                getOptionLabel={translateSpeciesDisplay}
+              />
             </label>
             <label className={labelClasses}>
-              {tr('Nature')} <span className="text-rose-600">*</span>
-              <input className={fieldClasses} list="submission-nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required />
+              {tr('Nature')}{' '}
+              {isNatureRequired ? (
+                <span className="text-rose-600">*</span>
+              ) : (
+                <span className="font-normal text-gray-500 dark:text-gray-400">({tr('optional')})</span>
+              )}
+              <input className={fieldClasses} list="submission-nature-options" value={submissionForm.nature} onChange={(event) => setSubmissionForm({ ...submissionForm, nature: event.target.value })} required={isNatureRequired} />
               <datalist id="submission-nature-options">
                 {POKEMON_NATURES.map((nature) => (
                   <option key={nature} value={nature} label={translateNatureDisplay(nature)} />
@@ -195,18 +208,14 @@ export function EventSubmissionPanel({
             </label>
             <label className={labelClasses}>
               {tr('Catch route/location')} <span className="text-rose-600">*</span>
-              <input
+              <FilteredCombobox
                 className={fieldClasses}
-                list="submission-route-options"
+                options={CATCH_EVENT_ROUTES_BY_REGION[submissionForm.region as CatchEventRegion] || []}
                 value={submissionForm.route}
-                onChange={(event) => setSubmissionForm({ ...submissionForm, route: event.target.value })}
+                onChange={(route) => setSubmissionForm({ ...submissionForm, route })}
                 required
+                getOptionLabel={translateLocation}
               />
-              <datalist id="submission-route-options">
-                {(CATCH_EVENT_ROUTES_BY_REGION[submissionForm.region as CatchEventRegion] || []).map((route) => (
-                  <option key={route} value={route} label={translateLocation(route)} />
-                ))}
-              </datalist>
             </label>
           </div>
           <div className="rounded-lg bg-gray-50 p-4 text-sm text-gray-700 dark:bg-gray-950 dark:text-gray-300">

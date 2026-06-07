@@ -119,7 +119,7 @@ const catchEventCreateSchema = Joi.object({
 const catchEventSubmissionSchema = Joi.object({
   playerIgn: Joi.string().trim().min(1).max(50).required(),
   species: Joi.string().trim().min(1).max(80).required(),
-  nature: Joi.string().trim().min(1).max(40).required(),
+  nature: Joi.string().trim().allow('').max(40).default(''),
   totalIv: Joi.number().integer().min(0).max(186).required(),
   catchLocal: Joi.string().trim().min(8).max(40).required(),
   timezone: Joi.string().trim().min(1).max(80).required(),
@@ -160,7 +160,7 @@ const catchEventSubmissionStatusSchema = Joi.object({
 const catchEventSubmissionUpdateSchema = Joi.object({
   playerIgn: Joi.string().trim().min(1).max(50).required(),
   species: Joi.string().trim().min(1).max(80).required(),
-  nature: Joi.string().trim().min(1).max(40).required(),
+  nature: Joi.string().trim().allow('').max(40).default(''),
   totalIv: Joi.number().integer().min(0).max(186).required(),
   catchLocal: Joi.string().trim().min(8).max(40).required(),
   timezone: Joi.string().trim().min(1).max(80).required(),
