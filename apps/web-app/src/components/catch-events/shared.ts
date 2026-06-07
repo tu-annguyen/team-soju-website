@@ -429,6 +429,46 @@ export const defaultEventForm = {
   autoCheckEnabled: false,
 };
 
+export function getDefaultInitializedEventForm(timezone: string = DEFAULT_TIMEZONE) {
+  const defaultWindow = getDefaultEventWindow();
+
+  return {
+    ...defaultEventForm,
+    startLocal: defaultWindow.startLocal,
+    endLocal: defaultWindow.endLocal,
+    eventDate: getTodayLocalDate(),
+    timezone: timezone || DEFAULT_TIMEZONE,
+  };
+}
+
+export function speciesRowsFromEvent(
+  event: Pick<CatchEventConfig, 'targets' | 'speciesBonuses' | 'speciesPenalties'>
+) {
+  const pointsByName = new Map<string, { name: string; points: number }>();
+
+  event.targets.forEach((target) => {
+    const name = target.trim();
+    if (name) {
+      pointsByName.set(name.toLowerCase(), { name, points: 0 });
+    }
+  });
+
+  [...event.speciesBonuses, ...event.speciesPenalties].forEach((rule) => {
+    const name = rule.name.trim();
+    if (name) {
+      pointsByName.set(name.toLowerCase(), { name, points: rule.points });
+    }
+  });
+
+  const rows = Array.from(pointsByName.values()).map((rule) => ({
+    id: makeId('species'),
+    name: rule.name,
+    points: String(rule.points),
+  }));
+
+  return rows.length ? rows : [{ id: makeId('species'), name: '', points: '0' }];
+}
+
 export const defaultSubmissionForm = {
   playerIgn: '',
   species: '',
