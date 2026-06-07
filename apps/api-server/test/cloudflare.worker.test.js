@@ -333,6 +333,44 @@ describe('Cloudflare Worker API', () => {
     }));
   });
 
+  it('passes event window context to catch event OCR date normalization', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn()
+      .mockResolvedValueOnce({ response: JSON.stringify({ catchLocal: '7/6/26 10:40:05 AM', confidence: 0.7, warnings: [] }) });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'info.png', contentType: 'image/png', role: 'information', dataUrl: 'data:image/png;base64,AAAA' },
+        ],
+        locale: 'en-US',
+        timezone: 'America/Los_Angeles',
+        eventStartLocal: '2026-06-07T10:00:00',
+        eventEndLocal: '2026-06-07T11:00:00',
+        eventTimezone: 'America/Los_Angeles',
+      }),
+    }), createEnv({ AI: { run: aiRun } }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual(expect.objectContaining({
+      catchLocal: '2026-06-07T10:40:05',
+      dateOrder: 'dmy',
+    }));
+    expect(body.data.warnings).toEqual(expect.arrayContaining([
+      'Date order inferred from browser settings as MDY.',
+      'Ambiguous date matched using the event time window.',
+    ]));
+  });
+
   it('does not let null total IV results mask the IV screenshot value', async () => {
     const app = createWorkerApp({
       repositories: {

@@ -7,9 +7,10 @@ import { Mandarin } from 'flatpickr/dist/l10n/zh.js';
 import type { Locale as FlatpickrLocale } from 'flatpickr/dist/types/locale';
 import type { Instance } from 'flatpickr/dist/types/instance';
 import { resolveLocale, type Locale } from '../../i18n';
+import { normalizeCatchEventDateTimeInput } from '../../utils/catchEventDateTime';
 import { fieldClasses } from './shared';
 
-const FLATPICKR_DATE_FORMAT = 'M j, Y H:i:S';
+const FLATPICKR_DATE_FORMAT = 'M j, Y h:i:S K';
 export const CATCH_EVENT_DATETIME_PLACEHOLDER = 'Dec 31, 2026 23:59:59';
 
 type Props = {
@@ -60,7 +61,7 @@ export function catchEventDateTimeValueToDisplay(value: string, locale: Locale |
 
   const flatpickrLocale = getFlatpickrLocale(locale);
   const instance = flatpickr(document.createElement('input'), {
-    locale: flatpickrLocale,
+    ...(flatpickrLocale ? { locale: flatpickrLocale } : {}),
   });
   const formatted = instance.formatDate(date, FLATPICKR_DATE_FORMAT);
   instance.destroy();
@@ -94,13 +95,18 @@ export function catchEventDateTimeDisplayToValue(
   const trimmedValue = value.trim();
   if (!trimmedValue) return '';
 
+  const normalizedValue = normalizeCatchEventDateTimeInput(trimmedValue, locale);
+  if (normalizedValue) return normalizedValue;
+
   let parser = parseDate;
   const temporaryParser = parser ? undefined : createLocalizedParser(locale);
   parser = parser || temporaryParser?.parseDate;
   const parsedDate = parser?.(trimmedValue, FLATPICKR_DATE_FORMAT);
   temporaryParser?.destroy();
 
-  return parsedDate ? dateToLocalValue(parsedDate) : trimmedValue.replace(/\s+/, 'T');
+  return parsedDate
+    ? dateToLocalValue(parsedDate)
+    : trimmedValue.replace(/\s+/, 'T');
 }
 
 export function CatchEventDateTimeInput({

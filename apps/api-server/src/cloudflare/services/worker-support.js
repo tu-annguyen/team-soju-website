@@ -144,6 +144,9 @@ const catchEventOcrSchema = Joi.object({
   })).min(1).max(6).required(),
   locale: Joi.string().trim().allow('', null).max(40),
   timezone: Joi.string().trim().allow('', null).max(80),
+  eventStartLocal: Joi.string().trim().allow('', null).max(40),
+  eventEndLocal: Joi.string().trim().allow('', null).max(40),
+  eventTimezone: Joi.string().trim().allow('', null).max(80),
 });
 const catchEventPublishSchema = Joi.object({
   isLeaderboardPublished: Joi.boolean().required(),
@@ -421,50 +424,156 @@ function inferDateOrderFromLocaleTimezone(locale, timezone) {
   return null;
 }
 
-function normalizeOcrCatchLocal(value, dateOrder) {
-  const text = cleanNullableString(value, 40);
-  if (!text) return null;
+function padDateTimePart(value, size = 2) {
+  return String(value).padStart(size, '0');
+}
 
-  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
-  if (isoMatch) {
-    const [, year, month, day, hour, minute, second = '00'] = isoMatch;
-    return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+function parseOcrYear(value) {
+  const year = Number(value);
+  return year < 100 ? 2000 + year : year;
+}
+
+function parseOcrHour(value, meridiem) {
+  let hour = Number(value);
+  const normalizedMeridiem = String(meridiem || '').toUpperCase();
+
+  if (normalizedMeridiem === 'PM' && hour < 12) hour += 12;
+  if (normalizedMeridiem === 'AM' && hour === 12) hour = 0;
+
+  return hour;
+}
+
+function isValidOcrDateTime(year, month, day, hour, minute, second) {
+  if (
+    month < 1
+    || month > 12
+    || day < 1
+    || day > 31
+    || hour < 0
+    || hour > 23
+    || minute < 0
+    || minute > 59
+    || second < 0
+    || second > 59
+  ) {
+    return false;
   }
 
-  const usMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
-  if (!usMatch) return null;
+  const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+    && date.getUTCHours() === hour
+    && date.getUTCMinutes() === minute
+    && date.getUTCSeconds() === second;
+}
 
-  const [, rawMonth, rawDay, rawYear, rawHour, minute, rawSecond = '00', meridiem] = usMatch;
-  const first = Number(rawMonth);
-  const second = Number(rawDay);
-  const order = String(dateOrder || '').toLowerCase();
-  if (!order && first <= 12 && second <= 12) {
-    return null;
-  }
-  const yearNumber = Number(rawYear);
-  const year = yearNumber < 100 ? 2000 + yearNumber : yearNumber;
-  const month = order === 'dmy' || (!order && first > 12) ? second : first;
-  const day = order === 'dmy' || (!order && first > 12) ? first : second;
-  let hour = Number(rawHour);
-  if (meridiem?.toUpperCase() === 'PM' && hour < 12) hour += 12;
-  if (meridiem?.toUpperCase() === 'AM' && hour === 12) hour = 0;
-
+function formatOcrLocalDateTime(year, month, day, hour, minute, second) {
   return [
-    String(year).padStart(4, '0'),
+    padDateTimePart(year, 4),
     '-',
-    String(month).padStart(2, '0'),
+    padDateTimePart(month),
     '-',
-    String(day).padStart(2, '0'),
+    padDateTimePart(day),
     'T',
-    String(hour).padStart(2, '0'),
+    padDateTimePart(hour),
     ':',
-    minute,
+    padDateTimePart(minute),
     ':',
-    rawSecond,
+    padDateTimePart(second),
   ].join('');
 }
 
-function normalizeCatchEventOcrResult(parsed, fallbackDateOrder = null) {
+function buildOcrLocalDateTime(year, month, day, hour, minute, second, dateOrder) {
+  if (!isValidOcrDateTime(year, month, day, hour, minute, second)) return null;
+
+  return {
+    value: formatOcrLocalDateTime(year, month, day, hour, minute, second),
+    dateOrder,
+  };
+}
+
+function isOcrCandidateInsideEventWindow(candidate, context = {}) {
+  const eventStartLocal = cleanNullableString(context.eventStartLocal, 40);
+  const eventEndLocal = cleanNullableString(context.eventEndLocal, 40);
+  const eventTimezone = cleanNullableString(context.eventTimezone, 80);
+  const catchTimezone = cleanNullableString(context.timezone, 80);
+  if (!eventStartLocal || !eventEndLocal || !eventTimezone || !catchTimezone) return false;
+
+  try {
+    const catchUtc = zonedLocalDateTimeToUtc(candidate.value, catchTimezone);
+    const startUtc = zonedLocalDateTimeToUtc(eventStartLocal, eventTimezone);
+    const endUtc = zonedLocalDateTimeToUtc(eventEndLocal, eventTimezone);
+    return catchUtc >= startUtc && catchUtc <= endUtc;
+  } catch {
+    return false;
+  }
+}
+
+function chooseOcrDateCandidate(candidates, preferredOrder, context = {}) {
+  const validCandidates = candidates.filter(Boolean);
+  if (!validCandidates.length) return null;
+
+  const eventWindowCandidate = validCandidates.find((candidate) => isOcrCandidateInsideEventWindow(candidate, context));
+  if (eventWindowCandidate) {
+    return { ...eventWindowCandidate, usedEventWindow: true };
+  }
+
+  const preferredCandidate = validCandidates.find((candidate) => candidate.dateOrder === preferredOrder);
+  return preferredCandidate || (preferredOrder ? validCandidates[0] : null);
+}
+
+function normalizeOcrCatchLocal(value, dateOrder, context = {}) {
+  const text = cleanNullableString(value, 40);
+  if (!text) return null;
+  const normalizedText = text.replace(/\s+/g, ' ');
+  const meta = context.meta || {};
+
+  const isoMatch = normalizedText.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (isoMatch) {
+    const [, rawYear, rawMonth, rawDay, rawHour, rawMinute, rawSecond = '00', meridiem] = isoMatch;
+    const candidate = buildOcrLocalDateTime(
+      Number(rawYear),
+      Number(rawMonth),
+      Number(rawDay),
+      parseOcrHour(rawHour, meridiem),
+      Number(rawMinute),
+      Number(rawSecond),
+      'ymd'
+    );
+    if (candidate) meta.dateOrder = 'ymd';
+    return candidate?.value || null;
+  }
+
+  const numericMatch = normalizedText.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (!numericMatch) return null;
+
+  const [, rawFirst, rawSecondDate, rawYear, rawHour, rawMinute, rawSecond = '00', meridiem] = numericMatch;
+  const first = Number(rawFirst);
+  const secondDate = Number(rawSecondDate);
+  const order = String(dateOrder || '').toLowerCase();
+  const year = parseOcrYear(rawYear);
+  const hour = parseOcrHour(rawHour, meridiem);
+  const minute = Number(rawMinute);
+  const second = Number(rawSecond);
+  const mdyCandidate = buildOcrLocalDateTime(year, first, secondDate, hour, minute, second, 'mdy');
+  const dmyCandidate = buildOcrLocalDateTime(year, secondDate, first, hour, minute, second, 'dmy');
+  const isAmbiguous = first <= 12 && secondDate <= 12;
+  const preferredSlashOrder = ['mdy', 'dmy'].includes(order) ? order : null;
+  const inferredOrder = !isAmbiguous && first > 12 ? 'dmy' : !isAmbiguous && secondDate > 12 ? 'mdy' : preferredSlashOrder;
+  const candidate = isAmbiguous
+    ? chooseOcrDateCandidate([mdyCandidate, dmyCandidate], preferredSlashOrder, context)
+    : chooseOcrDateCandidate([inferredOrder === 'dmy' ? dmyCandidate : mdyCandidate], inferredOrder, context);
+
+  if (!candidate) return null;
+
+  meta.dateOrder = candidate.dateOrder;
+  meta.usedEventWindow = Boolean(candidate.usedEventWindow);
+  meta.usedFallback = isAmbiguous && !context.explicitDateOrder;
+  return candidate.value;
+}
+
+function normalizeCatchEventOcrResult(parsed, fallbackDateOrder = null, context = {}) {
   const warnings = Array.isArray(parsed?.warnings)
     ? parsed.warnings.map((warning) => cleanNullableString(warning, 200)).filter(Boolean)
     : [];
@@ -478,8 +587,17 @@ function normalizeCatchEventOcrResult(parsed, fallbackDateOrder = null) {
   const dateOrder = ['mdy', 'dmy', 'ymd'].includes(String(parsed?.dateOrder || '').toLowerCase())
     ? String(parsed.dateOrder).toLowerCase()
     : fallbackDateOrder;
-  if (!parsed?.dateOrder && fallbackDateOrder && cleanNullableString(parsed?.catchLocal || parsed?.catchTime, 40)) {
+  const dateMeta = {};
+  const catchLocal = normalizeOcrCatchLocal(parsed?.catchLocal || parsed?.catchTime, dateOrder, {
+    ...context,
+    explicitDateOrder: Boolean(parsed?.dateOrder),
+    meta: dateMeta,
+  });
+  if (dateMeta.usedFallback && fallbackDateOrder && cleanNullableString(parsed?.catchLocal || parsed?.catchTime, 40)) {
     warnings.push(`Date order inferred from browser settings as ${fallbackDateOrder.toUpperCase()}.`);
+  }
+  if (dateMeta.usedEventWindow) {
+    warnings.push('Ambiguous date matched using the event time window.');
   }
 
   return {
@@ -488,10 +606,10 @@ function normalizeCatchEventOcrResult(parsed, fallbackDateOrder = null) {
     pokedexNumber: Number.isFinite(pokedexNumber) ? pokedexNumber : null,
     nature: cleanNullableString(parsed?.nature, 40),
     totalIv: Number.isFinite(totalIv) ? Math.max(0, Math.min(186, Math.round(totalIv))) : null,
-    catchLocal: normalizeOcrCatchLocal(parsed?.catchLocal || parsed?.catchTime, dateOrder),
+    catchLocal,
     catchTimeText: cleanNullableString(parsed?.catchTimeText || parsed?.catchTime, 80),
     location: cleanNullableString(parsed?.location, 120),
-    dateOrder,
+    dateOrder: dateMeta.dateOrder || dateOrder,
     confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : null,
     warnings,
   };
@@ -640,7 +758,7 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
       max_tokens: 600,
     });
 
-    return normalizeCatchEventOcrResult(parseAiJson(extractAiResponseText(result)), fallbackDateOrder);
+    return normalizeCatchEventOcrResult(parseAiJson(extractAiResponseText(result)), fallbackDateOrder, context);
   }));
 
   return mergeCatchEventOcrResults(results);

@@ -525,6 +525,9 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
           screenshots,
           locale: navigator.language || '',
           timezone: submissionForm.timezone || browserTimezone,
+          eventStartLocal: activeEvent.startLocal,
+          eventEndLocal: activeEvent.endLocal,
+          eventTimezone: activeEvent.timezone,
         }),
       });
       const result = response.data;
