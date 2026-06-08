@@ -47,7 +47,7 @@ function buildSingleEntryVariantResult(species, nationalNumber, metadata = {}) {
     species: normalizedSpecies || null,
     national_number: nationalNumber ?? null,
     variants: entry ? [entry.value] : [],
-    entries: entry ? [entry] : [],
+    entries: entry ? [serializeVariantEntry(entry)] : [],
     metadata: {
       has_gender_differences: Boolean(metadata.has_gender_differences),
       forms_switchable: Boolean(metadata.forms_switchable),
@@ -55,7 +55,7 @@ function buildSingleEntryVariantResult(species, nationalNumber, metadata = {}) {
   };
 }
 
-function createVariantEntry({ value, label, source, isDefault = false }) {
+function createVariantEntry({ value, label, source, isDefault = false, spriteCheckName = null }) {
   const normalizedValue = normalizePokemonName(value);
   if (!normalizedValue) return null;
 
@@ -64,6 +64,7 @@ function createVariantEntry({ value, label, source, isDefault = false }) {
     label: String(label || normalizedValue).trim(),
     source,
     is_default: Boolean(isDefault),
+    sprite_check_name: normalizePokemonName(spriteCheckName),
   };
 }
 
@@ -92,20 +93,32 @@ async function filterEntriesToGenerationV(entries) {
 
   const filteredEntries = await Promise.all(entries.map(async (entry) => {
     if (!entry?.value) return null;
+    const spriteCheckName = entry.sprite_check_name || entry.value;
 
-    if (!spriteAvailabilityCache.has(entry.value)) {
+    if (!spriteAvailabilityCache.has(spriteCheckName)) {
       const hasGen5Sprite = await getPokedex()
-        .getPokemonByName(entry.value)
+        .getPokemonByName(spriteCheckName)
         .then(hasGenerationVAnimatedSprite)
         .catch(() => false);
 
-      spriteAvailabilityCache.set(entry.value, hasGen5Sprite);
+      spriteAvailabilityCache.set(spriteCheckName, hasGen5Sprite);
     }
 
-    return spriteAvailabilityCache.get(entry.value) ? entry : null;
+    return spriteAvailabilityCache.get(spriteCheckName) ? entry : null;
   }));
 
   return filteredEntries.filter(Boolean);
+}
+
+function serializeVariantEntry(entry) {
+  if (!entry) return null;
+
+  return {
+    value: entry.value,
+    label: entry.label,
+    source: entry.source,
+    is_default: entry.is_default,
+  };
 }
 
 function collapseBaseSpeciesEntry(entries, speciesName) {
@@ -155,6 +168,7 @@ async function getFormEntriesForPokemon(pokemonName) {
             label: formData?.form_name || formData?.pokemon?.name || form?.name || pokemonData?.name,
             source: 'pokemon.forms',
             isDefault: formData?.is_default,
+            spriteCheckName: formData?.pokemon?.name || pokemonData?.name || normalizedPokemon,
           });
         } catch (error) {
           return createVariantEntry({
@@ -162,6 +176,7 @@ async function getFormEntriesForPokemon(pokemonName) {
             label: form?.name || pokemonData?.name,
             source: 'pokemon.forms',
             isDefault: form?.name === pokemonData?.name,
+            spriteCheckName: pokemonData?.name || normalizedPokemon,
           });
         }
       })
@@ -294,7 +309,7 @@ export async function getPokemonVariants(pokemon) {
       species: species?.name || speciesName || null,
       national_number: species?.id ?? null,
       variants: entries.map(entry => entry.value),
-      entries,
+      entries: entries.map(serializeVariantEntry).filter(Boolean),
       metadata: {
         has_gender_differences: Boolean(species?.has_gender_differences),
         forms_switchable: Boolean(species?.forms_switchable),

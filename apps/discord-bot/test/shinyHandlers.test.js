@@ -296,6 +296,42 @@ describe('shinyHandlers', () => {
     expect(variantButton.disabled).toBe(true);
   });
 
+  it('enables the variant button for Sawsbuck seasonal forms', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:a:e:a:_:1:10:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: {
+        data: {
+          id: 'selected-id',
+          pokemon: 'sawsbuck',
+          pokemon_name: 'Sawsbuck',
+          variants: 'sawsbuck-summer',
+          trainer_name: 'T1',
+          encounter_type: 'x5_horde',
+        },
+      },
+    });
+    getPokemonVariants.mockResolvedValue({
+      variants: ['sawsbuck-spring', 'sawsbuck-summer', 'sawsbuck-autumn', 'sawsbuck-winter'],
+      entries: [
+        { value: 'sawsbuck-spring', label: 'spring', is_default: true },
+        { value: 'sawsbuck-summer', label: 'summer', is_default: false },
+        { value: 'sawsbuck-autumn', label: 'autumn', is_default: false },
+        { value: 'sawsbuck-winter', label: 'winter', is_default: false },
+      ],
+    });
+
+    await handleShinyComponent(interaction);
+
+    const payload = interaction.update.mock.calls[0][0];
+    const variantButton = payload.components[0].components.find(component => component.custom_id === 'sh:vp:open:selected-id');
+    expect(variantButton.disabled).toBe(false);
+  });
+
   it('opens the catch date advanced modal from the edit controls', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:tm:catch_date:selected-id',
