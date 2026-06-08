@@ -51,43 +51,55 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
   const [countdown, setCountdown] = useState('--:--');
   const [pendingNominationNotification, setPendingNominationNotification] =
     useState<PendingNominationNotification | null>(null);
+  const [notificationStreamLocation, setNotificationStreamLocation] = useState<string | null>(null);
   const lastFetchedCycleEndRef = useRef<string | null>(null);
+  const notificationLastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
+  const notificationResetRefreshInFlightRef = useRef(false);
   const resetRetryTimeoutRef = useRef<number | null>(null);
-  const pendingActivityLocationRef = useRef<string | null>(null);
-  const pendingActivityCycleEndRef = useRef<string | null>(null);
-  const seenPendingActivityIdsRef = useRef<Set<number>>(new Set());
+  const pendingActivityCycleEndByLocationRef = useRef<Map<string, string>>(new Map());
+  const seenPendingActivityIdsByLocationRef = useRef<Map<string, Set<number>>>(new Map());
   const activeLocationOption =
     localizedLocationOptionsById.get(activeLocation) || localizedLocationOptionsById.get(DEFAULT_LOCATION)!;
   const activeTerrain = activeLocationOption.terrain;
+  const relatedNotificationLocation = activeLocationOption.groupId
+    ? localizedLocationOptions.find((option) => option.groupId === activeLocationOption.groupId && option.id !== activeLocation)?.id || null
+    : null;
+  const activeNotificationStreamLocation =
+    notificationStreamLocation === relatedNotificationLocation ? notificationStreamLocation : null;
   const actorFingerprint = authUser ? `account-${authUser.id}` : clientId;
   const voteActorName = authUser?.ign.trim();
   const authHref = getLocaleParamPath('/auth', activeLocale);
   const querySuffix = actorFingerprint ? `?actorFingerprint=${encodeURIComponent(actorFingerprint)}` : '';
 
+  const getNotificationLocationName = useCallback((nextBoard: FeebasBoardType) => {
+    const locationOption = localizedLocationOptionsById.get(nextBoard.location);
+    if (!locationOption) return nextBoard.displayName;
+    if (locationOption.areaLabel) return `${locationOption.displayName} (${locationOption.areaLabel})`;
+    return locationOption.displayName;
+  }, [localizedLocationOptionsById]);
+
   const syncPendingNominationNotifications = useCallback((nextBoard: FeebasBoardType) => {
     const pendingActivities = getPendingActivityEntries(nextBoard);
     const pendingActivityIds = new Set(pendingActivities.map((entry) => entry.id));
+    const previousCycleEnd = pendingActivityCycleEndByLocationRef.current.get(nextBoard.location);
 
-    if (
-      pendingActivityLocationRef.current !== nextBoard.location
-      || pendingActivityCycleEndRef.current !== nextBoard.cycleEnd
-    ) {
-      if (pendingActivityCycleEndRef.current && pendingActivityCycleEndRef.current !== nextBoard.cycleEnd) {
+    if (previousCycleEnd !== nextBoard.cycleEnd) {
+      if (previousCycleEnd && previousCycleEnd !== nextBoard.cycleEnd) {
         setPendingNominationNotification(null);
       }
 
-      pendingActivityLocationRef.current = nextBoard.location;
-      pendingActivityCycleEndRef.current = nextBoard.cycleEnd;
-      seenPendingActivityIdsRef.current = pendingActivityIds;
+      pendingActivityCycleEndByLocationRef.current.set(nextBoard.location, nextBoard.cycleEnd);
+      seenPendingActivityIdsByLocationRef.current.set(nextBoard.location, pendingActivityIds);
       return;
     }
 
-    const newPendingActivities = pendingActivities.filter((entry) => !seenPendingActivityIdsRef.current.has(entry.id));
-    seenPendingActivityIdsRef.current = new Set([
-      ...Array.from(seenPendingActivityIdsRef.current),
+    const seenPendingActivityIds = seenPendingActivityIdsByLocationRef.current.get(nextBoard.location) || new Set<number>();
+    const newPendingActivities = pendingActivities.filter((entry) => !seenPendingActivityIds.has(entry.id));
+    seenPendingActivityIdsByLocationRef.current.set(nextBoard.location, new Set([
+      ...Array.from(seenPendingActivityIds),
       ...Array.from(pendingActivityIds),
-    ]);
+    ]));
 
     const latestPendingActivity = newPendingActivities.sort((left, right) => right.id - left.id)[0];
     if (!latestPendingActivity) return;
@@ -106,13 +118,13 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
           : messages.notifications.pendingNominationBody,
         {
           actorName,
-          location: nextBoard.displayName,
+          location: getNotificationLocationName(nextBoard),
           tileLabel: latestPendingActivity.tileLabel,
         }
       ),
       isSelfNomination: isCurrentSessionNomination,
     });
-  }, [messages]);
+  }, [getNotificationLocationName, messages]);
 
   const applyBoardUpdate = useCallback((nextBoard: FeebasBoardType) => {
     syncPendingNominationNotifications(nextBoard);
@@ -121,6 +133,10 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
       leaderboard: nextBoard.leaderboard
         || (currentBoard?.location === nextBoard.location ? currentBoard.leaderboard : undefined),
     }));
+  }, [syncPendingNominationNotifications]);
+
+  const applyNotificationBoardUpdate = useCallback((nextBoard: FeebasBoardType) => {
+    syncPendingNominationNotifications(nextBoard);
   }, [syncPendingNominationNotifications]);
 
   const fetchBoard = useCallback(async () => {
@@ -162,6 +178,9 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
       resetRetryTimeoutRef.current = null;
     }
   }, []);
+  const clearNotificationResetRetryTimeout = useCallback(() => {}, []);
+  const ignoreCountdownUpdate = useCallback<React.Dispatch<React.SetStateAction<string>>>(() => undefined, []);
+  const ignoreLiveUpdateError = useCallback<React.Dispatch<React.SetStateAction<string | null>>>(() => undefined, []);
 
   const refreshBoardAfterReset = useCallback(async (expiredCycleEnd: string) => {
     resetRefreshInFlightRef.current = true;
@@ -333,6 +352,46 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     };
   }, [actorFingerprint, clearResetRetryTimeout, fetchBoard, isAuthLoading, messages.errors.loadBoard]);
 
+  useEffect(() => {
+    setNotificationStreamLocation(null);
+
+    if (!relatedNotificationLocation || !actorFingerprint || isAuthLoading) {
+      return undefined;
+    }
+
+    let mounted = true;
+
+    (async () => {
+      try {
+        const response = await fetch(`${normalizedApiBaseUrl}/feebas/${relatedNotificationLocation}${querySuffix}`, {
+          credentials: 'include',
+        });
+        const payload: BoardResponse = await response.json();
+
+        if (mounted && response.ok && payload.success) {
+          syncPendingNominationNotifications(payload.data);
+        }
+      } catch {
+        // The sibling live stream can still connect; this seed separates existing pending activity from new updates.
+      } finally {
+        if (mounted) {
+          setNotificationStreamLocation(relatedNotificationLocation);
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [
+    actorFingerprint,
+    isAuthLoading,
+    normalizedApiBaseUrl,
+    querySuffix,
+    relatedNotificationLocation,
+    syncPendingNominationNotifications,
+  ]);
+
   useFeebasLiveUpdates({
     activeLocation,
     actorFingerprint,
@@ -345,6 +404,20 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     clearResetRetryTimeout,
     setCountdown,
     setError,
+  });
+
+  useFeebasLiveUpdates({
+    activeLocation: activeNotificationStreamLocation,
+    actorFingerprint,
+    isAuthLoading,
+    liveUpdatesDisconnectedMessage: messages.errors.liveUpdatesDisconnected,
+    normalizedApiBaseUrl,
+    lastFetchedCycleEndRef: notificationLastFetchedCycleEndRef,
+    resetRefreshInFlightRef: notificationResetRefreshInFlightRef,
+    applyBoardUpdate: applyNotificationBoardUpdate,
+    clearResetRetryTimeout: clearNotificationResetRetryTimeout,
+    setCountdown: ignoreCountdownUpdate,
+    setError: ignoreLiveUpdateError,
   });
 
   useEffect(() => {
