@@ -157,7 +157,6 @@ export function FeebasTileCheckerView({
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <FeebasBoard
-          activeLocation={activeLocation}
           activeTerrain={activeTerrain}
           board={board}
           boardMinWidth={boardMinWidth}

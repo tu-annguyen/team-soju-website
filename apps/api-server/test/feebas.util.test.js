@@ -27,6 +27,15 @@ describe('Feebas utilities', () => {
     }));
   });
 
+  it('exposes Route 119 upstream tile definitions with the expected board size', () => {
+    const location = getLocationConfig('route-119-upstream');
+
+    expect(location.displayName).toBe('Route 119 Upstream, Hoenn');
+    expect(location.rows).toBe(58);
+    expect(location.cols).toBe(20);
+    expect(location.tiles.length).toBeGreaterThan(0);
+  });
+
   it('exposes Mt. Coronet tile definitions with the expected board size', () => {
     const location = getLocationConfig('mt-coronet');
 

@@ -147,6 +147,10 @@ const en = {
           tabLabel: 'Route 119',
           displayName: 'Route 119, Hoenn',
         },
+        route119Upstream: {
+          tabLabel: 'Route 119 Upstream',
+          displayName: 'Route 119 Upstream, Hoenn',
+        },
         mtCoronet: {
           tabLabel: 'Mt. Coronet',
           displayName: 'Mt. Coronet, Sinnoh',
