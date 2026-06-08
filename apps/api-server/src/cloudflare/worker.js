@@ -58,7 +58,9 @@ class FeebasBoardStreamDurableObject {
       }
 
       if (request.method === 'POST' && url.pathname === '/broadcast') {
-        await this.broadcast(url.searchParams.get('location'));
+        await this.broadcast(url.searchParams.get('location'), {
+          forceRefresh: url.searchParams.get('refresh') === '1',
+        });
         return new Response(null, { status: 204 });
       }
 
@@ -104,7 +106,7 @@ class FeebasBoardStreamDurableObject {
     return createWebSocketUpgradeResponse(client);
   }
 
-  async broadcast(location) {
+  async broadcast(location, options = {}) {
     getLocationConfig(location);
 
     const sockets = typeof this.state?.getWebSockets === 'function'
@@ -124,6 +126,10 @@ class FeebasBoardStreamDurableObject {
     const repositories = this.createRepositories(this.env);
     const now = Date.now();
     let boardCache = null;
+
+    if (options.forceRefresh) {
+      this.boardCacheByLocation.delete(location);
+    }
 
     // Check if we have a valid cached board to avoid excessive DB queries
     const cached = this.boardCacheByLocation.get(location);
@@ -254,12 +260,13 @@ function createWorkerApp(options = {}) {
     return createWebSocketUpgradeResponse(client);
   }
 
-  async function broadcastFeebasBoard(location, repositories, env) {
+  async function broadcastFeebasBoard(location, repositories, env, options = {}) {
     const durableObject = getFeebasStreamDurableObject(env, location);
 
     if (durableObject) {
       try {
-        await durableObject.fetch(createFeebasStreamDurableObjectRequest('/broadcast', location, null, {
+        const pathname = options.forceRefresh ? '/broadcast?refresh=1' : '/broadcast';
+        await durableObject.fetch(createFeebasStreamDurableObjectRequest(pathname, location, null, {
           method: 'POST',
         }));
       } catch (error) {
