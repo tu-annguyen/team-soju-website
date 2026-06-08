@@ -146,10 +146,8 @@ const en = {
         route119: {
           tabLabel: 'Route 119',
           displayName: 'Route 119, Hoenn',
-        },
-        route119Upstream: {
-          tabLabel: 'Route 119 Upstream',
-          displayName: 'Route 119 Upstream, Hoenn',
+          pondTabLabel: 'Pond',
+          upstreamTabLabel: 'Upstream',
         },
         mtCoronet: {
           tabLabel: 'Mt. Coronet',
