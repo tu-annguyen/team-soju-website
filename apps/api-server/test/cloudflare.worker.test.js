@@ -1623,6 +1623,119 @@ describe('Cloudflare Worker API', () => {
     ]);
   });
 
+  it('coalesces overlapping non-forced Feebas board refresh broadcasts', async () => {
+    const initialBoard = {
+      location: 'route-119-main',
+      tiles: [{ tileId: 'r1c7', status: 'unchecked' }],
+      activity: [],
+    };
+    const freshBoard = {
+      location: 'route-119-main',
+      tiles: [{ tileId: 'r1c7', status: 'pending' }],
+      activity: [{ id: 2, tileId: 'r1c7', nextStatus: 'pending' }],
+    };
+    let resolveBoardCache;
+    const boardCachePromise = new Promise((resolve) => {
+      resolveBoardCache = resolve;
+    });
+    const repositories = {
+      feebas: {
+        getBoard: jest.fn().mockResolvedValue(initialBoard),
+        getBoardCache: jest.fn(() => boardCachePromise),
+        applyUserViewToBoardCache: jest.fn((board) => board),
+      },
+    };
+    const state = createDurableObjectState();
+    const durableObject = new FeebasBoardStreamDurableObject(state, {}, {
+      createRepositories: () => repositories,
+    });
+
+    const streamResponse = await durableObject.fetch(createWebSocketRequest('https://feebas-board-stream.local/stream?location=route-119-main&actorFingerprint=client-12345678'));
+    const firstBroadcast = durableObject.fetch(new Request('https://feebas-board-stream.local/broadcast?location=route-119-main', {
+      method: 'POST',
+    }));
+    const secondBroadcast = durableObject.fetch(new Request('https://feebas-board-stream.local/broadcast?location=route-119-main', {
+      method: 'POST',
+    }));
+
+    expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(1);
+    resolveBoardCache(freshBoard);
+    const [firstResponse, secondResponse] = await Promise.all([firstBroadcast, secondBroadcast]);
+
+    expect(firstResponse.status).toBe(204);
+    expect(secondResponse.status).toBe(204);
+    expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(1);
+    expect(streamResponse.webSocket.received).toEqual([
+      JSON.stringify({ success: true, data: initialBoard }),
+      JSON.stringify({ success: true, data: freshBoard }),
+      JSON.stringify({ success: true, data: freshBoard }),
+    ]);
+  });
+
+  it('performs one follow-up refresh when a forced Feebas broadcast lands during an in-flight refresh', async () => {
+    const initialBoard = {
+      location: 'route-119-main',
+      tiles: [{ tileId: 'r1c7', status: 'unchecked' }],
+      activity: [],
+    };
+    const firstRefreshBoard = {
+      location: 'route-119-main',
+      tiles: [{ tileId: 'r1c7', status: 'checked' }],
+      activity: [{ id: 1, tileId: 'r1c7', nextStatus: 'checked' }],
+    };
+    const followUpRefreshBoard = {
+      location: 'route-119-main',
+      tiles: [{ tileId: 'r1c7', status: 'pending' }],
+      activity: [{ id: 2, tileId: 'r1c7', nextStatus: 'pending' }],
+    };
+    let resolveFirstRefresh;
+    let resolveFollowUpRefresh;
+    const firstRefreshPromise = new Promise((resolve) => {
+      resolveFirstRefresh = resolve;
+    });
+    const followUpRefreshPromise = new Promise((resolve) => {
+      resolveFollowUpRefresh = resolve;
+    });
+    const repositories = {
+      feebas: {
+        getBoard: jest.fn().mockResolvedValue(initialBoard),
+        getBoardCache: jest.fn()
+          .mockImplementationOnce(() => firstRefreshPromise)
+          .mockImplementationOnce(() => followUpRefreshPromise),
+        applyUserViewToBoardCache: jest.fn((board) => board),
+      },
+    };
+    const state = createDurableObjectState();
+    const durableObject = new FeebasBoardStreamDurableObject(state, {}, {
+      createRepositories: () => repositories,
+    });
+
+    const streamResponse = await durableObject.fetch(createWebSocketRequest('https://feebas-board-stream.local/stream?location=route-119-main&actorFingerprint=client-12345678'));
+    const firstBroadcast = durableObject.fetch(new Request('https://feebas-board-stream.local/broadcast?location=route-119-main&refresh=1', {
+      method: 'POST',
+    }));
+    const secondBroadcast = durableObject.fetch(new Request('https://feebas-board-stream.local/broadcast?location=route-119-main&refresh=1', {
+      method: 'POST',
+    }));
+
+    expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(1);
+    resolveFirstRefresh(firstRefreshBoard);
+    const firstResponse = await firstBroadcast;
+
+    expect(firstResponse.status).toBe(204);
+    expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(2);
+    resolveFollowUpRefresh(followUpRefreshBoard);
+    const secondResponse = await secondBroadcast;
+
+    expect(secondResponse.status).toBe(204);
+    expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(2);
+    expect(streamResponse.webSocket.received).toEqual([
+      JSON.stringify({ success: true, data: initialBoard }),
+      JSON.stringify({ success: true, data: firstRefreshBoard }),
+      JSON.stringify({ success: true, data: followUpRefreshBoard }),
+    ]);
+  });
+
   it('broadcasts Feebas tile updates to Worker WebSocket subscribers', async () => {
     const initialBoard = {
       location: 'route-119-main',

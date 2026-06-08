@@ -45,8 +45,34 @@ class FeebasBoardStreamDurableObject {
     this.state = state;
     this.env = env;
     this.createRepositories = options.createRepositories || createRepositories;
-    this.boardCacheByLocation = new Map(); // location -> { board, expiresAt, isFetching }
+    this.boardCacheByLocation = new Map(); // location -> { board, expiresAt, needsRefresh, refreshPromise }
     this.BOARD_CACHE_TTL_MS = 3000; // 3 second cache to reduce DB queries during concurrent broadcasts
+  }
+
+  startBoardCacheRefresh(location, repositories, cacheEntry) {
+    cacheEntry.needsRefresh = false;
+    cacheEntry.refreshPromise = (async () => {
+      if (typeof repositories.feebas.getBoardCache !== 'function') {
+        return null;
+      }
+
+      const nextBoardCache = await repositories.feebas.getBoardCache(location);
+      cacheEntry.board = nextBoardCache;
+      cacheEntry.expiresAt = Date.now() + this.BOARD_CACHE_TTL_MS;
+      return nextBoardCache;
+    })();
+
+    const cleanUpRefresh = () => {
+      if (this.boardCacheByLocation.get(location) === cacheEntry) {
+        cacheEntry.refreshPromise = null;
+        if (!cacheEntry.board) {
+          this.boardCacheByLocation.delete(location);
+        }
+      }
+    };
+    cacheEntry.refreshPromise.then(cleanUpRefresh, cleanUpRefresh);
+
+    return cacheEntry.refreshPromise;
   }
 
   async fetch(request) {
@@ -127,28 +153,37 @@ class FeebasBoardStreamDurableObject {
     const now = Date.now();
     let boardCache = null;
 
-    if (options.forceRefresh) {
-      this.boardCacheByLocation.delete(location);
-    }
+    let cacheEntry = this.boardCacheByLocation.get(location);
+    if (!options.forceRefresh && cacheEntry?.board && cacheEntry.expiresAt > now) {
+      boardCache = cacheEntry.board;
+    } else {
+      if (!cacheEntry) {
+        cacheEntry = {
+          board: null,
+          expiresAt: 0,
+          needsRefresh: false,
+          refreshPromise: null,
+        };
+        this.boardCacheByLocation.set(location, cacheEntry);
+      } else if (options.forceRefresh) {
+        cacheEntry.expiresAt = 0;
+      }
 
-    // Check if we have a valid cached board to avoid excessive DB queries
-    const cached = this.boardCacheByLocation.get(location);
-    if (cached && cached.expiresAt > now && !cached.isFetching) {
-      boardCache = cached.board;
-    } else if (!cached || cached.expiresAt <= now) {
-      // Fetch fresh board and mark cache as being updated
-      const cacheEntry = { isFetching: true, expiresAt: now };
-      this.boardCacheByLocation.set(location, cacheEntry);
+      const mustWaitForDirtyRefresh = Boolean(options.forceRefresh && cacheEntry.refreshPromise);
+      if (mustWaitForDirtyRefresh) {
+        cacheEntry.needsRefresh = true;
+      }
+
+      let refreshPromise = cacheEntry.refreshPromise || this.startBoardCacheRefresh(location, repositories, cacheEntry);
 
       try {
-        if (typeof repositories.feebas.getBoardCache === 'function') {
-          boardCache = await repositories.feebas.getBoardCache(location);
-          cacheEntry.board = boardCache;
-          cacheEntry.expiresAt = now + this.BOARD_CACHE_TTL_MS;
-          cacheEntry.isFetching = false;
+        boardCache = await refreshPromise;
+
+        while (mustWaitForDirtyRefresh && (cacheEntry.needsRefresh || cacheEntry.refreshPromise)) {
+          refreshPromise = cacheEntry.refreshPromise || this.startBoardCacheRefresh(location, repositories, cacheEntry);
+          boardCache = await refreshPromise;
         }
       } catch (error) {
-        cacheEntry.isFetching = false;
         console.error('Error fetching Feebas board cache:', error);
       }
     }
