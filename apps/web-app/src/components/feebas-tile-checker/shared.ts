@@ -186,6 +186,7 @@ export function getTerrainClasses(terrain: string) {
     bank: 'bg-[linear-gradient(180deg,_#f0dfaa_0%,_#cfb479_100%)]',
     water: 'bg-[linear-gradient(180deg,_#5f7fa6_0%,_#435b79_100%)]',
     rock: 'bg-[linear-gradient(180deg,_#62666f_0%,_#3b3f48_100%)]',
+    cliff: 'bg-[linear-gradient(180deg,_#a87952_0%,_#6f4a32_100%)]',
   }[terrain] || 'bg-transparent');
 }
 

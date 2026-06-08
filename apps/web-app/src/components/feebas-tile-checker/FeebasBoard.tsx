@@ -4,7 +4,6 @@ import { FeebasBoardTile } from './FeebasBoardTile';
 import type { BoardDisplayMode, FeebasBoard as FeebasBoardType, FeebasCheckerMessages, FeebasTile } from './shared';
 
 type Props = {
-  activeLocation: string;
   activeTerrain: readonly (readonly string[])[];
   board: FeebasBoardType | null;
   boardMinWidth: string;
@@ -29,7 +28,6 @@ type Props = {
 };
 
 export function FeebasBoard({
-  activeLocation,
   activeTerrain,
   board,
   boardMinWidth,
@@ -101,7 +99,7 @@ export function FeebasBoard({
         </div>
       </div>
 
-      {activeLocation === 'mt-coronet' ? (
+      {layoutRows > 25 ? (
         <FeebasBoardLegend
           displayMode={displayMode}
           displayModeHotkey={displayModeHotkey}

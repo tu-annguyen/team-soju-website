@@ -143,6 +143,10 @@ const zh = {
           tabLabel: '119 号道路',
           displayName: '119 号道路，豐緣',
         },
+        route119Upstream: {
+          tabLabel: '119 号道路上游',
+          displayName: '119 号道路上游，豐緣',
+        },
         mtCoronet: {
           tabLabel: '天冠山',
           displayName: '天冠山，神奧',

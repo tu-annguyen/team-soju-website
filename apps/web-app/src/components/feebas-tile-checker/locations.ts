@@ -10,6 +10,10 @@ type FeebasLocationMessages = {
     tabLabel: string;
     displayName: string;
   };
+  route119Upstream: {
+    tabLabel: string;
+    displayName: string;
+  };
   mtCoronet: {
     tabLabel: string;
     displayName: string;
@@ -34,6 +38,67 @@ export const ROUTE_119_MAIN_TERRAIN = [
   ['rock', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
   ['rock', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
   ['water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+] as const;
+
+export const ROUTE_119_UPSTREAM_TERRAIN = [
+  ['grass', 'grass', 'water', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'water', 'water', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['water', 'water', 'water', 'water', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'water', 'water', 'water', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'water', 'water', 'water', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'water', 'water', 'water', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'water', 'water', 'water', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['cliff', 'water', 'water', 'water', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['cliff', 'water', 'water', 'water', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'rock', 'rock', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'grass'],
+  ['cliff', 'water', 'water', 'water', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'rock', 'rock', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'grass'],
+  ['cliff', 'water', 'water', 'water', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'cliff', 'cliff', 'grass', 'grass', 'grass'],
+  ['grass', 'water', 'water', 'water', 'grass', 'cliff', 'grass', 'grass', 'grass', 'bank', 'bank', 'bank', 'bank', 'grass', 'grass', 'cliff', 'cliff', 'cliff', 'grass', 'grass'],
+  ['grass', 'water', 'water', 'water', 'grass', 'cliff', 'grass', 'grass', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'cliff', 'cliff', 'cliff', 'grass', 'grass'],
+  ['water', 'water', 'water', 'water', 'water', 'cliff', 'cliff', 'cliff', 'cliff', 'rock', 'rock', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass'],
+  ['water', 'water', 'water', 'water', 'water', 'cliff', 'cliff', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass'],
+  ['cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'bank', 'bank', 'bank', 'bank', 'grass', 'grass', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff'],
+  ['cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'bank', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'cliff', 'cliff', 'cliff', 'cliff'],
+  ['water', 'water', 'water', 'water', 'water', 'cliff', 'cliff', 'grass', 'grass', 'bank', 'bank', 'bank', 'grass', 'grass', 'grass', 'grass', 'cliff', 'grass', 'grass', 'grass'],
+  ['water', 'water', 'water', 'water', 'water', 'cliff', 'cliff', 'cliff', 'cliff', 'rock', 'rock', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['water', 'water', 'water', 'water', 'water', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'cliff', 'cliff', 'rock', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'cliff', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'cliff', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'cliff', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass'],
+  ['grass', 'grass', 'cliff', 'cliff', 'cliff', 'rock', 'rock', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'grass'],
+  ['grass', 'grass', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water'],
+  ['cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'rock', 'rock'],
+  ['cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'rock', 'rock'],
+  ['cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water'],
+  ['cliff', 'cliff', 'cliff', 'rock', 'rock', 'cliff', 'cliff', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'rock', 'rock', 'water', 'water', 'water'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'rock', 'rock', 'water', 'water', 'water'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
 ] as const;
 
 export const MT_CORONET_TERRAIN = [
@@ -81,6 +146,12 @@ export const LOCATION_OPTIONS: readonly LocationOption[] = [
     terrain: ROUTE_119_MAIN_TERRAIN,
   },
   {
+    id: 'route-119-upstream',
+    tabLabel: 'Route 119 Upstream',
+    displayName: 'Route 119 Upstream, Hoenn',
+    terrain: ROUTE_119_UPSTREAM_TERRAIN,
+  },
+  {
     id: 'mt-coronet',
     tabLabel: 'Mt. Coronet',
     displayName: 'Mt. Coronet, Sinnoh',
@@ -97,6 +168,12 @@ export function getLocalizedLocationOptions(messages: FeebasLocationMessages): r
       tabLabel: messages.route119.tabLabel,
       displayName: messages.route119.displayName,
       terrain: ROUTE_119_MAIN_TERRAIN,
+    },
+    {
+      id: 'route-119-upstream',
+      tabLabel: messages.route119Upstream.tabLabel,
+      displayName: messages.route119Upstream.displayName,
+      terrain: ROUTE_119_UPSTREAM_TERRAIN,
     },
     {
       id: 'mt-coronet',

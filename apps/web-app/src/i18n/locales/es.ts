@@ -148,6 +148,10 @@ const es = {
           tabLabel: 'Ruta 119',
           displayName: 'Ruta 119, Hoenn',
         },
+        route119Upstream: {
+          tabLabel: 'Ruta 119 aguas arriba',
+          displayName: 'Ruta 119 aguas arriba, Hoenn',
+        },
         mtCoronet: {
           tabLabel: 'Monte Corona',
           displayName: 'Monte Corona, Sinnoh',
