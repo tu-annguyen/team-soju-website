@@ -9,7 +9,7 @@ import {
 } from './shared';
 
 type Params = {
-  activeLocation: string;
+  activeLocation: string | null;
   actorFingerprint: string;
   isAuthLoading: boolean;
   liveUpdatesDisconnectedMessage: string;
@@ -37,6 +37,7 @@ export function useFeebasLiveUpdates({
 }: Params) {
   useEffect(() => {
     if (typeof WebSocket === 'undefined') return undefined;
+    if (!activeLocation) return undefined;
     if (!actorFingerprint || isAuthLoading) return undefined;
 
     let isStopped = false;
