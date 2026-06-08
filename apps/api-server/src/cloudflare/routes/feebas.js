@@ -200,7 +200,7 @@ async function handleFeebasRoutes(context) {
         const board = await getRepositories().feebas.updateTile(match[1], match[2], value, {
           includeLeaderboard: false,
         });
-        await broadcastFeebasBoard(match[1], getRepositories(), env);
+        await broadcastFeebasBoard(match[1], getRepositories(), env, { forceRefresh: true });
         return json({
           success: true,
           data: board,
@@ -262,7 +262,7 @@ async function handleFeebasRoutes(context) {
       try {
         getLocationConfig(match[1]);
         const board = await getRepositories().feebas.resetBoard(match[1]);
-        await broadcastFeebasBoard(match[1], getRepositories(), env);
+        await broadcastFeebasBoard(match[1], getRepositories(), env, { forceRefresh: true });
         return json({
           success: true,
           data: board,
