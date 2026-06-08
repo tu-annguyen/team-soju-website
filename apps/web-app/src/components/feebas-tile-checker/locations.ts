@@ -1,4 +1,7 @@
 export type LocationOption = {
+  areaLabel?: string;
+  groupId?: string;
+  groupTabLabel?: string;
   id: string;
   tabLabel: string;
   displayName: string;
@@ -9,10 +12,8 @@ type FeebasLocationMessages = {
   route119: {
     tabLabel: string;
     displayName: string;
-  };
-  route119Upstream: {
-    tabLabel: string;
-    displayName: string;
+    pondTabLabel: string;
+    upstreamTabLabel: string;
   };
   mtCoronet: {
     tabLabel: string;
@@ -140,15 +141,21 @@ export const MT_CORONET_TERRAIN = [
 
 export const LOCATION_OPTIONS: readonly LocationOption[] = [
   {
+    areaLabel: 'Pond',
+    groupId: 'route-119',
+    groupTabLabel: 'Route 119',
     id: 'route-119-main',
     tabLabel: 'Route 119',
     displayName: 'Route 119, Hoenn',
     terrain: ROUTE_119_MAIN_TERRAIN,
   },
   {
+    areaLabel: 'Upstream',
+    groupId: 'route-119',
+    groupTabLabel: 'Route 119',
     id: 'route-119-upstream',
-    tabLabel: 'Route 119 Upstream',
-    displayName: 'Route 119 Upstream, Hoenn',
+    tabLabel: 'Upstream',
+    displayName: 'Route 119, Hoenn',
     terrain: ROUTE_119_UPSTREAM_TERRAIN,
   },
   {
@@ -164,15 +171,21 @@ export const LOCATION_OPTIONS_BY_ID = new Map(LOCATION_OPTIONS.map((option) => [
 export function getLocalizedLocationOptions(messages: FeebasLocationMessages): readonly LocationOption[] {
   return [
     {
+      areaLabel: messages.route119.pondTabLabel,
+      groupId: 'route-119',
+      groupTabLabel: messages.route119.tabLabel,
       id: 'route-119-main',
       tabLabel: messages.route119.tabLabel,
       displayName: messages.route119.displayName,
       terrain: ROUTE_119_MAIN_TERRAIN,
     },
     {
+      areaLabel: messages.route119.upstreamTabLabel,
+      groupId: 'route-119',
+      groupTabLabel: messages.route119.tabLabel,
       id: 'route-119-upstream',
-      tabLabel: messages.route119Upstream.tabLabel,
-      displayName: messages.route119Upstream.displayName,
+      tabLabel: messages.route119.upstreamTabLabel,
+      displayName: messages.route119.displayName,
       terrain: ROUTE_119_UPSTREAM_TERRAIN,
     },
     {

@@ -126,6 +126,17 @@ const mtCoronetBoardFixture = {
   },
 };
 
+const route119UpstreamBoardFixture = {
+  ...boardFixture,
+  location: 'route-119-upstream',
+  displayName: 'Route 119 Upstream, Hoenn',
+  description: 'Upstream Route 119 river tiles for live Feebas coordination.',
+  leaderboard: {
+    ...boardFixture.leaderboard,
+    location: 'route-119-upstream',
+  },
+};
+
 const authUserFixture = {
   id: 'user-id',
   email: 'trainer@example.com',
@@ -1286,6 +1297,45 @@ describe('FeebasTileChecker', () => {
       credentials: 'include',
     });
     expect(localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY)).toBe('mt-coronet');
+  });
+
+  it('switches between Route 119 pond and upstream from the nested tabs', async () => {
+    const fetchMock = jest.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const data = url.includes('/route-119-upstream') ? route119UpstreamBoardFixture : boardFixture;
+
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data,
+        }),
+      });
+    });
+
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('tab', { name: /^Route 119$/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /^Pond$/i })).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Upstream$/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/route-119-upstream?actorFingerprint=client-self', {
+        credentials: 'include',
+      })
+    );
+
+    expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /^Route 119$/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /^Upstream$/i })).toHaveAttribute('aria-selected', 'true');
+    expect(localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY)).toBe('route-119-upstream');
   });
 
   it('restores the saved Feebas location tab on load', async () => {

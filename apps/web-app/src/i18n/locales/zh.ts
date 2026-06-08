@@ -142,10 +142,8 @@ const zh = {
         route119: {
           tabLabel: '119 号道路',
           displayName: '119 号道路，豐緣',
-        },
-        route119Upstream: {
-          tabLabel: '119 号道路上游',
-          displayName: '119 号道路上游，豐緣',
+          pondTabLabel: '池塘',
+          upstreamTabLabel: '上游',
         },
         mtCoronet: {
           tabLabel: '天冠山',
