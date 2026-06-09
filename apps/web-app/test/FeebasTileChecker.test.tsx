@@ -976,6 +976,49 @@ describe('FeebasTileChecker', () => {
     }
   });
 
+  it('sends the latest activity cursor when reconnecting live updates', async () => {
+    jest.useFakeTimers();
+    (global as any).WebSocket = MockWebSocket;
+
+    try {
+      render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+      await waitFor(() =>
+        expect(findMockWebSocket('/feebas/route-119-main/stream')).toBeTruthy()
+      );
+
+      const firstSocket = findLatestMockWebSocket('/feebas/route-119-main/stream')!;
+      expect(new URL(firstSocket.url).searchParams.get('lastActivityId')).toBeNull();
+
+      act(() => {
+        firstSocket.emit({
+          success: true,
+          data: boardFixture,
+        });
+        firstSocket.fail();
+        jest.advanceTimersByTime(5000);
+      });
+
+      await waitFor(() =>
+        expect(MockWebSocket.instances.filter((socket) => socket.url.includes('/feebas/route-119-main/stream'))).toHaveLength(2)
+      );
+      expect(new URL(findLatestMockWebSocket('/feebas/route-119-main/stream')!.url).searchParams.get('lastActivityId')).toBe('1');
+
+      act(() => {
+        findLatestMockWebSocket('/feebas/route-119-main/stream')?.emit(buildPendingB2ActivityDelta());
+        findLatestMockWebSocket('/feebas/route-119-main/stream')?.fail();
+        jest.advanceTimersByTime(5000);
+      });
+
+      await waitFor(() =>
+        expect(MockWebSocket.instances.filter((socket) => socket.url.includes('/feebas/route-119-main/stream'))).toHaveLength(3)
+      );
+      expect(new URL(findLatestMockWebSocket('/feebas/route-119-main/stream')!.url).searchParams.get('lastActivityId')).toBe('2');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('shows the self notification after this session sends a pending nomination', async () => {
     jest.useFakeTimers();
     const boardWithCurrentUserVote = {

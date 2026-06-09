@@ -35,6 +35,7 @@ const {
   discordHandoffHashParam,
   updateFeebasTileSchema,
   feebasActorFingerprintSchema,
+  feebasLastActivityIdSchema,
   passwordSchema,
   forgotPasswordSchema,
   registerSchema,
@@ -270,6 +271,7 @@ async function handleFeebasRoutes(context) {
       try {
         getLocationConfig(match[1]);
         const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
+        const lastActivityId = feebasLastActivityIdSchema.validate(url.searchParams.get('lastActivityId') || undefined).value;
 
         if (!isWebSocketUpgrade(request)) {
           return webSocketUpgradeRequired();
@@ -280,7 +282,7 @@ async function handleFeebasRoutes(context) {
           return durableObject.fetch(createFeebasStreamDurableObjectRequest('/stream', match[1], actorFingerprint, {
             method: 'GET',
             headers: request.headers,
-          }));
+          }, { lastActivityId }));
         }
 
         const board = await getRepositories().feebas.getBoard(match[1], {
@@ -288,7 +290,14 @@ async function handleFeebasRoutes(context) {
           includeLeaderboard: false,
         });
 
-        return createFeebasSocketResponse(request, match[1], actorFingerprint, board);
+        const activityDelta = typeof getRepositories().feebas.getActivityDeltaSince === 'function'
+          ? await getRepositories().feebas.getActivityDeltaSince(match[1], lastActivityId)
+          : null;
+
+        return createFeebasSocketResponse(request, match[1], actorFingerprint, board, {
+          lastActivityId,
+          activityDelta,
+        });
       } catch (error) {
         if (error instanceof FeebasRuleError) {
           return json({ success: false, message: error.message }, { status: error.statusCode });

@@ -24,6 +24,7 @@ const {
   readJson,
   sendEmail,
   feebasActorFingerprintSchema,
+  feebasLastActivityIdSchema,
   serializeFeebasSocketMetadata,
   setAuthCookie,
   sha256Hex,
@@ -61,6 +62,31 @@ function sendFeebasSocketActivityDelta(socket, activityDelta, actorFingerprint) 
       ),
     },
   }));
+}
+
+function getLatestFeebasActivityId(activityDelta) {
+  return (activityDelta?.data?.activity || []).reduce((latestActivityId, activity) => {
+    const activityId = Number(activity?.id);
+    if (!Number.isInteger(activityId) || activityId <= 0) {
+      return latestActivityId;
+    }
+
+    return Math.max(latestActivityId || 0, activityId);
+  }, null);
+}
+
+function rememberFeebasSocketActivityId(socket, metadata, activityDelta) {
+  const activityId = getLatestFeebasActivityId(activityDelta);
+  if (!activityId || activityId <= (metadata.lastActivityId || 0)) {
+    return metadata;
+  }
+
+  const nextMetadata = {
+    ...metadata,
+    lastActivityId: activityId,
+  };
+  serializeFeebasSocketMetadata(socket, nextMetadata);
+  return nextMetadata;
 }
 
 class FeebasBoardStreamDurableObject {
@@ -142,20 +168,30 @@ class FeebasBoardStreamDurableObject {
     getLocationConfig(location);
 
     const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
+    const lastActivityId = feebasLastActivityIdSchema.validate(url.searchParams.get('lastActivityId') || undefined).value;
     const repositories = this.createRepositories(this.env);
     const board = await repositories.feebas.getBoard(location, {
       actorFingerprint,
       includeLeaderboard: false,
     });
+    const activityDelta = typeof repositories.feebas.getActivityDeltaSince === 'function'
+      ? await repositories.feebas.getActivityDeltaSince(location, lastActivityId)
+      : null;
     const { client, server } = createWebSocketPair();
-    const metadata = {
+    let metadata = {
       location,
       actorFingerprint,
+      lastActivityId: lastActivityId || null,
     };
 
     this.state.acceptWebSocket(server);
     serializeFeebasSocketMetadata(server, metadata);
+    if (hasFeebasActivityDelta({ data: activityDelta })) {
+      sendFeebasSocketActivityDelta(server, { data: activityDelta }, actorFingerprint);
+      metadata = rememberFeebasSocketActivityId(server, metadata, { data: activityDelta });
+    }
     sendFeebasSocketBoard(server, board);
+    rememberFeebasSocketActivityId(server, metadata, { data: board });
 
     return createWebSocketUpgradeResponse(client);
   }
@@ -184,6 +220,11 @@ class FeebasBoardStreamDurableObject {
             subscriber.socket,
             options.activityDelta,
             subscriber.metadata.actorFingerprint
+          );
+          subscriber.metadata = rememberFeebasSocketActivityId(
+            subscriber.socket,
+            subscriber.metadata,
+            options.activityDelta
           );
         } catch {
           try {
@@ -247,6 +288,11 @@ class FeebasBoardStreamDurableObject {
               includeLeaderboard: false,
             });
         sendFeebasSocketBoard(subscriber.socket, board);
+        subscriber.metadata = rememberFeebasSocketActivityId(
+          subscriber.socket,
+          subscriber.metadata,
+          { data: board }
+        );
       } catch {
         try {
           subscriber.socket.close(1011, 'Failed to refresh Feebas board');
@@ -290,7 +336,7 @@ function createWorkerApp(options = {}) {
     }
   }
 
-  function createFeebasSocketResponse(request, location, actorFingerprint, board) {
+  function createFeebasSocketResponse(request, location, actorFingerprint, board, options = {}) {
     if (!isWebSocketUpgrade(request)) {
       return webSocketUpgradeRequired();
     }
@@ -318,7 +364,12 @@ function createWorkerApp(options = {}) {
       cleanup();
     };
 
-    subscriber = { socket: server, actorFingerprint, cleanup };
+    subscriber = {
+      socket: server,
+      actorFingerprint,
+      lastActivityId: options.lastActivityId || null,
+      cleanup,
+    };
     subscribers.add(subscriber);
     feebasSubscribersByLocation.set(location, subscribers);
 
@@ -326,7 +377,12 @@ function createWorkerApp(options = {}) {
       server.accept();
     }
 
+    if (hasFeebasActivityDelta({ data: options.activityDelta })) {
+      sendFeebasSocketActivityDelta(server, { data: options.activityDelta }, actorFingerprint);
+      subscriber.lastActivityId = getLatestFeebasActivityId({ data: options.activityDelta }) || subscriber.lastActivityId;
+    }
     sendFeebasSocketBoard(server, board);
+    subscriber.lastActivityId = getLatestFeebasActivityId({ data: board }) || subscriber.lastActivityId;
 
     server.addEventListener?.('close', cleanup);
     server.addEventListener?.('error', cleanup);
@@ -378,6 +434,7 @@ function createWorkerApp(options = {}) {
       Array.from(subscribers).forEach((subscriber) => {
         try {
           sendFeebasSocketActivityDelta(subscriber.socket, options.activityDelta, subscriber.actorFingerprint);
+          subscriber.lastActivityId = getLatestFeebasActivityId(options.activityDelta) || subscriber.lastActivityId;
         } catch {
           subscriber.cleanup?.();
         }
@@ -401,6 +458,7 @@ function createWorkerApp(options = {}) {
               includeLeaderboard: false,
             });
         sendFeebasSocketBoard(subscriber.socket, board);
+        subscriber.lastActivityId = getLatestFeebasActivityId({ data: board }) || subscriber.lastActivityId;
       } catch {
         subscriber.cleanup?.();
       }

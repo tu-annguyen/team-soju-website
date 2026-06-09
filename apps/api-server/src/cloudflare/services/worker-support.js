@@ -48,6 +48,7 @@ const updateFeebasTileSchema = Joi.object({
   actorName: Joi.string().trim().allow('', null).max(40).optional(),
 });
 const feebasActorFingerprintSchema = Joi.string().trim().min(8).max(120).optional();
+const feebasLastActivityIdSchema = Joi.number().integer().min(0).max(Number.MAX_SAFE_INTEGER).optional();
 const passwordSchema = Joi.string()
   .min(8)
   .max(128)
@@ -1047,12 +1048,16 @@ function encodeFeebasSocketMessage(payload) {
   return JSON.stringify(payload);
 }
 
-function createFeebasStreamDurableObjectRequest(pathname, location, actorFingerprint, init = {}) {
+function createFeebasStreamDurableObjectRequest(pathname, location, actorFingerprint, init = {}, options = {}) {
   const url = new URL(`https://feebas-board-stream.local${pathname}`);
   url.searchParams.set('location', location);
 
   if (actorFingerprint) {
     url.searchParams.set('actorFingerprint', actorFingerprint);
+  }
+
+  if (typeof options.lastActivityId === 'number') {
+    url.searchParams.set('lastActivityId', String(options.lastActivityId));
   }
 
   return new Request(url.toString(), init);
@@ -1186,6 +1191,7 @@ module.exports = {
   discordHandoffHashParam,
   updateFeebasTileSchema,
   feebasActorFingerprintSchema,
+  feebasLastActivityIdSchema,
   passwordSchema,
   forgotPasswordSchema,
   registerSchema,

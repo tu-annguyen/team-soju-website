@@ -6,6 +6,7 @@ import {
   FEEBAS_LIVE_UPDATES_MAX_RECONNECT_ATTEMPTS,
   FEEBAS_LIVE_UPDATES_RECONNECT_MS,
   formatCountdown,
+  LAST_ACTIVITY_ID_STORAGE_PREFIX,
 } from './shared';
 
 type Params = {
@@ -22,6 +23,39 @@ type Params = {
   setCountdown: React.Dispatch<React.SetStateAction<string>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
 };
+
+function getActivityStorageKey(location: string) {
+  return `${LAST_ACTIVITY_ID_STORAGE_PREFIX}:${location}`;
+}
+
+function normalizeActivityId(value: unknown) {
+  const activityId = Number(value);
+  return Number.isInteger(activityId) && activityId > 0 ? activityId : null;
+}
+
+function getLatestActivityId(activity: { id: number }[] | undefined) {
+  return (activity || []).reduce<number | null>((latestActivityId, entry) => {
+    const activityId = normalizeActivityId(entry.id);
+    if (!activityId) return latestActivityId;
+    return Math.max(latestActivityId || 0, activityId);
+  }, null);
+}
+
+function readStoredLastActivityId(location: string) {
+  try {
+    return normalizeActivityId(localStorage.getItem(getActivityStorageKey(location)));
+  } catch {
+    return null;
+  }
+}
+
+function storeLastActivityId(location: string, activityId: number) {
+  try {
+    localStorage.setItem(getActivityStorageKey(location), String(activityId));
+  } catch {
+    // Ignore storage write failures; the in-memory cursor still covers this session.
+  }
+}
 
 export function useFeebasLiveUpdates({
   activeLocation,
@@ -46,6 +80,13 @@ export function useFeebasLiveUpdates({
     let reconnectAttempts = 0;
     let reconnectTimeout: number | null = null;
     let liveUpdatesSocket: WebSocket | null = null;
+    let lastActivityId = readStoredLastActivityId(activeLocation);
+
+    const rememberLastActivityId = (activityId: number | null) => {
+      if (!activityId || activityId <= (lastActivityId || 0)) return;
+      lastActivityId = activityId;
+      storeLastActivityId(activeLocation, activityId);
+    };
 
     const clearReconnectTimeout = () => {
       if (reconnectTimeout !== null) {
@@ -57,7 +98,12 @@ export function useFeebasLiveUpdates({
     const connect = () => {
       if (isStopped) return;
 
-      const socket = new WebSocket(buildFeebasLiveUpdatesUrl(normalizedApiBaseUrl, activeLocation, actorFingerprint));
+      const socket = new WebSocket(buildFeebasLiveUpdatesUrl(
+        normalizedApiBaseUrl,
+        activeLocation,
+        actorFingerprint,
+        lastActivityId
+      ));
       liveUpdatesSocket = socket;
 
       socket.onopen = () => {
@@ -73,11 +119,13 @@ export function useFeebasLiveUpdates({
             reconnectAttempts = 0;
 
             if (payload.type === 'activity_delta') {
+              rememberLastActivityId(getLatestActivityId(payload.data.activity));
               applyActivityDelta?.(payload.data);
               setError(null);
               return;
             }
 
+            rememberLastActivityId(getLatestActivityId(payload.data.activity));
             applyBoardUpdate(payload.data);
             setCountdown(formatCountdown(payload.data.cycleEnd));
             lastFetchedCycleEndRef.current = payload.data.cycleEnd;

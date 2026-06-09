@@ -70,4 +70,54 @@ describe('Cloudflare Feebas repository', () => {
     expect(firstLeaderboard).toEqual(secondLeaderboard);
     expect(firstLeaderboard.entries).toEqual([]);
   });
+
+  it('fetches Feebas activity after a last activity cursor for the current cycle', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn().mockResolvedValue({
+      id: 5,
+      location: 'route-119-main',
+      cycle_start: '2026-05-10T00:00:00.000Z',
+      cycle_end: '2026-05-10T00:45:00.000Z',
+    });
+    const runSelect = jest.fn().mockResolvedValue([{
+      id: 8,
+      tile_id: 'r1c8',
+      tile_label: 'H15',
+      action_type: 'voted',
+      previous_status: 'unchecked',
+      next_status: 'pending',
+      actor_name: 'Trainer',
+      created_at: '2026-05-10T00:06:00.000Z',
+    }]);
+    const repository = createFeebasRepository({
+      dialect: 'd1',
+      parameter: () => '?',
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    const delta = await repository.getActivityDeltaSince('route-119-main', 7, {
+      now: '2026-05-10T00:05:00.000Z',
+    });
+
+    const [activitySql, activityParams] = runSelect.mock.calls[0];
+    expect(activitySql).toContain('id > ?');
+    expect(activityParams).toEqual([5, 7]);
+    expect(delta).toEqual(expect.objectContaining({
+      location: 'route-119-main',
+      cycleStart: '2026-05-10T00:00:00.000Z',
+      cycleEnd: '2026-05-10T00:45:00.000Z',
+      activity: [{
+        id: 8,
+        tileId: 'r1c8',
+        tileLabel: 'H15',
+        actionType: 'voted',
+        previousStatus: 'unchecked',
+        nextStatus: 'pending',
+        actorName: 'Trainer',
+        createdAt: '2026-05-10T00:06:00.000Z',
+      }],
+    }));
+  });
 });
