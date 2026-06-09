@@ -1,5 +1,6 @@
 const {
   getCycleWindow,
+  getLeaderboardLocationIds,
   getLocationConfig,
 } = require('../src/utils/feebas');
 
@@ -43,5 +44,17 @@ describe('Feebas utilities', () => {
     expect(location.rows).toBe(34);
     expect(location.cols).toBe(18);
     expect(location.tiles.length).toBeGreaterThan(0);
+  });
+
+  it('combines Route 119 main and upstream leaderboard locations', () => {
+    expect(getLeaderboardLocationIds('route-119-main')).toEqual([
+      'route-119-main',
+      'route-119-upstream',
+    ]);
+    expect(getLeaderboardLocationIds('route-119-upstream')).toEqual([
+      'route-119-main',
+      'route-119-upstream',
+    ]);
+    expect(getLeaderboardLocationIds('mt-coronet')).toEqual(['mt-coronet']);
   });
 });

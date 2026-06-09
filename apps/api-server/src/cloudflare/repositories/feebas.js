@@ -2,6 +2,7 @@ const {
   FEEBAS_VOTABLE_STATUSES,
   FeebasRuleError,
   getCycleWindow,
+  getLeaderboardLocationIds,
   getLocationConfig,
   sanitizeActorName,
   sanitizeFingerprint,
@@ -50,6 +51,15 @@ function toTimeMs(value) {
 
 function toIsoString(value) {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function getCycleKey(row) {
+  const cycleStart = row.cycleStart || row.cycle_start;
+  if (cycleStart) {
+    return cycleStart instanceof Date ? cycleStart.toISOString() : String(cycleStart);
+  }
+
+  return String(row.cycleId || row.cycle_id);
 }
 
 function normalizeLeaderboardSortBy(sortBy) {
@@ -144,7 +154,7 @@ function buildCurrentStreaks(rows) {
   const userCycleKeys = new Map();
 
   rows.forEach((row) => {
-    const cycleKey = String(row.cycle_id);
+    const cycleKey = getCycleKey(row);
 
     if (!seenCycles.has(cycleKey)) {
       seenCycles.add(cycleKey);
@@ -200,7 +210,7 @@ function minValue(map, key, value) {
 }
 
 function uniqueActivityKey(activity) {
-  return `${activity.cycleId}:${activity.tileId}`;
+  return `${activity.location}:${activity.cycleId}:${activity.tileId}`;
 }
 
 function mapActivityLogEntry(entry) {
@@ -253,8 +263,10 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
        ON CONFLICT (source_cycle_id, tile_id) DO NOTHING`;
 
   function clearLeaderboardCache(location) {
+    const cacheScope = getLeaderboardLocationIds(location).join('+');
+
     Array.from(leaderboardCache.keys())
-      .filter((key) => key.startsWith(`${location}:`))
+      .filter((key) => key.startsWith(`${cacheScope}:`))
       .forEach((key) => leaderboardCache.delete(key));
   }
 
@@ -431,7 +443,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
   }
 
   async function getLeaderboard(location, options = {}) {
-    getLocationConfig(location);
+    const leaderboardLocations = getLeaderboardLocationIds(location);
 
     const now = options.now ? new Date(options.now) : new Date();
     const weeklySince = options.weeklySince
@@ -443,7 +455,8 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
     const sortDirection = normalizeLeaderboardSortDirection(options.sortDirection);
     const currentUserId = options.currentUserId ? String(options.currentUserId) : null;
     const weeklyCacheKey = options.weeklySince ? weeklySince.toISOString() : 'rolling';
-    const cacheKey = `${location}:${sortBy}:${sortDirection}:${weeklyCacheKey}`;
+    const cacheScope = leaderboardLocations.join('+');
+    const cacheKey = `${cacheScope}:${sortBy}:${sortDirection}:${weeklyCacheKey}`;
     const cachedLeaderboard = leaderboardCache.get(cacheKey);
 
     if (cachedLeaderboard && cachedLeaderboard.expiresAt > now.getTime()) {
@@ -459,6 +472,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       });
     }
 
+    const locationPlaceholders = leaderboardLocations.map((_, index) => parameter(index + 1)).join(', ');
     const activityRows = await runSelect(`
       SELECT
         logs.id,
@@ -473,9 +487,9 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         cycles.cycle_end
       FROM feebas_activity_logs logs
       JOIN feebas_cycles cycles ON cycles.id = logs.cycle_id
-      WHERE logs.location = ${parameter(1)}
+      WHERE logs.location IN (${locationPlaceholders})
       ORDER BY logs.created_at ASC, logs.id ASC
-    `, [location]);
+    `, leaderboardLocations);
     const users = await runSelect('SELECT id, ign FROM app_users', []);
     const userByFingerprint = new Map(users.map((user) => [`${ACCOUNT_FINGERPRINT_PREFIX}${user.id}`, user]));
     const allActivity = activityRows.map((row) => ({
@@ -537,9 +551,10 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
 
     const activeUsersByCycle = new Map();
     loggedActivity.forEach((activity) => {
-      const usersForCycle = activeUsersByCycle.get(activity.cycleId) || new Set();
+      const cycleKey = getCycleKey(activity);
+      const usersForCycle = activeUsersByCycle.get(cycleKey) || new Set();
       usersForCycle.add(activity.userId);
-      activeUsersByCycle.set(activity.cycleId, usersForCycle);
+      activeUsersByCycle.set(cycleKey, usersForCycle);
     });
 
     const firstReportsByTile = new Map();
@@ -564,7 +579,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         return [];
       }
 
-      const activeUserCount = activeUsersByCycle.get(report.cycleId)?.size || 1;
+      const activeUserCount = activeUsersByCycle.get(getCycleKey(report))?.size || 1;
       const uptimeMinutes = Math.max((toTimeMs(report.cycleEnd) - toTimeMs(report.createdAt)) / 60000, 0) * activeUserCount;
 
       return [{
@@ -579,7 +594,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         loggedActivity
           .filter((activity) => (
             activity.userId === discovery.userId
-            && activity.cycleId === discovery.cycleId
+            && getCycleKey(activity) === getCycleKey(discovery)
             && toTimeMs(activity.createdAt) <= toTimeMs(discovery.reportedAt)
             && ['checked', 'pending'].includes(activity.nextStatus)
           ))

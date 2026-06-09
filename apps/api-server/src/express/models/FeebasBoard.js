@@ -4,6 +4,7 @@ const {
   FEEBAS_VOTABLE_STATUSES,
   FeebasRuleError,
   getCycleWindow,
+  getLeaderboardLocationIds,
   getLocationConfig,
   sanitizeActorName,
   sanitizeFingerprint,
@@ -67,6 +68,15 @@ function compareNumbers(left, right) {
   return (toFiniteNumber(left) - toFiniteNumber(right));
 }
 
+function getCycleKey(row) {
+  const cycleStart = row.cycle_start;
+  if (cycleStart) {
+    return cycleStart instanceof Date ? cycleStart.toISOString() : String(cycleStart);
+  }
+
+  return String(row.cycle_id);
+}
+
 function compareLeaderboardDefault(left, right) {
   return (
     compareNumbers(right.allTimeContributionScore, left.allTimeContributionScore)
@@ -107,7 +117,7 @@ function buildCurrentStreaks(rows) {
   const userCycleKeys = new Map();
 
   rows.forEach((row) => {
-    const cycleKey = String(row.cycle_id);
+    const cycleKey = getCycleKey(row);
 
     if (!seenCycles.has(cycleKey)) {
       seenCycles.add(cycleKey);
@@ -501,7 +511,7 @@ class FeebasBoard {
   }
 
   static async getLeaderboard(location, options = {}) {
-    getLocationConfig(location);
+    const leaderboardLocations = getLeaderboardLocationIds(location);
 
     const client = options.client || pool;
     const now = options.now ? new Date(options.now) : new Date();
@@ -512,7 +522,9 @@ class FeebasBoard {
     const sortBy = normalizeLeaderboardSortBy(options.sortBy);
     const sortDirection = normalizeLeaderboardSortDirection(options.sortDirection);
     const currentUserId = options.currentUserId ? String(options.currentUserId) : null;
-    const queryParams = [location, weeklySince.toISOString()];
+    const locationPlaceholders = leaderboardLocations.map((_, index) => `$${index + 1}`).join(', ');
+    const weeklySincePlaceholder = `$${leaderboardLocations.length + 1}`;
+    const queryParams = [...leaderboardLocations, weeklySince.toISOString()];
 
     const leaderboardResult = await client.query(`
       WITH all_activity AS (
@@ -529,7 +541,7 @@ class FeebasBoard {
           cycles.cycle_end
         FROM feebas_activity_logs logs
         JOIN feebas_cycles cycles ON cycles.id = logs.cycle_id
-        WHERE logs.location = $1
+        WHERE logs.location IN (${locationPlaceholders})
       ),
       logged_activity AS (
         SELECT
@@ -588,10 +600,10 @@ class FeebasBoard {
       ),
       active_users_by_cycle AS (
         SELECT
-          cycle_id,
+          cycle_start,
           COUNT(DISTINCT user_id)::INT AS active_user_count
         FROM logged_activity
-        GROUP BY cycle_id
+        GROUP BY cycle_start
       ),
       first_reports AS (
         SELECT DISTINCT ON (location, cycle_id, tile_id)
@@ -627,7 +639,7 @@ class FeebasBoard {
          AND confirmed_tiles.cycle_id = reports.cycle_id
          AND confirmed_tiles.tile_id = reports.tile_id
         JOIN feebas_cycles cycles ON cycles.id = reports.cycle_id
-        LEFT JOIN active_users_by_cycle ON active_users_by_cycle.cycle_id = reports.cycle_id
+        LEFT JOIN active_users_by_cycle ON active_users_by_cycle.cycle_start = cycles.cycle_start
       ),
       discovery_check_counts AS (
         SELECT
@@ -635,11 +647,11 @@ class FeebasBoard {
           discoveries.location,
           discoveries.cycle_id,
           discoveries.tile_id,
-          COUNT(DISTINCT activity.tile_id)::INT AS checks_to_find
+          COUNT(DISTINCT (activity.location, activity.cycle_id, activity.tile_id))::INT AS checks_to_find
         FROM verified_discoveries discoveries
         LEFT JOIN logged_activity activity
           ON activity.user_id = discoveries.user_id
-         AND activity.cycle_id = discoveries.cycle_id
+         AND activity.cycle_start = discoveries.cycle_start
          AND activity.created_at <= discoveries.reported_at
          AND activity.next_status IN ('checked', 'pending')
         GROUP BY discoveries.user_id, discoveries.location, discoveries.cycle_id, discoveries.tile_id
@@ -649,8 +661,8 @@ class FeebasBoard {
           user_id,
           COUNT(*)::INT AS verified_discoveries,
           COALESCE(SUM(uptime_minutes), 0) AS feebas_uptime_created_minutes,
-          (COUNT(*) FILTER (WHERE reported_at >= $2))::INT AS weekly_verified_discoveries,
-          COALESCE(SUM(uptime_minutes) FILTER (WHERE reported_at >= $2), 0) AS weekly_feebas_uptime_created_minutes,
+          (COUNT(*) FILTER (WHERE reported_at >= ${weeklySincePlaceholder}))::INT AS weekly_verified_discoveries,
+          COALESCE(SUM(uptime_minutes) FILTER (WHERE reported_at >= ${weeklySincePlaceholder}), 0) AS weekly_feebas_uptime_created_minutes,
           MIN(EXTRACT(EPOCH FROM (reported_at - cycle_start)))::INT AS fastest_find_seconds
         FROM verified_discoveries
         GROUP BY user_id
@@ -660,9 +672,9 @@ class FeebasBoard {
           reports.user_id,
           COUNT(*)::INT AS pending_reports,
           (COUNT(*) FILTER (WHERE reports.resolved_status = 'confirmed'))::INT AS verified_reports,
-          (COUNT(*) FILTER (WHERE reports.reported_at >= $2))::INT AS weekly_pending_reports,
+          (COUNT(*) FILTER (WHERE reports.reported_at >= ${weeklySincePlaceholder}))::INT AS weekly_pending_reports,
           (COUNT(*) FILTER (
-            WHERE reports.reported_at >= $2
+            WHERE reports.reported_at >= ${weeklySincePlaceholder}
               AND reports.resolved_status = 'confirmed'
           ))::INT AS weekly_verified_reports
         FROM resolved_pending_reports reports
@@ -681,11 +693,11 @@ class FeebasBoard {
           ))::INT AS confirmations,
           (COUNT(DISTINCT (cycle_id, tile_id)) FILTER (
             WHERE next_status IN ('checked', 'pending')
-              AND created_at >= $2
+              AND created_at >= ${weeklySincePlaceholder}
           ))::INT AS weekly_search_coverage,
           (COUNT(DISTINCT (cycle_id, tile_id)) FILTER (
             WHERE next_status = 'confirmed'
-              AND created_at >= $2
+              AND created_at >= ${weeklySincePlaceholder}
           ))::INT AS weekly_confirmations
         FROM logged_activity
         GROUP BY user_id, ign
@@ -766,13 +778,13 @@ class FeebasBoard {
         FROM feebas_activity_logs logs
         JOIN feebas_cycles cycles ON cycles.id = logs.cycle_id
         JOIN app_users users ON logs.actor_fingerprint = CONCAT('account-', users.id::TEXT)
-        WHERE logs.location = $1
+        WHERE logs.location IN (${locationPlaceholders})
       )
-      SELECT user_id, cycle_id, cycle_start
+      SELECT user_id, MIN(cycle_id) AS cycle_id, cycle_start
       FROM logged_activity
-      GROUP BY user_id, cycle_id, cycle_start
-      ORDER BY cycle_start DESC, cycle_id DESC
-    `, [location]);
+      GROUP BY user_id, cycle_start
+      ORDER BY cycle_start DESC, MIN(cycle_id) DESC
+    `, leaderboardLocations);
 
     const streaksByUser = buildCurrentStreaks(streakResult.rows);
 

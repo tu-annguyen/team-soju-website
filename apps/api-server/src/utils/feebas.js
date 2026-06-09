@@ -166,6 +166,8 @@ const FEEBAS_LOCATIONS = {
   },
 };
 
+const ROUTE_119_LEADERBOARD_LOCATION_IDS = ['route-119-main', 'route-119-upstream'];
+
 class FeebasRuleError extends Error {
   constructor(message, statusCode = 400) {
     super(message);
@@ -182,6 +184,14 @@ function getLocationConfig(location) {
   }
 
   return config;
+}
+
+function getLeaderboardLocationIds(location) {
+  getLocationConfig(location);
+
+  return ROUTE_119_LEADERBOARD_LOCATION_IDS.includes(location)
+    ? [...ROUTE_119_LEADERBOARD_LOCATION_IDS]
+    : [location];
 }
 
 function getCycleWindow(now = new Date()) {
@@ -232,6 +242,7 @@ module.exports = {
   FEEBAS_VOTABLE_STATUSES,
   FeebasRuleError,
   getLocationConfig,
+  getLeaderboardLocationIds,
   getCycleWindow,
   sanitizeActorName,
   sanitizeFingerprint,

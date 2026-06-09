@@ -65,10 +65,17 @@ describe('Cloudflare Feebas repository', () => {
 
     const firstLeaderboard = await repository.getLeaderboard('route-119-main', options);
     const secondLeaderboard = await repository.getLeaderboard('route-119-main', options);
+    const upstreamLeaderboard = await repository.getLeaderboard('route-119-upstream', options);
 
     expect(runSelect).toHaveBeenCalledTimes(2);
     expect(firstLeaderboard).toEqual(secondLeaderboard);
+    expect(upstreamLeaderboard).toEqual({
+      ...firstLeaderboard,
+      location: 'route-119-upstream',
+    });
     expect(firstLeaderboard.entries).toEqual([]);
+    expect(runSelect.mock.calls[0][0]).toContain('WHERE logs.location IN (?, ?)');
+    expect(runSelect.mock.calls[0][1]).toEqual(['route-119-main', 'route-119-upstream']);
   });
 
   it('fetches Feebas activity after a last activity cursor for the current cycle', async () => {

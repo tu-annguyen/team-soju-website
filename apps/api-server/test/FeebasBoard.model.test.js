@@ -180,16 +180,20 @@ describe('FeebasBoard model', () => {
     }));
     expect(pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('verified_discoveries'), [
       'route-119-main',
+      'route-119-upstream',
       '2026-04-03T01:00:00.000Z',
     ]);
     const leaderboardSql = pool.query.mock.calls[0][0];
+    expect(leaderboardSql).toContain('WHERE logs.location IN ($1, $2)');
+    expect(leaderboardSql).toContain('activity.cycle_start = discoveries.cycle_start');
     expect(leaderboardSql).toContain('resolved_pending_reports AS');
     expect(leaderboardSql).toContain('early_scout_seconds');
     expect(leaderboardSql).toContain("activity.next_status IN ('checked', 'confirmed')");
     expect(leaderboardSql).toContain('FROM resolved_pending_reports reports');
     expect(leaderboardSql).toContain("reports.resolved_status = 'confirmed'");
-    expect(pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('GROUP BY user_id, cycle_id, cycle_start'), [
+    expect(pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('GROUP BY user_id, cycle_start'), [
       'route-119-main',
+      'route-119-upstream',
     ]);
   });
 
