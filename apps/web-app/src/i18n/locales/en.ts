@@ -280,11 +280,12 @@ const en = {
         notables: {
           heading: 'Tracked records',
           fastestFinder: 'Fastest finder',
-          earlyScout: 'Early scout',
+          longestStreak: 'Longest streak',
           mostPersistent: 'Most persistent',
           noData: 'No verified find yet',
           fastestValue: '{ign} in {value}',
           checksValue: '{ign} after {value} tile(s)',
+          streakValue: '{ign} with {value} cycle(s)',
         },
       },
       errors: {

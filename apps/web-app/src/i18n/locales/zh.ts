@@ -273,11 +273,12 @@ const zh = {
         notables: {
           heading: '记录统计',
           fastestFinder: '最快发现者',
-          earlyScout: '早期侦察者',
+          longestStreak: '最长连续',
           mostPersistent: '最坚持者',
           noData: '还没有已验证发现',
           fastestValue: '{ign} 用时 {value}',
           checksValue: '{ign} 在 {value} 个格子后发现',
+          streakValue: '{ign} 连续 {value} 个周期',
         },
       },
       errors: {

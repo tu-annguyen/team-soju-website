@@ -501,7 +501,7 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText('3h')).toBeInTheDocument();
     expect(screen.getByText('80%')).toBeInTheDocument();
     expect(screen.getByText(/May in 1m 30s/i)).toBeInTheDocument();
-    expect(screen.getByText(/May in 30s/i)).toBeInTheDocument();
+    expect(screen.getByText(/May with 3 cycle\(s\)/i)).toBeInTheDocument();
     expect(screen.getByText(/May after 17 tile\(s\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Current position after applying the selected leaderboard sort/i)).toBeInTheDocument();
     expect(screen.getByText(/Score from the last 7 days/i)).toBeInTheDocument();

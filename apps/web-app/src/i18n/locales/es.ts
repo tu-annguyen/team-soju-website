@@ -284,11 +284,12 @@ const es = {
         notables: {
           heading: 'Records registrados',
           fastestFinder: 'Buscador mas rapido',
-          earlyScout: 'Explorador temprano',
+          longestStreak: 'Racha mas larga',
           mostPersistent: 'Mas persistente',
           noData: 'Aun no hay hallazgos verificados',
           fastestValue: '{ign} en {value}',
           checksValue: '{ign} despues de {value} casilla(s)',
+          streakValue: '{ign} con {value} ciclo(s)',
         },
       },
       errors: {

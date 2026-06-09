@@ -85,16 +85,19 @@ export function getLeaderboardNotables(entries: FeebasLeaderboardEntry[]) {
   const fastestFinder = [...entriesWithFinds]
     .filter((entry) => Number.isFinite(entry.fastestFindSeconds || NaN) && (entry.fastestFindSeconds || 0) > 0)
     .sort((left, right) => (left.fastestFindSeconds || 0) - (right.fastestFindSeconds || 0))[0] || null;
-  const earlyScout = [...entries]
-    .filter((entry) => entry.earlyScoutSeconds !== null && Number.isFinite(entry.earlyScoutSeconds))
-    .sort((left, right) => (left.earlyScoutSeconds || 0) - (right.earlyScoutSeconds || 0))[0] || null;
+  const longestStreak = [...entries]
+    .filter((entry) => Number.isFinite(entry.currentStreak) && entry.currentStreak > 0)
+    .sort((left, right) => (
+      compareLeaderboardNumbers(right.currentStreak, left.currentStreak)
+      || compareLeaderboardDefault(left, right)
+    ))[0] || null;
   const mostPersistent = [...entriesWithFinds]
     .filter((entry) => Number.isFinite(entry.mostPersistentChecks || NaN) && (entry.mostPersistentChecks || 0) > 0)
     .sort((left, right) => (right.mostPersistentChecks || 0) - (left.mostPersistentChecks || 0))[0] || null;
 
   return {
     fastestFinder,
-    earlyScout,
+    longestStreak,
     mostPersistent,
   };
 }

@@ -213,11 +213,11 @@ export function LeaderboardPanel({
                   })
                   : messages.leaderboard.notables.noData}
               </LeaderboardNotable>
-              <LeaderboardNotable label={messages.leaderboard.notables.earlyScout}>
-                {leaderboardNotables.earlyScout
-                  ? formatCopy(messages.leaderboard.notables.fastestValue, {
-                    ign: leaderboardNotables.earlyScout.ign,
-                    value: formatDuration(leaderboardNotables.earlyScout.earlyScoutSeconds, messages.leaderboard.notables.noData),
+              <LeaderboardNotable label={messages.leaderboard.notables.longestStreak}>
+                {leaderboardNotables.longestStreak
+                  ? formatCopy(messages.leaderboard.notables.streakValue, {
+                    ign: leaderboardNotables.longestStreak.ign,
+                    value: formatNullableCount(leaderboardNotables.longestStreak.currentStreak, messages.leaderboard.notables.noData),
                   })
                   : messages.leaderboard.notables.noData}
               </LeaderboardNotable>
