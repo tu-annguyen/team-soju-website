@@ -123,6 +123,49 @@ const {
   getFeebasStreamDurableObject,
 } = require('../services/worker-support');
 
+const FEEBAS_ACTIVITY_DELTA_MAX_AGE_MS = 30000;
+
+function getExpectedFeebasActivityNextStatus(status) {
+  return status === 'unchecked' ? null : status;
+}
+
+function buildFeebasActivityDelta(board, actorFingerprint, { tileId, status } = {}) {
+  const latestActivity = Array.isArray(board?.activity) ? board.activity[0] : null;
+  if (!latestActivity) {
+    return null;
+  }
+
+  if (tileId && latestActivity.tileId !== tileId) {
+    return null;
+  }
+
+  if (status && latestActivity.nextStatus !== getExpectedFeebasActivityNextStatus(status)) {
+    return null;
+  }
+
+  const boardTime = Date.parse(board.serverTime || '');
+  const activityTime = Date.parse(latestActivity.createdAt || '');
+  if (
+    !Number.isFinite(boardTime)
+    || !Number.isFinite(activityTime)
+    || Math.abs(boardTime - activityTime) > FEEBAS_ACTIVITY_DELTA_MAX_AGE_MS
+  ) {
+    return null;
+  }
+
+  return {
+    actorFingerprint,
+    data: {
+      location: board.location,
+      displayName: board.displayName,
+      cycleStart: board.cycleStart,
+      cycleEnd: board.cycleEnd,
+      serverTime: board.serverTime,
+      activity: [latestActivity],
+    },
+  };
+}
+
 async function handleFeebasRoutes(context) {
   const {
     request,
@@ -200,7 +243,13 @@ async function handleFeebasRoutes(context) {
         const board = await getRepositories().feebas.updateTile(match[1], match[2], value, {
           includeLeaderboard: false,
         });
-        await broadcastFeebasBoard(match[1], getRepositories(), env, { forceRefresh: true });
+        await broadcastFeebasBoard(match[1], getRepositories(), env, {
+          forceRefresh: true,
+          activityDelta: buildFeebasActivityDelta(board, value.actorFingerprint, {
+            tileId: match[2],
+            status: value.status,
+          }),
+        });
         return json({
           success: true,
           data: board,

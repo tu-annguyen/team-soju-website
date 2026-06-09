@@ -1479,10 +1479,24 @@ describe('Cloudflare Worker API', () => {
   });
 
   it('broadcasts Feebas updates through the Durable Object binding when available', async () => {
+    const activity = {
+      id: 7,
+      tileId: 'r1c7',
+      tileLabel: 'G1',
+      actionType: 'voted',
+      previousStatus: 'unchecked',
+      nextStatus: 'pending',
+      actorName: 'Trainer',
+      createdAt: '2026-04-09T20:20:00.000Z',
+    };
     const board = {
       location: 'route-119-main',
+      displayName: 'Route 119, Hoenn',
+      cycleStart: '2026-04-09T20:15:00.000Z',
+      cycleEnd: '2026-04-09T21:00:00.000Z',
+      serverTime: '2026-04-09T20:20:00.000Z',
       tiles: [],
-      activity: [],
+      activity: [activity],
     };
     const durableFetch = jest.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const durableObjectBinding = {
@@ -1524,6 +1538,20 @@ describe('Cloudflare Worker API', () => {
     expect(durableUrl.pathname).toBe('/broadcast');
     expect(durableUrl.searchParams.get('location')).toBe('route-119-main');
     expect(durableUrl.searchParams.get('refresh')).toBe('1');
+    expect(durableRequest.headers.get('content-type')).toBe('application/json');
+    expect(JSON.parse(await durableRequest.text())).toEqual({
+      activityDelta: {
+        actorFingerprint: 'client-12345678',
+        data: {
+          location: 'route-119-main',
+          displayName: 'Route 119, Hoenn',
+          cycleStart: '2026-04-09T20:15:00.000Z',
+          cycleEnd: '2026-04-09T21:00:00.000Z',
+          serverTime: '2026-04-09T20:20:00.000Z',
+          activity: [activity],
+        },
+      },
+    });
   });
 
   it('streams and broadcasts Feebas boards from the hibernating Durable Object class', async () => {
@@ -1568,6 +1596,89 @@ describe('Cloudflare Worker API', () => {
     });
     expect(streamResponse.webSocket.received).toEqual([
       JSON.stringify({ success: true, data: initialBoard }),
+      JSON.stringify({ success: true, data: updatedBoard }),
+    ]);
+  });
+
+  it('sends Feebas activity deltas before a Durable Object board refresh', async () => {
+    const activity = {
+      id: 7,
+      tileId: 'r1c7',
+      tileLabel: 'G1',
+      actionType: 'voted',
+      previousStatus: 'unchecked',
+      nextStatus: 'pending',
+      actorName: 'Trainer',
+      createdAt: '2026-04-09T20:20:00.000Z',
+    };
+    const initialBoard = {
+      location: 'route-119-main',
+      displayName: 'Route 119, Hoenn',
+      cycleEnd: '2026-04-09T21:00:00.000Z',
+      tiles: [{ tileId: 'r1c7', status: 'unchecked' }],
+      activity: [],
+    };
+    const updatedBoard = {
+      ...initialBoard,
+      serverTime: '2026-04-09T20:20:00.000Z',
+      tiles: [{ tileId: 'r1c7', status: 'pending' }],
+      activity: [activity],
+    };
+    const activityDelta = {
+      actorFingerprint: 'client-12345678',
+      data: {
+        location: 'route-119-main',
+        displayName: 'Route 119, Hoenn',
+        cycleStart: '2026-04-09T20:15:00.000Z',
+        cycleEnd: '2026-04-09T21:00:00.000Z',
+        serverTime: '2026-04-09T20:20:00.000Z',
+        activity: [activity],
+      },
+    };
+    const repositories = {
+      feebas: {
+        getBoard: jest.fn().mockResolvedValue(initialBoard),
+        getBoardCache: jest.fn().mockResolvedValue(updatedBoard),
+        applyUserViewToBoardCache: jest.fn((board) => board),
+      },
+    };
+    const state = createDurableObjectState();
+    const durableObject = new FeebasBoardStreamDurableObject(state, {}, {
+      createRepositories: () => repositories,
+    });
+
+    const writerStreamResponse = await durableObject.fetch(createWebSocketRequest('https://feebas-board-stream.local/stream?location=route-119-main&actorFingerprint=client-12345678'));
+    const otherStreamResponse = await durableObject.fetch(createWebSocketRequest('https://feebas-board-stream.local/stream?location=route-119-main&actorFingerprint=client-87654321'));
+    const broadcastResponse = await durableObject.fetch(new Request('https://feebas-board-stream.local/broadcast?location=route-119-main&refresh=1', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ activityDelta }),
+    }));
+
+    expect(broadcastResponse.status).toBe(204);
+    expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(1);
+    expect(writerStreamResponse.webSocket.received).toEqual([
+      JSON.stringify({ success: true, data: initialBoard }),
+      JSON.stringify({
+        success: true,
+        type: 'activity_delta',
+        data: {
+          ...activityDelta.data,
+          isSelfNomination: true,
+        },
+      }),
+      JSON.stringify({ success: true, data: updatedBoard }),
+    ]);
+    expect(otherStreamResponse.webSocket.received).toEqual([
+      JSON.stringify({ success: true, data: initialBoard }),
+      JSON.stringify({
+        success: true,
+        type: 'activity_delta',
+        data: {
+          ...activityDelta.data,
+          isSelfNomination: false,
+        },
+      }),
       JSON.stringify({ success: true, data: updatedBoard }),
     ]);
   });
@@ -1737,15 +1848,33 @@ describe('Cloudflare Worker API', () => {
   });
 
   it('broadcasts Feebas tile updates to Worker WebSocket subscribers', async () => {
+    const activity = {
+      id: 7,
+      tileId: 'r1c7',
+      tileLabel: 'G1',
+      actionType: 'voted',
+      previousStatus: 'unchecked',
+      nextStatus: 'pending',
+      actorName: 'Trainer',
+      createdAt: '2026-04-09T20:20:00.000Z',
+    };
     const initialBoard = {
       location: 'route-119-main',
+      displayName: 'Route 119, Hoenn',
+      cycleStart: '2026-04-09T20:15:00.000Z',
+      cycleEnd: '2026-04-09T21:00:00.000Z',
+      serverTime: '2026-04-09T20:19:00.000Z',
       tiles: [{ id: 'r1c7', status: 'unchecked' }],
       activity: [],
     };
     const updatedBoard = {
       location: 'route-119-main',
+      displayName: 'Route 119, Hoenn',
+      cycleStart: '2026-04-09T20:15:00.000Z',
+      cycleEnd: '2026-04-09T21:00:00.000Z',
+      serverTime: '2026-04-09T20:20:00.000Z',
       tiles: [{ id: 'r1c7', status: 'pending' }],
-      activity: [],
+      activity: [activity],
     };
     const repositories = {
       members: {},
@@ -1778,6 +1907,19 @@ describe('Cloudflare Worker API', () => {
     });
     expect(streamResponse.webSocket.received).toEqual([
       JSON.stringify({ success: true, data: initialBoard }),
+      JSON.stringify({
+        success: true,
+        type: 'activity_delta',
+        data: {
+          location: 'route-119-main',
+          displayName: 'Route 119, Hoenn',
+          cycleStart: '2026-04-09T20:15:00.000Z',
+          cycleEnd: '2026-04-09T21:00:00.000Z',
+          serverTime: '2026-04-09T20:20:00.000Z',
+          activity: [activity],
+          isSelfNomination: true,
+        },
+      }),
       JSON.stringify({ success: true, data: updatedBoard }),
     ]);
   });

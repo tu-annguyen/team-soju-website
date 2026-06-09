@@ -137,6 +137,57 @@ const route119UpstreamBoardFixture = {
   },
 };
 
+const pendingB2Activity = {
+  id: 2,
+  tileId: 'r1c2',
+  tileLabel: 'B2',
+  actionType: 'voted',
+  previousStatus: 'unchecked',
+  nextStatus: 'pending',
+  actorName: 'Brendan',
+  createdAt: '2026-04-09T20:19:00.000Z',
+};
+
+function buildPendingB2Board(baseBoard: typeof boardFixture = boardFixture) {
+  return {
+    ...baseBoard,
+    activity: [
+      pendingB2Activity,
+      ...baseBoard.activity,
+    ],
+    tiles: [
+      baseBoard.tiles[0],
+      {
+        ...baseBoard.tiles[1],
+        status: 'pending',
+        voteCounts: {
+          checked: 0,
+          pending: 1,
+          confirmed: 0,
+        },
+        totalVotes: 1,
+        currentUserVote: 'unchecked',
+      },
+    ],
+  };
+}
+
+function buildPendingB2ActivityDelta(baseBoard: typeof boardFixture = boardFixture, isSelfNomination = false) {
+  return {
+    success: true,
+    type: 'activity_delta',
+    data: {
+      location: baseBoard.location,
+      displayName: baseBoard.displayName,
+      cycleStart: baseBoard.cycleStart,
+      cycleEnd: baseBoard.cycleEnd,
+      serverTime: baseBoard.serverTime,
+      isSelfNomination,
+      activity: [pendingB2Activity],
+    },
+  };
+}
+
 const authUserFixture = {
   id: 'user-id',
   email: 'trainer@example.com',
@@ -702,43 +753,22 @@ describe('FeebasTileChecker', () => {
       );
 
       act(() => {
-        findMockWebSocket('/feebas/route-119-main/stream')?.emit({
-          success: true,
-          data: {
-            ...boardFixture,
-            activity: [
-              {
-                id: 2,
-                tileId: 'r1c2',
-                tileLabel: 'B2',
-                actionType: 'voted',
-                previousStatus: 'unchecked',
-                nextStatus: 'pending',
-                actorName: 'Brendan',
-                createdAt: '2026-04-09T20:19:00.000Z',
-              },
-              ...boardFixture.activity,
-            ],
-            tiles: [
-              boardFixture.tiles[0],
-              {
-                ...boardFixture.tiles[1],
-                status: 'pending',
-                voteCounts: {
-                  checked: 0,
-                  pending: 1,
-                  confirmed: 0,
-                },
-                totalVotes: 1,
-                currentUserVote: 'unchecked',
-              },
-            ],
-          },
-        });
+        findMockWebSocket('/feebas/route-119-main/stream')?.emit(buildPendingB2ActivityDelta());
       });
 
       expect(screen.getByText('Pending nomination')).toBeInTheDocument();
       expect(screen.getByText(/Brendan nominated B2 at Route 119, Hoenn/i)).toBeInTheDocument();
+      expect(screen.getByText((_, element) => element?.textContent === 'Brendan found Feebas on B2.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument();
+
+      act(() => {
+        findMockWebSocket('/feebas/route-119-main/stream')?.emit({
+          success: true,
+          data: buildPendingB2Board(),
+        });
+      });
+
+      expect(screen.getByRole('button', { name: /B2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument();
 
       act(() => {
         jest.advanceTimersByTime(6000);
@@ -797,43 +827,20 @@ describe('FeebasTileChecker', () => {
     expect(screen.queryByText('Pending nomination')).not.toBeInTheDocument();
 
     act(() => {
-      findMockWebSocket('/feebas/route-119-upstream/stream')?.emit({
-        success: true,
-        data: {
-          ...route119UpstreamBoardFixture,
-          activity: [
-            {
-              id: 2,
-              tileId: 'r1c2',
-              tileLabel: 'B2',
-              actionType: 'voted',
-              previousStatus: 'unchecked',
-              nextStatus: 'pending',
-              actorName: 'Brendan',
-              createdAt: '2026-04-09T20:19:00.000Z',
-            },
-            ...route119UpstreamBoardFixture.activity,
-          ],
-          tiles: [
-            route119UpstreamBoardFixture.tiles[0],
-            {
-              ...route119UpstreamBoardFixture.tiles[1],
-              status: 'pending',
-              voteCounts: {
-                checked: 0,
-                pending: 1,
-                confirmed: 0,
-              },
-              totalVotes: 1,
-              currentUserVote: 'unchecked',
-            },
-          ],
-        },
-      });
+      findMockWebSocket('/feebas/route-119-upstream/stream')?.emit(
+        buildPendingB2ActivityDelta(route119UpstreamBoardFixture)
+      );
     });
 
     expect(screen.getByText('Pending nomination')).toBeInTheDocument();
     expect(screen.getByText(/Brendan nominated B2 at Route 119, Hoenn \(Upstream\)/i)).toBeInTheDocument();
+
+    act(() => {
+      findMockWebSocket('/feebas/route-119-upstream/stream')?.emit({
+        success: true,
+        data: buildPendingB2Board(route119UpstreamBoardFixture),
+      });
+    });
   });
 
   it('shows Route 119 pond pending nomination popups while viewing upstream', async () => {
@@ -859,43 +866,18 @@ describe('FeebasTileChecker', () => {
     expect(screen.queryByText('Pending nomination')).not.toBeInTheDocument();
 
     act(() => {
-      findMockWebSocket('/feebas/route-119-main/stream')?.emit({
-        success: true,
-        data: {
-          ...boardFixture,
-          activity: [
-            {
-              id: 2,
-              tileId: 'r1c2',
-              tileLabel: 'B2',
-              actionType: 'voted',
-              previousStatus: 'unchecked',
-              nextStatus: 'pending',
-              actorName: 'Brendan',
-              createdAt: '2026-04-09T20:19:00.000Z',
-            },
-            ...boardFixture.activity,
-          ],
-          tiles: [
-            boardFixture.tiles[0],
-            {
-              ...boardFixture.tiles[1],
-              status: 'pending',
-              voteCounts: {
-                checked: 0,
-                pending: 1,
-                confirmed: 0,
-              },
-              totalVotes: 1,
-              currentUserVote: 'unchecked',
-            },
-          ],
-        },
-      });
+      findMockWebSocket('/feebas/route-119-main/stream')?.emit(buildPendingB2ActivityDelta());
     });
 
     expect(screen.getByText('Pending nomination')).toBeInTheDocument();
     expect(screen.getByText(/Brendan nominated B2 at Route 119, Hoenn \(Pond\)/i)).toBeInTheDocument();
+
+    act(() => {
+      findMockWebSocket('/feebas/route-119-main/stream')?.emit({
+        success: true,
+        data: buildPendingB2Board(),
+      });
+    });
   });
 
   it('does not show Route 119 pending nomination popups while viewing Mt. Coronet', async () => {

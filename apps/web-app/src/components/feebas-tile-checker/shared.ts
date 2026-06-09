@@ -116,11 +116,31 @@ export type FeebasBoard = {
   tiles: FeebasTile[];
 };
 
+export type FeebasActivityDelta = {
+  location: string;
+  displayName: string;
+  cycleStart: string;
+  cycleEnd: string;
+  serverTime: string;
+  isSelfNomination?: boolean;
+  activity: FeebasActivityEntry[];
+};
+
 export type BoardResponse = {
   success: boolean;
+  type?: 'board';
   data: FeebasBoard;
   message?: string;
 };
+
+export type FeebasActivityDeltaResponse = {
+  success: boolean;
+  type: 'activity_delta';
+  data: FeebasActivityDelta;
+  message?: string;
+};
+
+export type FeebasLiveUpdateResponse = BoardResponse | FeebasActivityDeltaResponse;
 
 export type AuthUser = {
   id: string;
