@@ -169,6 +169,7 @@ export type PendingNominationNotification = {
 export const ACTIVITY_PAGE_SIZE = 5;
 export const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 export const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
+export const LAST_ACTIVITY_ID_STORAGE_PREFIX = 'feebas-tile-checker-last-activity-id';
 export const BOARD_MIN_TILE_SIZE_PX = 40;
 export const BOARD_MIN_WIDTH_PX = 768;
 export const LEADERBOARD_SIGN_IN_CTA_CLASSES =
@@ -330,9 +331,17 @@ export function isAuthUser(value: AuthUser | null | undefined): value is AuthUse
   return Boolean(value && typeof value.id === 'string' && typeof value.ign === 'string');
 }
 
-export function buildFeebasLiveUpdatesUrl(apiBaseUrl: string, location: string, actorFingerprint: string) {
+export function buildFeebasLiveUpdatesUrl(
+  apiBaseUrl: string,
+  location: string,
+  actorFingerprint: string,
+  lastActivityId?: number | null
+) {
   const url = new URL(`${apiBaseUrl}/feebas/${location}/stream`, window.location.href);
   url.searchParams.set('actorFingerprint', actorFingerprint);
+  if (typeof lastActivityId === 'number' && Number.isFinite(lastActivityId) && lastActivityId > 0) {
+    url.searchParams.set('lastActivityId', String(lastActivityId));
+  }
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   return url.toString();
 }

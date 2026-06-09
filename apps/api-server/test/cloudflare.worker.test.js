@@ -1441,6 +1441,59 @@ describe('Cloudflare Worker API', () => {
     ]);
   });
 
+  it('replays Feebas activity after the last activity cursor on Worker WebSocket reconnects', async () => {
+    const activityDelta = {
+      location: 'route-119-main',
+      displayName: 'Route 119, Hoenn',
+      cycleStart: '2026-04-09T20:15:00.000Z',
+      cycleEnd: '2026-04-09T21:00:00.000Z',
+      serverTime: '2026-04-09T20:20:00.000Z',
+      activity: [{
+        id: 7,
+        tileId: 'r1c7',
+        tileLabel: 'G1',
+        actionType: 'voted',
+        previousStatus: 'unchecked',
+        nextStatus: 'pending',
+        actorName: 'Trainer',
+        createdAt: '2026-04-09T20:20:00.000Z',
+      }],
+    };
+    const board = {
+      location: 'route-119-main',
+      tiles: [],
+      activity: activityDelta.activity,
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        getBoard: jest.fn().mockResolvedValue(board),
+        getActivityDeltaSince: jest.fn().mockResolvedValue(activityDelta),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(createWebSocketRequest(
+      'https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678&lastActivityId=6'
+    ), createEnv());
+
+    expect(repositories.feebas.getActivityDeltaSince).toHaveBeenCalledWith('route-119-main', 6);
+    expect(response.status).toBe(101);
+    expect(response.webSocket.received).toEqual([
+      JSON.stringify({
+        success: true,
+        type: 'activity_delta',
+        data: {
+          ...activityDelta,
+          isSelfNomination: false,
+        },
+      }),
+      JSON.stringify({ success: true, data: board }),
+    ]);
+  });
+
   it('routes Feebas WebSocket upgrades through the Durable Object binding when available', async () => {
     const durableFetch = jest.fn().mockResolvedValue(new Response('durable stream', {
       headers: { upgrade: 'websocket' },
@@ -1460,7 +1513,7 @@ describe('Cloudflare Worker API', () => {
     const app = createWorkerApp({ repositories });
 
     const response = await app.fetch(
-      createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'),
+      createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678&lastActivityId=7'),
       createEnv({ FEEBAS_BOARD_STREAM: durableObjectBinding })
     );
     const durableRequest = durableFetch.mock.calls[0][0];
@@ -1476,6 +1529,7 @@ describe('Cloudflare Worker API', () => {
     expect(durableUrl.pathname).toBe('/stream');
     expect(durableUrl.searchParams.get('location')).toBe('route-119-main');
     expect(durableUrl.searchParams.get('actorFingerprint')).toBe('client-12345678');
+    expect(durableUrl.searchParams.get('lastActivityId')).toBe('7');
   });
 
   it('broadcasts Feebas updates through the Durable Object binding when available', async () => {
@@ -1597,6 +1651,59 @@ describe('Cloudflare Worker API', () => {
     expect(streamResponse.webSocket.received).toEqual([
       JSON.stringify({ success: true, data: initialBoard }),
       JSON.stringify({ success: true, data: updatedBoard }),
+    ]);
+  });
+
+  it('replays Feebas activity after the last activity cursor in the Durable Object stream', async () => {
+    const activityDelta = {
+      location: 'route-119-main',
+      displayName: 'Route 119, Hoenn',
+      cycleStart: '2026-04-09T20:15:00.000Z',
+      cycleEnd: '2026-04-09T21:00:00.000Z',
+      serverTime: '2026-04-09T20:20:00.000Z',
+      activity: [{
+        id: 7,
+        tileId: 'r1c7',
+        tileLabel: 'G1',
+        actionType: 'voted',
+        previousStatus: 'unchecked',
+        nextStatus: 'pending',
+        actorName: 'Trainer',
+        createdAt: '2026-04-09T20:20:00.000Z',
+      }],
+    };
+    const board = {
+      location: 'route-119-main',
+      tiles: [{ tileId: 'r1c7', status: 'pending' }],
+      activity: activityDelta.activity,
+    };
+    const repositories = {
+      feebas: {
+        getBoard: jest.fn().mockResolvedValue(board),
+        getActivityDeltaSince: jest.fn().mockResolvedValue(activityDelta),
+      },
+    };
+    const state = createDurableObjectState();
+    const durableObject = new FeebasBoardStreamDurableObject(state, {}, {
+      createRepositories: () => repositories,
+    });
+
+    const streamResponse = await durableObject.fetch(createWebSocketRequest(
+      'https://feebas-board-stream.local/stream?location=route-119-main&actorFingerprint=client-12345678&lastActivityId=6'
+    ));
+
+    expect(repositories.feebas.getActivityDeltaSince).toHaveBeenCalledWith('route-119-main', 6);
+    expect(streamResponse.status).toBe(101);
+    expect(streamResponse.webSocket.received).toEqual([
+      JSON.stringify({
+        success: true,
+        type: 'activity_delta',
+        data: {
+          ...activityDelta,
+          isSelfNomination: false,
+        },
+      }),
+      JSON.stringify({ success: true, data: board }),
     ]);
   });
 

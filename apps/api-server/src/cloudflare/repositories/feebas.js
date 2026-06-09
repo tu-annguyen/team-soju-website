@@ -203,6 +203,19 @@ function uniqueActivityKey(activity) {
   return `${activity.cycleId}:${activity.tileId}`;
 }
 
+function mapActivityLogEntry(entry) {
+  return {
+    id: entry.id,
+    tileId: entry.tile_id,
+    tileLabel: entry.tile_label,
+    actionType: entry.action_type,
+    previousStatus: entry.previous_status,
+    nextStatus: entry.next_status === 'unchecked' ? null : entry.next_status,
+    actorName: entry.actor_name,
+    createdAt: toIsoString(entry.created_at),
+  };
+}
+
 function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const leaderboardCache = new Map();
   const activeTimestampOrder = dialect === 'd1'
@@ -815,16 +828,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         rows: locationConfig.rows,
         cols: locationConfig.cols,
       },
-      activity: activityRows.map((entry) => ({
-        id: entry.id,
-        tileId: entry.tile_id,
-        tileLabel: entry.tile_label,
-        actionType: entry.action_type,
-        previousStatus: entry.previous_status,
-        nextStatus: entry.next_status === 'unchecked' ? null : entry.next_status,
-        actorName: entry.actor_name,
-        createdAt: toIsoString(entry.created_at),
-      })),
+      activity: activityRows.map(mapActivityLogEntry),
       ...(includeLeaderboard ? { leaderboard } : {}),
       tiles,
       votesByTile,
@@ -963,18 +967,41 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
           rows: locationConfig.rows,
           cols: locationConfig.cols,
         },
-        activity: activityRows.map((entry) => ({
-          id: entry.id,
-          tileId: entry.tile_id,
-          tileLabel: entry.tile_label,
-          actionType: entry.action_type,
-          previousStatus: entry.previous_status,
-          nextStatus: entry.next_status === 'unchecked' ? null : entry.next_status,
-          actorName: entry.actor_name,
-          createdAt: toIsoString(entry.created_at),
-        })),
+        activity: activityRows.map(mapActivityLogEntry),
         tiles,
         votesByTile,
+      };
+    },
+
+    async getActivityDeltaSince(location, lastActivityId, options = {}) {
+      const parsedLastActivityId = Number(lastActivityId);
+      if (!Number.isInteger(parsedLastActivityId) || parsedLastActivityId < 0) {
+        return null;
+      }
+
+      const now = options.now ? new Date(options.now) : new Date();
+      const { cycleStart, cycleEnd } = getCycleWindow(now);
+      const cycle = await ensureCycle(location, cycleStart, cycleEnd);
+      const activityRows = await runSelect(`
+        SELECT *
+        FROM feebas_activity_logs
+        WHERE cycle_id = ${parameter(1)} AND id > ${parameter(2)}
+        ORDER BY ${activeTimestampOrder} DESC, id DESC
+        LIMIT 50
+      `, [cycle.id, parsedLastActivityId]);
+
+      if (activityRows.length === 0) {
+        return null;
+      }
+
+      const locationConfig = getLocationConfig(location);
+      return {
+        location: locationConfig.id,
+        displayName: locationConfig.displayName,
+        cycleStart: toIsoString(cycle.cycle_start),
+        cycleEnd: toIsoString(cycle.cycle_end),
+        serverTime: now.toISOString(),
+        activity: activityRows.map(mapActivityLogEntry),
       };
     },
 
