@@ -12,12 +12,18 @@ import {
 import { getClientLocale, getLocaleParamPath, getTranslations } from '../../i18n';
 import { DEFAULT_LOCATION, getLocalizedLocationOptions } from './locations';
 import { DEFAULT_LEADERBOARD_SORT } from './leaderboard';
-import type { AuthResponse, AuthUser, BoardDisplayMode, BoardResponse, FeebasBoard as FeebasBoardType, FeebasTile, FeebasTileCheckerProps, PendingNominationNotification, TileStatus } from './shared';
+import type {
+  AuthResponse, AuthUser, BoardDisplayMode, BoardResponse, FeebasActivityDelta,
+  FeebasActivityEntry, FeebasBoard as FeebasBoardType, FeebasTile, FeebasTileCheckerProps,
+  PendingNominationNotification, TileStatus,
+} from './shared';
 import {
   ACTIVE_LOCATION_STORAGE_KEY, ACTIVITY_PAGE_SIZE, CLIENT_ID_STORAGE_KEY, createClientId, formatActorName, formatCopy,
   formatCountdown, getBoardMinWidth, getInitialLocationId, getPendingActivityEntries, getTileLabel, isAuthUser,
   PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS, RESET_REFRESH_RETRY_MS, resolveLocationId,
 } from './shared';
+
+type NotificationLocationSource = Pick<FeebasBoardType, 'location' | 'displayName'>;
 
 const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerProps) => {
   const normalizedApiBaseUrl = useMemo(() => apiBaseUrl.replace(/\/+$/, ''), [apiBaseUrl]);
@@ -72,12 +78,37 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
   const authHref = getLocaleParamPath('/auth', activeLocale);
   const querySuffix = actorFingerprint ? `?actorFingerprint=${encodeURIComponent(actorFingerprint)}` : '';
 
-  const getNotificationLocationName = useCallback((nextBoard: FeebasBoardType) => {
-    const locationOption = localizedLocationOptionsById.get(nextBoard.location);
-    if (!locationOption) return nextBoard.displayName;
+  const getNotificationLocationName = useCallback((source: NotificationLocationSource) => {
+    const locationOption = localizedLocationOptionsById.get(source.location);
+    if (!locationOption) return source.displayName;
     if (locationOption.areaLabel) return `${locationOption.displayName} (${locationOption.areaLabel})`;
     return locationOption.displayName;
   }, [localizedLocationOptionsById]);
+
+  const showPendingNominationNotification = useCallback((
+    source: NotificationLocationSource,
+    activity: FeebasActivityEntry,
+    isSelfNomination: boolean
+  ) => {
+    const actorName = formatActorName(activity.actorName, messages.general.anonymousName);
+
+    setPendingNominationNotification({
+      title: isSelfNomination
+        ? messages.notifications.pendingNominationSelfTitle
+        : messages.notifications.pendingNominationTitle,
+      message: formatCopy(
+        isSelfNomination
+          ? messages.notifications.pendingNominationSelfBody
+          : messages.notifications.pendingNominationBody,
+        {
+          actorName,
+          location: getNotificationLocationName(source),
+          tileLabel: activity.tileLabel,
+        }
+      ),
+      isSelfNomination,
+    });
+  }, [getNotificationLocationName, messages]);
 
   const syncPendingNominationNotifications = useCallback((nextBoard: FeebasBoardType) => {
     const pendingActivities = getPendingActivityEntries(nextBoard);
@@ -106,25 +137,41 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
 
     const pendingTile = nextBoard.tiles.find((tile) => tile.tileId === latestPendingActivity.tileId);
     const isCurrentSessionNomination = pendingTile?.currentUserVote === 'pending';
-    const actorName = formatActorName(latestPendingActivity.actorName, messages.general.anonymousName);
+    showPendingNominationNotification(nextBoard, latestPendingActivity, isCurrentSessionNomination);
+  }, [showPendingNominationNotification]);
 
-    setPendingNominationNotification({
-      title: isCurrentSessionNomination
-        ? messages.notifications.pendingNominationSelfTitle
-        : messages.notifications.pendingNominationTitle,
-      message: formatCopy(
-        isCurrentSessionNomination
-          ? messages.notifications.pendingNominationSelfBody
-          : messages.notifications.pendingNominationBody,
-        {
-          actorName,
-          location: getNotificationLocationName(nextBoard),
-          tileLabel: latestPendingActivity.tileLabel,
-        }
-      ),
-      isSelfNomination: isCurrentSessionNomination,
-    });
-  }, [getNotificationLocationName, messages]);
+  const syncPendingNominationActivityDelta = useCallback((activityDelta: FeebasActivityDelta) => {
+    if (!activityDelta.location || !activityDelta.cycleEnd) return;
+
+    const pendingActivities = activityDelta.activity.filter((entry) => (
+      entry.actionType !== 'cleared_vote' && entry.nextStatus === 'pending'
+    ));
+    if (pendingActivities.length === 0) return;
+
+    const previousCycleEnd = pendingActivityCycleEndByLocationRef.current.get(activityDelta.location);
+    if (previousCycleEnd !== activityDelta.cycleEnd) {
+      if (previousCycleEnd && previousCycleEnd !== activityDelta.cycleEnd) {
+        setPendingNominationNotification(null);
+      }
+
+      pendingActivityCycleEndByLocationRef.current.set(activityDelta.location, activityDelta.cycleEnd);
+      seenPendingActivityIdsByLocationRef.current.set(activityDelta.location, new Set<number>());
+    }
+
+    const seenPendingActivityIds =
+      seenPendingActivityIdsByLocationRef.current.get(activityDelta.location) || new Set<number>();
+    const newPendingActivities = pendingActivities.filter((entry) => !seenPendingActivityIds.has(entry.id));
+
+    seenPendingActivityIdsByLocationRef.current.set(activityDelta.location, new Set([
+      ...Array.from(seenPendingActivityIds),
+      ...pendingActivities.map((entry) => entry.id),
+    ]));
+
+    const latestPendingActivity = newPendingActivities.sort((left, right) => right.id - left.id)[0];
+    if (!latestPendingActivity) return;
+
+    showPendingNominationNotification(activityDelta, latestPendingActivity, Boolean(activityDelta.isSelfNomination));
+  }, [showPendingNominationNotification]);
 
   const applyBoardUpdate = useCallback((nextBoard: FeebasBoardType) => {
     syncPendingNominationNotifications(nextBoard);
@@ -138,6 +185,34 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
   const applyNotificationBoardUpdate = useCallback((nextBoard: FeebasBoardType) => {
     syncPendingNominationNotifications(nextBoard);
   }, [syncPendingNominationNotifications]);
+
+  const applyActivityDeltaToBoard = useCallback((activityDelta: FeebasActivityDelta) => {
+    syncPendingNominationActivityDelta(activityDelta);
+
+    setBoard((currentBoard) => {
+      if (
+        !currentBoard
+        || currentBoard.location !== activityDelta.location
+        || currentBoard.cycleEnd !== activityDelta.cycleEnd
+      ) {
+        return currentBoard;
+      }
+
+      const existingActivityIds = new Set(currentBoard.activity.map((entry) => entry.id));
+      const newActivityEntries = activityDelta.activity.filter((entry) => !existingActivityIds.has(entry.id));
+      if (newActivityEntries.length === 0) {
+        return currentBoard;
+      }
+
+      return {
+        ...currentBoard,
+        activity: [
+          ...newActivityEntries,
+          ...currentBoard.activity,
+        ],
+      };
+    });
+  }, [syncPendingNominationActivityDelta]);
 
   const fetchBoard = useCallback(async () => {
     if (!actorFingerprint) return;
@@ -401,6 +476,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     lastFetchedCycleEndRef,
     resetRefreshInFlightRef,
     applyBoardUpdate,
+    applyActivityDelta: applyActivityDeltaToBoard,
     clearResetRetryTimeout,
     setCountdown,
     setError,
@@ -415,6 +491,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     lastFetchedCycleEndRef: notificationLastFetchedCycleEndRef,
     resetRefreshInFlightRef: notificationResetRefreshInFlightRef,
     applyBoardUpdate: applyNotificationBoardUpdate,
+    applyActivityDelta: syncPendingNominationActivityDelta,
     clearResetRetryTimeout: clearNotificationResetRetryTimeout,
     setCountdown: ignoreCountdownUpdate,
     setError: ignoreLiveUpdateError,

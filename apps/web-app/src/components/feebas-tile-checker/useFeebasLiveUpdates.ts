@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type React from 'react';
-import type { BoardResponse, FeebasBoard } from './shared';
+import type { FeebasActivityDelta, FeebasBoard, FeebasLiveUpdateResponse } from './shared';
 import {
   buildFeebasLiveUpdatesUrl,
   FEEBAS_LIVE_UPDATES_MAX_RECONNECT_ATTEMPTS,
@@ -17,6 +17,7 @@ type Params = {
   lastFetchedCycleEndRef: React.MutableRefObject<string | null>;
   resetRefreshInFlightRef: React.MutableRefObject<boolean>;
   applyBoardUpdate: (nextBoard: FeebasBoard) => void;
+  applyActivityDelta?: (activityDelta: FeebasActivityDelta) => void;
   clearResetRetryTimeout: () => void;
   setCountdown: React.Dispatch<React.SetStateAction<string>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
@@ -31,6 +32,7 @@ export function useFeebasLiveUpdates({
   lastFetchedCycleEndRef,
   resetRefreshInFlightRef,
   applyBoardUpdate,
+  applyActivityDelta,
   clearResetRetryTimeout,
   setCountdown,
   setError,
@@ -66,9 +68,16 @@ export function useFeebasLiveUpdates({
         if (socket !== liveUpdatesSocket || isStopped) return;
 
         try {
-          const payload: BoardResponse = JSON.parse(String(event.data));
+          const payload: FeebasLiveUpdateResponse = JSON.parse(String(event.data));
           if (payload.success) {
             reconnectAttempts = 0;
+
+            if (payload.type === 'activity_delta') {
+              applyActivityDelta?.(payload.data);
+              setError(null);
+              return;
+            }
+
             applyBoardUpdate(payload.data);
             setCountdown(formatCountdown(payload.data.cycleEnd));
             lastFetchedCycleEndRef.current = payload.data.cycleEnd;
@@ -114,6 +123,7 @@ export function useFeebasLiveUpdates({
   }, [
     activeLocation,
     actorFingerprint,
+    applyActivityDelta,
     applyBoardUpdate,
     clearResetRetryTimeout,
     isAuthLoading,

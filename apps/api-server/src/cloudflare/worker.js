@@ -40,6 +40,29 @@ const { handleShiniesRoutes } = require('./routes/shinies');
 const { handleCatchEventsRoutes } = require('./routes/catch-events');
 const { handleFeebasRoutes } = require('./routes/feebas');
 
+function hasFeebasActivityDelta(activityDelta) {
+  return Boolean(
+    activityDelta?.data
+    && Array.isArray(activityDelta.data.activity)
+    && activityDelta.data.activity.length > 0
+  );
+}
+
+function sendFeebasSocketActivityDelta(socket, activityDelta, actorFingerprint) {
+  socket.send(encodeFeebasSocketMessage({
+    success: true,
+    type: 'activity_delta',
+    data: {
+      ...activityDelta.data,
+      isSelfNomination: Boolean(
+        activityDelta.actorFingerprint
+        && actorFingerprint
+        && activityDelta.actorFingerprint === actorFingerprint
+      ),
+    },
+  }));
+}
+
 class FeebasBoardStreamDurableObject {
   constructor(state, env, options = {}) {
     this.state = state;
@@ -84,8 +107,13 @@ class FeebasBoardStreamDurableObject {
       }
 
       if (request.method === 'POST' && url.pathname === '/broadcast') {
+        const requestBody = request.headers.get('content-type')?.includes('application/json')
+          ? await request.json().catch(() => null)
+          : null;
+
         await this.broadcast(url.searchParams.get('location'), {
           forceRefresh: url.searchParams.get('refresh') === '1',
+          activityDelta: requestBody?.activityDelta || null,
         });
         return new Response(null, { status: 204 });
       }
@@ -147,6 +175,24 @@ class FeebasBoardStreamDurableObject {
 
     if (subscribers.length === 0) {
       return;
+    }
+
+    if (hasFeebasActivityDelta(options.activityDelta)) {
+      subscribers.forEach((subscriber) => {
+        try {
+          sendFeebasSocketActivityDelta(
+            subscriber.socket,
+            options.activityDelta,
+            subscriber.metadata.actorFingerprint
+          );
+        } catch {
+          try {
+            subscriber.socket.close(1011, 'Failed to send Feebas activity update');
+          } catch {
+            // Ignore sockets that are already closed.
+          }
+        }
+      });
     }
 
     const repositories = this.createRepositories(this.env);
@@ -301,8 +347,21 @@ function createWorkerApp(options = {}) {
     if (durableObject) {
       try {
         const pathname = options.forceRefresh ? '/broadcast?refresh=1' : '/broadcast';
-        await durableObject.fetch(createFeebasStreamDurableObjectRequest(pathname, location, null, {
+        const requestInit = {
           method: 'POST',
+        };
+
+        if (hasFeebasActivityDelta(options.activityDelta)) {
+          requestInit.headers = {
+            'content-type': 'application/json',
+          };
+          requestInit.body = JSON.stringify({
+            activityDelta: options.activityDelta,
+          });
+        }
+
+        await durableObject.fetch(createFeebasStreamDurableObjectRequest(pathname, location, null, {
+          ...requestInit,
         }));
       } catch (error) {
         console.error('Error broadcasting Feebas board through Durable Object:', error);
@@ -313,6 +372,16 @@ function createWorkerApp(options = {}) {
     const subscribers = feebasSubscribersByLocation.get(location);
     if (!subscribers || subscribers.size === 0) {
       return;
+    }
+
+    if (hasFeebasActivityDelta(options.activityDelta)) {
+      Array.from(subscribers).forEach((subscriber) => {
+        try {
+          sendFeebasSocketActivityDelta(subscriber.socket, options.activityDelta, subscriber.actorFingerprint);
+        } catch {
+          subscriber.cleanup?.();
+        }
+      });
     }
 
     const boardCache = typeof repositories.feebas.getBoardCache === 'function'
