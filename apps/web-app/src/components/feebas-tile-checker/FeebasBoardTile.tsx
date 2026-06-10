@@ -1,4 +1,5 @@
 import { FeebasVoteOverlay } from './FeebasVoteOverlay';
+import type { LocationOption } from './locations';
 import type { FeebasCheckerMessages, FeebasTile, VoteOverlayMode } from './shared';
 import {
   getHeatmapOpacity,
@@ -12,6 +13,9 @@ type Props = {
   isHeatmapMode: boolean;
   isSelected: boolean;
   loading: boolean;
+  environmentOverlay?: LocationOption['environmentOverlay'];
+  layoutCols: number;
+  layoutRows: number;
   maxPreviousConfirmations: number;
   pendingAction: string | null;
   previousConfirmations: number;
@@ -29,6 +33,9 @@ export function FeebasBoardTile({
   isHeatmapMode,
   isSelected,
   loading,
+  environmentOverlay,
+  layoutCols,
+  layoutRows,
   maxPreviousConfirmations,
   pendingAction,
   previousConfirmations,
@@ -42,6 +49,14 @@ export function FeebasBoardTile({
   onTilePress,
 }: Props) {
   const terrainClasses = getTerrainClasses(terrain);
+  const environmentOverlayStyle = environmentOverlay && layoutCols > 1 && layoutRows > 1
+    ? {
+        backgroundImage: `url(${environmentOverlay.imageUrl})`,
+        backgroundPosition: `${(col / (layoutCols - 1)) * 100}% ${(row / (layoutRows - 1)) * 100}%`,
+        backgroundSize: `${layoutCols * 100}% ${layoutRows * 100}%`,
+        opacity: environmentOverlay.opacity,
+      }
+    : null;
 
   if (loading && !tile) {
     return (
@@ -55,8 +70,20 @@ export function FeebasBoardTile({
   }
 
   if (!tile) {
+    if (environmentOverlayStyle) {
+      return (
+        <div
+          aria-hidden="true"
+          className="aspect-square rounded-[0.35rem] border border-black/5 bg-cover bg-no-repeat"
+          data-testid="feebas-environment-cell"
+          style={environmentOverlayStyle}
+        />
+      );
+    }
+
     return (
       <div
+        data-testid="feebas-terrain-cell"
         className={`aspect-square rounded-[0.35rem] border border-black/5 ${terrainClasses}`}
       />
     );

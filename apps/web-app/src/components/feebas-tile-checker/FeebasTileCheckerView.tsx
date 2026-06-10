@@ -171,6 +171,7 @@ export function FeebasTileCheckerView({
           layoutCols={layoutCols}
           layoutRows={layoutRows}
           loading={loading}
+          environmentOverlay={activeLocationOption.environmentOverlay}
           maxPreviousConfirmations={maxPreviousConfirmations}
           messages={messages}
           pendingAction={pendingAction}

@@ -345,6 +345,46 @@ describe('FeebasTileChecker', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders Route 119 environment slices only on non-interactable cells', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /A2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument()
+    );
+
+    const environmentCells = screen.getAllByTestId('feebas-environment-cell');
+
+    expect(environmentCells.length).toBeGreaterThan(0);
+    expect(environmentCells[0]).toHaveStyle({
+      backgroundImage: 'url(/images/feebas/route-119-main-environment.webp)',
+      backgroundSize: '200% 200%',
+      opacity: '0.58',
+    });
+    expect(screen.getByRole('checkbox', { name: /Map overlay/i })).toBeChecked();
+    expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument();
+    expect(screen.queryAllByTestId('feebas-terrain-cell')).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Map overlay/i }));
+
+    expect(screen.queryAllByTestId('feebas-environment-cell')).toHaveLength(0);
+    expect(screen.getAllByTestId('feebas-terrain-cell').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /B2 0 checked, 0 pending, 0 confirmed/i })).toBeInTheDocument();
+  });
+
+  it('keeps Mt. Coronet non-interactable cells on the terrain fallback', async () => {
+    localStorage.setItem(ACTIVE_LOCATION_STORAGE_KEY, 'mt-coronet');
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
+    );
+
+    expect(screen.queryAllByTestId('feebas-environment-cell')).toHaveLength(0);
+    expect(screen.getAllByTestId('feebas-terrain-cell').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('checkbox', { name: /Map overlay/i })).not.toBeInTheDocument();
+  });
+
   it('toggles the board display mode with the default hotkey', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
