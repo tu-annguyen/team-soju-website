@@ -1,5 +1,9 @@
 export type LocationOption = {
   areaLabel?: string;
+  environmentOverlay?: {
+    imageUrl: string;
+    opacity: number;
+  };
   groupId?: string;
   groupTabLabel?: string;
   id: string;
@@ -22,6 +26,16 @@ type FeebasLocationMessages = {
 };
 
 export const DEFAULT_LOCATION = 'route-119-main';
+
+export const ROUTE_119_MAIN_ENVIRONMENT_OVERLAY = {
+  imageUrl: '/images/feebas/route-119-main-environment.webp',
+  opacity: 0.58,
+} as const;
+
+export const ROUTE_119_UPSTREAM_ENVIRONMENT_OVERLAY = {
+  imageUrl: '/images/feebas/route-119-upstream-environment.webp',
+  opacity: 0.58,
+} as const;
 
 export const ROUTE_119_MAIN_TERRAIN = [
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'cliff', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'water', 'water', 'rock', 'rock', 'cliff'],
@@ -85,21 +99,21 @@ export const ROUTE_119_UPSTREAM_TERRAIN = [
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water'],
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass'],
   ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
-  ['grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'rock', 'rock', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'water', 'water', 'water', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
+  ['grass', 'grass', 'grass', 'grass', 'grass', 'water', 'rock', 'rock', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass'],
 ] as const;
 
 export const MT_CORONET_TERRAIN = [
@@ -147,6 +161,7 @@ export const LOCATION_OPTIONS: readonly LocationOption[] = [
     id: 'route-119-main',
     tabLabel: 'Route 119',
     displayName: 'Route 119, Hoenn',
+    environmentOverlay: ROUTE_119_MAIN_ENVIRONMENT_OVERLAY,
     terrain: ROUTE_119_MAIN_TERRAIN,
   },
   {
@@ -156,6 +171,7 @@ export const LOCATION_OPTIONS: readonly LocationOption[] = [
     id: 'route-119-upstream',
     tabLabel: 'Upstream',
     displayName: 'Route 119, Hoenn',
+    environmentOverlay: ROUTE_119_UPSTREAM_ENVIRONMENT_OVERLAY,
     terrain: ROUTE_119_UPSTREAM_TERRAIN,
   },
   {
@@ -177,6 +193,7 @@ export function getLocalizedLocationOptions(messages: FeebasLocationMessages): r
       id: 'route-119-main',
       tabLabel: messages.route119.tabLabel,
       displayName: messages.route119.displayName,
+      environmentOverlay: ROUTE_119_MAIN_ENVIRONMENT_OVERLAY,
       terrain: ROUTE_119_MAIN_TERRAIN,
     },
     {
@@ -186,6 +203,7 @@ export function getLocalizedLocationOptions(messages: FeebasLocationMessages): r
       id: 'route-119-upstream',
       tabLabel: messages.route119.upstreamTabLabel,
       displayName: messages.route119.displayName,
+      environmentOverlay: ROUTE_119_UPSTREAM_ENVIRONMENT_OVERLAY,
       terrain: ROUTE_119_UPSTREAM_TERRAIN,
     },
     {
