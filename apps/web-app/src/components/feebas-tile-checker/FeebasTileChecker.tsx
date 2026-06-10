@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchFeebasBoardData } from './feebasBoardData';
+import { mergeFeebasBoardUpdate } from './feebasBoardMerge';
 import { FeebasTileCheckerView } from './FeebasTileCheckerView';
 import { useFeebasDisplayModeState } from './useFeebasDisplayModeState';
 import { useFeebasIdentity } from './useFeebasIdentity';
@@ -170,11 +171,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
   }, [showPendingNominationNotification]);
   const applyBoardUpdate = useCallback((nextBoard: FeebasBoardType) => {
     syncPendingNominationNotifications(nextBoard);
-    setBoard((currentBoard) => ({
-      ...nextBoard,
-      leaderboard: nextBoard.leaderboard
-        || (currentBoard?.location === nextBoard.location ? currentBoard.leaderboard : undefined),
-    }));
+    setBoard((currentBoard) => mergeFeebasBoardUpdate(currentBoard, nextBoard));
   }, [syncPendingNominationNotifications]);
   const applyNotificationBoardUpdate = useCallback((nextBoard: FeebasBoardType) => {
     syncPendingNominationNotifications(nextBoard);
