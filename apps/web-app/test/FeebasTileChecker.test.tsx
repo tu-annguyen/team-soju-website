@@ -4,6 +4,7 @@ import FeebasTileChecker from '../src/components/feebas-tile-checker/FeebasTileC
 
 const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
 const DISPLAY_MODE_HOTKEY_STORAGE_KEY = 'feebas-tile-checker-display-mode-hotkey';
+const VOTE_OVERLAY_MODE_STORAGE_KEY = 'feebas-tile-checker-vote-overlay-mode';
 
 const boardFixture = {
   location: 'route-119-main',
@@ -335,6 +336,9 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/Each browser can keep one active vote per tile/i)).toBeInTheDocument();
     expect(screen.getByText(/Scroll sideways to view the full board/i)).toBeInTheDocument();
     expect(screen.getByText('Shortcut: H')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Pattern overlays/i })).not.toBeChecked();
+    expect(screen.getByText(/Mixed colors mean mixed opinions/i)).toBeInTheDocument();
+    expect(localStorage.getItem(VOTE_OVERLAY_MODE_STORAGE_KEY)).toBeNull();
     expect(screen.getAllByText('May').length).toBeGreaterThan(0);
     expect(
       screen.getByText((_, element) => element?.textContent === 'May found Feebas on A1.')
@@ -1512,6 +1516,89 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/Mixed colors mean mixed opinions/i)).toBeInTheDocument();
   });
 
+  it('stores the pattern overlay preference when toggled', async () => {
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    const patternToggle = screen.getByRole('checkbox', { name: /Pattern overlays/i });
+
+    fireEvent.click(patternToggle);
+
+    expect(patternToggle).toBeChecked();
+    expect(localStorage.getItem(VOTE_OVERLAY_MODE_STORAGE_KEY)).toBe('pattern');
+    expect(screen.getByText(/Pattern overlays split mixed opinions/i)).toBeInTheDocument();
+  });
+
+  it('restores the saved pattern overlay preference', async () => {
+    localStorage.setItem(VOTE_OVERLAY_MODE_STORAGE_KEY, 'pattern');
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Route 119, Hoenn/i)).toBeInTheDocument()
+    );
+
+    expect(screen.getByRole('checkbox', { name: /Pattern overlays/i })).toBeChecked();
+    expect(screen.getByText(/Pattern overlays split mixed opinions/i)).toBeInTheDocument();
+  });
+
+  it('renders separate pattern sections for mixed tile votes', async () => {
+    localStorage.setItem(VOTE_OVERLAY_MODE_STORAGE_KEY, 'pattern');
+
+    const mixedVoteBoard = {
+      ...boardFixture,
+      tiles: [
+        {
+          ...boardFixture.tiles[0],
+          status: 'unchecked',
+          voteCounts: {
+            checked: 0,
+            pending: 0,
+            confirmed: 0,
+          },
+          totalVotes: 0,
+          currentUserVote: 'unchecked',
+        },
+        {
+          ...boardFixture.tiles[1],
+          status: 'confirmed',
+          voteCounts: {
+            checked: 1,
+            pending: 1,
+            confirmed: 1,
+          },
+          totalVotes: 3,
+          currentUserVote: 'unchecked',
+        },
+      ],
+    };
+
+    (global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        success: true,
+        data: mixedVoteBoard,
+      }),
+    });
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /B2 1 checked, 1 pending, 1 confirmed/i })).toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('feebas-pattern-vote-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('feebas-pattern-vote-checked')).toBeInTheDocument();
+    expect(screen.getByTestId('feebas-pattern-vote-pending')).toBeInTheDocument();
+    expect(screen.getByTestId('feebas-pattern-vote-confirmed')).toBeInTheDocument();
+    expect(screen.queryByText('X1')).not.toBeInTheDocument();
+    expect(screen.queryByText('?1')).not.toBeInTheDocument();
+    expect(screen.queryByText('!1')).not.toBeInTheDocument();
+  });
+
   it('switches to the Mt. Coronet tab and fetches that board', async () => {
     const fetchMock = jest.fn((input: RequestInfo | URL) => {
       const url = String(input);
@@ -1635,10 +1722,12 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/High history/i)).toBeInTheDocument();
     expect(screen.getByText(/Historical confirmed Feebas tiles glow brighter as more past confirmations stack up/i)).toBeInTheDocument();
     expect(screen.queryByText(/Unchecked/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /Pattern overlays/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Voting/i }));
 
     expect(screen.getByText(/Unchecked/i)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Pattern overlays/i })).toBeInTheDocument();
   });
 
   it('disables voting interactions in heatmap mode', async () => {

@@ -183,6 +183,8 @@ const en = {
           'Each browser can keep one active vote per tile. Only one pending nomination can exist at a time per tile, and the player who marked it pending cannot confirm it.',
         scrollHint: 'Scroll sideways to view the full board.',
         mixedVotesHint: 'Mixed colors mean mixed opinions. More votes make a tile overlay stronger.',
+        patternVotesHint:
+          'Pattern overlays split mixed opinions into patterned sections. More votes make each section stronger.',
         loadingBoard: 'Loading the Feebas board...',
       },
       boardStatus: {
@@ -197,6 +199,10 @@ const en = {
         pendingNominationSelfTitle: 'Nomination sent',
         pendingNominationSelfBody: 'Your nomination for {tileLabel} at {location} has notified everyone here.',
         dismiss: 'Dismiss notification',
+      },
+      accessibility: {
+        patternOverlayLabel: 'Pattern overlays',
+        patternOverlayDescription: 'Use marked pattern sections instead of blended vote colors.',
       },
       heatmap: {
         toggleLabel: 'Board display mode',

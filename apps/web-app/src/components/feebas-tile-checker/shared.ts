@@ -6,6 +6,7 @@ type Translations = ReturnType<typeof getTranslations>;
 
 export type TileStatus = 'unchecked' | 'checked' | 'pending' | 'confirmed';
 export type BoardDisplayMode = FeebasBoardDisplayMode;
+export type VoteOverlayMode = 'color' | 'pattern';
 export type FeebasCheckerMessages = Translations['tools']['feebasChecker'];
 export type AuthMessages = Translations['auth'];
 
@@ -204,6 +205,7 @@ export const ACTIVITY_PAGE_SIZE = 5;
 export const CLIENT_ID_STORAGE_KEY = 'feebas-tile-checker-client-id';
 export const ACTIVE_LOCATION_STORAGE_KEY = 'feebas-tile-checker-active-location';
 export const LAST_ACTIVITY_ID_STORAGE_PREFIX = 'feebas-tile-checker-last-activity-id';
+export const VOTE_OVERLAY_MODE_STORAGE_KEY = 'feebas-tile-checker-vote-overlay-mode';
 export const BOARD_MIN_TILE_SIZE_PX = 40;
 export const BOARD_MIN_WIDTH_PX = 768;
 export const LEADERBOARD_SIGN_IN_CTA_CLASSES =
@@ -280,6 +282,26 @@ export function getVoteLayerColor(status: Exclude<TileStatus, 'unchecked'>) {
     pending: '#fbbf24',
     confirmed: '#10b981',
   }[status]);
+}
+
+export function normalizeFeebasVoteOverlayMode(value: string | null | undefined) {
+  return value === 'color' || value === 'pattern' ? value : null;
+}
+
+export function getStoredFeebasVoteOverlayMode(): VoteOverlayMode {
+  try {
+    return normalizeFeebasVoteOverlayMode(localStorage.getItem(VOTE_OVERLAY_MODE_STORAGE_KEY)) || 'color';
+  } catch {
+    return 'color';
+  }
+}
+
+export function storeFeebasVoteOverlayMode(mode: VoteOverlayMode) {
+  try {
+    localStorage.setItem(VOTE_OVERLAY_MODE_STORAGE_KEY, mode);
+  } catch {
+    // Ignore storage write failures; the active session still keeps the mode.
+  }
 }
 
 export function getHeatmapOpacity(confirmations: number, maxConfirmations: number) {

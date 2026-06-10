@@ -1,11 +1,10 @@
-import type { FeebasCheckerMessages, FeebasTile } from './shared';
+import { FeebasVoteOverlay } from './FeebasVoteOverlay';
+import type { FeebasCheckerMessages, FeebasTile, VoteOverlayMode } from './shared';
 import {
   getHeatmapOpacity,
   getStatusClasses,
   getTerrainClasses,
   getTileLabel,
-  getVoteLayerColor,
-  getVoteLayerOpacity,
   getVoteSummary,
 } from './shared';
 
@@ -21,6 +20,7 @@ type Props = {
   terrain: string;
   tile: FeebasTile | null;
   totalRows: number;
+  voteOverlayMode: VoteOverlayMode;
   messages: FeebasCheckerMessages;
   onTilePress: (tile: FeebasTile) => void;
 };
@@ -37,6 +37,7 @@ export function FeebasBoardTile({
   terrain,
   tile,
   totalRows,
+  voteOverlayMode,
   messages,
   onTilePress,
 }: Props) {
@@ -63,37 +64,16 @@ export function FeebasBoardTile({
 
   const tileLabel = getTileLabel(tile.row, tile.col, totalRows);
   const heatmapOpacity = getHeatmapOpacity(previousConfirmations, maxPreviousConfirmations);
+  const buttonStatusClasses = isHeatmapMode
+    ? 'bg-slate-950/20 text-white'
+    : voteOverlayMode === 'pattern'
+      ? 'bg-slate-950/15 text-white'
+      : getStatusClasses(tile.status);
 
   return (
     <div className={`relative aspect-square rounded-[0.35rem] border border-white/10 ${terrainClasses}`}>
       <div className="absolute inset-[8%] rounded-[0.3rem] bg-[linear-gradient(180deg,_rgba(255,255,255,0.18),_rgba(255,255,255,0.03))]" />
-      {!isHeatmapMode && tile.voteCounts.checked > 0 ? (
-        <div
-          className="absolute inset-[8%] rounded-[0.3rem]"
-          style={{
-            backgroundColor: getVoteLayerColor('checked'),
-            opacity: getVoteLayerOpacity(tile.voteCounts.checked),
-          }}
-        />
-      ) : null}
-      {!isHeatmapMode && tile.voteCounts.pending > 0 ? (
-        <div
-          className="absolute inset-[8%] rounded-[0.3rem]"
-          style={{
-            backgroundColor: getVoteLayerColor('pending'),
-            opacity: getVoteLayerOpacity(tile.voteCounts.pending),
-          }}
-        />
-      ) : null}
-      {!isHeatmapMode && tile.voteCounts.confirmed > 0 ? (
-        <div
-          className="absolute inset-[8%] rounded-[0.3rem]"
-          style={{
-            backgroundColor: getVoteLayerColor('confirmed'),
-            opacity: getVoteLayerOpacity(tile.voteCounts.confirmed),
-          }}
-        />
-      ) : null}
+      {!isHeatmapMode ? <FeebasVoteOverlay mode={voteOverlayMode} voteCounts={tile.voteCounts} /> : null}
       {isHeatmapMode && heatmapOpacity > 0 ? (
         <div
           className="absolute inset-[8%] rounded-[0.3rem]"
@@ -106,9 +86,7 @@ export function FeebasBoardTile({
       <button
         type="button"
         onClick={() => onTilePress(tile)}
-        className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${
-          isHeatmapMode ? 'bg-slate-950/20 text-white' : getStatusClasses(tile.status)
-        } ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${
+        className={`relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[0.35rem] border border-white/20 px-1 text-[0.68rem] font-semibold uppercase tracking-wide transition ${buttonStatusClasses} ${isSelected ? 'scale-[0.97] ring-2 ring-white/80' : ''} ${
           pendingAction === tile.tileId ? 'cursor-wait' : isHeatmapMode ? 'cursor-not-allowed' : 'cursor-pointer'
         }`}
         aria-pressed={isSelected}

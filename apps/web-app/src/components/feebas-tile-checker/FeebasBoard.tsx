@@ -1,7 +1,13 @@
 import type { Dispatch, SetStateAction } from 'react';
 import FeebasBoardLegend from './FeebasBoardLegend';
 import { FeebasBoardTile } from './FeebasBoardTile';
-import type { BoardDisplayMode, FeebasBoard as FeebasBoardType, FeebasCheckerMessages, FeebasTile } from './shared';
+import type {
+  BoardDisplayMode,
+  FeebasBoard as FeebasBoardType,
+  FeebasCheckerMessages,
+  FeebasTile,
+  VoteOverlayMode,
+} from './shared';
 
 type Props = {
   activeTerrain: readonly (readonly string[])[];
@@ -21,10 +27,12 @@ type Props = {
   previousConfirmedTileCounts: Map<string, number>;
   selectedTileId: string | null;
   tileByPosition: Map<string, FeebasTile>;
+  voteOverlayMode: VoteOverlayMode;
   onDisplayModeChange: Dispatch<SetStateAction<BoardDisplayMode>>;
   onResetHotkey: () => void;
   onStartHotkeyCapture: () => void;
   onTilePress: (tile: FeebasTile) => void;
+  onVoteOverlayModeChange: (mode: VoteOverlayMode) => void;
 };
 
 export function FeebasBoard({
@@ -45,10 +53,12 @@ export function FeebasBoard({
   previousConfirmedTileCounts,
   selectedTileId,
   tileByPosition,
+  voteOverlayMode,
   onDisplayModeChange,
   onResetHotkey,
   onStartHotkeyCapture,
   onTilePress,
+  onVoteOverlayModeChange,
 }: Props) {
   return (
     <div className="card overflow-hidden">
@@ -58,9 +68,11 @@ export function FeebasBoard({
         hotkeyCaptureError={hotkeyCaptureError}
         isHotkeyCaptureActive={isHotkeyCaptureActive}
         messages={messages}
+        voteOverlayMode={voteOverlayMode}
         onResetHotkey={onResetHotkey}
         onDisplayModeChange={onDisplayModeChange}
         onStartHotkeyCapture={onStartHotkeyCapture}
+        onVoteOverlayModeChange={onVoteOverlayModeChange}
       />
 
       <div className="overflow-x-auto overscroll-x-contain bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.35),_transparent_30%),linear-gradient(180deg,_#d6f2f4_0%,_#8fd4e8_45%,_#4d8bc6_100%)] p-4">
@@ -92,6 +104,7 @@ export function FeebasBoard({
                 terrain={terrain}
                 tile={tile}
                 totalRows={board?.layout.rows || activeTerrain.length}
+                voteOverlayMode={voteOverlayMode}
                 onTilePress={onTilePress}
               />
             );
@@ -106,9 +119,11 @@ export function FeebasBoard({
           hotkeyCaptureError={hotkeyCaptureError}
           isHotkeyCaptureActive={isHotkeyCaptureActive}
           messages={messages}
+          voteOverlayMode={voteOverlayMode}
           onResetHotkey={onResetHotkey}
           onDisplayModeChange={onDisplayModeChange}
           onStartHotkeyCapture={onStartHotkeyCapture}
+          onVoteOverlayModeChange={onVoteOverlayModeChange}
           placement="bottom"
         />
       ) : null}
