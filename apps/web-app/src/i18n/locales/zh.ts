@@ -179,6 +179,7 @@ const zh = {
           '每个浏览器在每个格子上只能保留一个有效投票。每个格子同一时间只能有一个待确认提名，发起待确认标记的玩家不能自己确认它。',
         scrollHint: '左右滚动可查看完整棋盘。',
         mixedVotesHint: '颜色混合表示团队意见不一致。投票越多，格子的覆盖色就越明显。',
+        patternVotesHint: '图案覆盖会把不同意见拆成带标记的区域。投票越多，对应区域越明显。',
         loadingBoard: '正在加载丑丑鱼棋盘...',
       },
       boardStatus: {
@@ -193,6 +194,10 @@ const zh = {
         pendingNominationSelfTitle: '提名已发送',
         pendingNominationSelfBody: '你在 {location} 对 {tileLabel} 的提名已通知这里的所有人。',
         dismiss: '关闭通知',
+      },
+      accessibility: {
+        patternOverlayLabel: '图案覆盖',
+        patternOverlayDescription: '使用带标记的图案区域，而不是混合投票颜色。',
       },
       heatmap: {
         toggleLabel: '棋盘显示模式',

@@ -5,6 +5,7 @@ import { LeaderboardPanel } from './LeaderboardPanel';
 import { LocationHeader } from './LocationHeader';
 import { PendingNominationToast } from './PendingNominationToast';
 import { SelectedTilePanel } from './SelectedTilePanel';
+import { useFeebasVoteOverlayMode } from './useFeebasVoteOverlayMode';
 import type React from 'react';
 import type { LocationOption } from './locations';
 import type {
@@ -122,6 +123,8 @@ export function FeebasTileCheckerView({
   onTilePress,
   onUpdateTile,
 }: Props) {
+  const { voteOverlayMode, setVoteOverlayMode } = useFeebasVoteOverlayMode();
+
   if (error && !board) {
     return (
       <div className="card p-8 text-center">
@@ -174,10 +177,12 @@ export function FeebasTileCheckerView({
           previousConfirmedTileCounts={previousConfirmedTileCounts}
           selectedTileId={selectedTileId}
           tileByPosition={tileByPosition}
+          voteOverlayMode={voteOverlayMode}
           onDisplayModeChange={onDisplayModeChange}
           onResetHotkey={onResetHotkey}
           onStartHotkeyCapture={onStartHotkeyCapture}
           onTilePress={onTilePress}
+          onVoteOverlayModeChange={setVoteOverlayMode}
         />
 
         <aside className="space-y-4">
@@ -189,6 +194,7 @@ export function FeebasTileCheckerView({
             totalCheckedVotes={totalCheckedVotes}
             totalConfirmedVotes={totalConfirmedVotes}
             totalPendingVotes={totalPendingVotes}
+            voteOverlayMode={voteOverlayMode}
           />
           <SelectedTilePanel
             isHeatmapMode={isHeatmapMode}

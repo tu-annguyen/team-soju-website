@@ -185,6 +185,8 @@ const es = {
         scrollHint: 'Desplazate lateralmente para ver todo el tablero.',
         mixedVotesHint:
           'Los colores mezclados significan opiniones mezcladas. Mas votos hacen que la capa de una casilla se vea mas fuerte.',
+        patternVotesHint:
+          'Las tramas separan opiniones mezcladas en secciones marcadas. Mas votos hacen que cada seccion se vea mas fuerte.',
         loadingBoard: 'Cargando el tablero de Feebas...',
       },
       boardStatus: {
@@ -199,6 +201,10 @@ const es = {
         pendingNominationSelfTitle: 'Nominacion enviada',
         pendingNominationSelfBody: 'Tu nominacion de {tileLabel} en {location} notifico a todos aqui.',
         dismiss: 'Descartar notificacion',
+      },
+      accessibility: {
+        patternOverlayLabel: 'Tramas',
+        patternOverlayDescription: 'Usa secciones con tramas en vez de colores de voto mezclados.',
       },
       heatmap: {
         toggleLabel: 'Modo de visualizacion del tablero',

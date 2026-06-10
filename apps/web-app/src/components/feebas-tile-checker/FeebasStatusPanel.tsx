@@ -1,5 +1,5 @@
 import { LoadingPlaceholder } from './LoadingPlaceholder';
-import type { FeebasBoard, FeebasCheckerMessages } from './shared';
+import type { FeebasBoard, FeebasCheckerMessages, VoteOverlayMode } from './shared';
 
 type Props = {
   board: FeebasBoard | null;
@@ -9,6 +9,7 @@ type Props = {
   totalCheckedVotes: number;
   totalConfirmedVotes: number;
   totalPendingVotes: number;
+  voteOverlayMode: VoteOverlayMode;
 };
 
 export function FeebasStatusPanel({
@@ -19,6 +20,7 @@ export function FeebasStatusPanel({
   totalCheckedVotes,
   totalConfirmedVotes,
   totalPendingVotes,
+  voteOverlayMode,
 }: Props) {
   return (
     <div className="card p-5">
@@ -43,7 +45,11 @@ export function FeebasStatusPanel({
               <LoadingPlaceholder className="h-4 w-8/12 rounded-md" />
             </div>
           ) : (
-            <p>{messages.general.mixedVotesHint}</p>
+            <p>
+              {voteOverlayMode === 'pattern'
+                ? messages.general.patternVotesHint
+                : messages.general.mixedVotesHint}
+            </p>
           )}
         </div>
         {error ? (
