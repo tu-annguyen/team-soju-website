@@ -1,7 +1,6 @@
 import { formatFeebasDisplayModeHotkey } from '../../utils/feebasHotkey';
 import type { VoteOverlayMode } from './shared';
 import {
-  getVoteOverlayMarker,
   getVotePatternStyle,
   VOTE_OVERLAY_STATUSES,
   type VoteOverlayStatus,
@@ -52,10 +51,6 @@ type Props = {
   placement?: 'top' | 'bottom';
 };
 
-function getPatternMarkerClassName(status: VoteOverlayStatus) {
-  return status === 'pending' ? 'text-slate-950' : 'text-white';
-}
-
 function PatternLegendSwatch({
   label,
   status,
@@ -67,11 +62,9 @@ function PatternLegendSwatch({
     <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-slate-900 ring-1 ring-slate-300 dark:bg-slate-950/70 dark:text-white dark:ring-slate-700">
       <span
         aria-hidden="true"
-        className={`flex h-5 w-5 items-center justify-center rounded-full text-[0.62rem] font-black leading-none ring-1 ring-white/50 ${getPatternMarkerClassName(status)}`}
+        className="h-5 w-5 rounded-full ring-1 ring-white/50"
         style={getVotePatternStyle(status)}
-      >
-        {getVoteOverlayMarker(status)}
-      </span>
+      />
       {label}
     </span>
   );
@@ -137,6 +130,23 @@ const FeebasBoardLegend = ({
             </>
           )}
         </div>
+        {displayMode === 'voting' ? (
+          <label
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200"
+            title={messages.accessibility.patternOverlayDescription}
+          >
+            <input
+              type="checkbox"
+              checked={isPatternOverlayMode}
+              className="peer sr-only"
+              onChange={(event) => onVoteOverlayModeChange(event.target.checked ? 'pattern' : 'color')}
+            />
+            <span className="relative h-5 w-9 rounded-full bg-slate-300 transition peer-checked:bg-slate-900 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-slate-900 dark:bg-slate-700 dark:peer-checked:bg-white dark:peer-focus-visible:outline-white">
+              <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition dark:bg-slate-950 ${isPatternOverlayMode ? 'translate-x-4' : ''}`} />
+            </span>
+            <span>{messages.accessibility.patternOverlayLabel}</span>
+          </label>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <div
             className="inline-flex rounded-full border border-slate-300 bg-white/80 p-1 text-sm shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80"
@@ -168,23 +178,6 @@ const FeebasBoardLegend = ({
               {messages.heatmap.heatmapMode}
             </button>
           </div>
-          {displayMode === 'voting' ? (
-            <label
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200"
-              title={messages.accessibility.patternOverlayDescription}
-            >
-              <input
-                type="checkbox"
-                checked={isPatternOverlayMode}
-                className="peer sr-only"
-                onChange={(event) => onVoteOverlayModeChange(event.target.checked ? 'pattern' : 'color')}
-              />
-              <span className="relative h-5 w-9 rounded-full bg-slate-300 transition peer-checked:bg-slate-900 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-slate-900 dark:bg-slate-700 dark:peer-checked:bg-white dark:peer-focus-visible:outline-white">
-                <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition dark:bg-slate-950 ${isPatternOverlayMode ? 'translate-x-4' : ''}`} />
-              </span>
-              <span>{messages.accessibility.patternOverlayLabel}</span>
-            </label>
-          ) : null}
           <div
             className="inline-flex flex-wrap items-center gap-1 rounded-full border border-slate-300 bg-white/80 p-1 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200"
             aria-live="polite"

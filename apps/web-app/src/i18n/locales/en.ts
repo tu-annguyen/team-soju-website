@@ -184,7 +184,7 @@ const en = {
         scrollHint: 'Scroll sideways to view the full board.',
         mixedVotesHint: 'Mixed colors mean mixed opinions. More votes make a tile overlay stronger.',
         patternVotesHint:
-          'Pattern overlays split mixed opinions into marked sections. More votes make each section stronger.',
+          'Pattern overlays split mixed opinions into patterned sections. More votes make each section stronger.',
         loadingBoard: 'Loading the Feebas board...',
       },
       boardStatus: {

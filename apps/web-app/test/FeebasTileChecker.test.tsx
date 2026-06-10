@@ -1545,7 +1545,7 @@ describe('FeebasTileChecker', () => {
     expect(screen.getByText(/Pattern overlays split mixed opinions/i)).toBeInTheDocument();
   });
 
-  it('renders separate pattern markers for mixed tile votes', async () => {
+  it('renders separate pattern sections for mixed tile votes', async () => {
     localStorage.setItem(VOTE_OVERLAY_MODE_STORAGE_KEY, 'pattern');
 
     const mixedVoteBoard = {
@@ -1591,9 +1591,12 @@ describe('FeebasTileChecker', () => {
     );
 
     expect(screen.getByTestId('feebas-pattern-vote-overlay')).toBeInTheDocument();
-    expect(screen.getByText('X1')).toBeInTheDocument();
-    expect(screen.getByText('?1')).toBeInTheDocument();
-    expect(screen.getByText('!1')).toBeInTheDocument();
+    expect(screen.getByTestId('feebas-pattern-vote-checked')).toBeInTheDocument();
+    expect(screen.getByTestId('feebas-pattern-vote-pending')).toBeInTheDocument();
+    expect(screen.getByTestId('feebas-pattern-vote-confirmed')).toBeInTheDocument();
+    expect(screen.queryByText('X1')).not.toBeInTheDocument();
+    expect(screen.queryByText('?1')).not.toBeInTheDocument();
+    expect(screen.queryByText('!1')).not.toBeInTheDocument();
   });
 
   it('switches to the Mt. Coronet tab and fetches that board', async () => {

@@ -1,10 +1,8 @@
 import type { FeebasTile, VoteOverlayMode } from './shared';
 import { getVoteLayerColor, getVoteLayerOpacity } from './shared';
 import {
-  getVoteOverlayMarker,
   getVotePatternStyle,
   VOTE_OVERLAY_STATUSES,
-  type VoteOverlayStatus,
 } from './feebasVoteOverlayStyles';
 
 type VoteCounts = FeebasTile['voteCounts'];
@@ -16,10 +14,6 @@ type Props = {
 
 function getActiveVoteStatuses(voteCounts: VoteCounts) {
   return VOTE_OVERLAY_STATUSES.filter((status) => voteCounts[status] > 0);
-}
-
-function getMarkerClassName(status: VoteOverlayStatus) {
-  return status === 'pending' ? 'text-slate-950' : 'text-white';
 }
 
 function ColorVoteOverlay({ voteCounts }: Pick<Props, 'voteCounts'>) {
@@ -58,13 +52,7 @@ function PatternVoteOverlay({ voteCounts }: Pick<Props, 'voteCounts'>) {
           className={`relative min-w-0 ${index > 0 ? 'border-l border-white/40' : ''}`}
           data-testid={`feebas-pattern-vote-${status}`}
           style={getVotePatternStyle(status, voteCounts[status])}
-        >
-          <span
-            className={`absolute inset-0 flex items-center justify-center text-[0.58rem] font-black leading-none drop-shadow ${getMarkerClassName(status)}`}
-          >
-            {getVoteOverlayMarker(status, voteCounts[status])}
-          </span>
-        </div>
+        />
       ))}
     </div>
   );

@@ -186,7 +186,7 @@ const es = {
         mixedVotesHint:
           'Los colores mezclados significan opiniones mezcladas. Mas votos hacen que la capa de una casilla se vea mas fuerte.',
         patternVotesHint:
-          'Las tramas separan opiniones mezcladas en secciones marcadas. Mas votos hacen que cada seccion se vea mas fuerte.',
+          'Las tramas separan opiniones mezcladas en secciones con patrones. Mas votos hacen que cada seccion se vea mas fuerte.',
         loadingBoard: 'Cargando el tablero de Feebas...',
       },
       boardStatus: {
