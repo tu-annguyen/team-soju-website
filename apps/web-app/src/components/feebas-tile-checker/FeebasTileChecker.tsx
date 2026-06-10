@@ -1,28 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchFeebasBoardData } from './feebasBoardData';
+import { mergeFeebasBoardUpdate } from './feebasBoardMerge';
 import { FeebasTileCheckerView } from './FeebasTileCheckerView';
+import { useFeebasDisplayModeState } from './useFeebasDisplayModeState';
+import { useFeebasIdentity } from './useFeebasIdentity';
 import { useFeebasLiveUpdates } from './useFeebasLiveUpdates';
-import {
-  DEFAULT_FEEBAS_DISPLAY_MODE_HOTKEY,
-  getStoredFeebasDisplayModeHotkey,
-  isEditableHotkeyTarget,
-  isFeebasDisplayModeHotkeyEvent,
-  normalizeFeebasDisplayModeHotkey,
-  storeFeebasDisplayModeHotkey,
-} from '../../utils/feebasHotkey';
+import { useStoredFeebasLocation } from './useStoredFeebasLocation';
+import { useVisiblePolling } from './useVisiblePolling';
 import { getClientLocale, getLocaleParamPath, getTranslations } from '../../i18n';
 import { DEFAULT_LOCATION, getLocalizedLocationOptions } from './locations';
 import { DEFAULT_LEADERBOARD_SORT } from './leaderboard';
 import type {
-  AuthResponse, AuthUser, BoardDisplayMode, BoardResponse, FeebasActivityDelta,
-  FeebasActivityEntry, FeebasBoard as FeebasBoardType, FeebasTile, FeebasTileCheckerProps,
+  BoardResponse, FeebasActivityDelta,
+  FeebasActivityEntry, FeebasBoard as FeebasBoardType, FeebasTile, FeebasTileCheckerProps, FeebasTileDelta,
   PendingNominationNotification, TileStatus,
 } from './shared';
 import {
-  ACTIVE_LOCATION_STORAGE_KEY, ACTIVITY_PAGE_SIZE, CLIENT_ID_STORAGE_KEY, createClientId, formatActorName, formatCopy,
-  formatCountdown, getBoardMinWidth, getInitialLocationId, getPendingActivityEntries, getTileLabel, isAuthUser,
-  PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS, RESET_REFRESH_RETRY_MS, resolveLocationId,
+  ACTIVITY_PAGE_SIZE, formatActorName, formatCopy,
+  FEEBAS_BOARD_POLL_INTERVAL_MS, formatCountdown, getBoardMinWidth, getPendingActivityEntries, getTileLabel,
+  PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS, RESET_REFRESH_RETRY_MS,
 } from './shared';
-
 type NotificationLocationSource = Pick<FeebasBoardType, 'location' | 'displayName'>;
 
 const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerProps) => {
@@ -39,25 +36,28 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     () => new Map(localizedLocationOptions.map((option) => [option.id, option])),
     [localizedLocationOptions]
   );
-  const [activeLocation, setActiveLocation] = useState(() => getInitialLocationId(location));
+  const { activeLocation, setActiveLocation } = useStoredFeebasLocation(location);
   const [board, setBoard] = useState<FeebasBoardType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clientId, setClientId] = useState('');
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
-  const [displayMode, setDisplayMode] = useState<BoardDisplayMode>('voting');
-  const [displayModeHotkey, setDisplayModeHotkey] = useState(getStoredFeebasDisplayModeHotkey);
-  const [isHotkeyCaptureActive, setIsHotkeyCaptureActive] = useState(false);
-  const [hotkeyCaptureError, setHotkeyCaptureError] = useState<string | null>(null);
   const [leaderboardSort, setLeaderboardSort] = useState(DEFAULT_LEADERBOARD_SORT);
   const [activityPage, setActivityPage] = useState(1);
   const [countdown, setCountdown] = useState('--:--');
   const [pendingNominationNotification, setPendingNominationNotification] =
     useState<PendingNominationNotification | null>(null);
   const [notificationStreamLocation, setNotificationStreamLocation] = useState<string | null>(null);
+  const { authUser, clientId, isAuthLoading } = useFeebasIdentity(normalizedApiBaseUrl);
+  const {
+    displayMode,
+    displayModeHotkey,
+    hotkeyCaptureError,
+    isHotkeyCaptureActive,
+    resetDisplayModeHotkey,
+    setDisplayMode,
+    startHotkeyCapture,
+  } = useFeebasDisplayModeState(messages);
   const lastFetchedCycleEndRef = useRef<string | null>(null);
   const notificationLastFetchedCycleEndRef = useRef<string | null>(null);
   const resetRefreshInFlightRef = useRef(false);
@@ -84,7 +84,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     if (locationOption.areaLabel) return `${locationOption.displayName} (${locationOption.areaLabel})`;
     return locationOption.displayName;
   }, [localizedLocationOptionsById]);
-
   const showPendingNominationNotification = useCallback((
     source: NotificationLocationSource,
     activity: FeebasActivityEntry,
@@ -109,7 +108,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
       isSelfNomination,
     });
   }, [getNotificationLocationName, messages]);
-
   const syncPendingNominationNotifications = useCallback((nextBoard: FeebasBoardType) => {
     const pendingActivities = getPendingActivityEntries(nextBoard);
     const pendingActivityIds = new Set(pendingActivities.map((entry) => entry.id));
@@ -139,7 +137,6 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     const isCurrentSessionNomination = pendingTile?.currentUserVote === 'pending';
     showPendingNominationNotification(nextBoard, latestPendingActivity, isCurrentSessionNomination);
   }, [showPendingNominationNotification]);
-
   const syncPendingNominationActivityDelta = useCallback((activityDelta: FeebasActivityDelta) => {
     if (!activityDelta.location || !activityDelta.cycleEnd) return;
 
@@ -172,20 +169,13 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
 
     showPendingNominationNotification(activityDelta, latestPendingActivity, Boolean(activityDelta.isSelfNomination));
   }, [showPendingNominationNotification]);
-
   const applyBoardUpdate = useCallback((nextBoard: FeebasBoardType) => {
     syncPendingNominationNotifications(nextBoard);
-    setBoard((currentBoard) => ({
-      ...nextBoard,
-      leaderboard: nextBoard.leaderboard
-        || (currentBoard?.location === nextBoard.location ? currentBoard.leaderboard : undefined),
-    }));
+    setBoard((currentBoard) => mergeFeebasBoardUpdate(currentBoard, nextBoard));
   }, [syncPendingNominationNotifications]);
-
   const applyNotificationBoardUpdate = useCallback((nextBoard: FeebasBoardType) => {
     syncPendingNominationNotifications(nextBoard);
   }, [syncPendingNominationNotifications]);
-
   const applyActivityDeltaToBoard = useCallback((activityDelta: FeebasActivityDelta) => {
     syncPendingNominationActivityDelta(activityDelta);
 
@@ -214,38 +204,57 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     });
   }, [syncPendingNominationActivityDelta]);
 
+  const applyTileDeltaToBoard = useCallback((tileDelta: FeebasTileDelta) => {
+    syncPendingNominationActivityDelta(tileDelta);
+
+    setBoard((currentBoard) => {
+      if (
+        !currentBoard
+        || currentBoard.location !== tileDelta.location
+        || currentBoard.cycleEnd !== tileDelta.cycleEnd
+      ) {
+        return currentBoard;
+      }
+
+      const existingActivityIds = new Set(currentBoard.activity.map((entry) => entry.id));
+      const newActivityEntries = tileDelta.activity.filter((entry) => !existingActivityIds.has(entry.id));
+      const tileUpdatesById = new Map(tileDelta.tiles.map((tile) => [tile.tileId, tile]));
+
+      return {
+        ...currentBoard,
+        serverTime: tileDelta.serverTime || currentBoard.serverTime,
+        activity: newActivityEntries.length > 0
+          ? [...newActivityEntries, ...currentBoard.activity]
+          : currentBoard.activity,
+        tiles: currentBoard.tiles.map((tile) => {
+          const tileUpdate = tileUpdatesById.get(tile.tileId);
+          if (!tileUpdate) return tile;
+
+          return {
+            ...tile,
+            status: tileUpdate.status,
+            voteCounts: tileUpdate.voteCounts,
+            totalVotes: tileUpdate.totalVotes,
+          };
+        }),
+      };
+    });
+  }, [syncPendingNominationActivityDelta]);
+
   const fetchBoard = useCallback(async () => {
     if (!actorFingerprint) return;
 
-    const response = await fetch(`${normalizedApiBaseUrl}/feebas/${activeLocation}${querySuffix}`, {
-      credentials: 'include',
+    const nextBoard = await fetchFeebasBoardData({
+      activeLocation,
+      actorFingerprint,
+      loadBoardMessage: messages.errors.loadBoard,
+      normalizedApiBaseUrl,
     });
-    const payload: BoardResponse = await response.json();
 
-    if (!response.ok || !payload.success) {
-      throw new Error(payload.message || messages.errors.loadBoard);
-    }
-
-    applyBoardUpdate(payload.data);
-    setCountdown(formatCountdown(payload.data.cycleEnd));
-    lastFetchedCycleEndRef.current = payload.data.cycleEnd;
-  }, [activeLocation, actorFingerprint, applyBoardUpdate, messages.errors.loadBoard, normalizedApiBaseUrl, querySuffix]);
-
-  const saveDisplayModeHotkey = (nextHotkey: string) => {
-    setDisplayModeHotkey(nextHotkey);
-    storeFeebasDisplayModeHotkey(nextHotkey);
-  };
-
-  const startHotkeyCapture = () => {
-    setIsHotkeyCaptureActive(true);
-    setHotkeyCaptureError(null);
-  };
-
-  const resetDisplayModeHotkey = () => {
-    saveDisplayModeHotkey(DEFAULT_FEEBAS_DISPLAY_MODE_HOTKEY);
-    setIsHotkeyCaptureActive(false);
-    setHotkeyCaptureError(null);
-  };
+    applyBoardUpdate(nextBoard);
+    setCountdown(formatCountdown(nextBoard.cycleEnd));
+    lastFetchedCycleEndRef.current = nextBoard.cycleEnd;
+  }, [activeLocation, actorFingerprint, applyBoardUpdate, messages.errors.loadBoard, normalizedApiBaseUrl]);
 
   const clearResetRetryTimeout = useCallback(() => {
     if (resetRetryTimeoutRef.current !== null) {
@@ -283,117 +292,11 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     }, RESET_REFRESH_RETRY_MS);
   }, [clearResetRetryTimeout, fetchBoard, messages.errors.refreshBoard]);
 
-  useEffect(() => {
-    try {
-      const storedClientId = localStorage.getItem(CLIENT_ID_STORAGE_KEY);
-      const resolvedClientId = storedClientId || createClientId();
-      localStorage.setItem(CLIENT_ID_STORAGE_KEY, resolvedClientId);
-      setClientId(resolvedClientId);
-    } catch {
-      setClientId(createClientId());
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleAuthUpdated = (event: Event) => {
-      const customEvent = event as CustomEvent<AuthUser | null>;
-      const nextUser = customEvent.detail;
-
-      setAuthUser(isAuthUser(nextUser) ? nextUser : null);
-      setIsAuthLoading(false);
-    };
-
-    window.addEventListener('team-soju-auth-updated', handleAuthUpdated);
-
-    return () => {
-      window.removeEventListener('team-soju-auth-updated', handleAuthUpdated);
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadAuthUser() {
-      setIsAuthLoading(true);
-
-      try {
-        const response = await fetch(`${normalizedApiBaseUrl}/auth/me`, {
-          credentials: 'include',
-        });
-        const body = await response.json() as AuthResponse;
-        const nextUser = body.data;
-
-        if (mounted && response.ok && body.success && isAuthUser(nextUser)) {
-          setAuthUser(nextUser);
-        } else if (mounted) {
-          setAuthUser(null);
-        }
-      } catch {
-        if (mounted) setAuthUser(null);
-      } finally {
-        if (mounted) setIsAuthLoading(false);
-      }
-    }
-
-    loadAuthUser();
-
-    return () => {
-      mounted = false;
-    };
-  }, [normalizedApiBaseUrl]);
-
-  useEffect(() => {
-    if (location) setActiveLocation(resolveLocationId(location));
-  }, [location]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(ACTIVE_LOCATION_STORAGE_KEY, activeLocation);
-    } catch {
-      // Ignore storage write failures.
-    }
-  }, [activeLocation]);
-
-  useEffect(() => {
-    const handleDisplayModeHotkey = (event: KeyboardEvent) => {
-      if (isHotkeyCaptureActive) {
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          setIsHotkeyCaptureActive(false);
-          setHotkeyCaptureError(null);
-          return;
-        }
-
-        if (!isFeebasDisplayModeHotkeyEvent(event)) {
-          event.preventDefault();
-          setHotkeyCaptureError(messages.heatmap.invalidShortcut);
-          return;
-        }
-
-        const nextHotkey = normalizeFeebasDisplayModeHotkey(event.key);
-
-        if (nextHotkey) {
-          event.preventDefault();
-          saveDisplayModeHotkey(nextHotkey);
-          setIsHotkeyCaptureActive(false);
-          setHotkeyCaptureError(null);
-        }
-
-        return;
-      }
-
-      if (!isFeebasDisplayModeHotkeyEvent(event) || isEditableHotkeyTarget(event.target)) return;
-      if (normalizeFeebasDisplayModeHotkey(event.key) !== displayModeHotkey) return;
-
-      setDisplayMode((currentMode) => (currentMode === 'voting' ? 'heatmap' : 'voting'));
-    };
-
-    window.addEventListener('keydown', handleDisplayModeHotkey);
-
-    return () => {
-      window.removeEventListener('keydown', handleDisplayModeHotkey);
-    };
-  }, [displayModeHotkey, isHotkeyCaptureActive, messages.heatmap.invalidShortcut]);
+  const refreshBoardSilently = useCallback(() => {
+    void fetchBoard().catch((nextError) => {
+      setError(nextError instanceof Error ? nextError.message : messages.errors.refreshBoard);
+    });
+  }, [fetchBoard, messages.errors.refreshBoard]);
 
   useEffect(() => {
     if (!actorFingerprint || isAuthLoading) return undefined;
@@ -477,7 +380,9 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     resetRefreshInFlightRef,
     applyBoardUpdate,
     applyActivityDelta: applyActivityDeltaToBoard,
+    applyTileDelta: applyTileDeltaToBoard,
     clearResetRetryTimeout,
+    onResume: refreshBoardSilently,
     setCountdown,
     setError,
   });
@@ -492,6 +397,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     resetRefreshInFlightRef: notificationResetRefreshInFlightRef,
     applyBoardUpdate: applyNotificationBoardUpdate,
     applyActivityDelta: syncPendingNominationActivityDelta,
+    applyTileDelta: syncPendingNominationActivityDelta,
     clearResetRetryTimeout: clearNotificationResetRetryTimeout,
     setCountdown: ignoreCountdownUpdate,
     setError: ignoreLiveUpdateError,
@@ -626,6 +532,12 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
 
     void updateTile(tile.tileId, 'checked');
   };
+
+  useVisiblePolling({
+    enabled: Boolean(actorFingerprint && !isAuthLoading && board),
+    intervalMs: FEEBAS_BOARD_POLL_INTERVAL_MS,
+    onPoll: refreshBoardSilently,
+  });
 
   return (
     <FeebasTileCheckerView

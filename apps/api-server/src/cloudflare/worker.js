@@ -64,6 +64,29 @@ function sendFeebasSocketActivityDelta(socket, activityDelta, actorFingerprint) 
   }));
 }
 
+function hasFeebasTileDelta(tileDelta) {
+  return Boolean(
+    tileDelta?.data
+    && Array.isArray(tileDelta.data.tiles)
+    && tileDelta.data.tiles.length > 0
+  );
+}
+
+function sendFeebasSocketTileDelta(socket, tileDelta, actorFingerprint) {
+  socket.send(encodeFeebasSocketMessage({
+    success: true,
+    type: 'tile_delta',
+    data: {
+      ...tileDelta.data,
+      isSelfNomination: Boolean(
+        tileDelta.actorFingerprint
+        && actorFingerprint
+        && tileDelta.actorFingerprint === actorFingerprint
+      ),
+    },
+  }));
+}
+
 function getLatestFeebasActivityId(activityDelta) {
   return (activityDelta?.data?.activity || []).reduce((latestActivityId, activity) => {
     const activityId = Number(activity?.id);
@@ -140,6 +163,7 @@ class FeebasBoardStreamDurableObject {
         await this.broadcast(url.searchParams.get('location'), {
           forceRefresh: url.searchParams.get('refresh') === '1',
           activityDelta: requestBody?.activityDelta || null,
+          tileDelta: requestBody?.tileDelta || null,
         });
         return new Response(null, { status: 204 });
       }
@@ -170,10 +194,6 @@ class FeebasBoardStreamDurableObject {
     const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
     const lastActivityId = feebasLastActivityIdSchema.validate(url.searchParams.get('lastActivityId') || undefined).value;
     const repositories = this.createRepositories(this.env);
-    const board = await repositories.feebas.getBoard(location, {
-      actorFingerprint,
-      includeLeaderboard: false,
-    });
     const activityDelta = typeof repositories.feebas.getActivityDeltaSince === 'function'
       ? await repositories.feebas.getActivityDeltaSince(location, lastActivityId)
       : null;
@@ -190,8 +210,6 @@ class FeebasBoardStreamDurableObject {
       sendFeebasSocketActivityDelta(server, { data: activityDelta }, actorFingerprint);
       metadata = rememberFeebasSocketActivityId(server, metadata, { data: activityDelta });
     }
-    sendFeebasSocketBoard(server, board);
-    rememberFeebasSocketActivityId(server, metadata, { data: board });
 
     return createWebSocketUpgradeResponse(client);
   }
@@ -210,6 +228,30 @@ class FeebasBoardStreamDurableObject {
       .filter((subscriber) => subscriber.metadata?.location === location);
 
     if (subscribers.length === 0) {
+      return;
+    }
+
+    if (hasFeebasTileDelta(options.tileDelta)) {
+      subscribers.forEach((subscriber) => {
+        try {
+          sendFeebasSocketTileDelta(
+            subscriber.socket,
+            options.tileDelta,
+            subscriber.metadata.actorFingerprint
+          );
+          subscriber.metadata = rememberFeebasSocketActivityId(
+            subscriber.socket,
+            subscriber.metadata,
+            options.tileDelta
+          );
+        } catch {
+          try {
+            subscriber.socket.close(1011, 'Failed to send Feebas tile update');
+          } catch {
+            // Ignore sockets that are already closed.
+          }
+        }
+      });
       return;
     }
 
@@ -336,7 +378,7 @@ function createWorkerApp(options = {}) {
     }
   }
 
-  function createFeebasSocketResponse(request, location, actorFingerprint, board, options = {}) {
+  function createFeebasSocketResponse(request, location, actorFingerprint, options = {}) {
     if (!isWebSocketUpgrade(request)) {
       return webSocketUpgradeRequired();
     }
@@ -381,9 +423,6 @@ function createWorkerApp(options = {}) {
       sendFeebasSocketActivityDelta(server, { data: options.activityDelta }, actorFingerprint);
       subscriber.lastActivityId = getLatestFeebasActivityId({ data: options.activityDelta }) || subscriber.lastActivityId;
     }
-    sendFeebasSocketBoard(server, board);
-    subscriber.lastActivityId = getLatestFeebasActivityId({ data: board }) || subscriber.lastActivityId;
-
     server.addEventListener?.('close', cleanup);
     server.addEventListener?.('error', cleanup);
     request.signal?.addEventListener('abort', handleAbort, { once: true });
@@ -407,12 +446,13 @@ function createWorkerApp(options = {}) {
           method: 'POST',
         };
 
-        if (hasFeebasActivityDelta(options.activityDelta)) {
+        if (hasFeebasTileDelta(options.tileDelta) || hasFeebasActivityDelta(options.activityDelta)) {
           requestInit.headers = {
             'content-type': 'application/json',
           };
           requestInit.body = JSON.stringify({
-            activityDelta: options.activityDelta,
+            ...(hasFeebasTileDelta(options.tileDelta) ? { tileDelta: options.tileDelta } : {}),
+            ...(hasFeebasActivityDelta(options.activityDelta) ? { activityDelta: options.activityDelta } : {}),
           });
         }
 
@@ -439,6 +479,18 @@ function createWorkerApp(options = {}) {
           subscriber.cleanup?.();
         }
       });
+    }
+
+    if (hasFeebasTileDelta(options.tileDelta)) {
+      Array.from(subscribers).forEach((subscriber) => {
+        try {
+          sendFeebasSocketTileDelta(subscriber.socket, options.tileDelta, subscriber.actorFingerprint);
+          subscriber.lastActivityId = getLatestFeebasActivityId(options.tileDelta) || subscriber.lastActivityId;
+        } catch {
+          subscriber.cleanup?.();
+        }
+      });
+      return;
     }
 
     const boardCache = typeof repositories.feebas.getBoardCache === 'function'

@@ -188,6 +188,32 @@ function buildPendingB2ActivityDelta(baseBoard: typeof boardFixture = boardFixtu
   };
 }
 
+function buildPendingB2TileDelta(baseBoard: typeof boardFixture = boardFixture, isSelfNomination = false) {
+  return {
+    success: true,
+    type: 'tile_delta',
+    data: {
+      location: baseBoard.location,
+      displayName: baseBoard.displayName,
+      cycleStart: baseBoard.cycleStart,
+      cycleEnd: baseBoard.cycleEnd,
+      serverTime: '2026-04-09T20:19:00.000Z',
+      isSelfNomination,
+      activity: [pendingB2Activity],
+      tiles: [{
+        tileId: 'r1c2',
+        status: 'pending',
+        voteCounts: {
+          checked: 0,
+          pending: 1,
+          confirmed: 0,
+        },
+        totalVotes: 1,
+      }],
+    },
+  };
+}
+
 const authUserFixture = {
   id: 'user-id',
   email: 'trainer@example.com',
@@ -437,7 +463,12 @@ describe('FeebasTileChecker', () => {
         });
       }
 
-      boardRequestCount += 1;
+      const isBoardRequest = url.includes('/public') || (
+        url.includes('/feebas/route-119-main') && !url.includes('/votes') && !url.includes('/leaderboard')
+      );
+      if (isBoardRequest) {
+        boardRequestCount += 1;
+      }
 
       return jsonResponse({
         success: true,
@@ -841,6 +872,33 @@ describe('FeebasTileChecker', () => {
         data: buildPendingB2Board(route119UpstreamBoardFixture),
       });
     });
+  });
+
+  it('keeps newer live tile updates when a stale same-cycle board refresh arrives', async () => {
+    (global as any).WebSocket = MockWebSocket;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(findMockWebSocket('/feebas/route-119-main/stream')).toBeTruthy()
+    );
+
+    act(() => {
+      findMockWebSocket('/feebas/route-119-main/stream')?.emit(buildPendingB2TileDelta());
+    });
+
+    expect(screen.getByRole('button', { name: /B2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === 'Brendan found Feebas on B2.')).toBeInTheDocument();
+
+    act(() => {
+      findMockWebSocket('/feebas/route-119-main/stream')?.emit({
+        success: true,
+        data: boardFixture,
+      });
+    });
+
+    expect(screen.getByRole('button', { name: /B2 0 checked, 1 pending, 0 confirmed/i })).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === 'Brendan found Feebas on B2.')).toBeInTheDocument();
   });
 
   it('shows Route 119 pond pending nomination popups while viewing upstream', async () => {
@@ -1482,7 +1540,10 @@ describe('FeebasTileChecker', () => {
       expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
     );
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self', {
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet/public', {
+      credentials: 'include',
+    });
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet/votes?actorFingerprint=client-self', {
       credentials: 'include',
     });
     expect(localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY)).toBe('mt-coronet');

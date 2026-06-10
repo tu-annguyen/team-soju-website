@@ -1431,14 +1431,9 @@ describe('Cloudflare Worker API', () => {
     }));
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(repositories.feebas.getBoard).toHaveBeenCalledWith('route-119-main', {
-      actorFingerprint: 'client-12345678',
-      includeLeaderboard: false,
-    });
+    expect(repositories.feebas.getBoard).not.toHaveBeenCalled();
     expect(response.status).toBe(101);
-    expect(response.webSocket.received).toEqual([
-      JSON.stringify({ success: true, data: board }),
-    ]);
+    expect(response.webSocket.received).toEqual([]);
   });
 
   it('replays Feebas activity after the last activity cursor on Worker WebSocket reconnects', async () => {
@@ -1490,7 +1485,6 @@ describe('Cloudflare Worker API', () => {
           isSelfNomination: false,
         },
       }),
-      JSON.stringify({ success: true, data: board }),
     ]);
   });
 
@@ -1549,7 +1543,17 @@ describe('Cloudflare Worker API', () => {
       cycleStart: '2026-04-09T20:15:00.000Z',
       cycleEnd: '2026-04-09T21:00:00.000Z',
       serverTime: '2026-04-09T20:20:00.000Z',
-      tiles: [],
+      tiles: [{
+        tileId: 'r1c7',
+        status: 'pending',
+        voteCounts: {
+          checked: 0,
+          pending: 1,
+          confirmed: 0,
+        },
+        totalVotes: 1,
+        currentUserVote: 'pending',
+      }],
       activity: [activity],
     };
     const durableFetch = jest.fn().mockResolvedValue(new Response(null, { status: 204 }));
@@ -1591,10 +1595,10 @@ describe('Cloudflare Worker API', () => {
     expect(durableRequest.method).toBe('POST');
     expect(durableUrl.pathname).toBe('/broadcast');
     expect(durableUrl.searchParams.get('location')).toBe('route-119-main');
-    expect(durableUrl.searchParams.get('refresh')).toBe('1');
+    expect(durableUrl.searchParams.get('refresh')).toBeNull();
     expect(durableRequest.headers.get('content-type')).toBe('application/json');
     expect(JSON.parse(await durableRequest.text())).toEqual({
-      activityDelta: {
+      tileDelta: {
         actorFingerprint: 'client-12345678',
         data: {
           location: 'route-119-main',
@@ -1603,6 +1607,16 @@ describe('Cloudflare Worker API', () => {
           cycleEnd: '2026-04-09T21:00:00.000Z',
           serverTime: '2026-04-09T20:20:00.000Z',
           activity: [activity],
+          tiles: [{
+            tileId: 'r1c7',
+            status: 'pending',
+            voteCounts: {
+              checked: 0,
+              pending: 1,
+              confirmed: 0,
+            },
+            totalVotes: 1,
+          }],
         },
       },
     });
@@ -1621,9 +1635,7 @@ describe('Cloudflare Worker API', () => {
     };
     const repositories = {
       feebas: {
-        getBoard: jest.fn()
-          .mockResolvedValueOnce(initialBoard)
-          .mockResolvedValueOnce(updatedBoard),
+        getBoard: jest.fn().mockResolvedValue(updatedBoard),
       },
     };
     const state = createDurableObjectState();
@@ -1644,12 +1656,7 @@ describe('Cloudflare Worker API', () => {
       actorFingerprint: 'client-12345678',
       includeLeaderboard: false,
     });
-    expect(repositories.feebas.getBoard).toHaveBeenNthCalledWith(2, 'route-119-main', {
-      actorFingerprint: 'client-12345678',
-      includeLeaderboard: false,
-    });
     expect(streamResponse.webSocket.received).toEqual([
-      JSON.stringify({ success: true, data: initialBoard }),
       JSON.stringify({ success: true, data: updatedBoard }),
     ]);
   });
@@ -1703,7 +1710,6 @@ describe('Cloudflare Worker API', () => {
           isSelfNomination: false,
         },
       }),
-      JSON.stringify({ success: true, data: board }),
     ]);
   });
 
@@ -1765,7 +1771,6 @@ describe('Cloudflare Worker API', () => {
     expect(broadcastResponse.status).toBe(204);
     expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(1);
     expect(writerStreamResponse.webSocket.received).toEqual([
-      JSON.stringify({ success: true, data: initialBoard }),
       JSON.stringify({
         success: true,
         type: 'activity_delta',
@@ -1777,7 +1782,6 @@ describe('Cloudflare Worker API', () => {
       JSON.stringify({ success: true, data: updatedBoard }),
     ]);
     expect(otherStreamResponse.webSocket.received).toEqual([
-      JSON.stringify({ success: true, data: initialBoard }),
       JSON.stringify({
         success: true,
         type: 'activity_delta',
@@ -1834,7 +1838,6 @@ describe('Cloudflare Worker API', () => {
     expect(refreshedBroadcastResponse.status).toBe(204);
     expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(2);
     expect(streamResponse.webSocket.received).toEqual([
-      JSON.stringify({ success: true, data: initialBoard }),
       JSON.stringify({ success: true, data: cachedBoard }),
       JSON.stringify({ success: true, data: cachedBoard }),
       JSON.stringify({ success: true, data: freshBoard }),
@@ -1884,7 +1887,6 @@ describe('Cloudflare Worker API', () => {
     expect(secondResponse.status).toBe(204);
     expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(1);
     expect(streamResponse.webSocket.received).toEqual([
-      JSON.stringify({ success: true, data: initialBoard }),
       JSON.stringify({ success: true, data: freshBoard }),
       JSON.stringify({ success: true, data: freshBoard }),
     ]);
@@ -1948,7 +1950,6 @@ describe('Cloudflare Worker API', () => {
     expect(secondResponse.status).toBe(204);
     expect(repositories.feebas.getBoardCache).toHaveBeenCalledTimes(2);
     expect(streamResponse.webSocket.received).toEqual([
-      JSON.stringify({ success: true, data: initialBoard }),
       JSON.stringify({ success: true, data: firstRefreshBoard }),
       JSON.stringify({ success: true, data: followUpRefreshBoard }),
     ]);
@@ -1965,22 +1966,23 @@ describe('Cloudflare Worker API', () => {
       actorName: 'Trainer',
       createdAt: '2026-04-09T20:20:00.000Z',
     };
-    const initialBoard = {
-      location: 'route-119-main',
-      displayName: 'Route 119, Hoenn',
-      cycleStart: '2026-04-09T20:15:00.000Z',
-      cycleEnd: '2026-04-09T21:00:00.000Z',
-      serverTime: '2026-04-09T20:19:00.000Z',
-      tiles: [{ id: 'r1c7', status: 'unchecked' }],
-      activity: [],
-    };
     const updatedBoard = {
       location: 'route-119-main',
       displayName: 'Route 119, Hoenn',
       cycleStart: '2026-04-09T20:15:00.000Z',
       cycleEnd: '2026-04-09T21:00:00.000Z',
       serverTime: '2026-04-09T20:20:00.000Z',
-      tiles: [{ id: 'r1c7', status: 'pending' }],
+      tiles: [{
+        tileId: 'r1c7',
+        status: 'pending',
+        voteCounts: {
+          checked: 0,
+          pending: 1,
+          confirmed: 0,
+        },
+        totalVotes: 1,
+        currentUserVote: 'pending',
+      }],
       activity: [activity],
     };
     const repositories = {
@@ -1988,9 +1990,7 @@ describe('Cloudflare Worker API', () => {
       shinies: {},
       users: {},
       feebas: {
-        getBoard: jest.fn()
-          .mockResolvedValueOnce(initialBoard)
-          .mockResolvedValueOnce(updatedBoard),
+        getBoard: jest.fn(),
         updateTile: jest.fn().mockResolvedValue(updatedBoard),
       },
     };
@@ -2008,15 +2008,11 @@ describe('Cloudflare Worker API', () => {
       }),
     }), createEnv());
 
-    expect(repositories.feebas.getBoard).toHaveBeenLastCalledWith('route-119-main', {
-      actorFingerprint: 'client-12345678',
-      includeLeaderboard: false,
-    });
+    expect(repositories.feebas.getBoard).not.toHaveBeenCalled();
     expect(streamResponse.webSocket.received).toEqual([
-      JSON.stringify({ success: true, data: initialBoard }),
       JSON.stringify({
         success: true,
-        type: 'activity_delta',
+        type: 'tile_delta',
         data: {
           location: 'route-119-main',
           displayName: 'Route 119, Hoenn',
@@ -2024,10 +2020,19 @@ describe('Cloudflare Worker API', () => {
           cycleEnd: '2026-04-09T21:00:00.000Z',
           serverTime: '2026-04-09T20:20:00.000Z',
           activity: [activity],
+          tiles: [{
+            tileId: 'r1c7',
+            status: 'pending',
+            voteCounts: {
+              checked: 0,
+              pending: 1,
+              confirmed: 0,
+            },
+            totalVotes: 1,
+          }],
           isSelfNomination: true,
         },
       }),
-      JSON.stringify({ success: true, data: updatedBoard }),
     ]);
   });
 
