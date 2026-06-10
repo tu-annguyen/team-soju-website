@@ -125,6 +125,7 @@ const {
 } = require('../services/worker-support');
 
 const FEEBAS_ACTIVITY_DELTA_MAX_AGE_MS = 30000;
+const FEEBAS_PUBLIC_BOARD_CACHE_SECONDS = 15;
 
 function getExpectedFeebasActivityNextStatus(status) {
   return status === 'unchecked' ? null : status;
@@ -163,6 +164,44 @@ function buildFeebasActivityDelta(board, actorFingerprint, { tileId, status } = 
       cycleEnd: board.cycleEnd,
       serverTime: board.serverTime,
       activity: [latestActivity],
+    },
+  };
+}
+
+function stripFeebasCurrentUserVotes(board) {
+  return {
+    ...board,
+    tiles: (board.tiles || []).map(({ currentUserVote, ...tile }) => tile),
+  };
+}
+
+function buildFeebasTileDelta(board, actorFingerprint, { tileId, status } = {}) {
+  const activityDelta = buildFeebasActivityDelta(board, actorFingerprint, { tileId, status });
+  const changedTile = (board.tiles || []).find((tile) => tile.tileId === tileId);
+
+  if (!changedTile) {
+    return null;
+  }
+
+  const { currentUserVote, ...publicTile } = changedTile;
+
+  return {
+    actorFingerprint,
+    data: {
+      ...(activityDelta?.data || {
+        location: board.location,
+        displayName: board.displayName,
+        cycleStart: board.cycleStart,
+        cycleEnd: board.cycleEnd,
+        serverTime: board.serverTime,
+        activity: [],
+      }),
+      tiles: [{
+        tileId: publicTile.tileId,
+        status: publicTile.status,
+        voteCounts: publicTile.voteCounts,
+        totalVotes: publicTile.totalVotes,
+      }],
     },
   };
 }
@@ -244,13 +283,13 @@ async function handleFeebasRoutes(context) {
         const board = await getRepositories().feebas.updateTile(match[1], match[2], value, {
           includeLeaderboard: false,
         });
-        await broadcastFeebasBoard(match[1], getRepositories(), env, {
-          forceRefresh: true,
-          activityDelta: buildFeebasActivityDelta(board, value.actorFingerprint, {
-            tileId: match[2],
-            status: value.status,
-          }),
+        const tileDelta = buildFeebasTileDelta(board, value.actorFingerprint, {
+          tileId: match[2],
+          status: value.status,
         });
+        if (tileDelta) {
+          await broadcastFeebasBoard(match[1], getRepositories(), env, { tileDelta });
+        }
         return json({
           success: true,
           data: board,
@@ -285,16 +324,11 @@ async function handleFeebasRoutes(context) {
           }, { lastActivityId }));
         }
 
-        const board = await getRepositories().feebas.getBoard(match[1], {
-          actorFingerprint,
-          includeLeaderboard: false,
-        });
-
         const activityDelta = typeof getRepositories().feebas.getActivityDeltaSince === 'function'
           ? await getRepositories().feebas.getActivityDeltaSince(match[1], lastActivityId)
           : null;
 
-        return createFeebasSocketResponse(request, match[1], actorFingerprint, board, {
+        return createFeebasSocketResponse(request, match[1], actorFingerprint, {
           lastActivityId,
           activityDelta,
         });
@@ -333,6 +367,65 @@ async function handleFeebasRoutes(context) {
 
         console.error('Error resetting Feebas board:', error);
         return json({ success: false, message: 'Failed to reset Feebas board' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/feebas\/([^/]+)\/public$/);
+    if (request.method === 'GET' && match) {
+      try {
+        getLocationConfig(match[1]);
+        const board = await getRepositories().feebas.getBoard(match[1], {
+          includeLeaderboard: false,
+        });
+
+        return json({
+          success: true,
+          data: stripFeebasCurrentUserVotes(board),
+        }, {
+          headers: {
+            'cache-control': `public, max-age=${FEEBAS_PUBLIC_BOARD_CACHE_SECONDS}, s-maxage=${FEEBAS_PUBLIC_BOARD_CACHE_SECONDS}, stale-while-revalidate=30`,
+          },
+        });
+      } catch (error) {
+        if (error instanceof FeebasRuleError) {
+          return json({ success: false, message: error.message }, { status: error.statusCode });
+        }
+
+        console.error('Error fetching public Feebas board:', error);
+        return json({ success: false, message: 'Failed to fetch Feebas board' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/feebas\/([^/]+)\/votes$/);
+    if (request.method === 'GET' && match) {
+      try {
+        getLocationConfig(match[1]);
+        const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
+        const tiles = typeof getRepositories().feebas.getCurrentVotes === 'function'
+          ? await getRepositories().feebas.getCurrentVotes(match[1], actorFingerprint)
+          : (await getRepositories().feebas.getBoard(match[1], {
+              actorFingerprint,
+              includeLeaderboard: false,
+            })).tiles.map((tile) => ({
+              tileId: tile.tileId,
+              currentUserVote: tile.currentUserVote,
+            }));
+
+        return json({
+          success: true,
+          data: { location: match[1], tiles },
+        }, {
+          headers: {
+            'cache-control': 'private, no-store',
+          },
+        });
+      } catch (error) {
+        if (error instanceof FeebasRuleError) {
+          return json({ success: false, message: error.message }, { status: error.statusCode });
+        }
+
+        console.error('Error fetching Feebas current votes:', error);
+        return json({ success: false, message: 'Failed to fetch Feebas current votes' }, { status: 500 });
       }
     }
 

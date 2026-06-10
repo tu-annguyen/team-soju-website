@@ -1020,6 +1020,27 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       };
     },
 
+    async getCurrentVotes(location, actorFingerprint, options = {}) {
+      const sanitizedFingerprint = sanitizeFingerprint(actorFingerprint);
+      if (!sanitizedFingerprint) {
+        return [];
+      }
+
+      const now = options.now ? new Date(options.now) : new Date();
+      const { cycleStart, cycleEnd } = getCycleWindow(now);
+      const cycle = await ensureCycle(location, cycleStart, cycleEnd);
+      const votes = await runSelect(`
+        SELECT tile_id, status
+        FROM feebas_tile_votes
+        WHERE cycle_id = ${parameter(1)} AND actor_fingerprint = ${parameter(2)}
+      `, [cycle.id, sanitizedFingerprint]);
+
+      return votes.map((vote) => ({
+        tileId: vote.tile_id,
+        currentUserVote: vote.status || 'unchecked',
+      }));
+    },
+
     applyUserViewToBoardCache(boardCache, actorFingerprint) {
       if (!actorFingerprint) {
         const { votesByTile, ...baseBoard } = boardCache;

@@ -126,6 +126,21 @@ export type FeebasActivityDelta = {
   activity: FeebasActivityEntry[];
 };
 
+export type FeebasTileDeltaTile = {
+  tileId: string;
+  status: TileStatus;
+  voteCounts: {
+    checked: number;
+    pending: number;
+    confirmed: number;
+  };
+  totalVotes: number;
+};
+
+export type FeebasTileDelta = FeebasActivityDelta & {
+  tiles: FeebasTileDeltaTile[];
+};
+
 export type BoardResponse = {
   success: boolean;
   type?: 'board';
@@ -140,7 +155,26 @@ export type FeebasActivityDeltaResponse = {
   message?: string;
 };
 
-export type FeebasLiveUpdateResponse = BoardResponse | FeebasActivityDeltaResponse;
+export type FeebasTileDeltaResponse = {
+  success: boolean;
+  type: 'tile_delta';
+  data: FeebasTileDelta;
+  message?: string;
+};
+
+export type FeebasVotesResponse = {
+  success: boolean;
+  data: {
+    location: string;
+    tiles: {
+      tileId: string;
+      currentUserVote: TileStatus;
+    }[];
+  };
+  message?: string;
+};
+
+export type FeebasLiveUpdateResponse = BoardResponse | FeebasActivityDeltaResponse | FeebasTileDeltaResponse;
 
 export type AuthUser = {
   id: string;
@@ -176,6 +210,8 @@ export const LEADERBOARD_SIGN_IN_CTA_CLASSES =
   'inline-flex items-center justify-center rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600';
 export const PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS = 6000;
 export const RESET_REFRESH_RETRY_MS = 1000;
+export const FEEBAS_BOARD_POLL_INTERVAL_MS = 20000;
+export const FEEBAS_HIDDEN_SOCKET_IDLE_MS = 3 * 60 * 1000;
 export const FEEBAS_LIVE_UPDATES_RECONNECT_MS = 5000;
 export const FEEBAS_LIVE_UPDATES_MAX_RECONNECT_ATTEMPTS = 3;
 

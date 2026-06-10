@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import type React from 'react';
-import type { FeebasActivityDelta, FeebasBoard, FeebasLiveUpdateResponse } from './shared';
+import type { FeebasActivityDelta, FeebasBoard, FeebasLiveUpdateResponse, FeebasTileDelta } from './shared';
 import {
   buildFeebasLiveUpdatesUrl,
+  FEEBAS_HIDDEN_SOCKET_IDLE_MS,
   FEEBAS_LIVE_UPDATES_MAX_RECONNECT_ATTEMPTS,
   FEEBAS_LIVE_UPDATES_RECONNECT_MS,
   formatCountdown,
@@ -19,7 +20,9 @@ type Params = {
   resetRefreshInFlightRef: React.MutableRefObject<boolean>;
   applyBoardUpdate: (nextBoard: FeebasBoard) => void;
   applyActivityDelta?: (activityDelta: FeebasActivityDelta) => void;
+  applyTileDelta?: (tileDelta: FeebasTileDelta) => void;
   clearResetRetryTimeout: () => void;
+  onResume?: () => void;
   setCountdown: React.Dispatch<React.SetStateAction<string>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
 };
@@ -67,7 +70,9 @@ export function useFeebasLiveUpdates({
   resetRefreshInFlightRef,
   applyBoardUpdate,
   applyActivityDelta,
+  applyTileDelta,
   clearResetRetryTimeout,
+  onResume,
   setCountdown,
   setError,
 }: Params) {
@@ -79,6 +84,8 @@ export function useFeebasLiveUpdates({
     let isStopped = false;
     let reconnectAttempts = 0;
     let reconnectTimeout: number | null = null;
+    let hiddenIdleTimeout: number | null = null;
+    let isHiddenPaused = false;
     let liveUpdatesSocket: WebSocket | null = null;
     let lastActivityId = readStoredLastActivityId(activeLocation);
 
@@ -95,8 +102,16 @@ export function useFeebasLiveUpdates({
       }
     };
 
+    const clearHiddenIdleTimeout = () => {
+      if (hiddenIdleTimeout !== null) {
+        window.clearTimeout(hiddenIdleTimeout);
+        hiddenIdleTimeout = null;
+      }
+    };
+
     const connect = () => {
       if (isStopped) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
 
       const socket = new WebSocket(buildFeebasLiveUpdatesUrl(
         normalizedApiBaseUrl,
@@ -125,6 +140,17 @@ export function useFeebasLiveUpdates({
               return;
             }
 
+            if (payload.type === 'tile_delta') {
+              rememberLastActivityId(getLatestActivityId(payload.data.activity));
+              if (applyTileDelta) {
+                applyTileDelta(payload.data);
+              } else {
+                applyActivityDelta?.(payload.data);
+              }
+              setError(null);
+              return;
+            }
+
             rememberLastActivityId(getLatestActivityId(payload.data.activity));
             applyBoardUpdate(payload.data);
             setCountdown(formatCountdown(payload.data.cycleEnd));
@@ -148,6 +174,10 @@ export function useFeebasLiveUpdates({
       socket.onclose = () => {
         if (isStopped || socket !== liveUpdatesSocket) return;
 
+        if (isHiddenPaused) {
+          return;
+        }
+
         setError((currentError) => currentError || liveUpdatesDisconnectedMessage);
         clearReconnectTimeout();
 
@@ -161,11 +191,34 @@ export function useFeebasLiveUpdates({
       };
     };
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearHiddenIdleTimeout();
+        hiddenIdleTimeout = window.setTimeout(() => {
+          isHiddenPaused = true;
+          liveUpdatesSocket?.close();
+        }, FEEBAS_HIDDEN_SOCKET_IDLE_MS);
+        return;
+      }
+
+      clearHiddenIdleTimeout();
+      const shouldReconnect = isHiddenPaused || !liveUpdatesSocket || liveUpdatesSocket.readyState === WebSocket.CLOSED;
+      isHiddenPaused = false;
+      clearReconnectTimeout();
+      if (shouldReconnect) {
+        onResume?.();
+        connect();
+      }
+    };
+
     connect();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isStopped = true;
       clearReconnectTimeout();
+      clearHiddenIdleTimeout();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       liveUpdatesSocket?.close();
     };
   }, [
@@ -173,11 +226,13 @@ export function useFeebasLiveUpdates({
     actorFingerprint,
     applyActivityDelta,
     applyBoardUpdate,
+    applyTileDelta,
     clearResetRetryTimeout,
     isAuthLoading,
     lastFetchedCycleEndRef,
     liveUpdatesDisconnectedMessage,
     normalizedApiBaseUrl,
+    onResume,
     resetRefreshInFlightRef,
     setCountdown,
     setError,

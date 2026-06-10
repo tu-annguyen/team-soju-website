@@ -437,7 +437,12 @@ describe('FeebasTileChecker', () => {
         });
       }
 
-      boardRequestCount += 1;
+      const isBoardRequest = url.includes('/public') || (
+        url.includes('/feebas/route-119-main') && !url.includes('/votes') && !url.includes('/leaderboard')
+      );
+      if (isBoardRequest) {
+        boardRequestCount += 1;
+      }
 
       return jsonResponse({
         success: true,
@@ -1482,7 +1487,10 @@ describe('FeebasTileChecker', () => {
       expect(screen.getByText(/Mt. Coronet, Sinnoh/i)).toBeInTheDocument()
     );
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet?actorFingerprint=client-self', {
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet/public', {
+      credentials: 'include',
+    });
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/feebas/mt-coronet/votes?actorFingerprint=client-self', {
       credentials: 'include',
     });
     expect(localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY)).toBe('mt-coronet');

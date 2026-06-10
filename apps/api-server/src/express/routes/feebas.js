@@ -22,6 +22,13 @@ const leaderboardQuerySchema = Joi.object({
   sortDirection: Joi.string().valid('asc', 'desc').optional(),
 });
 
+function stripFeebasCurrentUserVotes(board) {
+  return {
+    ...board,
+    tiles: (board.tiles || []).map(({ currentUserVote, ...tile }) => tile),
+  };
+}
+
 async function getAuthenticatedUser(req) {
   const token = getTokenFromRequest(req);
 
@@ -88,6 +95,70 @@ router.get('/:location/leaderboard', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch Feebas leaderboard',
+    });
+  }
+});
+
+router.get('/:location/public', async (req, res) => {
+  try {
+    getLocationConfig(req.params.location);
+    const board = await FeebasBoard.getBoard(req.params.location, {
+      includeLeaderboard: false,
+    });
+
+    res.setHeader('Cache-Control', 'public, max-age=15, s-maxage=15, stale-while-revalidate=30');
+    res.json({
+      success: true,
+      data: stripFeebasCurrentUserVotes(board),
+    });
+  } catch (error) {
+    if (error instanceof FeebasRuleError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    console.error('Error fetching public Feebas board:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch Feebas board',
+    });
+  }
+});
+
+router.get('/:location/votes', async (req, res) => {
+  try {
+    getLocationConfig(req.params.location);
+    const actorFingerprint = actorFingerprintQuerySchema.validate(req.query.actorFingerprint).value;
+    const board = await FeebasBoard.getBoard(req.params.location, {
+      actorFingerprint,
+      includeLeaderboard: false,
+    });
+
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.json({
+      success: true,
+      data: {
+        location: req.params.location,
+        tiles: board.tiles.map((tile) => ({
+          tileId: tile.tileId,
+          currentUserVote: tile.currentUserVote,
+        })),
+      },
+    });
+  } catch (error) {
+    if (error instanceof FeebasRuleError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    console.error('Error fetching Feebas current votes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch Feebas current votes',
     });
   }
 });
