@@ -203,6 +203,8 @@ const es = {
         dismiss: 'Descartar notificacion',
       },
       accessibility: {
+        environmentOverlayLabel: 'Mapa',
+        environmentOverlayDescription: 'Muestra puntos de referencia de la ruta en casillas no clicables.',
         patternOverlayLabel: 'Tramas',
         patternOverlayDescription: 'Usa secciones con tramas en vez de colores de voto mezclados.',
       },

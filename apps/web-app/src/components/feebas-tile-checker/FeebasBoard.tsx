@@ -1,6 +1,7 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import FeebasBoardLegend from './FeebasBoardLegend';
 import { FeebasBoardTile } from './FeebasBoardTile';
+import type { LocationOption } from './locations';
 import type {
   BoardDisplayMode,
   FeebasBoard as FeebasBoardType,
@@ -21,6 +22,7 @@ type Props = {
   layoutCols: number;
   layoutRows: number;
   loading: boolean;
+  environmentOverlay?: LocationOption['environmentOverlay'];
   maxPreviousConfirmations: number;
   messages: FeebasCheckerMessages;
   pendingAction: string | null;
@@ -47,6 +49,7 @@ export function FeebasBoard({
   layoutCols,
   layoutRows,
   loading,
+  environmentOverlay,
   maxPreviousConfirmations,
   messages,
   pendingAction,
@@ -60,17 +63,24 @@ export function FeebasBoard({
   onTilePress,
   onVoteOverlayModeChange,
 }: Props) {
+  const [isEnvironmentOverlayEnabled, setIsEnvironmentOverlayEnabled] = useState(false);
+  const activeEnvironmentOverlay = isEnvironmentOverlayEnabled ? environmentOverlay : undefined;
+  const hasEnvironmentOverlay = Boolean(environmentOverlay);
+
   return (
     <div className="card overflow-hidden">
       <FeebasBoardLegend
         displayMode={displayMode}
         displayModeHotkey={displayModeHotkey}
         hotkeyCaptureError={hotkeyCaptureError}
+        hasEnvironmentOverlay={hasEnvironmentOverlay}
+        isEnvironmentOverlayEnabled={isEnvironmentOverlayEnabled}
         isHotkeyCaptureActive={isHotkeyCaptureActive}
         messages={messages}
         voteOverlayMode={voteOverlayMode}
         onResetHotkey={onResetHotkey}
         onDisplayModeChange={onDisplayModeChange}
+        onEnvironmentOverlayChange={setIsEnvironmentOverlayEnabled}
         onStartHotkeyCapture={onStartHotkeyCapture}
         onVoteOverlayModeChange={onVoteOverlayModeChange}
       />
@@ -95,6 +105,9 @@ export function FeebasBoard({
                 isHeatmapMode={isHeatmapMode}
                 isSelected={Boolean(tile && selectedTileId === tile.tileId)}
                 loading={loading && !board}
+                environmentOverlay={activeEnvironmentOverlay}
+                layoutCols={layoutCols}
+                layoutRows={layoutRows}
                 maxPreviousConfirmations={maxPreviousConfirmations}
                 messages={messages}
                 pendingAction={pendingAction}
@@ -117,11 +130,14 @@ export function FeebasBoard({
           displayMode={displayMode}
           displayModeHotkey={displayModeHotkey}
           hotkeyCaptureError={hotkeyCaptureError}
+          hasEnvironmentOverlay={hasEnvironmentOverlay}
+          isEnvironmentOverlayEnabled={isEnvironmentOverlayEnabled}
           isHotkeyCaptureActive={isHotkeyCaptureActive}
           messages={messages}
           voteOverlayMode={voteOverlayMode}
           onResetHotkey={onResetHotkey}
           onDisplayModeChange={onDisplayModeChange}
+          onEnvironmentOverlayChange={setIsEnvironmentOverlayEnabled}
           onStartHotkeyCapture={onStartHotkeyCapture}
           onVoteOverlayModeChange={onVoteOverlayModeChange}
           placement="bottom"

@@ -201,6 +201,8 @@ const en = {
         dismiss: 'Dismiss notification',
       },
       accessibility: {
+        environmentOverlayLabel: 'Map overlay',
+        environmentOverlayDescription: 'Show route landmarks on non-clickable cells.',
         patternOverlayLabel: 'Pattern overlays',
         patternOverlayDescription: 'Use marked pattern sections instead of blended vote colors.',
       },

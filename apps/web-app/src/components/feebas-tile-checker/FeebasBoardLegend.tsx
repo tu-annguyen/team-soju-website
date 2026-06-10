@@ -10,6 +10,8 @@ export type FeebasBoardDisplayMode = 'voting' | 'heatmap';
 
 type FeebasBoardLegendMessages = {
   accessibility: {
+    environmentOverlayDescription: string;
+    environmentOverlayLabel: string;
     patternOverlayDescription: string;
     patternOverlayLabel: string;
   };
@@ -41,11 +43,14 @@ type Props = {
   displayMode: FeebasBoardDisplayMode;
   displayModeHotkey: string;
   hotkeyCaptureError: string | null;
+  isEnvironmentOverlayEnabled: boolean;
   isHotkeyCaptureActive: boolean;
+  hasEnvironmentOverlay: boolean;
   messages: FeebasBoardLegendMessages;
   voteOverlayMode: VoteOverlayMode;
   onResetHotkey: () => void;
   onDisplayModeChange: (displayMode: FeebasBoardDisplayMode) => void;
+  onEnvironmentOverlayChange: (enabled: boolean) => void;
   onStartHotkeyCapture: () => void;
   onVoteOverlayModeChange: (mode: VoteOverlayMode) => void;
   placement?: 'top' | 'bottom';
@@ -74,11 +79,14 @@ const FeebasBoardLegend = ({
   displayMode,
   displayModeHotkey,
   hotkeyCaptureError,
+  isEnvironmentOverlayEnabled,
   isHotkeyCaptureActive,
+  hasEnvironmentOverlay,
   messages,
   voteOverlayMode,
   onResetHotkey,
   onDisplayModeChange,
+  onEnvironmentOverlayChange,
   onStartHotkeyCapture,
   onVoteOverlayModeChange,
   placement = 'top',
@@ -130,23 +138,42 @@ const FeebasBoardLegend = ({
             </>
           )}
         </div>
-        {displayMode === 'voting' ? (
-          <label
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200"
-            title={messages.accessibility.patternOverlayDescription}
-          >
-            <input
-              type="checkbox"
-              checked={isPatternOverlayMode}
-              className="peer sr-only"
-              onChange={(event) => onVoteOverlayModeChange(event.target.checked ? 'pattern' : 'color')}
-            />
-            <span className="relative h-5 w-9 rounded-full bg-slate-300 transition peer-checked:bg-slate-900 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-slate-900 dark:bg-slate-700 dark:peer-checked:bg-white dark:peer-focus-visible:outline-white">
-              <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition dark:bg-slate-950 ${isPatternOverlayMode ? 'translate-x-4' : ''}`} />
-            </span>
-            <span>{messages.accessibility.patternOverlayLabel}</span>
-          </label>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {hasEnvironmentOverlay ? (
+            <label
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200"
+              title={messages.accessibility.environmentOverlayDescription}
+            >
+              <input
+                type="checkbox"
+                checked={isEnvironmentOverlayEnabled}
+                className="peer sr-only"
+                onChange={(event) => onEnvironmentOverlayChange(event.target.checked)}
+              />
+              <span className="relative h-5 w-9 rounded-full bg-slate-300 transition peer-checked:bg-slate-900 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-slate-900 dark:bg-slate-700 dark:peer-checked:bg-white dark:peer-focus-visible:outline-white">
+                <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition dark:bg-slate-950 ${isEnvironmentOverlayEnabled ? 'translate-x-4' : ''}`} />
+              </span>
+              <span>{messages.accessibility.environmentOverlayLabel}</span>
+            </label>
+          ) : null}
+          {displayMode === 'voting' ? (
+            <label
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200"
+              title={messages.accessibility.patternOverlayDescription}
+            >
+              <input
+                type="checkbox"
+                checked={isPatternOverlayMode}
+                className="peer sr-only"
+                onChange={(event) => onVoteOverlayModeChange(event.target.checked ? 'pattern' : 'color')}
+              />
+              <span className="relative h-5 w-9 rounded-full bg-slate-300 transition peer-checked:bg-slate-900 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-slate-900 dark:bg-slate-700 dark:peer-checked:bg-white dark:peer-focus-visible:outline-white">
+                <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition dark:bg-slate-950 ${isPatternOverlayMode ? 'translate-x-4' : ''}`} />
+              </span>
+              <span>{messages.accessibility.patternOverlayLabel}</span>
+            </label>
+          ) : null}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div
             className="inline-flex rounded-full border border-slate-300 bg-white/80 p-1 text-sm shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80"

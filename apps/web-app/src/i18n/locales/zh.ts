@@ -196,6 +196,8 @@ const zh = {
         dismiss: '关闭通知',
       },
       accessibility: {
+        environmentOverlayLabel: '地图覆盖',
+        environmentOverlayDescription: '在不可点击格子上显示道路地标。',
         patternOverlayLabel: '图案覆盖',
         patternOverlayDescription: '使用带标记的图案区域，而不是混合投票颜色。',
       },
