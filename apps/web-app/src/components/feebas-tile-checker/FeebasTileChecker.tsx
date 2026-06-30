@@ -6,6 +6,8 @@ import { useFeebasDisplayModeState } from './useFeebasDisplayModeState';
 import { useFeebasIdentity } from './useFeebasIdentity';
 import { useFeebasLiveUpdates } from './useFeebasLiveUpdates';
 import { useStoredFeebasLocation } from './useStoredFeebasLocation';
+import { useFeebasTileActions } from './useFeebasTileActions';
+import { useFeebasWeatherActions } from './useFeebasWeatherActions';
 import { useVisiblePolling } from './useVisiblePolling';
 import { getClientLocale, getLocaleParamPath, getTranslations } from '../../i18n';
 import { DEFAULT_LOCATION, getLocalizedLocationOptions } from './locations';
@@ -13,7 +15,7 @@ import { DEFAULT_LEADERBOARD_SORT } from './leaderboard';
 import type {
   BoardResponse, FeebasActivityDelta,
   FeebasActivityEntry, FeebasBoard as FeebasBoardType, FeebasTile, FeebasTileCheckerProps, FeebasTileDelta,
-  PendingNominationNotification, TileStatus,
+  PendingNominationNotification,
 } from './shared';
 import {
   ACTIVITY_PAGE_SIZE, formatActorName, formatCopy,
@@ -485,53 +487,33 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     if (activityPage > activityPageCount) setActivityPage(activityPageCount);
   }, [activityPage, activityPageCount]);
 
-  const updateTile = async (tileId: string, status: TileStatus) => {
-    if (!actorFingerprint || isHeatmapMode) return;
-
-    setPendingAction(tileId);
-    setError(null);
-
-    try {
-      const response = await fetch(`${normalizedApiBaseUrl}/feebas/${activeLocation}/tiles/${tileId}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status,
-          actorFingerprint,
-          actorName: voteActorName || undefined,
-        }),
-      });
-      const payload: BoardResponse = await response.json();
-
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.message || messages.errors.updateTile);
-      }
-
-      applyBoardUpdate(payload.data);
-      setSelectedTileId(tileId);
-      lastFetchedCycleEndRef.current = payload.data.cycleEnd;
-      setCountdown(formatCountdown(payload.data.cycleEnd));
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : messages.errors.updateTile);
-    } finally {
-      setPendingAction(null);
-    }
-  };
-
-  const handleTilePress = (tile: FeebasTile) => {
-    if (isHeatmapMode) return;
-
-    setSelectedTileId(tile.tileId);
-
-    if (pendingAction || tile.currentUserVote !== 'unchecked' || tile.voteCounts.pending > 0 || tile.voteCounts.confirmed > 0) {
-      return;
-    }
-
-    void updateTile(tile.tileId, 'checked');
-  };
+  const { handleTilePress, updateTile } = useFeebasTileActions({
+    activeLocation,
+    actorFingerprint,
+    applyBoardUpdate,
+    isHeatmapMode,
+    messages,
+    normalizedApiBaseUrl,
+    pendingAction,
+    setCountdown,
+    setError,
+    setPendingAction,
+    setSelectedTileId,
+    lastFetchedCycleEndRef,
+    voteActorName,
+  });
+  const updateWeather = useFeebasWeatherActions({
+    activeLocation,
+    actorFingerprint,
+    applyBoardUpdate,
+    messages,
+    normalizedApiBaseUrl,
+    setCountdown,
+    setError,
+    setPendingAction,
+    lastFetchedCycleEndRef,
+    voteActorName,
+  });
 
   useVisiblePolling({
     enabled: Boolean(actorFingerprint && !isAuthLoading && board),
@@ -589,6 +571,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
       onStartHotkeyCapture={startHotkeyCapture}
       onTilePress={handleTilePress}
       onUpdateTile={updateTile}
+      onUpdateWeather={updateWeather}
     />
   );
 };

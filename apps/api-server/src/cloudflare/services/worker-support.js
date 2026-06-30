@@ -20,7 +20,7 @@ const {
 } = require('../auth');
 const { createRepositories } = require('../repositories');
 const { buildCorsHeaders, empty, json, readJson, withStandardHeaders } = require('../http');
-const { FeebasRuleError, getLocationConfig } = require('../../utils/feebas');
+const { FeebasRuleError, getLocationConfig, getWeatherAreaLocationIds } = require('../../utils/feebas');
 const { isIgnBlacklisted } = require('../../utils/ignModeration');
 const {
   calculateCatchEventScore,
@@ -44,6 +44,11 @@ const discordHandoffHashParam = 'discordAuthToken';
 
 const updateFeebasTileSchema = Joi.object({
   status: Joi.string().valid('unchecked', 'checked', 'pending', 'confirmed').required(),
+  actorFingerprint: Joi.string().trim().min(8).max(120).required(),
+  actorName: Joi.string().trim().allow('', null).max(40).optional(),
+});
+const updateFeebasWeatherSchema = Joi.object({
+  weather: Joi.string().valid('rainy', 'clear').required(),
   actorFingerprint: Joi.string().trim().min(8).max(120).required(),
   actorName: Joi.string().trim().allow('', null).max(40).optional(),
 });
@@ -1179,6 +1184,7 @@ module.exports = {
   withStandardHeaders,
   FeebasRuleError,
   getLocationConfig,
+  getWeatherAreaLocationIds,
   isIgnBlacklisted,
   passwordResetExpiresInMinutes,
   passwordResetSentMessage,
@@ -1190,6 +1196,7 @@ module.exports = {
   discordHandoffExpiresIn,
   discordHandoffHashParam,
   updateFeebasTileSchema,
+  updateFeebasWeatherSchema,
   feebasActorFingerprintSchema,
   feebasLastActivityIdSchema,
   passwordSchema,

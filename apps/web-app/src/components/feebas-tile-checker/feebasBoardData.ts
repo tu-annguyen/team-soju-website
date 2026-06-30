@@ -3,6 +3,7 @@ import type {
   FeebasBoard,
   FeebasLeaderboard,
   FeebasVotesResponse,
+  Route119Weather,
   TileStatus,
 } from './shared';
 
@@ -23,16 +24,24 @@ function buildQuery(params: Record<string, string | undefined>) {
 }
 
 function normalizeVotesResponse(body: unknown) {
-  if (!body) return new Map<string, TileStatus>();
+  if (!body) {
+    return {
+      tiles: new Map<string, TileStatus>(),
+      weather: null,
+    };
+  }
 
   const payload = body as Partial<FeebasVotesResponse | BoardResponse>;
   const data = payload.data as FeebasVotesResponse['data'] | FeebasBoard | undefined;
   const tiles = Array.isArray(data?.tiles) ? data.tiles : [];
 
-  return new Map(tiles.map((tile) => [
-    tile.tileId,
-    (tile.currentUserVote || 'unchecked') as TileStatus,
-  ]));
+  return {
+    tiles: new Map(tiles.map((tile) => [
+      tile.tileId,
+      (tile.currentUserVote || 'unchecked') as TileStatus,
+    ])),
+    weather: (data as FeebasVotesResponse['data'] | undefined)?.weather?.currentUserVote || null,
+  };
 }
 
 function normalizeLeaderboardResponse(body: unknown) {
@@ -88,15 +97,21 @@ export async function fetchFeebasBoardData({
       credentials: 'include',
     }),
   ]);
-  const currentVotesByTile = normalizeVotesResponse(votesPayload);
+  const currentVotes = normalizeVotesResponse(votesPayload);
   const leaderboard = normalizeLeaderboardResponse(leaderboardPayload) || boardPayload.data.leaderboard;
 
   return {
     ...boardPayload.data,
     ...(leaderboard ? { leaderboard } : {}),
+    weather: boardPayload.data.weather
+      ? {
+          ...boardPayload.data.weather,
+          currentUserVote: currentVotes.weather as Route119Weather | null,
+        }
+      : boardPayload.data.weather,
     tiles: boardPayload.data.tiles.map((tile) => ({
       ...tile,
-      currentUserVote: currentVotesByTile.get(tile.tileId) || tile.currentUserVote || 'unchecked',
+      currentUserVote: currentVotes.tiles.get(tile.tileId) || tile.currentUserVote || 'unchecked',
     })),
   };
 }

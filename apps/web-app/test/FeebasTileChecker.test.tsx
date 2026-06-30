@@ -27,6 +27,16 @@ const boardFixture = {
       confirmations: 5,
     },
   ],
+  weather: {
+    areaId: 'route-119',
+    dayStart: '2026-04-09T18:00:00.000Z',
+    dayEnd: '2026-04-10T00:00:00.000Z',
+    nextPossibleChangeAt: '2026-04-10T00:00:00.000Z',
+    minimumCyclesUntilPossibleChange: 5,
+    confirmed: null,
+    pending: [],
+    currentUserVote: null,
+  },
   layout: {
     rows: 2,
     cols: 2,
@@ -121,6 +131,7 @@ const mtCoronetBoardFixture = {
   location: 'mt-coronet',
   displayName: 'Mt. Coronet, Sinnoh',
   description: 'Mt. Coronet pond tiles for live Feebas coordination.',
+  weather: null,
   layout: {
     rows: 34,
     cols: 18,
@@ -345,6 +356,31 @@ describe('FeebasTileChecker', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders Route 119 weather reporting and submits weather votes', async () => {
+    const fetchMock = mockFeebasFetch();
+    (global as any).fetch = fetchMock;
+
+    render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
+    );
+
+    expect(screen.getByText(/Route 119 Weather/i)).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Report Rainy/i }));
+
+    await waitFor(() => {
+      const weatherPost = findFetchPostCall(fetchMock, '/feebas/route-119-main/weather');
+      expect(weatherPost).toBeTruthy();
+      expect(JSON.parse(String((weatherPost?.[1] as RequestInit).body))).toEqual({
+        weather: 'rainy',
+        actorFingerprint: 'client-self',
+      });
+    });
+  });
+
   it('renders Route 119 environment slices only on non-interactable cells', async () => {
     render(<FeebasTileChecker apiBaseUrl="http://localhost:3001/api" />);
 
@@ -383,6 +419,7 @@ describe('FeebasTileChecker', () => {
     expect(screen.queryAllByTestId('feebas-environment-cell')).toHaveLength(0);
     expect(screen.getAllByTestId('feebas-terrain-cell').length).toBeGreaterThan(0);
     expect(screen.queryByRole('checkbox', { name: /Map overlay/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Route 119 Weather/i)).not.toBeInTheDocument();
   });
 
   it('toggles the board display mode with the default hotkey', async () => {

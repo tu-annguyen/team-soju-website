@@ -2,6 +2,10 @@ const {
   getCycleWindow,
   getLeaderboardLocationIds,
   getLocationConfig,
+  getMinimumFeebasCyclesUntilPossibleWeatherChange,
+  getPokeMmoDayWindow,
+  getWeatherAreaId,
+  getWeatherAreaLocationIds,
 } = require('../src/utils/feebas');
 
 describe('Feebas utilities', () => {
@@ -56,5 +60,28 @@ describe('Feebas utilities', () => {
       'route-119-upstream',
     ]);
     expect(getLeaderboardLocationIds('mt-coronet')).toEqual(['mt-coronet']);
+  });
+
+  it('aligns PokeMMO day windows to six hour server days', () => {
+    const firstDay = getPokeMmoDayWindow(new Date('2026-06-30T05:59:59.000Z'));
+    const secondDay = getPokeMmoDayWindow(new Date('2026-06-30T06:00:00.000Z'));
+
+    expect(firstDay.dayStart.toISOString()).toBe('2026-06-30T00:00:00.000Z');
+    expect(firstDay.dayEnd.toISOString()).toBe('2026-06-30T06:00:00.000Z');
+    expect(secondDay.dayStart.toISOString()).toBe('2026-06-30T06:00:00.000Z');
+    expect(secondDay.dayEnd.toISOString()).toBe('2026-06-30T12:00:00.000Z');
+  });
+
+  it('calculates minimum Feebas cycles until weather can change', () => {
+    expect(getMinimumFeebasCyclesUntilPossibleWeatherChange(new Date('2026-06-30T00:00:00.000Z'))).toBe(8);
+    expect(getMinimumFeebasCyclesUntilPossibleWeatherChange(new Date('2026-06-30T05:15:00.000Z'))).toBe(1);
+    expect(getMinimumFeebasCyclesUntilPossibleWeatherChange(new Date('2026-06-30T06:00:00.000Z'))).toBe(8);
+  });
+
+  it('maps Route 119 locations to one shared weather area', () => {
+    expect(getWeatherAreaId('route-119-main')).toBe('route-119');
+    expect(getWeatherAreaId('route-119-upstream')).toBe('route-119');
+    expect(getWeatherAreaId('mt-coronet')).toBeNull();
+    expect(getWeatherAreaLocationIds('route-119')).toEqual(['route-119-main', 'route-119-upstream']);
   });
 });

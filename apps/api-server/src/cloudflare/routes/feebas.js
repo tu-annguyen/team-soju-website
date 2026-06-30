@@ -23,6 +23,7 @@ const {
   withStandardHeaders,
   FeebasRuleError,
   getLocationConfig,
+  getWeatherAreaLocationIds,
   isIgnBlacklisted,
   passwordResetExpiresInMinutes,
   passwordResetSentMessage,
@@ -34,6 +35,7 @@ const {
   discordHandoffExpiresIn,
   discordHandoffHashParam,
   updateFeebasTileSchema,
+  updateFeebasWeatherSchema,
   feebasActorFingerprintSchema,
   feebasLastActivityIdSchema,
   passwordSchema,
@@ -172,6 +174,7 @@ function stripFeebasCurrentUserVotes(board) {
   return {
     ...board,
     tiles: (board.tiles || []).map(({ currentUserVote, ...tile }) => tile),
+    weather: board.weather ? { ...board.weather, currentUserVote: null } : board.weather,
   };
 }
 
@@ -262,6 +265,44 @@ async function handleFeebasRoutes(context) {
 
         console.error('Error fetching Feebas leaderboard:', error);
         return json({ success: false, message: 'Failed to fetch Feebas leaderboard' }, { status: 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/feebas\/([^/]+)\/weather$/);
+    if (request.method === 'POST' && match) {
+      try {
+        getLocationConfig(match[1]);
+        const body = await readJson(request);
+        const { error, value } = updateFeebasWeatherSchema.validate(body);
+
+        if (error) {
+          return json({
+            success: false,
+            message: 'Validation error',
+            details: error.details,
+          }, { status: 400 });
+        }
+
+        const board = await getRepositories().feebas.updateWeather(match[1], value, {
+          includeLeaderboard: false,
+        });
+        const weatherLocations = getWeatherAreaLocationIds(board.weather?.areaId);
+        await Promise.all(weatherLocations.map((weatherLocation) => (
+          broadcastFeebasBoard(weatherLocation, getRepositories(), env, { forceRefresh: true })
+        )));
+
+        return json({
+          success: true,
+          data: board,
+          message: 'Route 119 weather updated successfully',
+        });
+      } catch (error) {
+        if (error instanceof FeebasRuleError) {
+          return json({ success: false, message: error.message }, { status: error.statusCode });
+        }
+
+        console.error('Error updating Route 119 weather:', error);
+        return json({ success: false, message: 'Failed to update Route 119 weather' }, { status: 500 });
       }
     }
 
@@ -401,19 +442,26 @@ async function handleFeebasRoutes(context) {
       try {
         getLocationConfig(match[1]);
         const actorFingerprint = feebasActorFingerprintSchema.validate(url.searchParams.get('actorFingerprint') || undefined).value;
-        const tiles = typeof getRepositories().feebas.getCurrentVotes === 'function'
+        const currentVotes = typeof getRepositories().feebas.getCurrentVotes === 'function'
           ? await getRepositories().feebas.getCurrentVotes(match[1], actorFingerprint)
           : (await getRepositories().feebas.getBoard(match[1], {
               actorFingerprint,
               includeLeaderboard: false,
-            })).tiles.map((tile) => ({
-              tileId: tile.tileId,
-              currentUserVote: tile.currentUserVote,
             }));
+        const tiles = Array.isArray(currentVotes)
+          ? currentVotes
+          : currentVotes.tiles;
+        const weather = Array.isArray(currentVotes)
+          ? null
+          : currentVotes.weather;
 
         return json({
           success: true,
-          data: { location: match[1], tiles },
+          data: {
+            location: match[1],
+            tiles,
+            ...(weather ? { weather: { currentUserVote: weather.currentUserVote } } : {}),
+          },
         }, {
           headers: {
             'cache-control': 'private, no-store',

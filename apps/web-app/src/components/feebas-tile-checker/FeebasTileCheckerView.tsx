@@ -4,6 +4,7 @@ import { FeebasStatusPanel } from './FeebasStatusPanel';
 import { LeaderboardPanel } from './LeaderboardPanel';
 import { LocationHeader } from './LocationHeader';
 import { PendingNominationToast } from './PendingNominationToast';
+import { Route119WeatherPanel } from './Route119WeatherPanel';
 import { SelectedTilePanel } from './SelectedTilePanel';
 import { useFeebasVoteOverlayMode } from './useFeebasVoteOverlayMode';
 import type React from 'react';
@@ -19,6 +20,7 @@ import type {
   FeebasTile,
   LeaderboardSortState,
   PendingNominationNotification,
+  Route119Weather,
   TileStatus,
 } from './shared';
 
@@ -71,6 +73,7 @@ type Props = {
   onStartHotkeyCapture: () => void;
   onTilePress: (tile: FeebasTile) => void;
   onUpdateTile: (tileId: string, status: TileStatus) => void;
+  onUpdateWeather: (weather: Route119Weather) => void;
 };
 
 export function FeebasTileCheckerView({
@@ -122,6 +125,7 @@ export function FeebasTileCheckerView({
   onStartHotkeyCapture,
   onTilePress,
   onUpdateTile,
+  onUpdateWeather,
 }: Props) {
   const { voteOverlayMode, setVoteOverlayMode } = useFeebasVoteOverlayMode();
 
@@ -196,6 +200,13 @@ export function FeebasTileCheckerView({
             totalConfirmedVotes={totalConfirmedVotes}
             totalPendingVotes={totalPendingVotes}
             voteOverlayMode={voteOverlayMode}
+          />
+          <Route119WeatherPanel
+            board={board}
+            loading={loading}
+            messages={messages}
+            pendingAction={pendingAction}
+            onUpdateWeather={onUpdateWeather}
           />
           <SelectedTilePanel
             isHeatmapMode={isHeatmapMode}

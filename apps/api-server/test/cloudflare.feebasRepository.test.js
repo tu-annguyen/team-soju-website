@@ -127,4 +127,138 @@ describe('Cloudflare Feebas repository', () => {
       }],
     }));
   });
+
+  it('records a pending Route 119 weather report for the current PokeMMO day', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn().mockResolvedValue({
+      id: 5,
+      location: 'route-119-main',
+      cycle_start: '2026-06-30T00:00:00.000Z',
+      cycle_end: '2026-06-30T00:45:00.000Z',
+    });
+    const weatherRows = [{
+      id: 1,
+      weather_area: 'route-119',
+      pokemmo_day_start: '2026-06-30T00:00:00.000Z',
+      weather: 'rainy',
+      actor_fingerprint: 'client-12345678',
+      actor_name: 'May',
+      created_at: '2026-06-30T00:05:00.000Z',
+      updated_at: '2026-06-30T00:05:00.000Z',
+    }];
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(weatherRows);
+    const repository = createFeebasRepository({
+      dialect: 'd1',
+      parameter: () => '?',
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    const board = await repository.updateWeather('route-119-main', {
+      weather: 'rainy',
+      actorFingerprint: 'client-12345678',
+      actorName: 'May',
+    }, {
+      includeLeaderboard: false,
+      now: '2026-06-30T00:05:00.000Z',
+    });
+
+    expect(runCommand).toHaveBeenNthCalledWith(1, expect.stringContaining('DELETE FROM feebas_weather_reports'), [
+      'route-119',
+      '2026-06-30T00:00:00.000Z',
+      'client-12345678',
+    ]);
+    expect(runCommand).toHaveBeenNthCalledWith(2, expect.stringContaining('INSERT INTO feebas_weather_reports'), [
+      'route-119',
+      '2026-06-30T00:00:00.000Z',
+      'rainy',
+      'client-12345678',
+      'May',
+      '2026-06-30T00:05:00.000Z',
+      '2026-06-30T00:05:00.000Z',
+    ]);
+    expect(board.weather).toEqual(expect.objectContaining({
+      areaId: 'route-119',
+      confirmed: null,
+      currentUserVote: 'rainy',
+      minimumCyclesUntilPossibleChange: 8,
+    }));
+    expect(board.weather.pending).toEqual([
+      expect.objectContaining({
+        weather: 'rainy',
+        confirmations: 1,
+      }),
+    ]);
+  });
+
+  it('confirms Route 119 weather after a second distinct report', async () => {
+    const runCommand = jest.fn().mockResolvedValue({});
+    const runOne = jest.fn().mockResolvedValue({
+      id: 5,
+      location: 'route-119-main',
+      cycle_start: '2026-06-30T00:00:00.000Z',
+      cycle_end: '2026-06-30T00:45:00.000Z',
+    });
+    const weatherRows = [
+      {
+        id: 1,
+        weather_area: 'route-119',
+        pokemmo_day_start: '2026-06-30T00:00:00.000Z',
+        weather: 'rainy',
+        actor_fingerprint: 'client-12345678',
+        actor_name: 'May',
+        created_at: '2026-06-30T00:05:00.000Z',
+        updated_at: '2026-06-30T00:05:00.000Z',
+      },
+      {
+        id: 2,
+        weather_area: 'route-119',
+        pokemmo_day_start: '2026-06-30T00:00:00.000Z',
+        weather: 'rainy',
+        actor_fingerprint: 'client-87654321',
+        actor_name: 'Brendan',
+        created_at: '2026-06-30T00:08:00.000Z',
+        updated_at: '2026-06-30T00:08:00.000Z',
+      },
+    ];
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([weatherRows[0]])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(weatherRows);
+    const repository = createFeebasRepository({
+      dialect: 'd1',
+      parameter: () => '?',
+      runCommand,
+      runOne,
+      runSelect,
+    });
+
+    const board = await repository.updateWeather('route-119-upstream', {
+      weather: 'rainy',
+      actorFingerprint: 'client-87654321',
+      actorName: 'Brendan',
+    }, {
+      includeLeaderboard: false,
+      now: '2026-06-30T00:08:00.000Z',
+    });
+
+    expect(board.weather).toEqual(expect.objectContaining({
+      areaId: 'route-119',
+      currentUserVote: 'rainy',
+      confirmed: expect.objectContaining({
+        weather: 'rainy',
+        actorName: 'Brendan',
+        confirmations: 2,
+        confirmedAt: '2026-06-30T00:08:00.000Z',
+      }),
+    }));
+  });
 });

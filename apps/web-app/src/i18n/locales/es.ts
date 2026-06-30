@@ -195,6 +195,21 @@ const es = {
         pendingTiles: 'Casillas de Feebas pendientes',
         confirmedTiles: 'Casillas de Feebas confirmadas',
       },
+      weather: {
+        heading: 'Clima de Ruta 119',
+        currentLabel: 'Clima actual',
+        unknown: 'Desconocido',
+        confirmedBy: 'Confirmado por {actorName}',
+        minimumCyclesLabel: 'Ciclos minimos hasta posible cambio de clima',
+        values: {
+          rainy: 'Lluvia',
+          clear: 'Despejado',
+        },
+        reportAction: 'Reportar {weather}',
+        confirmAction: 'Confirmar {weather}',
+        alreadyReported: 'Reportado',
+        pendingCount: '{count}/2',
+      },
       notifications: {
         pendingNominationTitle: 'Nominacion pendiente',
         pendingNominationBody: '{actorName} nomino {tileLabel} en {location}.',
@@ -304,6 +319,7 @@ const es = {
         loadBoard: 'No se pudo cargar el tablero de Feebas',
         refreshBoard: 'No se pudo actualizar el tablero de Feebas',
         updateTile: 'No se pudo actualizar la casilla de Feebas',
+        updateWeather: 'No se pudo actualizar el clima de Ruta 119',
         liveUpdatesDisconnected:
           'Las actualizaciones en vivo se desconectaron. El tablero volvera a refrescarse pronto.',
       },
