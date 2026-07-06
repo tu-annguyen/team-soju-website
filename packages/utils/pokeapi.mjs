@@ -1,5 +1,8 @@
 import PokedexModule from 'pokedex-promise-v2';
 import { buildAnimatedShinySpriteUrl } from './sprite-url.mjs';
+import variantFilter from './variant-filter.cjs';
+
+const { filterEntriesToGenerationV } = variantFilter;
 
 const Pokedex = PokedexModule.default || PokedexModule;
 let pokedex;
@@ -29,7 +32,6 @@ function extractEvolutionSpecies(chainNode, collected = []) {
 }
 
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
-
 function isNidoranRouteName(value) {
   return NIDORAN_ROUTE_NAMES.has(normalizePokemonName(value));
 }
@@ -55,7 +57,14 @@ function buildSingleEntryVariantResult(species, nationalNumber, metadata = {}) {
   };
 }
 
-function createVariantEntry({ value, label, source, isDefault = false, spriteCheckName = null }) {
+function createVariantEntry({
+  value,
+  label,
+  source,
+  isDefault = false,
+  spriteCheckName = null,
+  versionGroup = null,
+}) {
   const normalizedValue = normalizePokemonName(value);
   if (!normalizedValue) return null;
 
@@ -65,6 +74,7 @@ function createVariantEntry({ value, label, source, isDefault = false, spriteChe
     source,
     is_default: Boolean(isDefault),
     sprite_check_name: normalizePokemonName(spriteCheckName),
+    introduced_in_version_group: normalizePokemonName(versionGroup),
   };
 }
 
@@ -88,26 +98,11 @@ function hasGenerationVAnimatedSprite(pokemonData) {
   return Object.values(animatedSprites).some(Boolean);
 }
 
-async function filterEntriesToGenerationV(entries) {
-  const spriteAvailabilityCache = new Map();
-
-  const filteredEntries = await Promise.all(entries.map(async (entry) => {
-    if (!entry?.value) return null;
-    const spriteCheckName = entry.sprite_check_name || entry.value;
-
-    if (!spriteAvailabilityCache.has(spriteCheckName)) {
-      const hasGen5Sprite = await getPokedex()
-        .getPokemonByName(spriteCheckName)
-        .then(hasGenerationVAnimatedSprite)
-        .catch(() => false);
-
-      spriteAvailabilityCache.set(spriteCheckName, hasGen5Sprite);
-    }
-
-    return spriteAvailabilityCache.get(spriteCheckName) ? entry : null;
-  }));
-
-  return filteredEntries.filter(Boolean);
+function hasGenerationVAnimatedSpriteForPokemonName(pokemonName) {
+  return getPokedex()
+    .getPokemonByName(pokemonName)
+    .then(hasGenerationVAnimatedSprite)
+    .catch(() => false);
 }
 
 function serializeVariantEntry(entry) {
@@ -169,6 +164,7 @@ async function getFormEntriesForPokemon(pokemonName) {
             source: 'pokemon.forms',
             isDefault: formData?.is_default,
             spriteCheckName: formData?.pokemon?.name || pokemonData?.name || normalizedPokemon,
+            versionGroup: formData?.version_group?.name,
           });
         } catch (error) {
           return createVariantEntry({
@@ -294,10 +290,14 @@ export async function getPokemonVariants(pokemon) {
 
     const generationVEntries = await filterEntriesToGenerationV(
       dedupeVariantEntries([
-        ...varietyEntries,
         ...formEntriesByVariety.flat().filter(Boolean),
+        ...varietyEntries,
         ...fallbackEntries.filter(Boolean),
-      ])
+      ]),
+      {
+        speciesName: species?.name || speciesName,
+        hasGenerationVSpriteForName: hasGenerationVAnimatedSpriteForPokemonName,
+      }
     );
 
     const entries = collapseBaseSpeciesEntry(
