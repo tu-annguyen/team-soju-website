@@ -1406,6 +1406,49 @@ describe('Cloudflare Worker API', () => {
     expect(body.message).toBe('Feebas tile updated successfully');
   });
 
+  it('updates Route 119 weather through the Worker repository contract', async () => {
+    const board = {
+      location: 'route-119-main',
+      weather: {
+        areaId: 'route-119',
+        currentUserVote: 'rainy',
+      },
+      tiles: [],
+      activity: [],
+    };
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {},
+      feebas: {
+        updateWeather: jest.fn().mockResolvedValue(board),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/feebas/route-119-main/weather', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        weather: 'rainy',
+        actorFingerprint: 'client-12345678',
+        actorName: 'Trainer',
+      }),
+    }), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(repositories.feebas.updateWeather).toHaveBeenCalledWith('route-119-main', {
+      weather: 'rainy',
+      actorFingerprint: 'client-12345678',
+      actorName: 'Trainer',
+    }, {
+      includeLeaderboard: false,
+    });
+    expect(body.message).toBe('Route 119 weather updated successfully');
+    expect(body.data).toEqual(board);
+  });
+
   it('serves Feebas WebSocket updates from the Worker repository contract', async () => {
     const board = {
       location: 'route-119-main',

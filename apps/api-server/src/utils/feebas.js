@@ -1,5 +1,8 @@
 const FEEBAS_RESET_INTERVAL_MS = 45 * 60 * 1000;
 const FEEBAS_RESET_ANCHOR_ISO = '2026-04-09T20:15:00.000Z';
+const POKEMMO_DAY_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const POKEMMO_DAY_ANCHOR_ISO = '1970-01-01T00:00:00.000Z';
+const ROUTE_119_WEATHER_AREA_ID = 'route-119';
 
 const ROUTE_119_MAIN_MASK = [
   '0000000100000000000',
@@ -167,6 +170,8 @@ const FEEBAS_LOCATIONS = {
 };
 
 const ROUTE_119_LEADERBOARD_LOCATION_IDS = ['route-119-main', 'route-119-upstream'];
+const ROUTE_119_LOCATION_IDS = ['route-119-main', 'route-119-upstream'];
+const WEATHER_VALUES = ['rainy', 'clear'];
 
 class FeebasRuleError extends Error {
   constructor(message, statusCode = 400) {
@@ -194,6 +199,16 @@ function getLeaderboardLocationIds(location) {
     : [location];
 }
 
+function getWeatherAreaId(location) {
+  getLocationConfig(location);
+
+  return ROUTE_119_LOCATION_IDS.includes(location) ? ROUTE_119_WEATHER_AREA_ID : null;
+}
+
+function getWeatherAreaLocationIds(weatherAreaId) {
+  return weatherAreaId === ROUTE_119_WEATHER_AREA_ID ? [...ROUTE_119_LOCATION_IDS] : [];
+}
+
 function getCycleWindow(now = new Date()) {
   const anchorMs = Date.parse(FEEBAS_RESET_ANCHOR_ISO);
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
@@ -206,6 +221,28 @@ function getCycleWindow(now = new Date()) {
     cycleStart: new Date(cycleStartMs),
     cycleEnd: new Date(cycleEndMs),
   };
+}
+
+function getPokeMmoDayWindow(now = new Date()) {
+  const anchorMs = Date.parse(POKEMMO_DAY_ANCHOR_ISO);
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  const dayIndex = Math.floor((nowMs - anchorMs) / POKEMMO_DAY_INTERVAL_MS);
+  const dayStartMs = anchorMs + (dayIndex * POKEMMO_DAY_INTERVAL_MS);
+  const dayEndMs = dayStartMs + POKEMMO_DAY_INTERVAL_MS;
+
+  return {
+    dayIndex,
+    dayStart: new Date(dayStartMs),
+    dayEnd: new Date(dayEndMs),
+  };
+}
+
+function getMinimumFeebasCyclesUntilPossibleWeatherChange(now = new Date()) {
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  const { dayEnd } = getPokeMmoDayWindow(now);
+  const diffMs = dayEnd.getTime() - nowMs;
+
+  return Math.max(0, Math.ceil(diffMs / FEEBAS_RESET_INTERVAL_MS));
 }
 
 function sanitizeActorName(name) {
@@ -234,17 +271,34 @@ function validateStatus(status) {
   return status;
 }
 
+function validateWeather(weather) {
+  if (!WEATHER_VALUES.includes(weather)) {
+    throw new FeebasRuleError('Invalid Route 119 weather');
+  }
+
+  return weather;
+}
+
 module.exports = {
   FEEBAS_LOCATIONS,
   FEEBAS_RESET_ANCHOR_ISO,
   FEEBAS_RESET_INTERVAL_MS,
   FEEBAS_STATUSES,
   FEEBAS_VOTABLE_STATUSES,
+  POKEMMO_DAY_ANCHOR_ISO,
+  POKEMMO_DAY_INTERVAL_MS,
+  ROUTE_119_WEATHER_AREA_ID,
+  WEATHER_VALUES,
   FeebasRuleError,
+  getMinimumFeebasCyclesUntilPossibleWeatherChange,
   getLocationConfig,
   getLeaderboardLocationIds,
+  getPokeMmoDayWindow,
+  getWeatherAreaId,
+  getWeatherAreaLocationIds,
   getCycleWindow,
   sanitizeActorName,
   sanitizeFingerprint,
   validateStatus,
+  validateWeather,
 };

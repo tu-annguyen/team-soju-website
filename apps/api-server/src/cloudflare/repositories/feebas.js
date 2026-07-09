@@ -4,9 +4,13 @@ const {
   getCycleWindow,
   getLeaderboardLocationIds,
   getLocationConfig,
+  getMinimumFeebasCyclesUntilPossibleWeatherChange,
+  getPokeMmoDayWindow,
+  getWeatherAreaId,
   sanitizeActorName,
   sanitizeFingerprint,
   validateStatus,
+  validateWeather,
 } = require('../../utils/feebas');
 
 const DEFAULT_LEADERBOARD_LIMIT = 10;
@@ -51,6 +55,17 @@ function toTimeMs(value) {
 
 function toIsoString(value) {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function isMissingWeatherReportsTableError(error) {
+  return String(error?.message || error).includes('no such table: feebas_weather_reports');
+}
+
+function createMissingWeatherReportsTableError() {
+  return new FeebasRuleError(
+    'Route 119 weather reporting is unavailable until the D1 schema is updated.',
+    503,
+  );
 }
 
 function getCycleKey(row) {
@@ -226,6 +241,79 @@ function mapActivityLogEntry(entry) {
   };
 }
 
+function buildWeatherStatus({ location, rows, now, actorFingerprint }) {
+  const weatherAreaId = getWeatherAreaId(location);
+  if (!weatherAreaId) {
+    return null;
+  }
+
+  const { dayStart, dayEnd } = getPokeMmoDayWindow(now);
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const rowsByWeather = safeRows.reduce((map, row) => {
+    const nextRows = map.get(row.weather) || [];
+    nextRows.push(row);
+    map.set(row.weather, nextRows);
+    return map;
+  }, new Map());
+  const summaries = Array.from(rowsByWeather.entries()).map(([weather, weatherRows]) => {
+    const sortedRows = [...weatherRows].sort((left, right) => (
+      compareNumbers(toTimeMs(left.updated_at), toTimeMs(right.updated_at))
+      || compareNumbers(left.id, right.id)
+    ));
+    const firstRow = sortedRows[0] || null;
+    const confirmationRow = sortedRows[1] || null;
+
+    return {
+      weather,
+      confirmations: sortedRows.length,
+      actorName: confirmationRow?.actor_name || firstRow?.actor_name || null,
+      reportedAt: firstRow ? toIsoString(firstRow.updated_at) : null,
+      confirmedAt: confirmationRow ? toIsoString(confirmationRow.updated_at) : null,
+      rows: sortedRows,
+    };
+  });
+  const confirmed = summaries
+    .filter((summary) => summary.confirmedAt)
+    .sort((left, right) => (
+      compareNumbers(toTimeMs(right.confirmedAt), toTimeMs(left.confirmedAt))
+      || compareNumbers(right.confirmations, left.confirmations)
+    ))[0] || null;
+  const currentUserReport = actorFingerprint
+    ? safeRows
+        .filter((row) => row.actor_fingerprint === actorFingerprint)
+        .sort((left, right) => (
+          compareNumbers(toTimeMs(right.updated_at), toTimeMs(left.updated_at))
+          || compareNumbers(right.id, left.id)
+        ))[0] || null
+    : null;
+
+  return {
+    areaId: weatherAreaId,
+    dayStart: dayStart.toISOString(),
+    dayEnd: dayEnd.toISOString(),
+    nextPossibleChangeAt: dayEnd.toISOString(),
+    minimumCyclesUntilPossibleChange: getMinimumFeebasCyclesUntilPossibleWeatherChange(now),
+    confirmed: confirmed
+      ? {
+          weather: confirmed.weather,
+          actorName: confirmed.actorName,
+          reportedAt: confirmed.reportedAt,
+          confirmedAt: confirmed.confirmedAt,
+          confirmations: confirmed.confirmations,
+        }
+      : null,
+    pending: summaries
+      .filter((summary) => summary.weather !== confirmed?.weather && summary.confirmations > 0)
+      .map((summary) => ({
+        weather: summary.weather,
+        actorName: summary.actorName,
+        reportedAt: summary.reportedAt,
+        confirmations: summary.confirmations,
+      })),
+    currentUserVote: currentUserReport?.weather || null,
+  };
+}
+
 function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const leaderboardCache = new Map();
   const activeTimestampOrder = dialect === 'd1'
@@ -261,6 +349,31 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (source_cycle_id, tile_id) DO NOTHING`;
+  const upsertWeatherReportSql = dialect === 'd1'
+    ? `INSERT INTO feebas_weather_reports (
+         weather_area,
+         pokemmo_day_start,
+         weather,
+         actor_fingerprint,
+         actor_name,
+         created_at,
+         updated_at
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(weather_area, pokemmo_day_start, weather, actor_fingerprint)
+       DO UPDATE SET actor_name = excluded.actor_name, updated_at = excluded.updated_at`
+    : `INSERT INTO feebas_weather_reports (
+         weather_area,
+         pokemmo_day_start,
+         weather,
+         actor_fingerprint,
+         actor_name,
+         created_at,
+         updated_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT(weather_area, pokemmo_day_start, weather, actor_fingerprint)
+       DO UPDATE SET actor_name = EXCLUDED.actor_name, updated_at = EXCLUDED.updated_at`;
 
   function clearLeaderboardCache(location) {
     const cacheScope = getLeaderboardLocationIds(location).join('+');
@@ -339,6 +452,39 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       FROM feebas_tile_votes
       WHERE cycle_id = ${parameter(1)} AND tile_id = ${parameter(2)}
     `, [cycleId, tileId]);
+  }
+
+  async function getWeatherRows(location, now = new Date()) {
+    const weatherAreaId = getWeatherAreaId(location);
+    if (!weatherAreaId) {
+      return [];
+    }
+
+    const { dayStart } = getPokeMmoDayWindow(now);
+    try {
+      return await runSelect(`
+        SELECT *
+        FROM feebas_weather_reports
+        WHERE weather_area = ${parameter(1)} AND pokemmo_day_start = ${parameter(2)}
+        ORDER BY updated_at DESC, id DESC
+      `, [weatherAreaId, dayStart.toISOString()]);
+    } catch (error) {
+      if (isMissingWeatherReportsTableError(error)) {
+        return [];
+      }
+
+      throw error;
+    }
+  }
+
+  async function getWeatherStatus(location, now = new Date(), actorFingerprint = null) {
+    const weatherRows = await getWeatherRows(location, now);
+    return buildWeatherStatus({
+      location,
+      rows: weatherRows,
+      now,
+      actorFingerprint,
+    });
   }
 
   async function applyTileVote(cycleId, tileId, { currentVote, pendingVote, actorFingerprint, actorName, nextStatus, now }) {
@@ -801,6 +947,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
     const leaderboard = includeLeaderboard
       ? await getLeaderboard(location, { now, currentUserId: options.currentUserId })
       : undefined;
+    const weather = await getWeatherStatus(location, now, actorFingerprint);
     const votesByTile = votes.reduce((map, row) => {
       const existing = map.get(row.tile_id) || [];
       existing.push(row);
@@ -844,6 +991,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         cols: locationConfig.cols,
       },
       activity: activityRows.map(mapActivityLogEntry),
+      weather,
       ...(includeLeaderboard ? { leaderboard } : {}),
       tiles,
       votesByTile,
@@ -938,6 +1086,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         ORDER BY ${activeTimestampOrder} DESC, id DESC
         LIMIT 20
       `, [cycle.id]);
+      const weather = await getWeatherStatus(location, now);
 
       const locationConfig = getLocationConfig(location);
       const votesByTile = votes.reduce((map, row) => {
@@ -983,6 +1132,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
           cols: locationConfig.cols,
         },
         activity: activityRows.map(mapActivityLogEntry),
+        weather,
         tiles,
         votesByTile,
       };
@@ -1023,7 +1173,10 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
     async getCurrentVotes(location, actorFingerprint, options = {}) {
       const sanitizedFingerprint = sanitizeFingerprint(actorFingerprint);
       if (!sanitizedFingerprint) {
-        return [];
+        return {
+          tiles: [],
+          weather: null,
+        };
       }
 
       const now = options.now ? new Date(options.now) : new Date();
@@ -1035,10 +1188,13 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         WHERE cycle_id = ${parameter(1)} AND actor_fingerprint = ${parameter(2)}
       `, [cycle.id, sanitizedFingerprint]);
 
-      return votes.map((vote) => ({
-        tileId: vote.tile_id,
-        currentUserVote: vote.status || 'unchecked',
-      }));
+      return {
+        tiles: votes.map((vote) => ({
+          tileId: vote.tile_id,
+          currentUserVote: vote.status || 'unchecked',
+        })),
+        weather: await getWeatherStatus(location, now, sanitizedFingerprint),
+      };
     },
 
     applyUserViewToBoardCache(boardCache, actorFingerprint) {
@@ -1124,6 +1280,65 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
         now,
       });
 
+      return getBoardForCycle(
+        location,
+        { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd },
+        now,
+        actorFingerprint,
+        {
+          includeLeaderboard: options.includeLeaderboard !== false,
+          currentUserId: options.currentUserId,
+        },
+      );
+    },
+
+    async updateWeather(location, payload, options = {}) {
+      const actorFingerprint = sanitizeFingerprint(payload?.actorFingerprint);
+      if (!actorFingerprint) {
+        throw new FeebasRuleError('A browser fingerprint is required to update Route 119 weather');
+      }
+
+      const weatherAreaId = getWeatherAreaId(location);
+      if (!weatherAreaId) {
+        throw new FeebasRuleError('Weather reporting is only available for Route 119', 404);
+      }
+
+      const nextWeather = validateWeather(payload?.weather);
+      const actorName = sanitizeActorName(payload?.actorName);
+      const now = options.now ? new Date(options.now) : new Date();
+      const { dayStart } = getPokeMmoDayWindow(now);
+      const currentRows = await getWeatherRows(location, now);
+      const currentUserReport = currentRows.find((row) => row.actor_fingerprint === actorFingerprint) || null;
+
+      if (currentUserReport?.weather !== nextWeather) {
+        try {
+          await runCommand(`
+            DELETE FROM feebas_weather_reports
+            WHERE weather_area = ${parameter(1)}
+              AND pokemmo_day_start = ${parameter(2)}
+              AND actor_fingerprint = ${parameter(3)}
+          `, [weatherAreaId, dayStart.toISOString(), actorFingerprint]);
+
+          await runCommand(upsertWeatherReportSql, [
+            weatherAreaId,
+            dayStart.toISOString(),
+            nextWeather,
+            actorFingerprint,
+            actorName,
+            now.toISOString(),
+            now.toISOString(),
+          ]);
+        } catch (error) {
+          if (isMissingWeatherReportsTableError(error)) {
+            throw createMissingWeatherReportsTableError();
+          }
+
+          throw error;
+        }
+      }
+
+      const { cycleStart, cycleEnd } = getCycleWindow(now);
+      const cycle = await ensureCycle(location, cycleStart, cycleEnd);
       return getBoardForCycle(
         location,
         { ...cycle, cycle_start: cycleStart, cycle_end: cycleEnd },
