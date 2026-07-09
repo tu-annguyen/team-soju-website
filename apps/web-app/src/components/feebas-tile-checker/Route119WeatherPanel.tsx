@@ -64,13 +64,9 @@ export function Route119WeatherPanel({
             ) : null}
           </div>
 
-          <div className="rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
-            <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              {messages.weather.minimumCyclesLabel}
-            </span>
-            <span className="mt-1 block text-lg font-bold text-slate-950 dark:text-white">
-              {weatherStatus.minimumCyclesUntilPossibleChange}
-            </span>
+          <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
+            <span className="w-3/4">{messages.weather.minimumCyclesLabel}</span>
+            <span className="font-semibold">{weatherStatus.minimumCyclesUntilPossibleChange}</span>
           </div>
 
           <div className="grid gap-2">

@@ -201,13 +201,6 @@ export function FeebasTileCheckerView({
             totalPendingVotes={totalPendingVotes}
             voteOverlayMode={voteOverlayMode}
           />
-          <Route119WeatherPanel
-            board={board}
-            loading={loading}
-            messages={messages}
-            pendingAction={pendingAction}
-            onUpdateWeather={onUpdateWeather}
-          />
           <SelectedTilePanel
             isHeatmapMode={isHeatmapMode}
             loading={loading && !board}
@@ -216,6 +209,13 @@ export function FeebasTileCheckerView({
             selectedTile={selectedTile}
             selectedTileLabel={selectedTileLabel}
             onUpdateTile={onUpdateTile}
+          />
+          <Route119WeatherPanel
+            board={board}
+            loading={loading}
+            messages={messages}
+            pendingAction={pendingAction}
+            onUpdateWeather={onUpdateWeather}
           />
           <ActivityPanel
             activityCurrentPage={activityCurrentPage}
