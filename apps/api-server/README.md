@@ -253,6 +253,21 @@ When no cookie domain is set, secure `SameSite=None` cookies are automatically m
 - Worker D1 schema lives at `src/cloudflare/schema.d1.sql`.
 - Set `DB_BACKEND=d1` and bind `DB` to use D1.
 - Default Worker backend is Postgres through `DATABASE_URL`.
+- Run schema updates with `--remote`; otherwise Wrangler targets local D1 storage for `wrangler dev`.
+
+Apply the Worker schema to the deployed D1 databases:
+
+```bash
+npm run d1:schema:prod
+npm run d1:schema:staging
+```
+
+Equivalent direct Wrangler commands:
+
+```bash
+npx wrangler d1 execute DB --config wrangler.jsonc --remote --file=src/cloudflare/schema.d1.sql
+npx wrangler d1 execute DB --config wrangler.jsonc --env staging --remote --file=src/cloudflare/schema.d1.sql
+```
 
 Postgres-to-D1 helpers:
 
