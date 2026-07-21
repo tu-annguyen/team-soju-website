@@ -487,6 +487,61 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('returns to the original trainer-filtered list after editing a shiny', async () => {
+    const shiny = {
+      id: 'selected-id',
+      pokemon: 'pikachu',
+      pokemon_name: 'Pikachu',
+      trainer_name: 'tunacore',
+      encounter_type: 'single',
+      nature: 'Bold',
+      is_secret: false,
+      is_alpha: false,
+    };
+    const editInteraction = createMockInteraction({
+      customId: 'sh:fp:ep:t:trainer-id:1:10:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      values: ['x5_horde'],
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+
+    fetchClient.get
+      .mockResolvedValueOnce({ data: { data: shiny } })
+      .mockResolvedValueOnce({ data: { data: shiny } })
+      .mockResolvedValueOnce({ data: { data: { ...shiny, encounter_type: 'x5_horde' } } });
+    fetchClient.put.mockResolvedValue({
+      data: { data: { ...shiny, encounter_type: 'x5_horde' } },
+    });
+
+    await handleShinyComponent(editInteraction);
+
+    const editPayload = editInteraction.update.mock.calls[0][0];
+    const backCustomId = editPayload.components[3].components.find(
+      component => component.label === 'Back'
+    ).custom_id;
+    expect(backCustomId).toBe('sh:d:b:t:trainer-id:1:10:selected-id');
+
+    fetchClient.get.mockReset();
+    fetchClient.get
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id', ign: 'tunacore' } } })
+      .mockResolvedValueOnce({ data: { data: [{ ...shiny, encounter_type: 'x5_horde' }] } });
+
+    const backInteraction = createMockInteraction({
+      customId: backCustomId,
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      update: jest.fn().mockResolvedValue(undefined),
+    });
+    await handleShinyComponent(backInteraction);
+
+    const listPayload = backInteraction.update.mock.calls[0][0];
+    expect(listPayload.embeds[0].data.title).toBe('Recent Shinies by tunacore');
+    expect(fetchClient.get).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('trainer_id=trainer-id'),
+      expect.any(Object)
+    );
+  });
+
   it('opens the pokemon picker from the edit controls', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:fp:pokemon:open:selected-id',
