@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import anniversaryData from "../data/anniversary.json";
+import type { AnniversaryData, AnniversaryEvent } from "../types/anniversary";
 
-const mainEvents = anniversaryData.mainEvents;
-const miniEvents = anniversaryData.miniEvents;
-const eventShinies = anniversaryData.eventShinies;
-
-const placeholder = "/images/2025/anniversary/placeholder.png";
+interface AnniversaryEventLogProps {
+    year: number;
+    anniversaryData: AnniversaryData;
+}
 
 const EventCard = ({
     icon,
@@ -16,15 +15,10 @@ const EventCard = ({
     third,
     OT,
     shinyScore,
-}: {
-    icon: string;
-    name: string;
+    placeholder,
+}: AnniversaryEvent & {
     type: "main" | "mini" | "shiny";
-    first?: string;
-    second?: string;
-    third?: string;
-    OT?: string;
-    shinyScore?: number;
+    placeholder: string;
 }) => {
     // Always start with the placeholder (SSR-safe)
     const [imgSrc, setImgSrc] = useState(placeholder);
@@ -102,44 +96,54 @@ const EventCard = ({
     );
 };
 
-const AnniversaryEventLog = () => (
-    <section className="py-8">
-        <div className="container">
-            <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">
-                Event Log
-            </h2>
-            <div className="mb-8">
-                <h3 className="font-bold text-primary-700 dark:text-primary-400 mb-4 text-lg">
-                    Main Events
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {mainEvents.map((event, idx) => (
-                        <EventCard key={`main-${idx}`} {...event} type="main" />
-                    ))}
+const AnniversaryEventLog = ({ year, anniversaryData }: AnniversaryEventLogProps) => {
+    const { mainEvents, miniEvents } = anniversaryData;
+    const eventShinies = anniversaryData.eventShinies ?? [];
+    const placeholder = "/images/anniversary-placeholder.png";
+
+    return (
+        <section className="py-8">
+            <div className="container">
+                <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">
+                    {year} Event Log
+                </h2>
+                <div className="mb-8">
+                    <h3 className="font-bold text-primary-700 dark:text-primary-400 mb-4 text-lg">
+                        Main Events
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {mainEvents.map((event, idx) => (
+                            <EventCard key={`main-${idx}`} {...event} type="main" placeholder={placeholder} />
+                        ))}
+                    </div>
+                </div>
+                <div className="mb-8">
+                    <h3 className="font-bold text-secondary-700 dark:text-secondary-400 mb-4 text-lg">
+                        Mini Events
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {miniEvents.map((event, idx) => (
+                            <EventCard key={`mini-${idx}`} {...event} type="mini" placeholder={placeholder} />
+                        ))}
+                    </div>
+                </div>
+                <div>
+                    {eventShinies.length > 0 && (
+                        <>
+                            <h3 className="font-bold text-accent-700 dark:text-accent-400 mb-4 text-lg">
+                                Event Shinies
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {eventShinies.map((event, idx) => (
+                                    <EventCard key={`shiny-${idx}`} {...event} type="shiny" placeholder={placeholder} />
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
-            <div className="mb-8">
-                <h3 className="font-bold text-secondary-700 dark:text-secondary-400 mb-4 text-lg">
-                    Mini Events
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {miniEvents.map((event, idx) => (
-                        <EventCard key={`mini-${idx}`} {...event} type="mini"/>
-                    ))}
-                </div>
-            </div>
-            <div>
-                <h3 className="font-bold text-accent-700 dark:text-accent-400 mb-4 text-lg">
-                    Event Shinies
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {eventShinies.map((event, idx) => (
-                        <EventCard key={`mini-${idx}`} {...event} type="shiny" />
-                    ))}
-                </div>
-            </div>
-        </div>
-    </section>
-);
+        </section>
+    );
+};
 
 export default AnniversaryEventLog;

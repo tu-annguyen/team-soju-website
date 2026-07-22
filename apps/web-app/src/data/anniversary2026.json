@@ -1,0 +1,79 @@
+{
+    "teams": [
+        {
+            "name": "Squirtle Squad",
+            "logo": "/images/2026/anniversary/squirtle.png",
+            "score": 0
+        },
+        {
+            "name": "Sloppy Spindas",
+            "logo": "/images/2026/anniversary/spinda.png",
+            "score": 0
+        },
+        {
+            "name": "Loco Ludicolos",
+            "logo": "/images/2026/anniversary/ludicolo.png",
+            "score": 0
+        }
+    ],
+    "mainEvents": [
+        {
+            "icon": "/images/2026/anniversary/main1.png",
+            "name": "Ludicolo's Fiesta"
+        },
+        {
+            "icon": "/images/2026/anniversary/main2.png",
+            "name": "Too Much Water Race"
+        },
+        {
+            "icon": "/images/2026/anniversary/main3.png",
+            "name": "Squirtle Catch Event"
+        },
+        {
+            "icon": "/images/2026/anniversary/main4.png",
+            "name": "Shiny PvP"
+        },
+        {
+            "icon": "/images/2026/anniversary/main5.png",
+            "name": "Spin-Da Roulette"
+        },
+        {
+            "icon": "/images/2026/anniversary/main6.png",
+            "name": "Safari Catch Event"
+        },
+        {
+            "icon": "/images/2026/anniversary/main7.png",
+            "name": "Soju Trivia"
+        }
+    ],
+    "miniEvents": [
+        {
+            "icon": "/images/2026/anniversary/mini1.png",
+            "name": "SOJUnowns"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini2.png",
+            "name": "Magikarp Blackjack"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini3.png",
+            "name": "Legendary PvP"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini4.png",
+            "name": "Secret Base Hunt"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini5.png",
+            "name": "Who's That Pokémon?"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini6.png",
+            "name": "Find the Munch"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini7.png",
+            "name": "TBA"
+        }
+    ]
+}
