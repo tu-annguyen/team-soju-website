@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import Anniversary from '../src/components/Anniversary';
 
-jest.mock('../src/components/AnniversaryLeaderboard', () => () => (
+jest.mock('../src/components/Leaderboard', () => () => (
   <div data-testid="anniversary-leaderboard" />
 ));
 jest.mock('../src/components/AnniversaryEventLog', () => () => (
@@ -11,7 +11,15 @@ jest.mock('../src/components/AnniversaryEventLog', () => () => (
 
 describe('Anniversary', () => {
   it('renders heading, forum link, and child sections', () => {
-    render(<Anniversary />);
+    const anniversaryData = {
+      contentVideo: [],
+      teams: [],
+      mainEvents: [],
+      miniEvents: [],
+      eventShinies: []
+    };
+
+    render(<Anniversary year={2025} anniversaryData={anniversaryData} />);
 
     expect(
       screen.getByText(/SOJU 1 Year Anniversary/i)
