@@ -19,7 +19,10 @@
     "mainEvents": [
         {
             "icon": "/images/2026/anniversary/main1.png",
-            "name": "Ludicolo's Fiesta"
+            "name": "Ludicolo's Fiesta",
+            "first": "Squirtle Squad",
+            "second": "Sloppy Spindas",
+            "third": "Loco Ludicolos"
         },
         {
             "icon": "/images/2026/anniversary/main2.png",

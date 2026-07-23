@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import type { AnniversaryData, AnniversaryEvent } from "../types/anniversary";
+import { DEFAULT_SHINY_SCORE, MAIN_EVENT_POINTS, MINI_EVENT_POINTS } from "../utils/anniversaryScoring";
 
 interface AnniversaryEventLogProps {
     year: number;
     anniversaryData: AnniversaryData;
 }
+
+const formatPointLabel = (points: number) => `+${points} ${points === 1 ? "pt" : "pts"}`;
 
 const EventCard = ({
     icon,
@@ -47,19 +50,19 @@ const EventCard = ({
                         {first ? (
                             <>
                                 <span className="font-semibold">1st place: </span>
-                                {first} <span className="text-gray-400">(+5 pts)</span>
+                                {first} <span className="text-gray-400">({formatPointLabel(MAIN_EVENT_POINTS.first)})</span>
                                 {second && (
                                     <>
                                         <br />
                                         <span className="font-semibold">2nd place: </span>
-                                        {second} <span className="text-gray-400">(+3 pts)</span>
+                                        {second} <span className="text-gray-400">({formatPointLabel(MAIN_EVENT_POINTS.second)})</span>
                                     </>
                                 )}
                                 {third && (
                                     <>
                                         <br />
                                         <span className="font-semibold">3rd place: </span>
-                                        {third} <span className="text-gray-400">(+1 pt)</span>
+                                        {third} <span className="text-gray-400">({formatPointLabel(MAIN_EVENT_POINTS.third)})</span>
                                     </>
                                 )}
                             </>
@@ -75,7 +78,7 @@ const EventCard = ({
                     <>
                         <span className="font-semibold">Winner: </span>
                         {first ? (
-                            <>{first} <span className="text-gray-400">(+2 pts)</span></>
+                            <>{first} <span className="text-gray-400">({formatPointLabel(MINI_EVENT_POINTS.first)})</span></>
                         ) : (
                             <span className="text-gray-400">TBD</span>
                         )}
@@ -85,7 +88,7 @@ const EventCard = ({
                     <>
                         <span className="font-semibold">OT: </span>
                         {OT ? (
-                            <>{OT} <span className="text-gray-400">(+{shinyScore} pts)</span></>
+                            <>{OT} <span className="text-gray-400">({formatPointLabel(shinyScore ?? DEFAULT_SHINY_SCORE)})</span></>
                         ) : (
                             <span className="text-gray-400">TBD</span>
                         )}

@@ -4,7 +4,13 @@ import AnniversaryLeaderboard from '../src/components/Leaderboard';
 
 describe('AnniversaryLeaderboard', () => {
   it('renders leaderboard table with at least one team row', () => {
-    render(<AnniversaryLeaderboard />);
+    render(
+      <AnniversaryLeaderboard
+        teams={[
+          { name: 'Squirtle Squad', logo: '/squirtle.png', score: 5 },
+        ]}
+      />
+    );
 
     expect(screen.getByText(/Leaderboard/i)).toBeInTheDocument();
 

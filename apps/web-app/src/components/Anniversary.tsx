@@ -2,6 +2,7 @@ import React from 'react';
 import Leaderboard from './Leaderboard';
 import AnniversaryEventLog from './AnniversaryEventLog';
 import type { AnniversaryData } from '../types/anniversary';
+import { calculateAnniversaryTeamScores } from '../utils/anniversaryScoring';
 
 interface AnniversaryProps {
   year: number;
@@ -11,6 +12,7 @@ interface AnniversaryProps {
 const Anniversary = ({ year, anniversaryData }: AnniversaryProps) => {
   const anniversaryNumber = year - 2024;
   const contentVideos = anniversaryData.contentVideo ?? [];
+  const scoredTeams = calculateAnniversaryTeamScores(anniversaryData);
 
   return (
     <section className="py-16">
@@ -72,7 +74,7 @@ const Anniversary = ({ year, anniversaryData }: AnniversaryProps) => {
         )}
       </div>
 
-      <Leaderboard teams={anniversaryData.teams} />
+      <Leaderboard teams={scoredTeams} />
       <AnniversaryEventLog year={year} anniversaryData={anniversaryData} />
     </section>
   );
