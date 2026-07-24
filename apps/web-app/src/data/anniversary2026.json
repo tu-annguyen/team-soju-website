@@ -52,7 +52,8 @@
     "miniEvents": [
         {
             "icon": "/images/2026/anniversary/mini1.png",
-            "name": "SOJUnowns"
+            "name": "SOJUnowns",
+            "first": "DatBoiWinds - Squirtle Squad"
         },
         {
             "icon": "/images/2026/anniversary/mini2.png",
