@@ -12,6 +12,9 @@ const anniversaryData = {
   ],
   eventShinies: [
     { icon: '/icon-shiny.png', name: 'Shiny Event', OT: 'Eve', shinyScore: 10 }
+  ],
+  eventBounties: [
+    { icon: '/icon-bounty.png', name: 'Legendary Bounty', OT: 'Frank', score: 2 }
   ]
 };
 
@@ -23,13 +26,17 @@ describe('AnniversaryEventLog', () => {
     expect(screen.getByText(/Main Events/i)).toBeInTheDocument();
     expect(screen.getByText(/Mini Events/i)).toBeInTheDocument();
     expect(screen.getByText(/Event Shinies/i)).toBeInTheDocument();
+    expect(screen.getByText(/Event Bounties/i)).toBeInTheDocument();
 
     expect(screen.getByText('Main Event')).toBeInTheDocument();
     expect(screen.getByText('Mini Event')).toBeInTheDocument();
     expect(screen.getByText('Shiny Event')).toBeInTheDocument();
+    expect(screen.getByText('Legendary Bounty')).toBeInTheDocument();
 
     expect(screen.getByText(/1st place:/i)).toBeInTheDocument();
     expect(screen.getByText(/Winner:/i)).toBeInTheDocument();
-    expect(screen.getByText(/OT:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/OT:/i)).toHaveLength(2);
+    expect(screen.getByText(/\+10 pts/i)).toBeInTheDocument();
+    expect(screen.getByText('Frank').parentElement).toHaveTextContent('+2 pts');
   });
 });

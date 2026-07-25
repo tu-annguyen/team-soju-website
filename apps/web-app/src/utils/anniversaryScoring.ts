@@ -97,6 +97,10 @@ export const calculateAnniversaryTeamScores = (
     addScore(event.OT, event.shinyScore ?? DEFAULT_SHINY_SCORE);
   });
 
+  anniversaryData.eventBounties?.forEach((event) => {
+    addScore(event.OT, event.score ?? 0);
+  });
+
   return anniversaryData.teams.map((team) => ({
     ...team,
     score: scoresByTeamName.get(team.name) ?? 0,

@@ -83,5 +83,28 @@
             "icon": "/images/2026/anniversary/mini7.png",
             "name": "TBA"
         }
+    ],
+    "eventBounties": [
+        {
+            "icon": "/images/2026/anniversary/arceus.png",
+            "name": "Arceus",
+            "OT": "Shwfityz - Sloppy Spindas",
+            "score": 2
+        },
+        {
+            "icon": "/images/2026/anniversary/lugia.png",
+            "name": "Lugia",
+            "score": 2
+        },
+        {
+            "icon": "/images/2026/anniversary/mewtwo.png",
+            "name": "Mewtwo",
+            "score": 2
+        },
+        {
+            "icon": "/images/2026/anniversary/rayquaza.png",
+            "name": "Rayquaza",
+            "score": 2
+        }
     ]
 }
