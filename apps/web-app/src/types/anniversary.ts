@@ -17,6 +17,7 @@ export interface AnniversaryEvent {
   third?: string;
   OT?: string;
   shinyScore?: number;
+  score?: number;
 }
 
 export interface AnniversaryData {
@@ -25,4 +26,5 @@ export interface AnniversaryData {
   mainEvents: AnniversaryEvent[];
   miniEvents: AnniversaryEvent[];
   eventShinies?: AnniversaryEvent[];
+  eventBounties?: AnniversaryEvent[];
 }

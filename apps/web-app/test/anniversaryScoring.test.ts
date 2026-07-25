@@ -3,7 +3,7 @@ import { calculateAnniversaryTeamScores } from '../src/utils/anniversaryScoring'
 import type { AnniversaryData } from '../src/types/anniversary';
 
 describe('calculateAnniversaryTeamScores', () => {
-  it('scores main events, mini events, and event shinies from winners', () => {
+  it('scores main events, mini events, event shinies, and bounties from winners', () => {
     const anniversaryData: AnniversaryData = {
       teams: [
         { name: 'Squirtle Squad', logo: '/squirtle.png', score: 999 },
@@ -34,10 +34,18 @@ describe('calculateAnniversaryTeamScores', () => {
           shinyScore: 2.5,
         },
       ],
+      eventBounties: [
+        {
+          icon: '/bounty.png',
+          name: 'Legendary Bounty',
+          OT: 'Bounty Hunter - Squirtle Squad',
+          score: 2,
+        },
+      ],
     };
 
     expect(calculateAnniversaryTeamScores(anniversaryData)).toEqual([
-      { name: 'Squirtle Squad', logo: '/squirtle.png', score: 5 },
+      { name: 'Squirtle Squad', logo: '/squirtle.png', score: 7 },
       { name: 'Sloppy Spindas', logo: '/spinda.png', score: 5 },
       { name: 'Loco Ludicolos', logo: '/ludicolo.png', score: 3.5 },
     ]);

@@ -18,9 +18,10 @@ const EventCard = ({
     third,
     OT,
     shinyScore,
+    score,
     placeholder,
 }: AnniversaryEvent & {
-    type: "main" | "mini" | "shiny";
+    type: "main" | "mini" | "shiny" | "bounty";
     placeholder: string;
 }) => {
     // Always start with the placeholder (SSR-safe)
@@ -84,11 +85,16 @@ const EventCard = ({
                         )}
                     </>
                 )}
-                {type === "shiny" && (
+                {(type === "shiny" || type === "bounty") && (
                     <>
                         <span className="font-semibold">OT: </span>
                         {OT ? (
-                            <>{OT} <span className="text-gray-400">({formatPointLabel(shinyScore ?? DEFAULT_SHINY_SCORE)})</span></>
+                            <>
+                                {OT}{" "}
+                                <span className="text-gray-400">
+                                    ({formatPointLabel(type === "bounty" ? score ?? 0 : shinyScore ?? DEFAULT_SHINY_SCORE)})
+                                </span>
+                            </>
                         ) : (
                             <span className="text-gray-400">TBD</span>
                         )}
@@ -102,6 +108,7 @@ const EventCard = ({
 const AnniversaryEventLog = ({ year, anniversaryData }: AnniversaryEventLogProps) => {
     const { mainEvents, miniEvents } = anniversaryData;
     const eventShinies = anniversaryData.eventShinies ?? [];
+    const eventBounties = anniversaryData.eventBounties ?? [];
     const placeholder = "/images/anniversary-placeholder.png";
 
     return (
@@ -139,6 +146,20 @@ const AnniversaryEventLog = ({ year, anniversaryData }: AnniversaryEventLogProps
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {eventShinies.map((event, idx) => (
                                     <EventCard key={`shiny-${idx}`} {...event} type="shiny" placeholder={placeholder} />
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+                <div>
+                    {eventBounties.length > 0 && (
+                        <>
+                            <h3 className="font-bold text-accent-700 dark:text-accent-400 mt-8 mb-4 text-lg">
+                                Event Bounties
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                {eventBounties.map((event, idx) => (
+                                    <EventCard key={`bounty-${idx}`} {...event} type="bounty" placeholder={placeholder} />
                                 ))}
                             </div>
                         </>
