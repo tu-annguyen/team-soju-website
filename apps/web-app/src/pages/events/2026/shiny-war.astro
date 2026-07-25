@@ -1,0 +1,13 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import EventsHeader from '../../../components/EventsHeader';
+import ShinyWar from '../../../components/ShinyWar';
+---
+
+<Layout 
+  title="Events - Team Soju" 
+  description="Explore Team Soju's events."
+>
+  <EventsHeader client:load />
+  <ShinyWar client:load />
+</Layout>
