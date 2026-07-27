@@ -47,7 +47,10 @@
         },
         {
             "icon": "/images/2026/anniversary/main5.png",
-            "name": "Spin-Da Roulette"
+            "name": "Spin-Da Roulette",
+            "first": "YangXiaoLong - Sloppy Spindas",
+            "second": "Megu - Loco Ludicolos",
+            "third": "DatBoiWinds - Squirtle Squad"
         },
         {
             "icon": "/images/2026/anniversary/main6.png",
@@ -76,7 +79,8 @@
         },
         {
             "icon": "/images/2026/anniversary/mini4.png",
-            "name": "Legendary PvP"
+            "name": "Legendary PvP",
+            "first": "MPLA - Squirtle Squad"
         },
         {
             "icon": "/images/2026/anniversary/mini5.png",
