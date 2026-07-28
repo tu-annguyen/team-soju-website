@@ -54,7 +54,10 @@
         },
         {
             "icon": "/images/2026/anniversary/main6.png",
-            "name": "Safari Catch Event"
+            "name": "Safari Catch Event",
+            "first": "SetupNINE - Sloppy Spindas",
+            "second": "HogXD - Squirtle Squad",
+            "third": "tunacore - Sloppy Spindas"
         },
         {
             "icon": "/images/2026/anniversary/main7.png",
@@ -89,10 +92,7 @@
         },
         {
             "icon": "/images/2026/anniversary/mini6.png",
-            "name": "Secret Base Hunt",
-            "first": "SetupNINE - Sloppy Spindas",
-            "second": "HogXD - Squirtle Squad",
-            "third": "tunacore - Sloppy Spindas"
+            "name": "Secret Base Hunt"
         },
         {
             "icon": "/images/2026/anniversary/mini7.png",
