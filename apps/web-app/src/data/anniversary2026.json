@@ -89,7 +89,10 @@
         },
         {
             "icon": "/images/2026/anniversary/mini6.png",
-            "name": "Secret Base Hunt"
+            "name": "Secret Base Hunt",
+            "first": "SetupNINE - Sloppy Spindas",
+            "second": "HogXD - Squirtle Squad",
+            "third": "tunacore - Sloppy Spindas"
         },
         {
             "icon": "/images/2026/anniversary/mini7.png",
