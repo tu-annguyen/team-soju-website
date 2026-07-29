@@ -61,7 +61,10 @@
         },
         {
             "icon": "/images/2026/anniversary/main7.png",
-            "name": "Soju Trivia"
+            "name": "Soju Trivia",
+            "first": "HogXD - Squirtle Squad",
+            "second": "TXMPXp - Loco Ludicolos",
+            "third": "MPLA - Squirtle Squad"
         }
     ],
     "miniEvents": [
