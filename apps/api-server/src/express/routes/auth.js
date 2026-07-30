@@ -15,6 +15,7 @@ const {
   signUserToken,
   verifyUserToken,
 } = require('../../middleware/auth');
+const { getAuthorizedSafeUser } = require('../authorization');
 const {
   sendEmailVerificationEmail,
   sendPasswordResetEmail,
@@ -271,7 +272,7 @@ function getBlacklistedIgnMessage() {
 
 async function signInUser(res, user, statusCode = 200, message = 'Signed in successfully.') {
   const loggedInUser = await User.recordLogin(user.id);
-  const safeUser = User.toSafeUser(loggedInUser || user);
+  const safeUser = await getAuthorizedSafeUser(loggedInUser || user);
   const token = signUserToken(safeUser);
 
   setAuthCookie(res, token);
@@ -583,7 +584,7 @@ router.post('/change-email', requireUser, async (req, res) => {
       ign: currentUser.ign,
     });
 
-    const safeUser = User.toSafeUser(updatedUser || currentUser);
+    const safeUser = await getAuthorizedSafeUser(updatedUser || currentUser);
     setAuthCookie(res, signUserToken(safeUser));
 
     return res.json({
@@ -647,7 +648,7 @@ router.post('/change-password', requireUser, async (req, res) => {
 
     return res.json({
       success: true,
-      data: User.toSafeUser(updatedUser || currentUser),
+      data: await getAuthorizedSafeUser(updatedUser || currentUser),
       message: currentUser.password_hash
         ? 'Password updated successfully.'
         : 'Password added successfully.',
@@ -725,7 +726,7 @@ router.get('/me', async (req, res) => {
 
     return res.json({
       success: true,
-      data: User.toSafeUser(user),
+      data: await getAuthorizedSafeUser(user),
     });
   } catch {
     clearAuthCookie(res);
@@ -758,7 +759,7 @@ router.post('/discord/session', async (req, res) => {
       });
     }
 
-    const safeUser = User.toSafeUser(user);
+    const safeUser = await getAuthorizedSafeUser(user);
     setAuthCookie(res, signUserToken(safeUser));
     return res.json({
       success: true,
@@ -902,7 +903,7 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     const loggedInUser = await User.recordLogin(user.id);
-    const safeUser = User.toSafeUser(loggedInUser || user);
+    const safeUser = await getAuthorizedSafeUser(loggedInUser || user);
     const sessionToken = signUserToken(safeUser);
     const handoffToken = buildDiscordHandoffToken(safeUser);
 

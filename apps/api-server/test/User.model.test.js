@@ -43,6 +43,19 @@ describe('User model', () => {
     expect(result).toEqual(row);
   });
 
+  it('finds active membership through the app user Discord ID', async () => {
+    const membership = { id: 'member-id', rank: 'Trainer' };
+    mockQuery.mockResolvedValue({ rows: [membership] });
+
+    const result = await User.findMembershipByUserId('user-id');
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining('tm.is_active = true'),
+      ['user-id']
+    );
+    expect(result).toEqual(membership);
+  });
+
   it('attaches Discord data and returns the updated row', async () => {
     const updated = { id: 'user-id', discord_id: '123', auth_provider: 'password_discord' };
     mockQuery.mockResolvedValue({ rows: [updated] });

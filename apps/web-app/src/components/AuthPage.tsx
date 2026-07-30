@@ -1,22 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { getClientLocale, getTranslations, type Locale } from '../i18n';
+import type { AuthResponse, AuthUser } from '../auth/types';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
-
-type AuthUser = {
-  id: string;
-  email: string;
-  ign: string;
-  discord_id?: string | null;
-  auth_provider?: string | null;
-};
-
-type AuthResponse = {
-  success: boolean;
-  data?: AuthUser | null;
-  message?: string;
-};
 
 type Props = {
   apiBaseUrl: string;

@@ -460,6 +460,10 @@ describe('Auth routes', () => {
     it('returns the current user from a valid session cookie', async () => {
       const token = signUserToken(userRow);
       User.findById.mockResolvedValue(userRow);
+      User.findMembershipByUserId.mockResolvedValue({
+        id: 'member-id',
+        rank: 'Trainer',
+      });
 
       const response = await request(app)
         .get('/api/auth/me')
@@ -468,6 +472,12 @@ describe('Auth routes', () => {
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data.ign).toBe('Trainer');
+      expect(response.body.data.membership).toEqual({
+        id: 'member-id',
+        rank: 'Trainer',
+      });
+      expect(response.body.data.roles).toEqual(['team_member']);
+      expect(response.body.data.permissions).toEqual([]);
       expect(User.findById).toHaveBeenCalledWith('user-id');
     });
   });

@@ -1,11 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import ToolsIndexContent from '../../components/ToolsIndexContent';
+
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8787/api';
 ---
 
 <Layout
   title="Tools - Team Soju"
   description="Explore Team Soju's community tools and utilities."
 >
-  <ToolsIndexContent client:load />
+  <ToolsIndexContent client:load apiBaseUrl={apiBaseUrl} />
 </Layout>

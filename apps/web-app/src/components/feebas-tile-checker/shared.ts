@@ -1,4 +1,5 @@
 import type { getTranslations, Locale } from '../../i18n';
+import type { AuthResponse, AuthUser } from '../../auth/types';
 import type { FeebasBoardDisplayMode } from './FeebasBoardLegend';
 import { DEFAULT_LOCATION, LOCATION_OPTIONS_BY_ID } from './locations';
 
@@ -201,17 +202,7 @@ export type FeebasVotesResponse = {
 
 export type FeebasLiveUpdateResponse = BoardResponse | FeebasActivityDeltaResponse | FeebasTileDeltaResponse;
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  ign: string;
-};
-
-export type AuthResponse = {
-  success: boolean;
-  data?: AuthUser | null;
-  message?: string;
-};
+export type { AuthResponse, AuthUser };
 
 export type FeebasTileCheckerProps = {
   apiBaseUrl: string;

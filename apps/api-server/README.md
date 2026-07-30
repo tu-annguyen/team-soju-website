@@ -213,6 +213,22 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 DISCORD_REDIRECT_URI=http://localhost:8787/api/auth/discord/callback
 ```
 
+Authenticated user responses include current authorization data:
+
+```json
+{
+  "membership": { "id": "team-member-id", "rank": "Trainer" },
+  "roles": ["team_member"],
+  "permissions": []
+}
+```
+
+Membership is resolved on each request by matching the account and active team
+member Discord IDs. Worker routes can use the `requireTeamMember` or
+`requirePermission` helpers provided in their route context. Express routes can
+import the standalone middleware from `src/express/authorization.js`.
+Frontend checks are not a substitute for these API guards.
+
 Discord bot mutations use bot JWTs:
 
 ```bash

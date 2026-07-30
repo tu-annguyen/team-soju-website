@@ -1037,6 +1037,10 @@ describe('Cloudflare Worker API', () => {
           password_hash: 'secret',
           auth_provider: 'password',
         }),
+        findMembershipByUserId: jest.fn().mockResolvedValue({
+          id: 'member-1',
+          rank: 'Trainer',
+        }),
         toSafeUser: jest.fn((user) => ({
           id: user.id,
           email: user.email,
@@ -1069,6 +1073,12 @@ describe('Cloudflare Worker API', () => {
         email: 'trainer@example.com',
         ign: 'Trainer',
         auth_provider: 'password',
+        membership: {
+          id: 'member-1',
+          rank: 'Trainer',
+        },
+        roles: ['team_member'],
+        permissions: [],
       },
     });
   });
@@ -1286,6 +1296,9 @@ describe('Cloudflare Worker API', () => {
       email: 'trainer@example.com',
       ign: 'Trainer',
       auth_provider: 'discord',
+      membership: null,
+      roles: [],
+      permissions: [],
     });
     expect(response.headers.get('set-cookie')).toContain(`${AUTH_COOKIE_NAME}=`);
     expect(response.headers.get('set-cookie')).toContain('SameSite=None');

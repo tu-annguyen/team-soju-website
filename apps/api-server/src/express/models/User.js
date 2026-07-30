@@ -72,6 +72,20 @@ class User {
     return result.rows[0] || null;
   }
 
+  static async findMembershipByUserId(userId) {
+    const result = await pool.query(`
+      SELECT tm.id, tm.rank
+      FROM app_users au
+      INNER JOIN team_members tm ON tm.discord_id = au.discord_id
+      WHERE au.id = $1
+        AND au.discord_id IS NOT NULL
+        AND tm.is_active = true
+      LIMIT 1
+    `, [userId]);
+
+    return result.rows[0] || null;
+  }
+
   static async createWithPassword({ email, passwordHash, ign, verificationTokenHash, verificationExpiresAt }) {
     const result = await pool.query(`
       INSERT INTO app_users (

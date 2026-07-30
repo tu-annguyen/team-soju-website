@@ -135,6 +135,7 @@ async function handleAuthRoutes(context) {
     requireBotAuth,
     getAuthenticatedUser,
     requireUser,
+    getAuthorizedSafeUser,
     signInUser,
     issueEmailVerification,
     maybeProxyLegacyRequest,
@@ -358,7 +359,7 @@ async function handleAuthRoutes(context) {
         }
 
         const loggedInUser = await getRepositories().users.recordLogin(user.id);
-        const safeUser = getRepositories().users.toSafeUser(loggedInUser || user);
+        const safeUser = await getAuthorizedSafeUser(getRepositories(), loggedInUser || user);
         const sessionToken = await signUserToken(safeUser, env);
         const handoffToken = await buildDiscordHandoffToken(safeUser, env);
 
@@ -393,7 +394,7 @@ async function handleAuthRoutes(context) {
           }, { status: 401 });
         }
 
-        const safeUser = getRepositories().users.toSafeUser(user);
+        const safeUser = await getAuthorizedSafeUser(getRepositories(), user);
         const token = await signUserToken(safeUser, env);
         return json({
           success: true,
@@ -441,7 +442,7 @@ async function handleAuthRoutes(context) {
 
         return json({
           success: true,
-          data: getRepositories().users.toSafeUser(user),
+          data: await getAuthorizedSafeUser(getRepositories(), user),
         });
       } catch {
         return json({
@@ -586,7 +587,7 @@ async function handleAuthRoutes(context) {
           ign: auth.user.ign,
         }));
 
-        const safeUser = getRepositories().users.toSafeUser(updatedUser || auth.user);
+        const safeUser = await getAuthorizedSafeUser(getRepositories(), updatedUser || auth.user);
         const token = await signUserToken(safeUser, env);
         return json({
           success: true,
@@ -633,7 +634,7 @@ async function handleAuthRoutes(context) {
         const updatedUser = await getRepositories().users.updatePassword(auth.user.id, await derivePasswordHash(value.newPassword));
         return json({
           success: true,
-          data: getRepositories().users.toSafeUser(updatedUser || auth.user),
+          data: await getAuthorizedSafeUser(getRepositories(), updatedUser || auth.user),
           message: auth.user.password_hash
             ? 'Password updated successfully.'
             : 'Password added successfully.',
