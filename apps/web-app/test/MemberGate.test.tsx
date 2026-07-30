@@ -44,11 +44,7 @@ describe('MemberGate', () => {
       </MemberGate>
     );
 
-    const link = await screen.findByRole('link', { name: 'Connect Discord' });
-    expect(link).toHaveAttribute(
-      'href',
-      'https://api.example.com/api/auth/discord?mode=connect&returnTo=%2Ftools%2Fprivate%3Flang%3Den'
-    );
+    expect(await screen.findByRole('button', { name: 'Connect Discord' })).toBeInTheDocument();
   });
 
   it('denies Discord-linked non-members', async () => {

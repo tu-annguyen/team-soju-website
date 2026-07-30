@@ -775,10 +775,15 @@ router.post('/discord/session', async (req, res) => {
 });
 
 router.get('/discord', async (req, res) => {
+  const wantsJson = req.get('accept')?.includes('application/json');
+
   try {
     const { error, value } = discordStartSchema.validate(req.query);
 
     if (error) {
+      if (wantsJson) {
+        return res.status(400).json({ success: false, message: 'Invalid Discord sign-in request.' });
+      }
       return res.redirect(buildWebRedirect('/auth', { error: 'Invalid Discord sign-in request.' }));
     }
 
@@ -796,6 +801,9 @@ router.get('/discord', async (req, res) => {
       const token = getTokenFromRequest(req);
 
       if (!token) {
+        if (wantsJson) {
+          return res.status(401).json({ success: false, message: 'Sign in before connecting Discord.' });
+        }
         return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
       }
 
@@ -805,12 +813,18 @@ router.get('/discord', async (req, res) => {
 
         if (!user) {
           clearAuthCookie(res);
+          if (wantsJson) {
+            return res.status(401).json({ success: false, message: 'Sign in before connecting Discord.' });
+          }
           return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
         }
 
         userId = user.id;
       } catch {
         clearAuthCookie(res);
+        if (wantsJson) {
+          return res.status(401).json({ success: false, message: 'Sign in before connecting Discord.' });
+        }
         return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
       }
     }
@@ -825,10 +839,24 @@ router.get('/discord', async (req, res) => {
         userId,
       }),
     });
+    const authorizationUrl = `https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`;
 
-    return res.redirect(`https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`);
+    if (wantsJson) {
+      return res.json({
+        success: true,
+        data: { authorizationUrl },
+      });
+    }
+
+    return res.redirect(authorizationUrl);
   } catch (error) {
     console.error('Error starting Discord OAuth:', error);
+    if (wantsJson) {
+      return res.status(500).json({
+        success: false,
+        message: error.publicMessage || 'Unable to start Discord sign-in.',
+      });
+    }
     return res.redirect(buildWebRedirect('/auth', {
       error: error.publicMessage || 'Unable to start Discord sign-in.',
     }));

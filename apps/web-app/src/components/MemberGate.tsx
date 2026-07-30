@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { hasPermission, isTeamMember } from '../auth/authorization';
+import { getDiscordConnectionUrl } from '../auth/discordConnection';
 import { useAuthUser } from '../auth/useAuthUser';
 
 type Props = {
@@ -23,6 +24,8 @@ function GateMessage({ title, children }: { title: string; children: ReactNode }
 
 export default function MemberGate({ apiBaseUrl, children, requiredPermission }: Props) {
   const { authUser, isAuthLoading } = useAuthUser(apiBaseUrl);
+  const [connectionError, setConnectionError] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
   const normalizedApiBaseUrl = apiBaseUrl.replace(/\/+$/, '');
   const returnTo = typeof window === 'undefined'
     ? '/'
@@ -46,16 +49,35 @@ export default function MemberGate({ apiBaseUrl, children, requiredPermission }:
   }
 
   if (!authUser.discord_id) {
-    const params = new URLSearchParams({ mode: 'connect', returnTo });
+    const connectDiscord = async () => {
+      setConnectionError('');
+      setIsConnecting(true);
+
+      try {
+        const authorizationUrl = await getDiscordConnectionUrl(normalizedApiBaseUrl, returnTo);
+        window.location.assign(authorizationUrl);
+      } catch (error) {
+        setConnectionError(error instanceof Error ? error.message : 'Unable to start Discord connection.');
+        setIsConnecting(false);
+      }
+    };
+
     return (
       <GateMessage title="Connect Discord">
         <p>Connect your Discord account so we can confirm your Team Soju membership.</p>
-        <a
+        {connectionError && (
+          <p className="mt-4 text-sm font-medium text-rose-700 dark:text-rose-300" role="alert">
+            {connectionError}
+          </p>
+        )}
+        <button
+          type="button"
           className="btn btn-primary mt-6 inline-flex"
-          href={`${normalizedApiBaseUrl}/auth/discord?${params.toString()}`}
+          disabled={isConnecting}
+          onClick={connectDiscord}
         >
           Connect Discord
-        </a>
+        </button>
       </GateMessage>
     );
   }

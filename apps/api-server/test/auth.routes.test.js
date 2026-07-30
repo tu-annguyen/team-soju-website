@@ -641,6 +641,21 @@ describe('Auth routes', () => {
       expect(User.attachDiscord).toHaveBeenCalledWith('user-id', discordUser);
     });
 
+    it('returns a Discord connection URL to credentialed browser fetches', async () => {
+      const sessionToken = signUserToken(userRow);
+      User.findById.mockResolvedValue(userRow);
+
+      const response = await request(app)
+        .get('/api/auth/discord?mode=connect&returnTo=/auth')
+        .set('Accept', 'application/json')
+        .set('Cookie', `${AUTH_COOKIE_NAME}=${sessionToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.authorizationUrl).toContain('https://discord.com/oauth2/authorize');
+      expect(User.findById).toHaveBeenCalledWith('user-id');
+    });
+
     it('blocks blacklisted IGNs on Discord callback before account creation', async () => {
       const state = jwt.sign({
         type: 'discord_oauth_state',

@@ -253,9 +253,14 @@ async function handleAuthRoutes(context) {
     }
 
     if (request.method === 'GET' && pathname === '/api/auth/discord') {
+      const wantsJson = request.headers.get('accept')?.includes('application/json');
+
       try {
         const { error, value } = discordStartSchema.validate(Object.fromEntries(url.searchParams.entries()));
         if (error) {
+          if (wantsJson) {
+            return json({ success: false, message: 'Invalid Discord sign-in request.' }, { status: 400 });
+          }
           return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Invalid Discord sign-in request.' }), 302);
         }
 
@@ -271,6 +276,9 @@ async function handleAuthRoutes(context) {
         if (value.mode === 'connect') {
           const auth = await requireUser(request, env, getRepositories());
           if (auth.response) {
+            if (wantsJson) {
+              return json({ success: false, message: 'Sign in before connecting Discord.' }, { status: 401 });
+            }
             return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Sign in before connecting Discord.' }), 302);
           }
           userId = auth.user.id;
@@ -283,10 +291,24 @@ async function handleAuthRoutes(context) {
           response_type: 'code',
           state: await buildState({ ...value, userId }, env),
         });
+        const authorizationUrl = `https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`;
 
-        return Response.redirect(`https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`, 302);
+        if (wantsJson) {
+          return json({
+            success: true,
+            data: { authorizationUrl },
+          });
+        }
+
+        return Response.redirect(authorizationUrl, 302);
       } catch (error) {
         console.error('Error starting Discord OAuth:', error);
+        if (wantsJson) {
+          return json({
+            success: false,
+            message: error.publicMessage || 'Unable to start Discord sign-in.',
+          }, { status: 500 });
+        }
         return Response.redirect(buildWebRedirect(env, '/auth', {
           error: error.publicMessage || 'Unable to start Discord sign-in.',
         }), 302);
