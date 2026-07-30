@@ -130,6 +130,10 @@ const en = {
         description:
           'Coordinate Feebas tile checks in real time with a shared tile board for checked, found, or confirmed calls. Each call has a translucent color so the board behaves like a live heatmap of group opinion.',
       },
+      shinyWarCard: {
+        title: 'Shiny Wars Organizer',
+        description: 'Coordinate Team Soju hunts and follow Shiny Wars progress.',
+      },
     },
     feebas: {
       title: 'Feebas Tile Checker - Team Soju',

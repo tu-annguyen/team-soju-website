@@ -364,6 +364,7 @@ const shinySchema = Joi.object({
   variants: Joi.string().trim().lowercase().max(50).optional(),
   original_trainer: Joi.string().uuid().required(),
   catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  caught_at_utc: Joi.string().isoDate().optional(),
   total_encounters: Joi.number().integer().min(0).default(0),
   species_encounters: Joi.number().integer().min(0).default(0),
   encounter_type: Joi.string().valid(...ENCOUNTER_TYPE_CHOICES).required(),
@@ -388,6 +389,7 @@ const updateShinySchema = Joi.object({
   variants: Joi.string().trim().lowercase().max(50).optional(),
   original_trainer: Joi.string().uuid().optional(),
   catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  caught_at_utc: Joi.string().isoDate().optional(),
   total_encounters: Joi.number().integer().min(0).optional(),
   species_encounters: Joi.number().integer().min(0).optional(),
   encounter_type: Joi.string().valid(...ENCOUNTER_TYPE_CHOICES).optional(),
@@ -412,6 +414,7 @@ const screenshotSchema = Joi.object({
   is_secret: Joi.boolean().default(false),
   is_alpha: Joi.boolean().default(false),
   command_called_at: Joi.string().isoDate().optional(),
+  catch_time_utc: Joi.string().pattern(/^(?:[01]\d|2[0-3]):[0-5]\d$/).optional(),
   discord_user_id: Joi.string().required(),
   member_roles: Joi.array().items(Joi.string()).default([]),
 });
@@ -1258,6 +1261,9 @@ async function createShinyFromScreenshotValue(value) {
       variants: normalizeVariantName(mergedParsed.name),
       original_trainer: trainer.id,
       catch_date: mergedParsed.date,
+      ...(value.catch_time_utc ? {
+        caught_at_utc: `${mergedParsed.date}T${value.catch_time_utc}:00.000Z`,
+      } : {}),
       encounter_type: value.encounter_type,
       is_secret: value.is_secret,
       is_alpha: value.is_alpha,

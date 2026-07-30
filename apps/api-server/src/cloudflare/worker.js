@@ -40,6 +40,7 @@ const { handleMembersRoutes } = require('./routes/members');
 const { handleShiniesRoutes } = require('./routes/shinies');
 const { handleCatchEventsRoutes } = require('./routes/catch-events');
 const { handleFeebasRoutes } = require('./routes/feebas');
+const { handleShinyWarRoutes } = require('./routes/shiny-war');
 const { createCloudflareAuthorization } = require('./authorization');
 
 function hasFeebasActivityDelta(activityDelta) {
@@ -740,6 +741,7 @@ function createWorkerApp(options = {}) {
       handleShiniesRoutes,
       handleCatchEventsRoutes,
       handleFeebasRoutes,
+      handleShinyWarRoutes,
     ];
 
     for (const handleRoute of routeHandlers) {

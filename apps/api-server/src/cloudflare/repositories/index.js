@@ -2,6 +2,7 @@ const crypto = globalThis.crypto || require('crypto');
 const { Pool, types } = require('pg');
 const { createCatchEventsRepository } = require('./catch-events');
 const { createFeebasRepository } = require('./feebas');
+const { createShinyWarRepository } = require('./shiny-war');
 
 types.setTypeParser(1082, (val) => val);
 
@@ -19,6 +20,7 @@ function normalizeShinyRow(row) {
     ...row,
     is_secret: parseD1Boolean(row.is_secret),
     is_alpha: parseD1Boolean(row.is_alpha),
+    war_eligibility_override: parseD1Boolean(row.war_eligibility_override),
   };
 }
 
@@ -381,6 +383,7 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
         shinyData.screenshot_url ?? null,
         shinyData.status || 'Owned',
         shinyData.notes ?? null,
+        shinyData.caught_at_utc ?? null,
       ];
 
       if (dialect === 'd1') {
@@ -388,9 +391,10 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
           INSERT INTO team_shinies (
             id, national_number, pokemon, variants, original_trainer, catch_date, total_encounters,
             species_encounters, encounter_type, location, nature, iv_hp, iv_attack, iv_defense,
-            iv_sp_attack, iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes
+            iv_sp_attack, iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes,
+            caught_at_utc
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, params)).run();
         return this.findById(id);
       }
@@ -399,10 +403,11 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
         INSERT INTO team_shinies (
           id, national_number, pokemon, variants, original_trainer, catch_date, total_encounters,
           species_encounters, encounter_type, location, nature, iv_hp, iv_attack, iv_defense,
-          iv_sp_attack, iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes
+          iv_sp_attack, iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes,
+          caught_at_utc
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
         )
         RETURNING id
       `, params);
@@ -432,7 +437,8 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
               is_alpha = COALESCE(?, is_alpha),
               screenshot_url = COALESCE(?, screenshot_url),
               status = CASE WHEN ? THEN ? ELSE status END,
-              notes = CASE WHEN ? THEN ? ELSE notes END
+              notes = CASE WHEN ? THEN ? ELSE notes END,
+              caught_at_utc = COALESCE(?, caught_at_utc)
           WHERE id = ?
         `, [
           shinyData.national_number ?? null,
@@ -458,6 +464,7 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
           shinyData.status ?? null,
           Object.prototype.hasOwnProperty.call(shinyData, 'notes') ? 1 : 0,
           shinyData.notes ?? null,
+          shinyData.caught_at_utc ?? null,
           id,
         ])).run();
         return this.findById(id);
@@ -484,7 +491,8 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
             is_alpha = COALESCE($19, is_alpha),
             screenshot_url = COALESCE($20, screenshot_url),
             status = CASE WHEN $22 THEN $21 ELSE status END,
-            notes = CASE WHEN $24 THEN $23 ELSE notes END
+            notes = CASE WHEN $24 THEN $23 ELSE notes END,
+            caught_at_utc = COALESCE($25, caught_at_utc)
         WHERE id = $1
         RETURNING *
       `, [
@@ -512,6 +520,7 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
         Object.prototype.hasOwnProperty.call(shinyData, 'status'),
         shinyData.notes,
         Object.prototype.hasOwnProperty.call(shinyData, 'notes'),
+        shinyData.caught_at_utc,
       ]);
       if (!result.rows[0]) return null;
       return this.findById(id);
@@ -866,7 +875,15 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
     runSelect,
   });
 
-  return { catchEvents, feebas, members, shinies, users };
+  const shinyWar = createShinyWarRepository({
+    dialect,
+    parameter,
+    runCommand,
+    runOne,
+    runSelect,
+  });
+
+  return { catchEvents, feebas, members, shinies, shinyWar, users };
 }
 
 function createRepositories(env = process.env, options = {}) {

@@ -39,7 +39,15 @@ CREATE TABLE IF NOT EXISTS team_shinies (
   screenshot_url TEXT,
   status TEXT NOT NULL DEFAULT 'Owned' CHECK (status IN ('Owned', 'Sold', 'Fled', 'Died', 'Bred')),
   notes TEXT,
+  caught_at_utc TIMESTAMPTZ,
+  war_eligibility_override BOOLEAN,
   created_at TIMESTAMPTZ DEFAULT now());
+
+ALTER TABLE team_shinies
+  ADD COLUMN IF NOT EXISTS caught_at_utc TIMESTAMPTZ;
+
+ALTER TABLE team_shinies
+  ADD COLUMN IF NOT EXISTS war_eligibility_override BOOLEAN;
 
 ALTER TABLE team_shinies
   ADD COLUMN IF NOT EXISTS status TEXT;
@@ -323,6 +331,80 @@ CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_location_status_created_at
 
 CREATE INDEX IF NOT EXISTS idx_feebas_activity_logs_location_created_at_id
   ON feebas_activity_logs(location, created_at ASC, id ASC);
+
+CREATE TABLE IF NOT EXISTS pokedex_species (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  family_key TEXT NOT NULL,
+  tier TEXT NOT NULL,
+  points INTEGER NOT NULL,
+  catch_rate INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS pokedex_locations (
+  id TEXT PRIMARY KEY,
+  region_id INTEGER NOT NULL,
+  region TEXT NOT NULL,
+  location_id INTEGER NOT NULL,
+  name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pokedex_encounters (
+  id TEXT PRIMARY KEY,
+  species_id INTEGER NOT NULL REFERENCES pokedex_species(id) ON DELETE CASCADE,
+  form TEXT NOT NULL DEFAULT '',
+  location_id TEXT NOT NULL REFERENCES pokedex_locations(id) ON DELETE CASCADE,
+  method TEXT NOT NULL,
+  season TEXT NOT NULL,
+  min_level INTEGER NOT NULL,
+  max_level INTEGER NOT NULL,
+  horde_size INTEGER NOT NULL DEFAULT 0 CHECK (horde_size IN (0, 3, 5)),
+  morning_rate DOUBLE PRECISION,
+  day_rate DOUBLE PRECISION,
+  night_rate DOUBLE PRECISION
+);
+
+CREATE TABLE IF NOT EXISTS shiny_war_events (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  starts_at TIMESTAMPTZ NOT NULL,
+  ends_at TIMESTAMPTZ NOT NULL,
+  seasons_json TEXT NOT NULL,
+  season_days INTEGER NOT NULL DEFAULT 7,
+  roster_locked BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO shiny_war_events (
+  id, name, starts_at, ends_at, seasons_json, season_days
+) VALUES (
+  '2026', 'PokeMMO Shiny Wars 2026',
+  '2026-08-01T00:00:00.000Z', '2026-08-29T00:00:00.000Z',
+  '["Summer","Autumn","Winter","Spring"]', 7
+) ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS shiny_war_participants (
+  event_id TEXT NOT NULL REFERENCES shiny_war_events(id) ON DELETE CASCADE,
+  member_id UUID NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
+  added_by_user_id UUID REFERENCES app_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (event_id, member_id)
+);
+
+CREATE TABLE IF NOT EXISTS shiny_war_hunts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id TEXT NOT NULL REFERENCES shiny_war_events(id) ON DELETE CASCADE,
+  member_id UUID NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  spot_key TEXT NOT NULL,
+  target_family_key TEXT,
+  label TEXT NOT NULL,
+  details_json TEXT NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(event_id, member_id, position)
+);
 
 CREATE TABLE IF NOT EXISTS feebas_confirmed_tile_snapshots (
   id BIGSERIAL PRIMARY KEY,
