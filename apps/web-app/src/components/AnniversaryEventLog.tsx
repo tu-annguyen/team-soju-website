@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import anniversaryData from "../data/anniversary.json";
+import type { AnniversaryData, AnniversaryEvent } from "../types/anniversary";
+import { DEFAULT_SHINY_SCORE, MAIN_EVENT_POINTS, MINI_EVENT_POINTS } from "../utils/anniversaryScoring";
 
-const mainEvents = anniversaryData.mainEvents;
-const miniEvents = anniversaryData.miniEvents;
-const eventShinies = anniversaryData.eventShinies;
+interface AnniversaryEventLogProps {
+    year: number;
+    anniversaryData: AnniversaryData;
+}
 
-const placeholder = "/images/2025/anniversary/placeholder.png";
+const formatPointLabel = (points: number) => `+${points} ${points === 1 ? "pt" : "pts"}`;
 
 const EventCard = ({
     icon,
@@ -16,15 +18,11 @@ const EventCard = ({
     third,
     OT,
     shinyScore,
-}: {
-    icon: string;
-    name: string;
-    type: "main" | "mini" | "shiny";
-    first?: string;
-    second?: string;
-    third?: string;
-    OT?: string;
-    shinyScore?: number;
+    score,
+    placeholder,
+}: AnniversaryEvent & {
+    type: "main" | "mini" | "shiny" | "bounty";
+    placeholder: string;
 }) => {
     // Always start with the placeholder (SSR-safe)
     const [imgSrc, setImgSrc] = useState(placeholder);
@@ -53,19 +51,19 @@ const EventCard = ({
                         {first ? (
                             <>
                                 <span className="font-semibold">1st place: </span>
-                                {first} <span className="text-gray-400">(+5 pts)</span>
+                                {first} <span className="text-gray-400">({formatPointLabel(MAIN_EVENT_POINTS.first)})</span>
                                 {second && (
                                     <>
                                         <br />
                                         <span className="font-semibold">2nd place: </span>
-                                        {second} <span className="text-gray-400">(+3 pts)</span>
+                                        {second} <span className="text-gray-400">({formatPointLabel(MAIN_EVENT_POINTS.second)})</span>
                                     </>
                                 )}
                                 {third && (
                                     <>
                                         <br />
                                         <span className="font-semibold">3rd place: </span>
-                                        {third} <span className="text-gray-400">(+1 pt)</span>
+                                        {third} <span className="text-gray-400">({formatPointLabel(MAIN_EVENT_POINTS.third)})</span>
                                     </>
                                 )}
                             </>
@@ -81,17 +79,22 @@ const EventCard = ({
                     <>
                         <span className="font-semibold">Winner: </span>
                         {first ? (
-                            <>{first} <span className="text-gray-400">(+2 pts)</span></>
+                            <>{first} <span className="text-gray-400">({formatPointLabel(MINI_EVENT_POINTS.first)})</span></>
                         ) : (
                             <span className="text-gray-400">TBD</span>
                         )}
                     </>
                 )}
-                {type === "shiny" && (
+                {(type === "shiny" || type === "bounty") && (
                     <>
                         <span className="font-semibold">OT: </span>
                         {OT ? (
-                            <>{OT} <span className="text-gray-400">(+{shinyScore} pts)</span></>
+                            <>
+                                {OT}{" "}
+                                <span className="text-gray-400">
+                                    ({formatPointLabel(type === "bounty" ? score ?? 0 : shinyScore ?? DEFAULT_SHINY_SCORE)})
+                                </span>
+                            </>
                         ) : (
                             <span className="text-gray-400">TBD</span>
                         )}
@@ -102,44 +105,69 @@ const EventCard = ({
     );
 };
 
-const AnniversaryEventLog = () => (
-    <section className="py-8">
-        <div className="container">
-            <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">
-                Event Log
-            </h2>
-            <div className="mb-8">
-                <h3 className="font-bold text-primary-700 dark:text-primary-400 mb-4 text-lg">
-                    Main Events
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {mainEvents.map((event, idx) => (
-                        <EventCard key={`main-${idx}`} {...event} type="main" />
-                    ))}
+const AnniversaryEventLog = ({ year, anniversaryData }: AnniversaryEventLogProps) => {
+    const { mainEvents, miniEvents } = anniversaryData;
+    const eventShinies = anniversaryData.eventShinies ?? [];
+    const eventBounties = anniversaryData.eventBounties ?? [];
+    const placeholder = "/images/anniversary-placeholder.png";
+
+    return (
+        <section className="py-8">
+            <div className="container">
+                <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">
+                    {year} Event Log
+                </h2>
+                <div className="mb-8">
+                    <h3 className="font-bold text-primary-700 dark:text-primary-400 mb-4 text-lg">
+                        Main Events
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {mainEvents.map((event, idx) => (
+                            <EventCard key={`main-${idx}`} {...event} type="main" placeholder={placeholder} />
+                        ))}
+                    </div>
+                </div>
+                <div className="mb-8">
+                    <h3 className="font-bold text-secondary-700 dark:text-secondary-400 mb-4 text-lg">
+                        Mini Events
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {miniEvents.map((event, idx) => (
+                            <EventCard key={`mini-${idx}`} {...event} type="mini" placeholder={placeholder} />
+                        ))}
+                    </div>
+                </div>
+                <div>
+                    {eventShinies.length > 0 && (
+                        <>
+                            <h3 className="font-bold text-accent-700 dark:text-accent-400 mb-4 text-lg">
+                                Event Shinies
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {eventShinies.map((event, idx) => (
+                                    <EventCard key={`shiny-${idx}`} {...event} type="shiny" placeholder={placeholder} />
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+                <div>
+                    {eventBounties.length > 0 && (
+                        <>
+                            <h3 className="font-bold text-accent-700 dark:text-accent-400 mt-8 mb-4 text-lg">
+                                Event Bounties
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                {eventBounties.map((event, idx) => (
+                                    <EventCard key={`bounty-${idx}`} {...event} type="bounty" placeholder={placeholder} />
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
-            <div className="mb-8">
-                <h3 className="font-bold text-secondary-700 dark:text-secondary-400 mb-4 text-lg">
-                    Mini Events
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {miniEvents.map((event, idx) => (
-                        <EventCard key={`mini-${idx}`} {...event} type="mini"/>
-                    ))}
-                </div>
-            </div>
-            <div>
-                <h3 className="font-bold text-accent-700 dark:text-accent-400 mb-4 text-lg">
-                    Event Shinies
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {eventShinies.map((event, idx) => (
-                        <EventCard key={`mini-${idx}`} {...event} type="shiny" />
-                    ))}
-                </div>
-            </div>
-        </div>
-    </section>
-);
+        </section>
+    );
+};
 
 export default AnniversaryEventLog;

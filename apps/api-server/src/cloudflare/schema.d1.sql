@@ -174,6 +174,21 @@ CREATE TABLE IF NOT EXISTS feebas_confirmed_tile_snapshots (
 CREATE INDEX IF NOT EXISTS idx_feebas_confirmed_tile_snapshots_location_cycle_start
   ON feebas_confirmed_tile_snapshots(location, cycle_start DESC);
 
+CREATE TABLE IF NOT EXISTS feebas_weather_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  weather_area TEXT NOT NULL,
+  pokemmo_day_start TEXT NOT NULL,
+  weather TEXT NOT NULL CHECK (weather IN ('rainy', 'clear')),
+  actor_fingerprint TEXT NOT NULL,
+  actor_name TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(weather_area, pokemmo_day_start, weather, actor_fingerprint)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_feebas_weather_reports_area_day
+  ON feebas_weather_reports(weather_area, pokemmo_day_start, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS catch_events (
   id TEXT PRIMARY KEY,
   owner_user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,

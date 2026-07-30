@@ -616,6 +616,18 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
       `, [discordId]);
     },
 
+    async findMembershipByUserId(userId) {
+      return runOne(`
+        SELECT tm.id, tm.rank
+        FROM app_users au
+        INNER JOIN team_members tm ON tm.discord_id = au.discord_id
+        WHERE au.id = ${parameter(1)}
+          AND au.discord_id IS NOT NULL
+          AND tm.is_active = ${dialect === 'd1' ? '1' : 'true'}
+        LIMIT 1
+      `, [userId]);
+    },
+
     async createWithPassword({ email, passwordHash, ign, verificationTokenHash, verificationExpiresAt }) {
       const id = crypto.randomUUID();
       const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';

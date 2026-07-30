@@ -213,6 +213,22 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 DISCORD_REDIRECT_URI=http://localhost:8787/api/auth/discord/callback
 ```
 
+Authenticated user responses include current authorization data:
+
+```json
+{
+  "membership": { "id": "team-member-id", "rank": "Trainer" },
+  "roles": ["team_member"],
+  "permissions": []
+}
+```
+
+Membership is resolved on each request by matching the account and active team
+member Discord IDs. Worker routes can use the `requireTeamMember` or
+`requirePermission` helpers provided in their route context. Express routes can
+import the standalone middleware from `src/express/authorization.js`.
+Frontend checks are not a substitute for these API guards.
+
 Discord bot mutations use bot JWTs:
 
 ```bash
@@ -253,6 +269,21 @@ When no cookie domain is set, secure `SameSite=None` cookies are automatically m
 - Worker D1 schema lives at `src/cloudflare/schema.d1.sql`.
 - Set `DB_BACKEND=d1` and bind `DB` to use D1.
 - Default Worker backend is Postgres through `DATABASE_URL`.
+- Run schema updates with `--remote`; otherwise Wrangler targets local D1 storage for `wrangler dev`.
+
+Apply the Worker schema to the deployed D1 databases:
+
+```bash
+npm run d1:schema:prod
+npm run d1:schema:staging
+```
+
+Equivalent direct Wrangler commands:
+
+```bash
+npx wrangler d1 execute DB --config wrangler.jsonc --remote --file=src/cloudflare/schema.d1.sql
+npx wrangler d1 execute DB --config wrangler.jsonc --env staging --remote --file=src/cloudflare/schema.d1.sql
+```
 
 Postgres-to-D1 helpers:
 

@@ -1,22 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { getClientLocale, getTranslations, type Locale } from '../i18n';
+import type { AuthResponse, AuthUser } from '../auth/types';
+import { getDiscordConnectionUrl } from '../auth/discordConnection';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
-
-type AuthUser = {
-  id: string;
-  email: string;
-  ign: string;
-  discord_id?: string | null;
-  auth_provider?: string | null;
-};
-
-type AuthResponse = {
-  success: boolean;
-  data?: AuthUser | null;
-  message?: string;
-};
 
 type Props = {
   apiBaseUrl: string;
@@ -442,13 +430,18 @@ const AuthPage = ({ apiBaseUrl, locale }: Props) => {
     }
   };
 
-  const connectDiscordAccount = () => {
+  const connectDiscordAccount = async () => {
     setError('');
     setNotice('');
-    window.location.assign(`${normalizedApiBaseUrl}/auth/discord?${new URLSearchParams({
-      mode: 'connect',
-      returnTo: '/auth',
-    }).toString()}`);
+    setIsSubmitting(true);
+
+    try {
+      const authorizationUrl = await getDiscordConnectionUrl(normalizedApiBaseUrl, '/auth');
+      window.location.assign(authorizationUrl);
+    } catch (connectError) {
+      setError(connectError instanceof Error ? connectError.message : messages.errors.generic);
+      setIsSubmitting(false);
+    }
   };
 
   const hasPassword = user?.auth_provider === 'password' || user?.auth_provider === 'password_discord';

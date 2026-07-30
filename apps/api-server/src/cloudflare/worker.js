@@ -40,6 +40,7 @@ const { handleMembersRoutes } = require('./routes/members');
 const { handleShiniesRoutes } = require('./routes/shinies');
 const { handleCatchEventsRoutes } = require('./routes/catch-events');
 const { handleFeebasRoutes } = require('./routes/feebas');
+const { createCloudflareAuthorization } = require('./authorization');
 
 function hasFeebasActivityDelta(activityDelta) {
   return Boolean(
@@ -631,7 +632,7 @@ function createWorkerApp(options = {}) {
 
   async function signInUser(env, repositories, user, statusCode = 200, message = 'Signed in successfully.') {
     const loggedInUser = await repositories.users.recordLogin(user.id);
-    const safeUser = repositories.users.toSafeUser(loggedInUser || user);
+    const safeUser = await getAuthorizedSafeUser(repositories, loggedInUser || user);
     const token = await signUserToken(safeUser, env);
 
     return json({
@@ -643,6 +644,13 @@ function createWorkerApp(options = {}) {
       headers: { 'set-cookie': setAuthCookie(token, env) },
     });
   }
+
+  const {
+    getAuthorizedSafeUser,
+    getAuthorizationResult,
+    requirePermission,
+    requireTeamMember,
+  } = createCloudflareAuthorization({ json, requireUser });
 
   async function issueEmailVerification(fetchImpl, env, repositories, user) {
     const token = randomHex(32);
@@ -715,6 +723,10 @@ function createWorkerApp(options = {}) {
       requireBotAuth,
       getAuthenticatedUser,
       requireUser,
+      getAuthorizedSafeUser,
+      getAuthorizationResult,
+      requirePermission,
+      requireTeamMember,
       signInUser,
       issueEmailVerification,
       maybeProxyLegacyRequest,

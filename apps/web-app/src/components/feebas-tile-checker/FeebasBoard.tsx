@@ -63,7 +63,7 @@ export function FeebasBoard({
   onTilePress,
   onVoteOverlayModeChange,
 }: Props) {
-  const [isEnvironmentOverlayEnabled, setIsEnvironmentOverlayEnabled] = useState(false);
+  const [isEnvironmentOverlayEnabled, setIsEnvironmentOverlayEnabled] = useState(true);
   const activeEnvironmentOverlay = isEnvironmentOverlayEnabled ? environmentOverlay : undefined;
   const hasEnvironmentOverlay = Boolean(environmentOverlay);
 

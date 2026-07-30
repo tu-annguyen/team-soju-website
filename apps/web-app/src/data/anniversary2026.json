@@ -1,0 +1,130 @@
+{
+    "teams": [
+        {
+            "name": "Squirtle Squad",
+            "logo": "/images/2026/anniversary/squirtle.png",
+            "score": 0
+        },
+        {
+            "name": "Sloppy Spindas",
+            "logo": "/images/2026/anniversary/spinda.png",
+            "score": 0
+        },
+        {
+            "name": "Loco Ludicolos",
+            "logo": "/images/2026/anniversary/ludicolo.png",
+            "score": 0
+        }
+    ],
+    "mainEvents": [
+        {
+            "icon": "/images/2026/anniversary/main1.png",
+            "name": "Ludicolo's Fiesta",
+            "first": "Squirtle Squad",
+            "second": "Sloppy Spindas",
+            "third": "Loco Ludicolos"
+        },
+        {
+            "icon": "/images/2026/anniversary/main2.png",
+            "name": "Too Much Water Race",
+            "first": "YangXiaoLong - Sloppy Spindas",
+            "second": "GnomKind - Squirtle Squad",
+            "third": "HogXD - Squirtle Squad"
+        },
+        {
+            "icon": "/images/2026/anniversary/main3.png",
+            "name": "Squirtle Catch Event",
+            "first": "xDekuLink - Squirtle Squad",
+            "second": "HogXD - Squirtle Squad",
+            "third": "TXMPXp - Loco Ludicolos"
+        },
+        {
+            "icon": "/images/2026/anniversary/main4.png",
+            "name": "Shiny PvP",
+            "first": "YangXiaoLong - Sloppy Spindas",
+            "second": "HogXD - Squirtle Squad",
+            "third": "Boneski - Loco Ludicolos"
+        },
+        {
+            "icon": "/images/2026/anniversary/main5.png",
+            "name": "Spin-Da Roulette",
+            "first": "YangXiaoLong - Sloppy Spindas",
+            "second": "Megu - Loco Ludicolos",
+            "third": "DatBoiWinds - Squirtle Squad"
+        },
+        {
+            "icon": "/images/2026/anniversary/main6.png",
+            "name": "Safari Catch Event",
+            "first": "SetupNINE - Sloppy Spindas",
+            "second": "HogXD - Squirtle Squad",
+            "third": "tunacore - Sloppy Spindas"
+        },
+        {
+            "icon": "/images/2026/anniversary/main7.png",
+            "name": "Soju Trivia",
+            "first": "HogXD - Squirtle Squad",
+            "second": "TXMPXp - Loco Ludicolos",
+            "third": "MPLA - Squirtle Squad"
+        }
+    ],
+    "miniEvents": [
+        {
+            "icon": "/images/2026/anniversary/mini1.png",
+            "name": "SOJUnowns",
+            "first": "DatBoiWinds - Squirtle Squad"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini2.png",
+            "name": "Magikarp Blackjack",
+            "first": "Pokio - Squirtle Squad"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini3.png",
+            "name": "Find the Munch",
+            "first": "DingusDestiny - Squirtle Squad"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini4.png",
+            "name": "Legendary PvP",
+            "first": "MPLA - Squirtle Squad"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini5.png",
+            "name": "Who's That Pokémon?",
+            "first": "MPLA - Squirtle Squad"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini6.png",
+            "name": "Secret Base Hunt",
+            "first": "MPLA - Squirtle Squad"
+        },
+        {
+            "icon": "/images/2026/anniversary/mini7.png",
+            "name": "Where's Buddha!?",
+            "first": "MPLA - Squirtle Squad"
+        }
+    ],
+    "eventBounties": [
+        {
+            "icon": "/images/2026/anniversary/arceus.png",
+            "name": "Arceus",
+            "OT": "Shwfityz - Sloppy Spindas",
+            "score": 2
+        },
+        {
+            "icon": "/images/2026/anniversary/lugia.png",
+            "name": "Lugia",
+            "score": 2
+        },
+        {
+            "icon": "/images/2026/anniversary/mewtwo.png",
+            "name": "Mewtwo",
+            "score": 2
+        },
+        {
+            "icon": "/images/2026/anniversary/rayquaza.png",
+            "name": "Rayquaza",
+            "score": 2
+        }
+    ]
+}

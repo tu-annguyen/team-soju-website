@@ -35,13 +35,14 @@ const tiers = require('./pokemon-tiers.json')
 const { buildAnimatedShinySpriteUrl } = require('./sprite-url.cjs');
 
 const TIER_POINTS = {
-    'Tier 0': 30,
-    'Tier 1': 25,
-    'Tier 2': 15,
-    'Tier 3': 10,
-    'Tier 4': 6,
-    'Tier 5': 3,
-    'Tier 6': 2,
+    'Tier 0': 50,
+    'Tier 1': 45,
+    'Tier 2': 40,
+    'Tier 3': 30,
+    'Tier 4': 15,
+    'Tier 5': 10,
+    'Tier 6': 5,
+    'Tier 7': 3,
 };
 
 function normalizePokemonName(pokemon) {
@@ -135,32 +136,32 @@ function calculateShinyPoints(pokemonName, options = {}) {
     let basePoints = tierPoints;
 
     if (encounterType === 'egg') {
-        basePoints = Math.max(basePoints, 20);
+        basePoints = Math.max(basePoints, 35);
     }
 
     if (isAlpha) {
-        basePoints = Math.max(basePoints, 50);
+        basePoints = Math.max(basePoints, 75);
     }
 
     if (tier === 'Legendary/Mythical') {
-        basePoints = Math.max(basePoints, 100);
+        basePoints = Math.max(basePoints, 200);
     }
 
     let bonusPoints = 0;
 
     if (isSecret) {
-        bonusPoints += 10;
+        bonusPoints += 20;
     }
 
     if (encounterType === 'safari') {
-        bonusPoints += 5;
+        bonusPoints += 10;
     }
 
     return basePoints + bonusPoints;
 }
 
 /**
- * 
+ * Formats a date into YYYY-MM-DD format.
  * @param {*} d - Date to format into YYYY-MM-DD format
  * @returns 
  */

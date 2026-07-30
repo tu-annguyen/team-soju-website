@@ -55,6 +55,19 @@ const STATUS_CHOICES = SHINY_STATUS_CHOICES;
 const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
 const MAX_AUTOCOMPLETE_CHOICES = 25;
 const KNOWN_POKEMON_NAMES = getKnownPokemonNames();
+const FIELD_CODES = {
+  pokemon: 'p',
+  encounter_type: 'e',
+  status: 's',
+  nature: 'n',
+  special: 'x',
+  catch_date: 'd',
+  encounters: 'c',
+  ivs: 'i',
+};
+const FIELDS_BY_CODE = Object.fromEntries(
+  Object.entries(FIELD_CODES).map(([field, code]) => [code, field])
+);
 
 function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${process.env.BOT_API_TOKEN}` } };
@@ -357,6 +370,23 @@ function decodeScope(scopeCode) {
   return 'all';
 }
 
+function getDefaultListState(shinyId = null) {
+  return {
+    scope: 'all',
+    trainerId: null,
+    page: 1,
+    pageSize: PAGE_SIZE_FALLBACK,
+    shinyId,
+  };
+}
+
+function hasDefaultListContext(state = {}) {
+  return encodeScope(state.scope) === 'a'
+    && !state.trainerId
+    && (Number(state.page) || 1) === 1
+    && normalizePageSize(state.pageSize) === PAGE_SIZE_FALLBACK;
+}
+
 function buildCustomId(kind, action, state = {}) {
   const scope = encodeScope(state.scope);
   const trainerId = state.trainerId || '_';
@@ -381,6 +411,37 @@ function parseCustomId(customId) {
     pageSize: normalizePageSize(pageSize),
     shinyId: shinyId === '_' ? null : shinyId,
   };
+}
+
+function buildModalCustomId(field, state) {
+  const fieldCode = FIELD_CODES[field];
+  if (!fieldCode) throw new Error('Unknown advanced text field.');
+
+  if (hasDefaultListContext(state)) {
+    return [MODAL_PREFIX, 'advanced', field, state.shinyId].join(':');
+  }
+
+  const componentCustomId = buildCustomId('m', fieldCode, state);
+  return `${MODAL_PREFIX}:${componentCustomId.slice(COMPONENT_PREFIX.length + 1)}`;
+}
+
+function parseModalCustomId(customId) {
+  const parts = String(customId || '').split(':');
+  const [, action, fieldOrCode, legacyShinyId] = parts;
+
+  if (action === 'advanced') {
+    return { field: fieldOrCode, ...getDefaultListState(legacyShinyId) };
+  }
+
+  if (action !== 'm' || parts.length < 8) {
+    throw new Error('Unknown shiny modal.');
+  }
+
+  const field = FIELDS_BY_CODE[fieldOrCode];
+  if (!field) throw new Error('Unknown advanced text field.');
+
+  const state = parseCustomId(`${COMPONENT_PREFIX}:${parts.slice(1).join(':')}`);
+  return { ...state, field };
 }
 
 function getListTitle(state, memberIgn) {
@@ -628,7 +689,7 @@ function buildChoiceOptions(choices, currentValue) {
   });
 }
 
-function buildAdvancedFieldModal(shiny, field) {
+function buildAdvancedFieldModal(shiny, field, state = {}) {
   const fieldConfigs = {
     catch_date: {
       label: 'Catch date (YYYY-MM-DD)',
@@ -656,7 +717,7 @@ function buildAdvancedFieldModal(shiny, field) {
   }
 
   const modal = new ModalBuilder()
-    .setCustomId([MODAL_PREFIX, 'advanced', field, shiny.id].join(':'))
+    .setCustomId(buildModalCustomId(field, { ...state, shinyId: shiny.id }))
     .setTitle(config.title);
 
   const rows = [
@@ -686,50 +747,88 @@ function buildPickerButton(customId, label, {
     .setDisabled(disabled);
 }
 
-function buildPokemonPickerSelectCustomId(shinyId) {
-  return `${COMPONENT_PREFIX}:pk:pick:${shinyId}`;
+function buildPokemonPickerSelectCustomId(state) {
+  if (hasDefaultListContext(state)) {
+    return `${COMPONENT_PREFIX}:pk:pick:${state.shinyId}`;
+  }
+  return buildCustomId('pk', 'p', state);
 }
 
 function parsePokemonPickerCustomId(customId) {
-  const [, kind, action, shinyId] = String(customId || '').split(':');
+  const parts = String(customId || '').split(':');
+  const [, kind, legacyAction, legacyShinyId] = parts;
   if (kind !== 'pk') {
     throw new Error('Unknown Pokemon picker interaction.');
   }
 
-  return {
-    action,
-    shinyId,
-  };
+  if (parts.length >= 8) {
+    const state = parseCustomId(customId);
+    return { ...state, action: state.action === 'p' ? 'pick' : state.action };
+  }
+
+  return { action: legacyAction, shinyId: legacyShinyId, ...getDefaultListState(legacyShinyId) };
 }
 
-function buildFieldPickerCustomId(field, action, shinyId) {
-  return `${COMPONENT_PREFIX}:fp:${field}:${action}:${shinyId}`;
+function buildFieldPickerCustomId(field, action, state) {
+  const fieldCode = FIELD_CODES[field];
+  if (!fieldCode) throw new Error('Unknown field picker.');
+  if (hasDefaultListContext(state)) {
+    return `${COMPONENT_PREFIX}:fp:${field}:${action}:${state.shinyId}`;
+  }
+  return buildCustomId('fp', `${fieldCode}${action === 'open' ? 'o' : 'p'}`, state);
 }
 
 function parseFieldPickerCustomId(customId) {
-  const [, kind, field, action, shinyId] = String(customId || '').split(':');
+  const parts = String(customId || '').split(':');
+  const [, kind, legacyField, legacyAction, legacyShinyId] = parts;
   if (kind !== 'fp') {
     throw new Error('Unknown field picker interaction.');
   }
 
-  return { field, action, shinyId };
+  if (parts.length >= 8) {
+    const state = parseCustomId(customId);
+    const field = FIELDS_BY_CODE[state.action.charAt(0)];
+    const action = state.action.charAt(1) === 'o' ? 'open' : 'pick';
+    if (!field) throw new Error('Unknown field picker.');
+    return { ...state, field, action };
+  }
+
+  return {
+    field: legacyField,
+    action: legacyAction,
+    ...getDefaultListState(legacyShinyId),
+  };
 }
 
-function buildVariantPickerCustomId(action, shinyId) {
-  return `${COMPONENT_PREFIX}:vp:${action}:${shinyId}`;
+function buildVariantPickerCustomId(action, state) {
+  if (hasDefaultListContext(state)) {
+    return `${COMPONENT_PREFIX}:vp:${action}:${state.shinyId}`;
+  }
+  return buildCustomId('vp', action === 'open' ? 'o' : 'p', state);
 }
 
 function parseVariantPickerCustomId(customId) {
-  const [, kind, action, shinyId] = String(customId || '').split(':');
+  const parts = String(customId || '').split(':');
+  const [, kind, legacyAction, legacyShinyId] = parts;
   if (kind !== 'vp') {
     throw new Error('Unknown variant picker interaction.');
   }
 
-  return { action, shinyId };
+  if (parts.length >= 8) {
+    const state = parseCustomId(customId);
+    return { ...state, action: state.action === 'o' ? 'open' : 'pick' };
+  }
+
+  return { action: legacyAction, ...getDefaultListState(legacyShinyId) };
 }
 
-function buildAdvancedFieldButtonCustomId(field, shinyId) {
-  return `${COMPONENT_PREFIX}:tm:${field}:${shinyId}`;
+function buildAdvancedFieldButtonCustomId(field, state) {
+  const fieldCode = FIELD_CODES[field];
+  if (!fieldCode) throw new Error('Unknown advanced text field.');
+  if (hasDefaultListContext(state)) {
+    return `${COMPONENT_PREFIX}:tm:${field}:${state.shinyId}`;
+  }
+  return buildCustomId('tm', fieldCode, state);
 }
 
 async function buildEditControlsPayload(interaction, state, content = null) {
@@ -739,24 +838,24 @@ async function buildEditControlsPayload(interaction, state, content = null) {
   payload.content = content || 'Choose a field to edit.';
   payload.components = [
     new ActionRowBuilder().addComponents(
-      buildPickerButton(buildFieldPickerCustomId('pokemon', 'open', shiny.id), 'Pokemon', { style: ButtonStyle.Primary }),
-      buildPickerButton(buildVariantPickerCustomId('open', shiny.id), 'Variant', {
+      buildPickerButton(buildFieldPickerCustomId('pokemon', 'open', state), 'Pokemon', { style: ButtonStyle.Primary }),
+      buildPickerButton(buildVariantPickerCustomId('open', state), 'Variant', {
         style: ButtonStyle.Primary,
         disabled: !variantSelection,
       })
     ),
     new ActionRowBuilder().addComponents(
-      buildPickerButton(buildFieldPickerCustomId('encounter_type', 'open', shiny.id), 'Encounter Type'),
-      buildPickerButton(buildFieldPickerCustomId('status', 'open', shiny.id), 'Status'),
-      buildPickerButton(buildFieldPickerCustomId('nature', 'open', shiny.id), 'Nature')
+      buildPickerButton(buildFieldPickerCustomId('encounter_type', 'open', state), 'Encounter Type'),
+      buildPickerButton(buildFieldPickerCustomId('status', 'open', state), 'Status'),
+      buildPickerButton(buildFieldPickerCustomId('nature', 'open', state), 'Nature')
     ),
     new ActionRowBuilder().addComponents(
-      buildPickerButton(buildAdvancedFieldButtonCustomId('catch_date', shiny.id), 'Catch Date'),
-      buildPickerButton(buildAdvancedFieldButtonCustomId('encounters', shiny.id), 'Encounters'),
-      buildPickerButton(buildAdvancedFieldButtonCustomId('ivs', shiny.id), 'IVs')
+      buildPickerButton(buildAdvancedFieldButtonCustomId('catch_date', state), 'Catch Date'),
+      buildPickerButton(buildAdvancedFieldButtonCustomId('encounters', state), 'Encounters'),
+      buildPickerButton(buildAdvancedFieldButtonCustomId('ivs', state), 'IVs')
     ),
     new ActionRowBuilder().addComponents(
-      buildPickerButton(buildFieldPickerCustomId('special', 'open', shiny.id), 'Secret/Alpha'),
+      buildPickerButton(buildFieldPickerCustomId('special', 'open', state), 'Secret/Alpha'),
       new ButtonBuilder()
         .setCustomId(buildCustomId('d', 'b', state))
         .setLabel('Back')
@@ -766,8 +865,8 @@ async function buildEditControlsPayload(interaction, state, content = null) {
   return payload;
 }
 
-async function buildPokemonPickerPayload(shinyId, content = null) {
-  const shiny = await fetchShinyById(shinyId);
+async function buildPokemonPickerPayload(state, content = null) {
+  const shiny = await fetchShinyById(state.shinyId);
   const evolutionLine = await getPokemonEvolutionLine(shiny.pokemon || shiny.pokemon_name);
   const normalizedCurrentPokemon = String(shiny.pokemon || shiny.pokemon_name || '').trim().toLowerCase();
   const options = [...new Set((evolutionLine || []).filter(Boolean))];
@@ -782,7 +881,7 @@ async function buildPokemonPickerPayload(shinyId, content = null) {
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
-          .setCustomId(buildPokemonPickerSelectCustomId(shinyId))
+          .setCustomId(buildPokemonPickerSelectCustomId(state))
           .setPlaceholder('Select Pokemon')
           .setMinValues(1)
           .setMaxValues(1)
@@ -793,17 +892,17 @@ async function buildPokemonPickerPayload(shinyId, content = null) {
           })))
       ),
       new ActionRowBuilder().addComponents(
-        buildPickerButton(buildCustomId('a', 'e', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }), 'Back')
+        buildPickerButton(buildCustomId('a', 'e', state), 'Back')
       ),
     ],
   };
 }
 
-async function buildVariantPickerPayload(shinyId, content = null) {
-  const shiny = await fetchShinyById(shinyId);
+async function buildVariantPickerPayload(state, content = null) {
+  const shiny = await fetchShinyById(state.shinyId);
   const variantSelection = await getVariantSelectionConfig(shiny.pokemon || shiny.pokemon_name);
   if (!variantSelection) {
-    return buildEditControlsPayload(null, { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }, 'This Pokemon has no alternate variants.');
+    return buildEditControlsPayload(null, state, 'This Pokemon has no alternate variants.');
   }
 
   return {
@@ -812,7 +911,7 @@ async function buildVariantPickerPayload(shinyId, content = null) {
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
-          .setCustomId(buildVariantPickerCustomId('pick', shiny.id))
+          .setCustomId(buildVariantPickerCustomId('pick', state))
           .setPlaceholder('Select Variant')
           .setMinValues(1)
           .setMaxValues(1)
@@ -824,7 +923,7 @@ async function buildVariantPickerPayload(shinyId, content = null) {
           })))
       ),
       new ActionRowBuilder().addComponents(
-        buildPickerButton(buildCustomId('a', 'e', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }), 'Back')
+        buildPickerButton(buildCustomId('a', 'e', state), 'Back')
       ),
     ],
   };
@@ -868,12 +967,12 @@ function getFieldPickerConfig(field, shiny) {
   return configs[field] || null;
 }
 
-async function buildFieldPickerPayload(field, shinyId, content = null) {
+async function buildFieldPickerPayload(field, state, content = null) {
   if (field === 'pokemon') {
-    return buildPokemonPickerPayload(shinyId, content);
+    return buildPokemonPickerPayload(state, content);
   }
 
-  const shiny = await fetchShinyById(shinyId);
+  const shiny = await fetchShinyById(state.shinyId);
   const config = getFieldPickerConfig(field, shiny);
   if (!config) {
     throw new Error('Unknown field picker.');
@@ -885,14 +984,14 @@ async function buildFieldPickerPayload(field, shinyId, content = null) {
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
-          .setCustomId(buildFieldPickerCustomId(field, 'pick', shinyId))
+          .setCustomId(buildFieldPickerCustomId(field, 'pick', state))
           .setPlaceholder(config.placeholder)
           .setMinValues(1)
           .setMaxValues(1)
           .addOptions(buildChoiceOptions(config.choices, config.currentValue))
       ),
       new ActionRowBuilder().addComponents(
-        buildPickerButton(buildCustomId('a', 'e', { scope: 'all', page: 1, pageSize: PAGE_SIZE_FALLBACK, shinyId }), 'Back')
+        buildPickerButton(buildCustomId('a', 'e', state), 'Back')
       ),
     ],
   };
@@ -1418,12 +1517,7 @@ async function handleShinyComponent(interaction) {
           pokemon,
           national_number: nationalNumber,
         });
-        await interaction.update(await buildEditControlsPayload(interaction, {
-          scope: 'all',
-          page: 1,
-          pageSize: PAGE_SIZE_FALLBACK,
-          shinyId: pokemonPicker.shinyId,
-        }, 'Pokemon updated.'));
+        await interaction.update(await buildEditControlsPayload(interaction, pokemonPicker, 'Pokemon updated.'));
         return;
       }
     }
@@ -1433,7 +1527,7 @@ async function handleShinyComponent(interaction) {
       await requireOwnedShiny(interaction, variantPicker.shinyId);
 
       if (variantPicker.action === 'open') {
-        await interaction.update(await buildVariantPickerPayload(variantPicker.shinyId));
+        await interaction.update(await buildVariantPickerPayload(variantPicker));
         return;
       }
 
@@ -1444,12 +1538,7 @@ async function handleShinyComponent(interaction) {
         }
 
         await updateShinyRecord(variantPicker.shinyId, { variants: selectedVariant });
-        await interaction.update(await buildEditControlsPayload(interaction, {
-          scope: 'all',
-          page: 1,
-          pageSize: PAGE_SIZE_FALLBACK,
-          shinyId: variantPicker.shinyId,
-        }, 'Variant updated.'));
+        await interaction.update(await buildEditControlsPayload(interaction, variantPicker, 'Variant updated.'));
         return;
       }
     }
@@ -1459,7 +1548,7 @@ async function handleShinyComponent(interaction) {
       await requireOwnedShiny(interaction, fieldPicker.shinyId);
 
       if (fieldPicker.action === 'open') {
-        await interaction.update(await buildFieldPickerPayload(fieldPicker.field, fieldPicker.shinyId));
+        await interaction.update(await buildFieldPickerPayload(fieldPicker.field, fieldPicker));
         return;
       }
 
@@ -1475,20 +1564,20 @@ async function handleShinyComponent(interaction) {
         }
 
         await updateShinyRecord(fieldPicker.shinyId, config.toUpdates(interaction.values[0]));
-        await interaction.update(await buildEditControlsPayload(interaction, {
-          scope: 'all',
-          page: 1,
-          pageSize: PAGE_SIZE_FALLBACK,
-          shinyId: fieldPicker.shinyId,
-        }, 'Shiny updated.'));
+        await interaction.update(await buildEditControlsPayload(interaction, fieldPicker, 'Shiny updated.'));
         return;
       }
     }
 
     if (String(interaction.customId || '').startsWith(`${COMPONENT_PREFIX}:tm:`)) {
-      const [, , field, shinyId] = String(interaction.customId || '').split(':');
-      const shiny = await requireOwnedShiny(interaction, shinyId);
-      await interaction.showModal(buildAdvancedFieldModal(shiny, field));
+      const parts = String(interaction.customId || '').split(':');
+      const legacy = parts.length < 8;
+      const state = legacy
+        ? getDefaultListState(parts[3])
+        : parseCustomId(interaction.customId);
+      const field = legacy ? parts[2] : FIELDS_BY_CODE[state.action];
+      const shiny = await requireOwnedShiny(interaction, state.shinyId);
+      await interaction.showModal(buildAdvancedFieldModal(shiny, field, state));
       return;
     }
 
@@ -1556,7 +1645,7 @@ async function handleShinyComponent(interaction) {
 
     if (state.kind === 'm' && state.action === 'o') {
       const shiny = await requireOwnedShiny(interaction, state.shinyId);
-      await interaction.showModal(buildAdvancedFieldModal(shiny, 'catch_date'));
+      await interaction.showModal(buildAdvancedFieldModal(shiny, 'catch_date', state));
       return;
     }
 
@@ -1606,10 +1695,8 @@ function isShinyComponent(customId) {
 }
 
 async function handleShinyEditModal(interaction) {
-  const [, action, field, shinyId] = String(interaction.customId || '').split(':');
-  if (action !== 'advanced') {
-    throw new Error('Unknown shiny modal.');
-  }
+  const state = parseModalCustomId(interaction.customId);
+  const { field, shinyId } = state;
 
   try {
     await interaction.deferUpdate();
@@ -1628,12 +1715,7 @@ async function handleShinyEditModal(interaction) {
     }
 
     await updateShinyRecord(shinyId, updates);
-    await interaction.editReply(await buildEditControlsPayload(interaction, {
-      scope: 'all',
-      page: 1,
-      pageSize: PAGE_SIZE_FALLBACK,
-      shinyId,
-    }, 'Shiny updated.'));
+    await interaction.editReply(await buildEditControlsPayload(interaction, state, 'Shiny updated.'));
   } catch (error) {
     const payload = { content: `Error: ${error.message}`, flags: MessageFlags.Ephemeral };
     if (interaction.replied || interaction.deferred) {
@@ -1645,7 +1727,8 @@ async function handleShinyEditModal(interaction) {
 }
 
 function isShinyEditModal(customId) {
-  return String(customId || '').startsWith(`${MODAL_PREFIX}:advanced:`);
+  return String(customId || '').startsWith(`${MODAL_PREFIX}:advanced:`)
+    || String(customId || '').startsWith(`${MODAL_PREFIX}:m:`);
 }
 
 module.exports = {

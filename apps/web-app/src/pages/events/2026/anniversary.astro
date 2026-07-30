@@ -1,0 +1,14 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import EventsHeader from '../../../components/EventsHeader';
+import Anniversary from '../../../components/Anniversary';
+import anniversaryData from '../../../data/anniversary2026.json';
+---
+
+<Layout 
+  title="Events - Team Soju" 
+  description="Explore Team Soju's events."
+>
+  <EventsHeader client:load />
+  <Anniversary year={2026} anniversaryData={anniversaryData} client:load />
+</Layout>

@@ -1,4 +1,5 @@
 import type { getTranslations, Locale } from '../../i18n';
+import type { AuthResponse, AuthUser } from '../../auth/types';
 import type { FeebasBoardDisplayMode } from './FeebasBoardLegend';
 import { DEFAULT_LOCATION, LOCATION_OPTIONS_BY_ID } from './locations';
 
@@ -7,6 +8,7 @@ type Translations = ReturnType<typeof getTranslations>;
 export type TileStatus = 'unchecked' | 'checked' | 'pending' | 'confirmed';
 export type BoardDisplayMode = FeebasBoardDisplayMode;
 export type VoteOverlayMode = 'color' | 'pattern';
+export type Route119Weather = 'rainy' | 'clear';
 export type FeebasCheckerMessages = Translations['tools']['feebasChecker'];
 export type AuthMessages = Translations['auth'];
 
@@ -93,6 +95,25 @@ export type FeebasLeaderboard = {
   entries: FeebasLeaderboardEntry[];
 };
 
+export type FeebasWeatherReport = {
+  weather: Route119Weather;
+  actorName: string | null;
+  reportedAt: string | null;
+  confirmedAt?: string | null;
+  confirmations: number;
+};
+
+export type FeebasWeatherStatus = {
+  areaId: 'route-119';
+  dayStart: string;
+  dayEnd: string;
+  nextPossibleChangeAt: string;
+  minimumCyclesUntilPossibleChange: number;
+  confirmed: FeebasWeatherReport | null;
+  pending: FeebasWeatherReport[];
+  currentUserVote: Route119Weather | null;
+};
+
 export type FeebasBoard = {
   location: string;
   displayName: string;
@@ -113,6 +134,7 @@ export type FeebasBoard = {
     cols: number;
   };
   activity: FeebasActivityEntry[];
+  weather?: FeebasWeatherStatus | null;
   leaderboard?: FeebasLeaderboard;
   tiles: FeebasTile[];
 };
@@ -171,23 +193,16 @@ export type FeebasVotesResponse = {
       tileId: string;
       currentUserVote: TileStatus;
     }[];
+    weather?: {
+      currentUserVote: Route119Weather | null;
+    };
   };
   message?: string;
 };
 
 export type FeebasLiveUpdateResponse = BoardResponse | FeebasActivityDeltaResponse | FeebasTileDeltaResponse;
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  ign: string;
-};
-
-export type AuthResponse = {
-  success: boolean;
-  data?: AuthUser | null;
-  message?: string;
-};
+export type { AuthResponse, AuthUser };
 
 export type FeebasTileCheckerProps = {
   apiBaseUrl: string;
