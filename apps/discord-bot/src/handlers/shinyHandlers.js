@@ -73,6 +73,14 @@ function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${process.env.BOT_API_TOKEN}` } };
 }
 
+function combineUtcDateTime(date, time) {
+  if (!time) return null;
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    throw new Error('UTC capture time must use HH:MM in 24-hour format.');
+  }
+  return `${date}T${time}:00.000Z`;
+}
+
 function formatPokemonAutocompleteLabel(name) {
   return String(name || '')
     .trim()
@@ -1225,6 +1233,7 @@ async function handleAddShiny(interaction) {
 
   const pokemon = interaction.options.getString('pokemon');
   const catchDate = interaction.options.getString('catch_date') || new Date().toISOString().split('T')[0];
+  const catchTimeUtc = interaction.options.getString('catch_time_utc');
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
   const status = interaction.options.getString('status') || 'Owned';
   const isSecret = interaction.options.getBoolean('secret') || false;
@@ -1266,6 +1275,7 @@ async function handleAddShiny(interaction) {
       pokemon,
       national_number: nationalNumber,
       catch_date: catchDate,
+      ...(catchTimeUtc ? { caught_at_utc: combineUtcDateTime(catchDate, catchTimeUtc) } : {}),
       encounter_type: encounterType,
       status,
       is_secret: isSecret,
@@ -1333,6 +1343,7 @@ async function handleAddShinyScreenshot(interaction) {
       is_secret: interaction.options.getBoolean('secret') || false,
       is_alpha: interaction.options.getBoolean('alpha') || false,
       command_called_at: new Date(interaction.createdTimestamp || Date.now()).toISOString(),
+      catch_time_utc: interaction.options.getString('catch_time_utc') || undefined,
       discord_user_id: interaction.user.id,
       member_roles: getMemberRoles(interaction).map(role => role.name),
       discord_application_id: interaction.applicationId,
@@ -1361,6 +1372,7 @@ async function handleEditShiny(interaction) {
   const pokemon = interaction.options.getString('pokemon');
   const variant = interaction.options.getString('variant');
   const catchDate = interaction.options.getString('catch_date');
+  const catchTimeUtc = interaction.options.getString('catch_time_utc');
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
   const status = interaction.options.getString('status');
   const isSecret = interaction.options.getBoolean('secret');
@@ -1377,7 +1389,7 @@ async function handleEditShiny(interaction) {
   const ivSpeed = interaction.options.getInteger('iv_speed');
 
   try {
-    await requireOwnedShiny(interaction, shinyId);
+    const existingShiny = await requireOwnedShiny(interaction, shinyId);
 
     const updates = {};
     if (pokemon) {
@@ -1391,6 +1403,12 @@ async function handleEditShiny(interaction) {
     }
     if (variant) updates.variants = normalizeVariantSlug(variant);
     if (catchDate) updates.catch_date = catchDate;
+    if (catchTimeUtc) {
+      const effectiveDate = catchDate || existingShiny.catch_date;
+      updates.caught_at_utc = combineUtcDateTime(effectiveDate, catchTimeUtc);
+    } else if (catchDate && existingShiny.caught_at_utc) {
+      updates.caught_at_utc = `${catchDate}${existingShiny.caught_at_utc.slice(10)}`;
+    }
     if (encounterType) updates.encounter_type = encounterType;
     if (status) updates.status = status;
     if (isSecret !== null) updates.is_secret = isSecret;

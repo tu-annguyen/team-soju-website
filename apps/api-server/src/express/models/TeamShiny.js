@@ -124,7 +124,8 @@ class TeamShiny {
       is_alpha = false,
       screenshot_url,
       status = 'Owned',
-      notes
+      notes,
+      caught_at_utc
     } = shinyData;
 
     const result = await pool.query(`
@@ -132,15 +133,15 @@ class TeamShiny {
         national_number, pokemon, variants, original_trainer, catch_date, total_encounters,
         species_encounters, encounter_type, location, 
         nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
-        iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes
+        iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes, caught_at_utc
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       RETURNING id
     `, [
       national_number, pokemon, variants, original_trainer, catch_date, total_encounters,
       species_encounters, encounter_type, location, 
       nature, iv_hp, iv_attack, iv_defense, iv_sp_attack,
-      iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes
+      iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes, caught_at_utc
     ]);
 
     const insertedId = result.rows[0].id;
@@ -168,7 +169,8 @@ class TeamShiny {
       is_alpha,
       screenshot_url,
       status,
-      notes
+      notes,
+      caught_at_utc
     } = shinyData;
 
     const result = await pool.query(`
@@ -192,7 +194,8 @@ class TeamShiny {
           is_alpha = COALESCE($19, is_alpha),
           screenshot_url = COALESCE($20, screenshot_url),
           status = CASE WHEN $22 THEN $21 ELSE status END,
-          notes = CASE WHEN $24 THEN $23 ELSE notes END
+          notes = CASE WHEN $24 THEN $23 ELSE notes END,
+          caught_at_utc = COALESCE($25, caught_at_utc)
       WHERE id = $1
       RETURNING *
     `, [
@@ -201,7 +204,7 @@ class TeamShiny {
       encounter_type, location, nature, 
       iv_hp, iv_attack, iv_defense, iv_sp_attack, iv_sp_defense, iv_speed,
       is_secret, is_alpha, screenshot_url, status, Object.prototype.hasOwnProperty.call(shinyData, 'status'),
-      notes, Object.prototype.hasOwnProperty.call(shinyData, 'notes')
+      notes, Object.prototype.hasOwnProperty.call(shinyData, 'notes'), caught_at_utc
     ]);
 
     // Return the updated shiny with joined trainer_name

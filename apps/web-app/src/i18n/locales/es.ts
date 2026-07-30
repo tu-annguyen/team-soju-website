@@ -131,6 +131,10 @@ const es = {
         description:
           'Coordina las comprobaciones de casillas de Feebas en tiempo real con un tablero compartido para casillas revisadas, encontradas o confirmadas. Cada marca usa un color translucido para que el tablero funcione como un mapa de calor de la opinion del grupo.',
       },
+      shinyWarCard: {
+        title: 'Organizador de Shiny Wars',
+        description: 'Coordina las cacerías de Team Soju y sigue el progreso de Shiny Wars.',
+      },
     },
     feebas: {
       title: 'Comprobador de casillas de Feebas - Team Soju',

@@ -36,6 +36,13 @@ describe('authorization policy', () => {
     }, 'shinies:create')).toBe(true);
   });
 
+  it('grants Shiny Wars management to Elite 4 and Champion ranks', () => {
+    expect(buildAuthorization({ id: 'e4', rank: 'Elite 4' }).permissions)
+      .toContain('shiny_war:manage');
+    expect(buildAuthorization({ id: 'champ', rank: 'Champion' }).permissions)
+      .toContain('shiny_war:manage');
+  });
+
   it('enriches safe users without exposing additional database fields', () => {
     expect(enrichUserAuthorization({
       id: 'user-1',

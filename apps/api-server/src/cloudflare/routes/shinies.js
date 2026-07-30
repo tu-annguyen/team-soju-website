@@ -198,6 +198,16 @@ async function handleShiniesRoutes(context) {
         if (error) {
           return json({ success: false, message: 'Validation error', details: error.details }, { status: 400 });
         }
+        const isEventDate = value.catch_date >= '2026-08-01' && value.catch_date < '2026-08-29';
+        if (isEventDate && !value.caught_at_utc && getRepositories().shinyWar) {
+          const participants = await getRepositories().shinyWar.listParticipants('2026');
+          if (participants.some((entry) => entry.member_id === value.original_trainer)) {
+            return json({
+              success: false,
+              message: 'An exact UTC capture time is required for Shiny Wars participants.',
+            }, { status: 400 });
+          }
+        }
 
         const shiny = await getRepositories().shinies.create(await enrichShinyPayloadWithVariants(value));
         return json({

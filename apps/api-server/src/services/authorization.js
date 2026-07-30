@@ -1,9 +1,9 @@
 const TEAM_MEMBER_ROLE = 'team_member';
 
-// Keep rank-derived capabilities centralized. Ranks intentionally grant no
-// additional permissions yet; resource permissions can be introduced here
-// without changing route guards or response contracts.
-const RANK_PERMISSIONS = Object.freeze({});
+const RANK_PERMISSIONS = Object.freeze({
+  'Elite 4': Object.freeze(['shiny_war:manage']),
+  Champion: Object.freeze(['shiny_war:manage']),
+});
 
 function normalizeMembership(row) {
   if (!row) return null;
