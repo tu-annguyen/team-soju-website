@@ -45,7 +45,7 @@ describe('HuntFinder', () => {
     });
   });
 
-  it('opens and collapses all visible locations from the view row', async () => {
+  it('collapses and opens all visible super-locations from the view row', async () => {
     const spots = [
       makeSpot('mansion', 'Pokemon Mansion 2F'),
       makeSpot('route-7', 'Route 7'),
@@ -58,21 +58,21 @@ describe('HuntFinder', () => {
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
 
-    const openAll = await screen.findByRole('button', { name: 'Open all' });
-    await waitFor(() => expect(openAll).toBeEnabled());
-    expect(openAll).toHaveTextContent('+ Open all');
-
-    fireEvent.click(openAll);
-
-    expect(screen.getByRole('button', { name: /Pokemon Mansion 2F/ })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('button', { name: /Route 7/ })).toHaveAttribute('aria-expanded', 'true');
-    const collapseAll = screen.getByRole('button', { name: 'Collapse all' });
+    const collapseAll = await screen.findByRole('button', { name: 'Collapse all' });
+    await waitFor(() => expect(collapseAll).toBeEnabled());
     expect(collapseAll).toHaveTextContent('- Collapse all');
 
     fireEvent.click(collapseAll);
 
-    expect(screen.getByRole('button', { name: /Pokemon Mansion 2F/ })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', { name: /Route 7/ })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', { name: 'Open all' })).toHaveTextContent('+ Open all');
+    expect(screen.getByRole('button', { name: 'Expand Pokemon Mansion 2F' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Expand Route 7' })).toHaveAttribute('aria-expanded', 'false');
+    const openAll = screen.getByRole('button', { name: 'Open all' });
+    expect(openAll).toHaveTextContent('+ Open all');
+
+    fireEvent.click(openAll);
+
+    expect(screen.getByRole('button', { name: 'Collapse Pokemon Mansion 2F' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Collapse Route 7' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Collapse all' })).toHaveTextContent('- Collapse all');
   });
 });

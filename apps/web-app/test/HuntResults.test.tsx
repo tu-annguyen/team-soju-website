@@ -168,4 +168,31 @@ describe('HuntResults', () => {
 
     expect(screen.getByText(label)).toBeInTheDocument();
   });
+
+  it('separates collapsing a super-location from showing all of its Pokemon', () => {
+    const onToggle = jest.fn();
+    const skyPillarSpots: HuntSpot[] = [
+      { ...spot, spot_key: 'sky-1f', location: 'Sky Pillar', location_areas: ['1F'] },
+      { ...spot, spot_key: 'sky-3f', location: 'Sky Pillar', location_areas: ['3F'] },
+    ];
+    render(
+      <HuntResults
+        expanded={new Set()}
+        participants={[]}
+        speciesFilter=""
+        spots={skyPillarSpots}
+        view="location"
+        onQueue={jest.fn()}
+        onToggle={onToggle}
+      />
+    );
+
+    expect(screen.getByText('1F · Sweet Scent split 1')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Sky Pillar' }));
+    expect(screen.queryByText('1F · Sweet Scent split 1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show Pokemon' }));
+    expect(onToggle).toHaveBeenCalledWith('sky-1f');
+    expect(onToggle).toHaveBeenCalledWith('sky-3f');
+    expect(screen.getByText('1F · Sweet Scent split 1')).toBeInTheDocument();
+  });
 });

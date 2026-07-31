@@ -4,6 +4,7 @@ import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
 import HuntResults from './HuntResults';
+import { huntLocationKey } from './huntLocationGroups';
 import type { HuntView } from './HuntResults';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
@@ -40,6 +41,7 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
   const [locations, setLocations] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(() => new Set());
   const [view, setView] = useState<HuntView>('location');
   const [error, setError] = useState('');
 
@@ -72,9 +74,9 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
   const isSweetScent = filters.method === 'Sweet Scent';
   const isFishing = filters.method === 'Fishing';
   const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(filters.method);
-  const visibleSpotKeys = [...new Set(spots.map((spot) => spot.spot_key))];
-  const allLocationsExpanded = visibleSpotKeys.length > 0
-    && visibleSpotKeys.every((spotKey) => expanded.has(spotKey));
+  const visibleLocationKeys = [...new Set(spots.map(huntLocationKey))];
+  const allLocationsOpen = visibleLocationKeys.length > 0
+    && visibleLocationKeys.every((locationKey) => !collapsedLocations.has(locationKey));
 
   const toggleSpot = (spotKey: string) => {
     setExpanded((current) => {
@@ -85,8 +87,17 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
     });
   };
 
-  const toggleAllSpots = () => {
-    setExpanded(allLocationsExpanded ? new Set() : new Set(visibleSpotKeys));
+  const toggleAllLocations = () => {
+    setCollapsedLocations(allLocationsOpen ? new Set(visibleLocationKeys) : new Set());
+  };
+
+  const toggleLocation = (locationKey: string) => {
+    setCollapsedLocations((current) => {
+      const next = new Set(current);
+      if (next.has(locationKey)) next.delete(locationKey);
+      else next.add(locationKey);
+      return next;
+    });
   };
 
   return (
@@ -208,12 +219,12 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
         </div>
         <button
           className="rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          disabled={visibleSpotKeys.length === 0}
-          onClick={toggleAllSpots}
+          disabled={visibleLocationKeys.length === 0}
+          onClick={toggleAllLocations}
           type="button"
         >
-          <span aria-hidden="true">{allLocationsExpanded ? '-' : '+'}</span>{' '}
-          {allLocationsExpanded ? 'Collapse all' : 'Open all'}
+          <span aria-hidden="true">{allLocationsOpen ? '-' : '+'}</span>{' '}
+          {allLocationsOpen ? 'Collapse all' : 'Open all'}
         </button>
       </div>
       <p className="text-sm text-gray-500">
@@ -232,6 +243,8 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
         selectedTime={filters.time}
         onSeasonChange={(season) => update('season', season)}
         onTimeChange={(time) => update('time', time)}
+        collapsedLocations={collapsedLocations}
+        onToggleLocation={toggleLocation}
       />
     </div>
   );

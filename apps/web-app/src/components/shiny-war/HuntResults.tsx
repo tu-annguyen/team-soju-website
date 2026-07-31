@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { groupHuntSpotsByPokemon } from './huntGroups';
 import HuntLocationCard from './HuntLocationCard';
 import SpeciesSpriteName from './SpeciesSpriteName';
@@ -18,12 +19,25 @@ type Props = {
   selectedTime?: string;
   onSeasonChange?: (season: string) => void;
   onTimeChange?: (time: string) => void;
+  collapsedLocations?: ReadonlySet<string>;
+  onToggleLocation?: (locationKey: string) => void;
 };
 
 export default function HuntResults({
   expanded, participants, speciesFilter, spots, view, onQueue, onToggle,
   selectedSeason, selectedTime, onSeasonChange, onTimeChange,
+  collapsedLocations, onToggleLocation,
 }: Props) {
+  const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
+  const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
+  const toggleLocation = onToggleLocation || ((locationKey: string) => {
+    setInternalCollapsedLocations((current) => {
+      const next = new Set(current);
+      if (next.has(locationKey)) next.delete(locationKey);
+      else next.add(locationKey);
+      return next;
+    });
+  });
   if (view === 'location') {
     const locationGroups = groupHuntSpotsByLocation(spots);
     return (
@@ -32,6 +46,7 @@ export default function HuntResults({
           <HuntLocationCard
             expanded={expanded}
             key={group.key}
+            locationOpen={!effectiveCollapsedLocations.has(group.key)}
             participants={participants}
             selectedSeason={selectedSeason}
             selectedTime={selectedTime}
@@ -40,6 +55,7 @@ export default function HuntResults({
             onSeasonChange={onSeasonChange}
             onTimeChange={onTimeChange}
             onToggle={onToggle}
+            onToggleLocation={() => toggleLocation(group.key)}
           />
         ))}
       </div>
@@ -77,6 +93,7 @@ export default function HuntResults({
               <HuntLocationCard
                 expanded={expanded}
                 key={`${species.slug}-${species.form}-${group.key}`}
+                locationOpen={!effectiveCollapsedLocations.has(group.key)}
                 participants={participants}
                 selectedSeason={selectedSeason}
                 selectedTime={selectedTime}
@@ -86,6 +103,7 @@ export default function HuntResults({
                 onSeasonChange={onSeasonChange}
                 onTimeChange={onTimeChange}
                 onToggle={onToggle}
+                onToggleLocation={() => toggleLocation(group.key)}
               />
             ))}
           </div>
