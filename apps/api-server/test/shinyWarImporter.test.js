@@ -46,4 +46,27 @@ describe('Shiny Wars Pokedex importer', () => {
     expect(data.encounters[0]).toMatchObject({ hordeSize: 3, morningRate: 2.5 });
     expect(toSql(data)).toContain('INSERT INTO pokedex_encounters');
   });
+
+  it('gives repeated form records unique slugs while retaining one family', () => {
+    const data = normalizePokedex([
+      {
+        id: 479,
+        name: 'Rotom',
+        forms: [
+          { id: 479, name: 'Rotom' },
+          { id: 657, name: 'Rotom [Heat Rotom]' },
+        ],
+        evolutions: [],
+        locations: [],
+      },
+      { id: 657, name: 'Rotom', evolutions: [], locations: [] },
+    ]);
+
+    expect(data.species.map((entry) => entry.slug)).toEqual([
+      'rotom',
+      'rotom-heat-rotom',
+    ]);
+    expect(new Set(data.species.map((entry) => entry.slug)).size).toBe(2);
+    expect(data.species.map((entry) => entry.familyKey)).toEqual(['rotom', 'rotom']);
+  });
 });
