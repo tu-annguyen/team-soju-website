@@ -4,7 +4,9 @@ export type Hunt = {
   spot_key: string;
   target_family_key?: string | null;
   label: string;
-  details?: Record<string, unknown>;
+  details?: Record<string, unknown> & {
+    species?: Array<string | Pick<HuntSpecies, 'name' | 'slug' | 'form'>>;
+  };
   overlap_member_ids?: string[];
 };
 
@@ -16,7 +18,7 @@ export type ParticipantHunts = {
   hunts: Hunt[];
 };
 
-export type HordeSpecies = {
+export type HuntSpecies = {
   name: string;
   slug: string;
   family_key: string;
@@ -26,21 +28,31 @@ export type HordeSpecies = {
   form?: string;
   min_level: number;
   max_level: number;
+  is_lure?: boolean;
 };
 
-export type HordeSpot = {
+export type HuntSpot = {
   spot_key: string;
+  spot_keys?: string[];
+  location_areas?: string[];
   region: string;
   location: string;
   method: string;
   season: string;
   time: string;
+  times?: string[];
   horde_size: number;
+  is_lure?: boolean;
   denominator: number;
   averagePoints: number;
-  encountersPerHour: number;
-  pointsPerHour: number;
-  composition: HordeSpecies[];
+  encountersPerHour: number | null;
+  pointsPerHour: number | null;
+  composition: HuntSpecies[];
+};
+
+export type PokemonHuntGroup = {
+  species: HuntSpecies;
+  spots: HuntSpot[];
 };
 
 export type Dashboard = {
@@ -50,6 +62,7 @@ export type Dashboard = {
     ends_at: string;
     roster_locked: boolean;
     seasons: string[];
+    season_days?: number;
   };
   currentSeason: string | null;
   teamTotal: number;

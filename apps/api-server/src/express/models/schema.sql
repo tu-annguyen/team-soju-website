@@ -360,10 +360,22 @@ CREATE TABLE IF NOT EXISTS pokedex_encounters (
   min_level INTEGER NOT NULL,
   max_level INTEGER NOT NULL,
   horde_size INTEGER NOT NULL DEFAULT 0 CHECK (horde_size IN (0, 3, 5)),
+  is_lure BOOLEAN NOT NULL DEFAULT false,
   morning_rate DOUBLE PRECISION,
   day_rate DOUBLE PRECISION,
   night_rate DOUBLE PRECISION
 );
+
+ALTER TABLE pokedex_encounters ADD COLUMN IF NOT EXISTS is_lure BOOLEAN NOT NULL DEFAULT false;
+
+UPDATE pokedex_encounters
+SET is_lure = true,
+    morning_rate = 5,
+    day_rate = 5,
+    night_rate = 5
+WHERE morning_rate IS NULL
+  AND day_rate IS NULL
+  AND night_rate IS NULL;
 
 CREATE TABLE IF NOT EXISTS shiny_war_events (
   id TEXT PRIMARY KEY,
