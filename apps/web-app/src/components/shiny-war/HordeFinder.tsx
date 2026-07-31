@@ -22,7 +22,7 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
   const [filters, setFilters] = useState({
     season: defaultSeason || 'Summer', region: '', species: '', tier: '', time: '',
     hordeSize: '', hordesPerHour: '240', eventBoost: true, donator: false,
-    personalCharm: false, linkCharm: false, sort: 'pointsPerHour',
+    fullSplitOnly: false, personalCharm: false, linkCharm: false, sort: 'pointsPerHour',
   });
   const [spots, setSpots] = useState<HordeSpot[]>([]);
   const [total, setTotal] = useState(0);
@@ -106,6 +106,10 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
         <label className={labelClasses}>
           Hordes/hour
           <input type="number" min="1" max="1000" value={filters.hordesPerHour} onChange={(e) => update('hordesPerHour', e.target.value)} className={fieldClasses} />
+        </label>
+        <label className="flex items-center gap-2 self-end rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300">
+          <input className={checkboxClasses} type="checkbox" checked={filters.fullSplitOnly} onChange={(e) => update('fullSplitOnly', e.target.checked)} />
+          100% split hordes only
         </label>
         <fieldset className="rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 lg:col-span-4 dark:border-gray-700 dark:bg-gray-950">
           <legend className="px-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Boosts and charms</legend>

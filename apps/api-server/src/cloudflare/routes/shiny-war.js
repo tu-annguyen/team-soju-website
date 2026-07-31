@@ -80,6 +80,7 @@ async function handleShinyWarRoutes(context) {
         tier: url.searchParams.get('tier') || undefined,
         species: url.searchParams.get('species') || undefined,
         time: url.searchParams.get('time') || undefined,
+        fullSplitOnly: bool('fullSplitOnly'),
         sort: url.searchParams.get('sort') || undefined,
         page: url.searchParams.get('page') || undefined,
         pageSize: url.searchParams.get('pageSize') || undefined,
