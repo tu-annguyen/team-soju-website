@@ -22,8 +22,15 @@ export function groupHordeSpotsByPokemon(
   });
 
   return [...groups.values()].sort((left, right) => {
-    const leftBestRate = Math.max(...left.spots.map((spot) => spot.pointsPerHour));
-    const rightBestRate = Math.max(...right.spots.map((spot) => spot.pointsPerHour));
-    return rightBestRate - leftBestRate || left.species.name.localeCompare(right.species.name);
+    const leftRates = left.spots.flatMap((spot) => spot.pointsPerHour === null ? [] : [spot.pointsPerHour]);
+    const rightRates = right.spots.flatMap((spot) => spot.pointsPerHour === null ? [] : [spot.pointsPerHour]);
+    if (leftRates.length || rightRates.length) {
+      if (!leftRates.length) return 1;
+      if (!rightRates.length) return -1;
+      const rateDifference = Math.max(...rightRates) - Math.max(...leftRates);
+      if (rateDifference) return rateDifference;
+    }
+    return right.species.points - left.species.points
+      || left.species.name.localeCompare(right.species.name);
   });
 }

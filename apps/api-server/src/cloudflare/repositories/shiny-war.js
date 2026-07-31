@@ -17,6 +17,29 @@ function parseJson(value, fallback) {
   }
 }
 
+const ENCOUNTER_METHODS = Object.freeze({
+  'Sweet Scent': ['Sweet Scent'],
+  Singles: ['Grass', 'Cave', 'Water', 'Inside', 'Dark Grass', 'Dust Cloud', 'Shadow'],
+  Fishing: ['Super Rod', 'Good Rod', 'Old Rod', 'Fishing'],
+  'Honey Trees': ['Honey Tree'],
+  Headbutt: ['Headbutt'],
+  'Rock Smash': ['Rock Smash', 'Rocks'],
+});
+
+const FISHING_METHODS = new Set(ENCOUNTER_METHODS.Fishing);
+const METHODS_WITHOUT_HOURLY_DATA = new Set(['Headbutt', 'Rock Smash', 'Rocks']);
+
+function encounterRatePerHour(row, filters) {
+  if (Number(row.horde_size) > 0) {
+    return (Number(filters.hordesPerHour) || 240) * Number(row.horde_size);
+  }
+  if (row.method === 'Dark Grass') return 400;
+  if (FISHING_METHODS.has(row.method)) return filters.chumBucket ? 400 : 200;
+  if (row.method === 'Honey Tree') return 50;
+  if (METHODS_WITHOUT_HOURLY_DATA.has(row.method)) return null;
+  return 300;
+}
+
 function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
 
@@ -117,16 +140,37 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
 
   async function listHordeSpots(filters = {}) {
     const params = [];
-    const where = ['e.horde_size > 0'];
+    const where = [];
+    const requestedMethod = filters.method || 'Sweet Scent';
+    const selectedMethod = requestedMethod === 'All' || ENCOUNTER_METHODS[requestedMethod]
+      ? requestedMethod
+      : 'Sweet Scent';
     const addFilter = (column, value) => {
       if (!value) return;
       params.push(value);
       where.push(`${column} = ${parameter(params.length)}`);
     };
-    addFilter('e.season', filters.season);
+    if (filters.season) {
+      params.push(filters.season);
+      where.push(`(e.season = ${parameter(params.length)} OR e.season = 'Any')`);
+    }
     addFilter('l.region', filters.region);
-    addFilter('e.method', filters.method);
-    if (filters.hordeSize) addFilter('e.horde_size', Number(filters.hordeSize));
+    if (selectedMethod === 'Sweet Scent') {
+      where.push('e.horde_size > 0');
+    } else {
+      const methods = selectedMethod === 'All'
+        ? Object.values(ENCOUNTER_METHODS).flat()
+        : ENCOUNTER_METHODS[selectedMethod];
+      const placeholders = methods.map((method) => {
+        params.push(method);
+        return parameter(params.length);
+      });
+      where.push(`e.method IN (${placeholders.join(', ')})`);
+      if (selectedMethod !== 'All') where.push('e.horde_size = 0');
+    }
+    if (selectedMethod === 'Sweet Scent' && filters.hordeSize) {
+      addFilter('e.horde_size', Number(filters.hordeSize));
+    }
     if (filters.tier) addFilter('s.tier', filters.tier);
     const rows = await runSelect(`
       SELECT e.*, l.region, l.name AS location_name, s.name AS species_name,
@@ -140,37 +184,53 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     const times = filters.time ? [filters.time] : ['morning', 'day', 'night'];
     const groups = new Map();
     for (const row of rows) {
-      for (const time of times) {
-        const rate = row[`${time}_rate`];
-        if (rate === null || rate === undefined || Number(rate) <= 0) continue;
-        const key = [row.location_id, row.method, row.season, time, row.horde_size].join('|');
-        if (!groups.has(key)) groups.set(key, { key, row, time, species: [] });
-        groups.get(key).species.push({
-          name: row.species_name, slug: row.slug, family_key: row.family_key,
-          tier: row.tier, points: row.points, rate: Number(rate),
-          form: row.form, min_level: row.min_level, max_level: row.max_level,
-        });
+      const legacyLureEncounter = ['morning', 'day', 'night'].every(
+        (time) => row[`${time}_rate`] === null || row[`${time}_rate`] === undefined
+      );
+      const seasons = row.season === 'Any'
+        ? (filters.season ? [filters.season] : SHINY_WAR_2026.seasons)
+        : [row.season];
+      for (const season of seasons) {
+        for (const time of times) {
+          const rate = legacyLureEncounter ? 5 : row[`${time}_rate`];
+          if (rate === null || rate === undefined || Number(rate) <= 0) continue;
+          const key = [row.location_id, row.method, season, time, row.horde_size].join('|');
+          if (!groups.has(key)) groups.set(key, { key, row: { ...row, season }, time, species: [] });
+          groups.get(key).species.push({
+            name: row.species_name, slug: row.slug, family_key: row.family_key,
+            tier: row.tier, points: row.points, rate: Number(rate),
+            is_lure: Boolean(row.is_lure) || legacyLureEncounter,
+            form: row.form, min_level: row.min_level, max_level: row.max_level,
+          });
+        }
       }
     }
     const denominator = effectiveShinyDenominator(filters.profile);
-    const spots = [...groups.values()].map(({ key, row, time, species }) => ({
-      spot_key: key,
-      region: row.region,
-      location_id: row.location_id,
-      location: row.location_name,
-      method: row.method,
-      season: row.season,
-      time,
-      horde_size: row.horde_size,
-      denominator,
-      ...calculateHordeMetrics(species, {
-        hordesPerHour: filters.hordesPerHour || 240,
+    const spots = [...groups.values()].map(({ key, row, time, species }) => {
+      const encountersPerHour = encounterRatePerHour(row, filters);
+      const metrics = calculateHordeMetrics(species, {
+        hordesPerHour: encountersPerHour || 0,
         denominator,
-        hordeSize: row.horde_size,
-      }),
-    }));
+        hordeSize: 1,
+      });
+      return {
+        spot_key: key,
+        region: row.region,
+        location_id: row.location_id,
+        location: row.location_name,
+        method: row.method,
+        season: row.season,
+        time,
+        horde_size: row.horde_size,
+        is_lure: species.some((entry) => entry.is_lure),
+        denominator,
+        ...metrics,
+        encountersPerHour,
+        pointsPerHour: encountersPerHour === null ? null : metrics.pointsPerHour,
+      };
+    });
     const speciesFilter = String(filters.species || '').trim().toLowerCase();
-    const splitFilteredSpots = filters.fullSplitOnly
+    const splitFilteredSpots = selectedMethod === 'Sweet Scent' && filters.fullSplitOnly
       ? spots.filter((spot) => spot.composition.some((species) => species.split === 1))
       : spots;
     const matchingSpots = speciesFilter
@@ -184,13 +244,27 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     const locationFilteredSpots = locationFilter
       ? matchingSpots.filter((spot) => spot.location.toLowerCase().includes(locationFilter))
       : matchingSpots;
-    const sort = filters.sort === 'averagePoints' ? 'averagePoints' : 'pointsPerHour';
-    locationFilteredSpots.sort((a, b) => b[sort] - a[sort] || a.location.localeCompare(b.location));
+    const minimumPointsPerHour = Math.max(0, Number(filters.minPointsPerHour) || 0);
+    const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(selectedMethod);
+    const pointsFilteredSpots = minimumPointsPerHour && hasHourlyData
+      ? locationFilteredSpots.filter(
+        (spot) => spot.pointsPerHour !== null && spot.pointsPerHour >= minimumPointsPerHour
+      )
+      : locationFilteredSpots;
+    const sortByAverage = filters.sort === 'averagePoints' || !hasHourlyData;
+    pointsFilteredSpots.sort((a, b) => {
+      if (sortByAverage) return b.averagePoints - a.averagePoints || a.location.localeCompare(b.location);
+      if (a.pointsPerHour === null) return b.pointsPerHour === null
+        ? b.averagePoints - a.averagePoints || a.location.localeCompare(b.location)
+        : 1;
+      if (b.pointsPerHour === null) return -1;
+      return b.pointsPerHour - a.pointsPerHour || a.location.localeCompare(b.location);
+    });
     const page = Math.max(1, Number(filters.page) || 1);
     const pageSize = Math.min(1000, Math.max(1, Number(filters.pageSize) || 30));
     return {
-      items: locationFilteredSpots.slice((page - 1) * pageSize, page * pageSize),
-      total: locationFilteredSpots.length,
+      items: pointsFilteredSpots.slice((page - 1) * pageSize, page * pageSize),
+      total: pointsFilteredSpots.length,
       page,
       pageSize,
       locations,

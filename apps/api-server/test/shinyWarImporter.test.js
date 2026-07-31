@@ -1,5 +1,6 @@
 const {
   cleanMethod,
+  isLureEncounter,
   normalizePokedex,
   stripInvalidJsonControlCharacters,
   toSql,
@@ -45,6 +46,20 @@ describe('Shiny Wars Pokedex importer', () => {
     expect(data.locations[0]).toMatchObject({ id: '0:1', region: 'Kanto' });
     expect(data.encounters[0]).toMatchObject({ hordeSize: 3, morningRate: 2.5 });
     expect(toSql(data)).toContain('INSERT INTO pokedex_encounters');
+  });
+
+  it('preserves lure-only encounters and assigns their standard 5% rate', () => {
+    const lureLocation = {
+      ...monsters[0].locations[0],
+      type: 'Grass',
+      rarity_morning: 'Lure',
+      rarity_day: 'Lure only',
+    };
+    const data = normalizePokedex([{ ...monsters[0], locations: [lureLocation] }, monsters[1]]);
+
+    expect(isLureEncounter(lureLocation)).toBe(true);
+    expect(data.encounters[0]).toMatchObject({ isLure: true, morningRate: 5, dayRate: 5 });
+    expect(toSql(data)).toContain(',is_lure,');
   });
 
   it('gives repeated form records unique slugs while retaining one family', () => {

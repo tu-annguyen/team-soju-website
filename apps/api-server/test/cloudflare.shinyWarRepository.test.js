@@ -166,6 +166,176 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.locations).toEqual(['Pokemon Mansion 2F', 'Viridian Forest']);
   });
 
+  it('groups single encounters, marks lure species, and filters by minimum points per hour', async () => {
+    const runSelect = jest.fn().mockResolvedValue([
+      {
+        location_id: '0:1', location_name: 'Route 1', region: 'Kanto',
+        method: 'Grass', season: 'Summer', horde_size: 0, is_lure: 1,
+        species_name: 'Bulbasaur', slug: 'bulbasaur', family_key: 'bulbasaur',
+        tier: 'Tier 3', points: 30, form: '', min_level: 10, max_level: 10,
+        morning_rate: 5, day_rate: 5, night_rate: 5,
+      },
+      {
+        location_id: '0:2', location_name: 'Route 2', region: 'Kanto',
+        method: 'Grass', season: 'Summer', horde_size: 0, is_lure: 0,
+        species_name: 'Rattata', slug: 'rattata', family_key: 'rattata',
+        tier: 'Tier 7', points: 3, form: '', min_level: 2, max_level: 3,
+        morning_rate: 100, day_rate: 100, night_rate: 100,
+      },
+    ]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', time: 'day', minPointsPerHour: 0.1,
+      hordeSize: 5, fullSplitOnly: true, profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({ location: 'Route 1', horde_size: 0, is_lure: true });
+    expect(result.items[0].composition[0]).toMatchObject({ name: 'Bulbasaur', is_lure: true });
+    expect(result.items[0].encountersPerHour).toBe(300);
+    expect(runSelect.mock.calls[0][0]).toContain('e.horde_size = 0');
+    expect(runSelect.mock.calls[0][1]).not.toContain(5);
+  });
+
+  it('includes legacy Any-season Lure encounters such as Togetic in every season', async () => {
+    const runSelect = jest.fn().mockResolvedValue([
+      {
+        location_id: '0:509', location_name: 'Five Isle Meadow', region: 'Kanto',
+        method: 'Grass', season: 'Any', horde_size: 0,
+        species_name: 'Togetic', slug: 'togetic', family_key: 'togepi',
+        tier: 'Tier 2', points: 40, form: '', min_level: 56, max_level: 56,
+        morning_rate: null, day_rate: null, night_rate: null,
+      },
+      {
+        location_id: '0:509', location_name: 'Five Isle Meadow', region: 'Kanto',
+        method: 'Grass', season: 'Summer', horde_size: 0, is_lure: 0,
+        species_name: 'Pidgey', slug: 'pidgey', family_key: 'pidgey',
+        tier: 'Tier 7', points: 3, form: '', min_level: 48, max_level: 50,
+        morning_rate: 100, day_rate: 100, night_rate: 100,
+      },
+    ]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', season: 'Summer', species: 'Togetic', time: 'day',
+      profile: { eventBoost: false },
+    });
+
+    expect(runSelect.mock.calls[0][0]).toContain("OR e.season = 'Any'");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      location: 'Five Isle Meadow', season: 'Summer', is_lure: true,
+    });
+    expect(result.items[0].composition).toHaveLength(2);
+    const togetic = result.items[0].composition.find((entry) => entry.name === 'Togetic');
+    expect(togetic).toMatchObject({ is_lure: true });
+    expect(togetic.split).toBeCloseTo(5 / 105);
+  });
+
+  it('expands Any-season encounters into all four seasonal groups', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([{
+        location_id: '0:509', location_name: 'Five Isle Meadow', region: 'Kanto',
+        method: 'Grass', season: 'Any', horde_size: 0, is_lure: 1,
+        species_name: 'Togetic', slug: 'togetic', family_key: 'togepi',
+        tier: 'Tier 2', points: 40, form: '', min_level: 56, max_level: 56,
+        morning_rate: 5, day_rate: 5, night_rate: 5,
+      }]),
+    });
+
+    const result = await repository.listHordeSpots({ method: 'Singles', time: 'day' });
+
+    expect(result.items.map((spot) => spot.season).sort()).toEqual([
+      'Autumn', 'Spring', 'Summer', 'Winter',
+    ]);
+  });
+
+  it('categorizes Rocks as Rock Smash instead of Singles', async () => {
+    const runSelect = jest.fn().mockResolvedValue([]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    await repository.listHordeSpots({ method: 'Singles' });
+    expect(runSelect.mock.calls[0][1]).not.toContain('Rocks');
+
+    await repository.listHordeSpots({ method: 'Rock Smash' });
+    expect(runSelect.mock.calls[1][1]).toEqual(expect.arrayContaining(['Rock Smash', 'Rocks']));
+  });
+
+  it.each([
+    ['Singles', 'Grass', 300],
+    ['Singles', 'Dark Grass', 400],
+    ['Fishing', 'Super Rod', 200],
+    ['Honey Trees', 'Honey Tree', 50],
+    ['Headbutt', 'Headbutt', null],
+    ['Rock Smash', 'Rocks', null],
+  ])('uses the configured %s hourly rate for %s', async (filterMethod, rowMethod, expectedRate) => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([{
+        location_id: '0:1', location_name: 'Test Route', region: 'Kanto',
+        method: rowMethod, season: 'Summer', horde_size: 0, is_lure: 0,
+        species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+        tier: 'Tier 3', points: 30, form: '', min_level: 10, max_level: 10,
+        morning_rate: 100, day_rate: 100, night_rate: 100,
+      }]),
+    });
+
+    const result = await repository.listHordeSpots({
+      method: filterMethod, time: 'day', profile: { eventBoost: false },
+    });
+
+    expect(result.items[0].encountersPerHour).toBe(expectedRate);
+    expect(result.items[0].pointsPerHour).toBe(
+      expectedRate === null ? null : (30 * expectedRate) / 30000
+    );
+  });
+
+  it('increases Fishing to 400 encounters per hour with a Chum bucket', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([{
+        location_id: '0:1', location_name: 'Test Pond', region: 'Kanto',
+        method: 'Super Rod', season: 'Summer', horde_size: 0, is_lure: 0,
+        species_name: 'Goldeen', slug: 'goldeen', family_key: 'goldeen',
+        tier: 'Tier 7', points: 3, form: '', min_level: 10, max_level: 10,
+        morning_rate: 100, day_rate: 100, night_rate: 100,
+      }]),
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Fishing', time: 'day', chumBucket: true, profile: { eventBoost: false },
+    });
+
+    expect(result.items[0].encountersPerHour).toBe(400);
+    expect(result.items[0].pointsPerHour).toBe(0.04);
+  });
+
+  it('sorts Rock Smash locations by average point potential', async () => {
+    const baseRow = {
+      region: 'Kanto', method: 'Rocks', season: 'Summer', horde_size: 0, is_lure: 0,
+      form: '', min_level: 10, max_level: 10, morning_rate: 100, day_rate: 100, night_rate: 100,
+    };
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        { ...baseRow, location_id: '0:1', location_name: 'Low Point Cave', species_name: 'Rattata', slug: 'rattata', family_key: 'rattata', tier: 'Tier 7', points: 3 },
+        { ...baseRow, location_id: '0:2', location_name: 'High Point Cave', species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix', tier: 'Tier 3', points: 30 },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({ method: 'Rock Smash', time: 'day' });
+
+    expect(result.items.map((spot) => spot.location)).toEqual(['High Point Cave', 'Low Point Cave']);
+  });
+
   it('rejects malformed or oversized queues at the route boundary', () => {
     expect(cleanQueue([{ spot_key: 'spot', label: 'Mansion', details: {} }])).toHaveLength(1);
     expect(cleanQueue([{ spot_key: '', label: 'Missing spot' }])).toBeNull();

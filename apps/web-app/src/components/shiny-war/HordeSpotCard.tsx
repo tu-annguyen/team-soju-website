@@ -21,12 +21,13 @@ export default function HordeSpotCard({ spot, expanded, nested = false, targetSp
         >
           <h3 className="font-bold text-gray-950 dark:text-white">{spot.location}</h3>
           <p className="truncate whitespace-nowrap text-sm text-gray-500">
-            {spot.region} · {spot.season} {spot.time} · {spot.horde_size}× {spot.method}
+            {spot.region} · {spot.season} {spot.time} · {spot.horde_size ? `${spot.horde_size}× Sweet Scent` : spot.method}
+            {spot.is_lure && <span className="font-semibold text-amber-600 dark:text-amber-400"> · Includes Lure-only encounters</span>}
           </p>
         </button>
         <div className="col-span-full grid grid-cols-2 gap-4 lg:contents">
           <div className="lg:text-right">
-            <strong className="text-xl text-primary-600">{spot.pointsPerHour.toFixed(3)}</strong>
+            <strong className="text-xl text-primary-600">{spot.pointsPerHour === null ? 'N/A' : spot.pointsPerHour.toFixed(3)}</strong>
             <p className="text-xs text-gray-500">points/hour</p>
           </div>
           <div className="text-right">
@@ -50,10 +51,13 @@ export default function HordeSpotCard({ spot, expanded, nested = false, targetSp
                 slug={species.slug}
               />
               <span>&nbsp;· {(species.split * 100).toFixed(2)}% · {species.tier} · Lv. {species.min_level}–{species.max_level}</span>
+              {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· Lure only</span>}
             </p>
           ))}
           <p className="text-xs text-gray-500 sm:col-span-2">
-            {spot.encountersPerHour.toLocaleString()} encounters/hour · 1/{spot.denominator.toLocaleString()} effective odds
+            {spot.encountersPerHour === null
+              ? 'No reliable encounters/hour data'
+              : `${spot.encountersPerHour.toLocaleString()} encounters/hour · 1/${spot.denominator.toLocaleString()} effective odds`}
           </p>
         </div>
       )}

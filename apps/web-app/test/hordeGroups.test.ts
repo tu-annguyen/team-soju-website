@@ -61,4 +61,19 @@ describe('groupHordeSpotsByPokemon', () => {
 
     expect(groups.map(({ species: entry }) => entry.name)).toEqual(['Vulpix', 'Grimer', 'Pikachu']);
   });
+
+  it('sorts Pokémon without hourly data by point potential', () => {
+    const lowPointSpot = makeSpot('rocks-low', 'Low Point Cave');
+    lowPointSpot.pointsPerHour = null;
+    lowPointSpot.encountersPerHour = null;
+    lowPointSpot.composition = [{ ...species, name: 'Rattata', slug: 'rattata', points: 3 }];
+    const highPointSpot = makeSpot('rocks-high', 'High Point Cave');
+    highPointSpot.pointsPerHour = null;
+    highPointSpot.encountersPerHour = null;
+    highPointSpot.composition = [{ ...species, name: 'Vulpix', slug: 'vulpix', points: 30 }];
+
+    const groups = groupHordeSpotsByPokemon([lowPointSpot, highPointSpot]);
+
+    expect(groups.map(({ species: entry }) => entry.name)).toEqual(['Vulpix', 'Rattata']);
+  });
 });

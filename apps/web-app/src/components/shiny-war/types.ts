@@ -28,6 +28,7 @@ export type HordeSpecies = {
   form?: string;
   min_level: number;
   max_level: number;
+  is_lure?: boolean;
 };
 
 export type HordeSpot = {
@@ -38,10 +39,11 @@ export type HordeSpot = {
   season: string;
   time: string;
   horde_size: number;
+  is_lure?: boolean;
   denominator: number;
   averagePoints: number;
-  encountersPerHour: number;
-  pointsPerHour: number;
+  encountersPerHour: number | null;
+  pointsPerHour: number | null;
   composition: HordeSpecies[];
 };
 
