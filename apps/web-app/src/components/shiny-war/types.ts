@@ -59,6 +59,7 @@ export type Dashboard = {
     ends_at: string;
     roster_locked: boolean;
     seasons: string[];
+    season_days?: number;
   };
   currentSeason: string | null;
   teamTotal: number;

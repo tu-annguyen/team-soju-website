@@ -5,6 +5,7 @@ import { shinyWarRequest } from './api';
 import HuntFinder from './HuntFinder';
 import HuntBoard from './HuntBoard';
 import Overview from './Overview';
+import PokeMmoClock from './PokeMmoClock';
 import RosterManager from './RosterManager';
 import type { Dashboard, Hunt, HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
@@ -104,6 +105,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
             Coordinate hunts, compare wild encounter value, and follow catches submitted through the Discord bot. The official leaderboard remains authoritative.
           </p>
         </div>
+        <PokeMmoClock event={dashboard.event} />
         <nav className="mb-7 flex gap-2 overflow-x-auto" aria-label="Organizer sections">
           {tabs.map(([value, label]) => (
             <button
