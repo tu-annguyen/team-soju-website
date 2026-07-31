@@ -128,10 +128,6 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     addFilter('e.method', filters.method);
     if (filters.hordeSize) addFilter('e.horde_size', Number(filters.hordeSize));
     if (filters.tier) addFilter('s.tier', filters.tier);
-    if (filters.species) {
-      params.push(`%${filters.species.toLowerCase()}%`);
-      where.push(`LOWER(s.name) LIKE ${parameter(params.length)}`);
-    }
     const rows = await runSelect(`
       SELECT e.*, l.region, l.name AS location_name, s.name AS species_name,
              s.slug, s.family_key, s.tier, s.points
@@ -173,11 +169,22 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         hordeSize: row.horde_size,
       }),
     }));
+    const speciesFilter = String(filters.species || '').trim().toLowerCase();
+    const matchingSpots = speciesFilter
+      ? spots.filter((spot) => spot.composition.some(
+        (species) => species.name.toLowerCase().includes(speciesFilter)
+      ))
+      : spots;
     const sort = filters.sort === 'averagePoints' ? 'averagePoints' : 'pointsPerHour';
-    spots.sort((a, b) => b[sort] - a[sort] || a.location.localeCompare(b.location));
+    matchingSpots.sort((a, b) => b[sort] - a[sort] || a.location.localeCompare(b.location));
     const page = Math.max(1, Number(filters.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(filters.pageSize) || 30));
-    return { items: spots.slice((page - 1) * pageSize, page * pageSize), total: spots.length, page, pageSize };
+    return {
+      items: matchingSpots.slice((page - 1) * pageSize, page * pageSize),
+      total: matchingSpots.length,
+      page,
+      pageSize,
+    };
   }
 
   async function listEncounters(filters = {}) {
