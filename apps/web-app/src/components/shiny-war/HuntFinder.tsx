@@ -35,7 +35,7 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
     season: defaultSeason || 'Summer', region: '', location: '', species: '', tier: '', time: '', method: 'All',
     hordeSize: '', hordesPerHour: '240', eventBoost: true, donator: false,
     fullSplitOnly: false, minPointsPerHour: '', personalCharm: false, linkCharm: false,
-    chumBucket: false, sort: 'pointsPerHour',
+    chumBucket: false, nonSafari: false, sort: 'pointsPerHour',
   });
   const [spots, setSpots] = useState<HuntSpot[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
@@ -54,6 +54,7 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
           if (filters.method !== 'Sweet Scent' && ['hordeSize', 'hordesPerHour', 'fullSplitOnly'].includes(key)) return;
           if (['Headbutt', 'Rock Smash'].includes(filters.method) && key === 'minPointsPerHour') return;
           if (filters.method !== 'Fishing' && key === 'chumBucket') return;
+          if (!['Singles', 'Fishing'].includes(filters.method) && key === 'nonSafari') return;
           if (value !== '') params.set(key, String(value));
         });
         params.set('pageSize', '1000');
@@ -73,6 +74,7 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
   const update = (key: string, value: string | boolean) => setFilters((current) => ({ ...current, [key]: value }));
   const isSweetScent = filters.method === 'Sweet Scent';
   const isFishing = filters.method === 'Fishing';
+  const supportsNonSafari = ['Singles', 'Fishing'].includes(filters.method);
   const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(filters.method);
   const visibleLocationKeys = [...new Set(spots.map(huntLocationKey))];
   const allLocationsOpen = visibleLocationKeys.length > 0
@@ -180,6 +182,10 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
           <input disabled={!isSweetScent} className={checkboxClasses} type="checkbox" checked={filters.fullSplitOnly} onChange={(e) => update('fullSplitOnly', e.target.checked)} />
           100% split hordes only
         </label>
+        <label className={`flex items-center gap-2 self-end rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 ${!supportsNonSafari ? 'cursor-not-allowed opacity-50' : ''}`}>
+          <input disabled={!supportsNonSafari} className={checkboxClasses} type="checkbox" checked={filters.nonSafari} onChange={(e) => update('nonSafari', e.target.checked)} />
+          Non-Safari only
+        </label>
         <fieldset className="rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 lg:col-span-4 dark:border-gray-700 dark:bg-gray-950">
           <legend className="px-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Boosts and charms</legend>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -189,7 +195,13 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
               ['chumBucket', 'Chum bucket'],
             ].map(([key, label]) => (
               <label key={key} className={`flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 ${key === 'chumBucket' && !isFishing ? 'cursor-not-allowed opacity-50' : ''}`}>
-                <input disabled={key === 'chumBucket' && !isFishing} className={checkboxClasses} type="checkbox" checked={Boolean(filters[key as keyof typeof filters])} onChange={(e) => update(key, e.target.checked)} />
+                <input
+                  disabled={key === 'chumBucket' && !isFishing}
+                  className={checkboxClasses}
+                  type="checkbox"
+                  checked={Boolean(filters[key as keyof typeof filters])}
+                  onChange={(e) => update(key, e.target.checked)}
+                />
                 {label}
               </label>
             ))}

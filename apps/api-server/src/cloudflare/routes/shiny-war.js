@@ -83,6 +83,7 @@ async function handleShinyWarRoutes(context) {
         time: url.searchParams.get('time') || undefined,
         fullSplitOnly: bool('fullSplitOnly'),
         chumBucket: bool('chumBucket'),
+        nonSafari: bool('nonSafari'),
         minPointsPerHour: url.searchParams.get('minPointsPerHour') || undefined,
         sort: url.searchParams.get('sort') || undefined,
         page: url.searchParams.get('page') || undefined,

@@ -172,6 +172,9 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     if (selectedMethod === 'Sweet Scent' && filters.hordeSize) {
       addFilter('e.horde_size', Number(filters.hordeSize));
     }
+    if (filters.nonSafari && ['Singles', 'Fishing'].includes(selectedMethod)) {
+      where.push("LOWER(l.name) NOT LIKE '%safari%' AND LOWER(l.name) NOT LIKE '%great marsh%'");
+    }
     if (filters.tier) addFilter('s.tier', filters.tier);
     const rows = await runSelect(`
       SELECT e.*, l.region, l.name AS location_name, s.name AS species_name,

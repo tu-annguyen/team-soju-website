@@ -341,6 +341,29 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(runSelect.mock.calls[1][1]).toEqual(expect.arrayContaining(['Rock Smash', 'Rocks']));
   });
 
+  it.each(['Singles', 'Fishing'])('can exclude Safari encounters from %s', async (method) => {
+    const runSelect = jest.fn().mockResolvedValue([]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    await repository.listHordeSpots({ method, nonSafari: true });
+
+    expect(runSelect.mock.calls[0][0]).toContain("LOWER(l.name) NOT LIKE '%safari%'");
+    expect(runSelect.mock.calls[0][0]).toContain("LOWER(l.name) NOT LIKE '%great marsh%'");
+  });
+
+  it('ignores the non-Safari filter for other encounter methods', async () => {
+    const runSelect = jest.fn().mockResolvedValue([]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    await repository.listHordeSpots({ method: 'Sweet Scent', nonSafari: true });
+
+    expect(runSelect.mock.calls[0][0]).not.toContain("LOWER(l.name) NOT LIKE");
+  });
+
   it.each([
     ['Singles', 'Grass', 300],
     ['Singles', 'Dark Grass', 400],
