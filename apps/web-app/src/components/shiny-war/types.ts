@@ -5,7 +5,7 @@ export type Hunt = {
   target_family_key?: string | null;
   label: string;
   details?: Record<string, unknown> & {
-    species?: Array<string | Pick<HordeSpecies, 'name' | 'slug' | 'form'>>;
+    species?: Array<string | Pick<HuntSpecies, 'name' | 'slug' | 'form'>>;
   };
   overlap_member_ids?: string[];
 };
@@ -18,7 +18,7 @@ export type ParticipantHunts = {
   hunts: Hunt[];
 };
 
-export type HordeSpecies = {
+export type HuntSpecies = {
   name: string;
   slug: string;
   family_key: string;
@@ -31,7 +31,7 @@ export type HordeSpecies = {
   is_lure?: boolean;
 };
 
-export type HordeSpot = {
+export type HuntSpot = {
   spot_key: string;
   region: string;
   location: string;
@@ -44,12 +44,12 @@ export type HordeSpot = {
   averagePoints: number;
   encountersPerHour: number | null;
   pointsPerHour: number | null;
-  composition: HordeSpecies[];
+  composition: HuntSpecies[];
 };
 
-export type PokemonHordeGroup = {
-  species: HordeSpecies;
-  spots: HordeSpot[];
+export type PokemonHuntGroup = {
+  species: HuntSpecies;
+  spots: HuntSpot[];
 };
 
 export type Dashboard = {

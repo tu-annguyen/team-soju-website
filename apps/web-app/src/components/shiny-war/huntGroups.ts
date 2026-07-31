@@ -1,10 +1,10 @@
-import type { HordeSpot, PokemonHordeGroup } from './types';
+import type { HuntSpot, PokemonHuntGroup } from './types';
 
-export function groupHordeSpotsByPokemon(
-  spots: HordeSpot[],
+export function groupHuntSpotsByPokemon(
+  spots: HuntSpot[],
   speciesFilter = ''
-): PokemonHordeGroup[] {
-  const groups = new Map<string, PokemonHordeGroup>();
+): PokemonHuntGroup[] {
+  const groups = new Map<string, PokemonHuntGroup>();
   const normalizedFilter = speciesFilter.trim().toLowerCase();
 
   spots.forEach((spot) => {

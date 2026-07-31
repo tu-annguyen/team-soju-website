@@ -1,16 +1,16 @@
 import SpeciesSpriteName from './SpeciesSpriteName';
-import type { HordeSpecies, HordeSpot } from './types';
+import type { HuntSpecies, HuntSpot } from './types';
 
 type Props = {
-  spot: HordeSpot;
+  spot: HuntSpot;
   expanded: boolean;
   nested?: boolean;
-  targetSpecies?: HordeSpecies;
-  onQueue: (spot: HordeSpot, current: boolean, targetSpecies?: HordeSpecies) => void;
+  targetSpecies?: HuntSpecies;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
   onToggle: () => void;
 };
 
-export default function HordeSpotCard({ spot, expanded, nested = false, targetSpecies, onQueue, onToggle }: Props) {
+export default function HuntSpotCard({ spot, expanded, nested = false, targetSpecies, onQueue, onToggle }: Props) {
   return (
     <article className={`border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900 ${nested ? 'rounded-xl' : 'rounded-2xl'}`}>
       <div className="grid grid-cols-2 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto]">

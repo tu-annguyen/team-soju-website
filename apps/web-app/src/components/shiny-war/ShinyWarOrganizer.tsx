@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { hasPermission } from '../../auth/authorization';
 import { useAuthUser } from '../../auth/useAuthUser';
 import { shinyWarRequest } from './api';
-import HordeFinder from './HordeFinder';
+import HuntFinder from './HuntFinder';
 import HuntBoard from './HuntBoard';
 import Overview from './Overview';
 import RosterManager from './RosterManager';
-import type { Dashboard, HordeSpecies, HordeSpot, Hunt, ParticipantHunts } from './types';
+import type { Dashboard, Hunt, HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
 type Tab = 'overview' | 'hunts' | 'finder' | 'roster';
 
@@ -53,7 +53,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
     }
   };
 
-  const queueSpot = async (spot: HordeSpot, current: boolean, targetSpecies?: HordeSpecies) => {
+  const queueSpot = async (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => {
     const own = hunts.find((row) => row.member_id === ownMemberId);
     if (!own) {
       setError('You must be on the official roster to maintain a hunt queue.');
@@ -120,7 +120,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
           <Overview dashboard={dashboard} canManage={canManage} onEligibility={setEligibility} />
         )}
         {tab === 'hunts' && <HuntBoard rows={hunts} ownMemberId={ownMemberId} busy={busy} onSave={saveQueue} />}
-        {tab === 'finder' && <HordeFinder apiBaseUrl={apiBaseUrl} defaultSeason={dashboard.currentSeason || 'Summer'} onQueue={queueSpot} />}
+        {tab === 'finder' && <HuntFinder apiBaseUrl={apiBaseUrl} defaultSeason={dashboard.currentSeason || 'Summer'} onQueue={queueSpot} />}
         {tab === 'roster' && canManage && (
           <RosterManager
             apiBaseUrl={apiBaseUrl}

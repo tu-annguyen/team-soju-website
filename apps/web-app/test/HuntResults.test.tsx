@@ -1,13 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import HordeResults from '../src/components/shiny-war/HordeResults';
-import type { HordeSpot } from '../src/components/shiny-war/types';
+import HuntResults from '../src/components/shiny-war/HuntResults';
+import type { HuntSpot } from '../src/components/shiny-war/types';
 
 const vulpix = {
   name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix', tier: 'Tier 3',
   points: 30, split: 1, form: '', min_level: 20, max_level: 22,
 };
 
-const spot: HordeSpot = {
+const spot: HuntSpot = {
   spot_key: 'mansion',
   location: 'Pokemon Mansion 2F',
   region: 'Kanto',
@@ -22,12 +22,12 @@ const spot: HordeSpot = {
   composition: [vulpix],
 };
 
-describe('HordeResults', () => {
+describe('HuntResults', () => {
   it('shows Pokémon groups with each location-level metric and queues the grouped species', () => {
     const onQueue = jest.fn();
 
     render(
-      <HordeResults
+      <HuntResults
         expanded={new Set()}
         speciesFilter=""
         spots={[spot]}

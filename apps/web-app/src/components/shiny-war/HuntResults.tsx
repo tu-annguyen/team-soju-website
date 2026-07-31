@@ -1,25 +1,25 @@
-import { groupHordeSpotsByPokemon } from './hordeGroups';
-import HordeSpotCard from './HordeSpotCard';
+import { groupHuntSpotsByPokemon } from './huntGroups';
+import HuntSpotCard from './HuntSpotCard';
 import SpeciesSpriteName from './SpeciesSpriteName';
-import type { HordeSpecies, HordeSpot } from './types';
+import type { HuntSpecies, HuntSpot } from './types';
 
-export type HordeView = 'location' | 'pokemon';
+export type HuntView = 'location' | 'pokemon';
 
 type Props = {
   expanded: ReadonlySet<string>;
   speciesFilter: string;
-  spots: HordeSpot[];
-  view: HordeView;
-  onQueue: (spot: HordeSpot, current: boolean, targetSpecies?: HordeSpecies) => void;
+  spots: HuntSpot[];
+  view: HuntView;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
   onToggle: (spotKey: string) => void;
 };
 
-export default function HordeResults({ expanded, speciesFilter, spots, view, onQueue, onToggle }: Props) {
+export default function HuntResults({ expanded, speciesFilter, spots, view, onQueue, onToggle }: Props) {
   if (view === 'location') {
     return (
       <div className="space-y-3">
         {spots.map((spot) => (
-          <HordeSpotCard
+          <HuntSpotCard
             key={spot.spot_key}
             expanded={expanded.has(spot.spot_key)}
             onQueue={onQueue}
@@ -31,7 +31,7 @@ export default function HordeResults({ expanded, speciesFilter, spots, view, onQ
     );
   }
 
-  const groups = groupHordeSpotsByPokemon(spots, speciesFilter);
+  const groups = groupHuntSpotsByPokemon(spots, speciesFilter);
 
   return (
     <div className="space-y-4">
@@ -59,7 +59,7 @@ export default function HordeResults({ expanded, speciesFilter, spots, view, onQ
           </div>
           <div className="space-y-3">
             {speciesSpots.map((spot) => (
-              <HordeSpotCard
+              <HuntSpotCard
                 key={`${species.slug}-${species.form}-${spot.spot_key}`}
                 expanded={expanded.has(spot.spot_key)}
                 nested

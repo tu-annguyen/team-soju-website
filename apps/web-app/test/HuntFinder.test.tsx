@@ -1,13 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import HordeFinder from '../src/components/shiny-war/HordeFinder';
+import HuntFinder from '../src/components/shiny-war/HuntFinder';
 import { shinyWarRequest } from '../src/components/shiny-war/api';
-import type { HordeSpot } from '../src/components/shiny-war/types';
+import type { HuntSpot } from '../src/components/shiny-war/types';
 
 jest.mock('../src/components/shiny-war/api', () => ({
   shinyWarRequest: jest.fn(),
 }));
 
-const makeSpot = (spotKey: string, location: string): HordeSpot => ({
+const makeSpot = (spotKey: string, location: string): HuntSpot => ({
   spot_key: spotKey,
   location,
   region: 'Kanto',
@@ -25,7 +25,7 @@ const makeSpot = (spotKey: string, location: string): HordeSpot => ({
   }],
 });
 
-describe('HordeFinder', () => {
+describe('HuntFinder', () => {
   it('opens and collapses all visible locations from the view row', async () => {
     const spots = [
       makeSpot('mansion', 'Pokemon Mansion 2F'),
@@ -37,7 +37,7 @@ describe('HordeFinder', () => {
       total: spots.length,
     });
 
-    render(<HordeFinder apiBaseUrl="https://example.test" defaultSeason="Summer" onQueue={jest.fn()} />);
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" onQueue={jest.fn()} />);
 
     const openAll = await screen.findByRole('button', { name: 'Open all' });
     await waitFor(() => expect(openAll).toBeEnabled());

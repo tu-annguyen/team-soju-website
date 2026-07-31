@@ -3,14 +3,14 @@ import { CATCH_EVENT_REGIONS } from '../../utils/catchEventLocations';
 import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
-import HordeResults from './HordeResults';
-import type { HordeView } from './HordeResults';
-import type { HordeSpecies, HordeSpot } from './types';
+import HuntResults from './HuntResults';
+import type { HuntView } from './HuntResults';
+import type { HuntSpecies, HuntSpot } from './types';
 
 type Props = {
   apiBaseUrl: string;
   defaultSeason: string;
-  onQueue: (spot: HordeSpot, current: boolean, targetSpecies?: HordeSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
 };
 
 const fieldClasses =
@@ -28,18 +28,18 @@ const encounterMethods = [
   ['Rock Smash', 'Rock Smash'],
 ] as const;
 
-export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Props) {
+export default function HuntFinder({ apiBaseUrl, defaultSeason, onQueue }: Props) {
   const [filters, setFilters] = useState({
     season: defaultSeason || 'Summer', region: '', location: '', species: '', tier: '', time: '', method: 'All',
     hordeSize: '', hordesPerHour: '240', eventBoost: true, donator: false,
     fullSplitOnly: false, minPointsPerHour: '', personalCharm: false, linkCharm: false,
     chumBucket: false, sort: 'pointsPerHour',
   });
-  const [spots, setSpots] = useState<HordeSpot[]>([]);
+  const [spots, setSpots] = useState<HuntSpot[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const [view, setView] = useState<HordeView>('location');
+  const [view, setView] = useState<HuntView>('location');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
           if (value !== '') params.set(key, String(value));
         });
         params.set('pageSize', '1000');
-        const data = await shinyWarRequest<{ items: HordeSpot[]; total: number; locations: string[] }>(
+        const data = await shinyWarRequest<{ items: HuntSpot[]; total: number; locations: string[] }>(
           apiBaseUrl, `/hordes?${params}`
         );
         setSpots(data.items);
@@ -219,7 +219,7 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
         {total} matching encounter groups. Rates are normalized within each location/time group.
       </p>
       {error && <p role="alert" className="text-rose-600">{error}</p>}
-      <HordeResults
+      <HuntResults
         expanded={expanded}
         speciesFilter={filters.species}
         spots={spots}
