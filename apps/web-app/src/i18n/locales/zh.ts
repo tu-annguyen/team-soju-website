@@ -127,8 +127,8 @@ const zh = {
           '通过共享棋盘实时协调 丑丑鱼 格子检查，可标记为已检查、发现或已确认。每次标记都会叠加半透明颜色，让棋盘像团队判断的实时热力图。',
       },
       shinyWarCard: {
-        title: '闪光大战组织工具',
-        description: '协调 Team Soju 的狩猎并追踪闪光大战进度。',
+        title: '闪光大战数据面板',
+        description: '查看 Team Soju 的排名并追踪闪光大战进度。',
       },
     },
     feebas: {

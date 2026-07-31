@@ -59,7 +59,8 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
 
   async function listParticipants(eventId = '2026') {
     const rows = await runSelect(`
-      SELECT p.event_id, p.member_id, p.created_at, m.ign, m.rank, m.discord_id,
+      SELECT p.event_id, p.member_id, p.team, p.is_official, p.created_at,
+             m.ign, m.rank, m.discord_id,
              CASE WHEN u.id IS NULL THEN 0 ELSE 1 END AS has_app_user
       FROM shiny_war_participants p
       JOIN team_members m ON m.id = p.member_id
@@ -67,16 +68,28 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       WHERE p.event_id = ${parameter(1)}
       ORDER BY LOWER(m.ign)
     `, [eventId]);
-    return rows.map((row) => ({ ...row, has_app_user: Boolean(row.has_app_user) }));
+    return rows.map((row) => ({
+      ...row,
+      has_app_user: Boolean(row.has_app_user),
+      is_official: Boolean(row.is_official),
+    }));
   }
 
-  async function addParticipant(eventId, memberId, userId) {
+  async function addParticipant(eventId, memberId, userId, team, isOfficial) {
     const insert = dialect === 'd1' ? 'INSERT OR IGNORE' : 'INSERT';
     const conflict = dialect === 'postgres' ? ' ON CONFLICT (event_id, member_id) DO NOTHING' : '';
     await runCommand(`${insert} INTO shiny_war_participants
-      (event_id, member_id, added_by_user_id)
-      VALUES (${parameter(1)}, ${parameter(2)}, ${parameter(3)})${conflict}`,
-    [eventId, memberId, userId]);
+      (event_id, member_id, added_by_user_id, team, is_official)
+      VALUES (${parameter(1)}, ${parameter(2)}, ${parameter(3)}, ${parameter(4)}, ${parameter(5)})${conflict}`,
+    [eventId, memberId, userId, team, dialect === 'd1' ? (isOfficial ? 1 : 0) : isOfficial]);
+    return listParticipants(eventId);
+  }
+
+  async function updateParticipant(eventId, memberId, team, isOfficial) {
+    await runCommand(`UPDATE shiny_war_participants
+      SET team = ${parameter(3)}, is_official = ${parameter(4)}
+      WHERE event_id = ${parameter(1)} AND member_id = ${parameter(2)}`,
+    [eventId, memberId, team, dialect === 'd1' ? (isOfficial ? 1 : 0) : isOfficial]);
     return listParticipants(eventId);
   }
 
@@ -327,8 +340,24 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       id: event.id, startsAt: event.starts_at, endsAt: event.ends_at,
       seasons: event.seasons, seasonDays: event.season_days,
     };
-    const scoring = scoreShinyWarCatches(catches, participants.map((p) => p.member_id), scoringEvent);
-    const scoredById = new Map(scoring.catches.map((entry) => [entry.id, entry]));
+    const officialParticipants = participants.filter((participant) => participant.is_official);
+    const officialScoring = scoreShinyWarCatches(
+      catches,
+      officialParticipants.map((participant) => participant.member_id),
+      scoringEvent
+    );
+    const teamScoring = Object.fromEntries(['bidoof', 'arceus'].map((team) => [
+      team,
+      scoreShinyWarCatches(
+        catches,
+        participants.filter((participant) => participant.team === team).map((participant) => participant.member_id),
+        scoringEvent
+      ),
+    ]));
+    const participantById = new Map(participants.map((participant) => [participant.member_id, participant]));
+    const scoredById = new Map(
+      Object.values(teamScoring).flatMap((scoring) => scoring.catches).map((entry) => [entry.id, entry])
+    );
     const startsAt = new Date(scoringEvent.startsAt).getTime();
     const endsAt = new Date(scoringEvent.endsAt).getTime();
     const recentCatches = catches
@@ -338,20 +367,33 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       })
       .sort((left, right) => String(right.caught_at_utc).localeCompare(String(left.caught_at_utc)))
       .slice(0, 30)
-      .map((entry) => scoredById.get(entry.id) || {
-        ...entry,
-        score: { base: 0, secretBonus: 0, safariBonus: 0, uniqueBonus: 0, total: 0 },
+      .map((entry) => {
+        const participant = participantById.get(entry.original_trainer);
+        return {
+          ...(scoredById.get(entry.id) || {
+            ...entry,
+            score: { base: 0, secretBonus: 0, safariBonus: 0, uniqueBonus: 0, total: 0 },
+          }),
+          member_id: entry.original_trainer,
+          team: participant?.team,
+          is_official: Boolean(participant?.is_official),
+        };
       });
     return {
       event,
       currentSeason: getShinyWarSeason(at, scoringEvent),
-      teamTotal: scoring.teamTotal,
-      uniqueFamilyCount: scoring.uniqueFamilies.length,
-      uniqueFamilies: scoring.uniqueFamilies,
+      teamTotal: officialScoring.teamTotal,
+      teamTotals: {
+        bidoof: teamScoring.bidoof.teamTotal,
+        arceus: teamScoring.arceus.teamTotal,
+      },
+      uniqueFamilyCount: officialScoring.uniqueFamilies.length,
+      uniqueFamilies: officialScoring.uniqueFamilies,
       standings: participants.map((participant) => ({
         ...participant,
-        points: scoring.participantTotals[participant.member_id] || 0,
-        catches: scoring.catches.filter((entry) => entry.original_trainer === participant.member_id).length,
+        points: teamScoring[participant.team].participantTotals[participant.member_id] || 0,
+        catches: teamScoring[participant.team].catches
+          .filter((entry) => entry.original_trainer === participant.member_id).length,
       })).sort((a, b) => b.points - a.points || a.ign.localeCompare(b.ign)),
       recentCatches,
     };
@@ -365,7 +407,7 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
 
   return {
     addParticipant, getDashboard, getEvent, listEncounters, listHordeSpots, listHunts,
-    listParticipants, removeParticipant, replaceQueue, setEligibility, setRosterLocked,
+    listParticipants, removeParticipant, replaceQueue, setEligibility, setRosterLocked, updateParticipant,
   };
 }
 

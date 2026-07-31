@@ -23,7 +23,7 @@ const spot: HuntSpot = {
 };
 
 const participants: ParticipantHunts[] = [{
-  member_id: 'member-1', ign: 'SojuHunter', rank: 'Member', has_app_user: true,
+  member_id: 'member-1', ign: 'SojuHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
   hunts: [
     { id: 'hunt-1', position: 0, spot_key: 'mansion', label: 'Pokemon Mansion 2F' },
     { id: 'hunt-2', position: 2, spot_key: 'mansion', label: 'Pokemon Mansion 2F' },
@@ -78,7 +78,7 @@ describe('HuntResults', () => {
 
   it('shows queue entries from every floor represented by a grouped location', () => {
     const floorParticipant: ParticipantHunts = {
-      member_id: 'member-2', ign: 'FloorHunter', rank: 'Member', has_app_user: true,
+      member_id: 'member-2', ign: 'FloorHunter', rank: 'Member', has_app_user: true, team: 'arceus', is_official: true,
       hunts: [{ id: 'floor-hunt', position: 0, spot_key: 'mansion-3f', label: 'Pokemon Mansion (3F)' }],
     };
 

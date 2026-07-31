@@ -10,11 +10,15 @@ export type Hunt = {
   overlap_member_ids?: string[];
 };
 
+export type ShinyWarTeam = 'bidoof' | 'arceus';
+
 export type ParticipantHunts = {
   member_id: string;
   ign: string;
   rank: string;
   has_app_user: boolean;
+  team: ShinyWarTeam;
+  is_official: boolean;
   hunts: Hunt[];
 };
 
@@ -66,6 +70,7 @@ export type Dashboard = {
   };
   currentSeason: string | null;
   teamTotal: number;
+  teamTotals: Record<ShinyWarTeam, number>;
   uniqueFamilyCount: number;
   uniqueFamilies: string[];
   standings: Array<ParticipantHunts & { points: number; catches: number }>;
@@ -73,8 +78,18 @@ export type Dashboard = {
     id: string;
     pokemon: string;
     ign: string;
+    member_id: string;
+    team: ShinyWarTeam;
+    is_official: boolean;
     caught_at_utc: string;
     score: { base: number; secretBonus: number; safariBonus: number; uniqueBonus: number; total: number };
     war_eligibility_override?: boolean | null;
   }>;
+};
+
+export type PublicDashboard = Pick<Dashboard,
+  'teamTotal' | 'teamTotals' | 'uniqueFamilyCount' | 'uniqueFamilies'
+> & {
+  standings: Array<Pick<Dashboard['standings'][number], 'ign' | 'team' | 'points' | 'catches'>>;
+  recentCatches: Array<Omit<Dashboard['recentCatches'][number], 'id' | 'member_id' | 'is_official' | 'war_eligibility_override'>>;
 };

@@ -352,6 +352,8 @@ CREATE TABLE IF NOT EXISTS shiny_war_participants (
   event_id TEXT NOT NULL REFERENCES shiny_war_events(id) ON DELETE CASCADE,
   member_id TEXT NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
   added_by_user_id TEXT REFERENCES app_users(id) ON DELETE SET NULL,
+  team TEXT NOT NULL DEFAULT 'bidoof' CHECK (team IN ('bidoof', 'arceus')),
+  is_official INTEGER NOT NULL DEFAULT 1 CHECK (is_official IN (0, 1)),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (event_id, member_id)
 ) STRICT;

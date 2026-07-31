@@ -162,6 +162,40 @@ describe('Cloudflare Worker API', () => {
     });
   });
 
+  it('serves the sanitized Shiny Wars dashboard without authentication', async () => {
+    const repositories = {
+      shinyWar: {
+        getDashboard: jest.fn().mockResolvedValue({
+          event: { roster_locked: true },
+          currentSeason: 'Summer',
+          teamTotal: 38,
+          teamTotals: { bidoof: 20, arceus: 18 },
+          uniqueFamilyCount: 1,
+          uniqueFamilies: ['vulpix'],
+          standings: [{ member_id: 'member-1', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+          recentCatches: [{
+            id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
+            caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof',
+            score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+          }],
+        }),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+
+    const response = await app.fetch(
+      new Request('https://api.example.com/api/shiny-war/dashboard/public'),
+      createEnv()
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toContain('public');
+    expect(body.data.standings).toEqual([{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }]);
+    expect(body.data.recentCatches[0]).not.toHaveProperty('id');
+    expect(body.data).not.toHaveProperty('event');
+  });
+
   it('requires bot auth for protected routes', async () => {
     const app = createWorkerApp({
       repositories: {

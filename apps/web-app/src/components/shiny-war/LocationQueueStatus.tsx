@@ -1,4 +1,5 @@
 import type { Hunt, HuntSpot, ParticipantHunts } from './types';
+import TeamBadge from './TeamBadge';
 
 type QueueEntry = {
   hunt: Hunt;
@@ -26,10 +27,10 @@ export default function LocationQueueStatus({ participants, spot }: Props) {
         <span className="text-gray-400 dark:text-gray-500">No one hunting or queued</span>
       ) : entries.map(({ hunt, participant }) => (
         <span
-          className="rounded-full bg-primary-50 px-2.5 py-1 font-medium text-primary-700 dark:bg-primary-950 dark:text-primary-200"
+          className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-2.5 py-1 font-medium text-primary-700 dark:bg-primary-950 dark:text-primary-200"
           key={`${participant.member_id}-${hunt.id || `${hunt.spot_key}-${hunt.position}`}`}
         >
-          {participant.ign} · {queueLabel(hunt.position)}
+          {participant.ign} · {queueLabel(hunt.position)} <TeamBadge team={participant.team} />
         </span>
       ))}
     </div>

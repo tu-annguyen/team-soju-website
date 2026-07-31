@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
-import type { ParticipantHunts } from './types';
+import TeamBadge, { TEAM_LABELS } from './TeamBadge';
+import type { ParticipantHunts, ShinyWarTeam } from './types';
 
 type Member = { id: string; ign: string };
 type Props = {
@@ -14,6 +15,8 @@ type Props = {
 export default function RosterManager({ apiBaseUrl, participants, locked, onChanged }: Props) {
   const [members, setMembers] = useState<Member[]>([]);
   const [selected, setSelected] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState<ShinyWarTeam>('bidoof');
+  const [selectedOfficial, setSelectedOfficial] = useState(true);
   const [error, setError] = useState('');
   const availableMembers = useMemo(() => {
     const participantIds = new Set(participants.map((entry) => entry.member_id));
@@ -23,6 +26,7 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
       .sort((left, right) => left.ign.localeCompare(right.ign, undefined, { sensitivity: 'base' }));
   }, [members, participants]);
   const selectedMember = availableMembers.find((member) => member.ign === selected);
+  const officialCount = participants.filter((participant) => participant.is_official).length;
 
   useEffect(() => {
     fetch(`${apiBaseUrl.replace(/\/+$/, '')}/members`, { credentials: 'include' })
@@ -46,8 +50,10 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-gray-950 dark:text-white">Official roster</h2>
-            <p className="text-sm text-gray-500">{participants.length} participants · {locked ? 'Locked' : 'Open'}</p>
+            <h2 className="text-xl font-bold text-gray-950 dark:text-white">Team war roster</h2>
+            <p className="text-sm text-gray-500">
+              {participants.length}/36 participants · {officialCount}/30 official · {locked ? 'Locked' : 'Open'}
+            </p>
           </div>
           <button
             className="btn btn-secondary"
@@ -57,7 +63,7 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
           </button>
         </div>
         {!locked && (
-          <div className="mt-5 flex gap-3">
+          <div className="mt-5 grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
             <div className="min-w-0 flex-1">
               <FilteredCombobox
                 className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
@@ -67,6 +73,20 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
                 onChange={setSelected}
               />
             </div>
+            <label className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Team
+              <select
+                className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
+                value={selectedTeam}
+                onChange={(event) => setSelectedTeam(event.target.value as ShinyWarTeam)}
+              >
+                {Object.entries(TEAM_LABELS).map(([team, label]) => <option key={team} value={team}>{label}</option>)}
+              </select>
+            </label>
+            <label className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm font-medium dark:border-gray-700">
+              <input type="checkbox" checked={selectedOfficial} onChange={(event) => setSelectedOfficial(event.target.checked)} />
+              Official war
+            </label>
             <button
               className="btn btn-primary"
               disabled={!selectedMember}
@@ -74,7 +94,11 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
                 selectedMember &&
                 mutate('/participants', {
                   method: 'POST',
-                  body: JSON.stringify({ member_id: selectedMember.id }),
+                  body: JSON.stringify({
+                    member_id: selectedMember.id,
+                    team: selectedTeam,
+                    is_official: selectedOfficial,
+                  }),
                 })
               }
             >
@@ -86,13 +110,44 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {participants.map((participant) => (
-          <div key={participant.member_id} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-            <div className="flex-1">
-              <p className="font-semibold text-gray-950 dark:text-white">{participant.ign}</p>
+          <div key={participant.member_id} className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-semibold text-gray-950 dark:text-white">{participant.ign}</p>
+                <TeamBadge team={participant.team} />
+              </div>
               <p className={`text-xs ${participant.has_app_user ? 'text-emerald-600' : 'text-amber-600'}`}>
                 {participant.has_app_user ? 'App account linked' : 'No usable app account'}
               </p>
             </div>
+            <select
+              aria-label={`${participant.ign} team`}
+              className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950"
+              disabled={locked}
+              value={participant.team}
+              onChange={(event) => mutate(`/participants/${participant.member_id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                  team: event.target.value,
+                  is_official: participant.is_official,
+                }),
+              })}
+            >
+              {Object.entries(TEAM_LABELS).map(([team, label]) => <option key={team} value={team}>{label}</option>)}
+            </select>
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+              <input
+                aria-label={`${participant.ign} official war`}
+                checked={participant.is_official}
+                disabled={locked}
+                type="checkbox"
+                onChange={(event) => mutate(`/participants/${participant.member_id}`, {
+                  method: 'PUT',
+                  body: JSON.stringify({ team: participant.team, is_official: event.target.checked }),
+                })}
+              />
+              Official
+            </label>
             {!locked && (
               <button
                 className="text-sm text-rose-600"
