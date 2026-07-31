@@ -33,11 +33,14 @@ export type HuntSpecies = {
 
 export type HuntSpot = {
   spot_key: string;
+  spot_keys?: string[];
+  location_areas?: string[];
   region: string;
   location: string;
   method: string;
   season: string;
   time: string;
+  times?: string[];
   horde_size: number;
   is_lure?: boolean;
   denominator: number;

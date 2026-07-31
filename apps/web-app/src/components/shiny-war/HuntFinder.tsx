@@ -95,7 +95,7 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
         <label className={labelClasses}>
           Season
           <select value={filters.season} onChange={(e) => update('season', e.target.value)} className={fieldClasses}>
-            <option value="">Every season</option>
+            <option value="">Any season</option>
             {['Summer', 'Autumn', 'Winter', 'Spring'].map((value) => <option key={value}>{value}</option>)}
           </select>
         </label>
@@ -145,7 +145,7 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
         <label className={labelClasses}>
           Time
           <select value={filters.time} onChange={(e) => update('time', e.target.value)} className={fieldClasses}>
-            <option value="">Every time</option>
+            <option value="">Any time</option>
             <option value="morning">Morning</option>
             <option value="day">Day</option>
             <option value="night">Night</option>
@@ -228,6 +228,10 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
         view={view}
         onQueue={onQueue}
         onToggle={toggleSpot}
+        selectedSeason={filters.season}
+        selectedTime={filters.time}
+        onSeasonChange={(season) => update('season', season)}
+        onTimeChange={(time) => update('time', time)}
       />
     </div>
   );

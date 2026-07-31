@@ -1,5 +1,79 @@
 const { createShinyWarRepository } = require('../src/cloudflare/repositories/shiny-war');
 const { cleanQueue } = require('../src/cloudflare/routes/shiny-war');
+const { groupEquivalentHuntSpots, locationAreaName, parentLocationName } = require('../src/cloudflare/repositories/hunt-spot-groups');
+
+describe('Shiny War hunt spot grouping', () => {
+  const makeSpot = (location, season, time) => ({
+    spot_key: `${location}|${season}|${time}`,
+    location,
+    region: 'Hoenn',
+    method: 'Sweet Scent',
+    season,
+    time,
+    horde_size: 5,
+    averagePoints: 30,
+    pointsPerHour: 1.2,
+    composition: [{ name: 'Trapinch', split: 1 }],
+  });
+
+  it('uses a floorless parent name for multi-floor locations', () => {
+    expect(parentLocationName('Mirage Tower 1F')).toBe('Mirage Tower');
+    expect(parentLocationName('Mirage Tower B2F')).toBe('Mirage Tower');
+    expect(parentLocationName('Mirage Tower (3F)')).toBe('Mirage Tower');
+    expect(locationAreaName('Mirage Tower (3F)')).toBe('3F');
+    expect(parentLocationName('Route 119')).toBe('Route 119');
+  });
+
+  it('collapses equivalent floors and full-day splits without merging different splits', () => {
+    const equivalent = ['morning', 'day', 'night'].flatMap((time) => [
+      {
+        ...makeSpot('Mirage Tower (1F)', 'Summer', time),
+        composition: [{ name: 'Trapinch', split: 1, min_level: 20, max_level: 22 }],
+      },
+      {
+        ...makeSpot('Mirage Tower (2F)', 'Summer', time),
+        composition: [{ name: 'Trapinch', split: 1, min_level: 22, max_level: 24 }],
+      },
+    ]);
+    const different = {
+      ...makeSpot('Mirage Tower 3F', 'Summer', 'night'),
+      composition: [{ name: 'Cacnea', split: 1 }],
+    };
+
+    const result = groupEquivalentHuntSpots([...equivalent, different]);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ location: 'Mirage Tower', season: 'Summer', time: 'Any' });
+    expect(result[0].spot_keys).toHaveLength(6);
+    expect(result[0].location_areas).toEqual(['1F', '2F']);
+    expect(result[1]).toMatchObject({ location: 'Mirage Tower', time: 'night' });
+  });
+
+  it('consolidates matching encounters across part of the day', () => {
+    const result = groupEquivalentHuntSpots([
+      makeSpot('Sky Pillar (1F)', 'Autumn', 'morning'),
+      makeSpot('Sky Pillar (1F)', 'Autumn', 'day'),
+      {
+        ...makeSpot('Sky Pillar (1F)', 'Autumn', 'night'),
+        composition: [{ name: 'Ariados', split: 1 }],
+      },
+    ]);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ location: 'Sky Pillar', times: ['morning', 'day'] });
+    expect(result[1]).toMatchObject({ time: 'night', times: ['night'] });
+  });
+
+  it('does not consolidate matching times from different floor sets', () => {
+    const result = groupEquivalentHuntSpots([
+      makeSpot('Sky Pillar (1F)', 'Autumn', 'morning'),
+      makeSpot('Sky Pillar (3F)', 'Autumn', 'day'),
+    ]);
+
+    expect(result).toHaveLength(2);
+    expect(result.map((spot) => spot.location_areas)).toEqual([['1F'], ['3F']]);
+  });
+});
 
 describe('Cloudflare Shiny Wars repository', () => {
   it('normalizes raw 5% horde tables into the Mansion split', async () => {
@@ -79,7 +153,7 @@ describe('Cloudflare Shiny Wars repository', () => {
     });
 
     expect(result.total).toBe(1);
-    expect(result.items[0].location).toBe('Pokemon Mansion 2F');
+    expect(result.items[0].location).toBe('Pokemon Mansion');
     expect(result.items[0].composition.map(({ name, split }) => [name, split])).toEqual([
       ['Vulpix', 0.5],
       ['Grimer', 0.5],
@@ -162,8 +236,8 @@ describe('Cloudflare Shiny Wars repository', () => {
     });
 
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].location).toBe('Pokemon Mansion 2F');
-    expect(result.locations).toEqual(['Pokemon Mansion 2F', 'Viridian Forest']);
+    expect(result.items[0].location).toBe('Pokemon Mansion');
+    expect(result.locations).toEqual(['Pokemon Mansion', 'Viridian Forest']);
   });
 
   it('groups single encounters, marks lure species, and filters by minimum points per hour', async () => {
@@ -237,7 +311,7 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(togetic.split).toBeCloseTo(5 / 105);
   });
 
-  it('expands Any-season encounters into all four seasonal groups', async () => {
+  it('collapses equivalent Any-season encounters into one Any-season group', async () => {
     const repository = createShinyWarRepository({
       dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
       runSelect: jest.fn().mockResolvedValue([{
@@ -251,9 +325,7 @@ describe('Cloudflare Shiny Wars repository', () => {
 
     const result = await repository.listHordeSpots({ method: 'Singles', time: 'day' });
 
-    expect(result.items.map((spot) => spot.season).sort()).toEqual([
-      'Autumn', 'Spring', 'Summer', 'Winter',
-    ]);
+    expect(result.items.map((spot) => spot.season)).toEqual(['Any']);
   });
 
   it('categorizes Rocks as Rock Smash instead of Singles', async () => {

@@ -13,8 +13,9 @@ type Props = {
 const queueLabel = (position: number) => position === 0 ? 'Current' : `Next ${position}`;
 
 export default function LocationQueueStatus({ participants, spot }: Props) {
+  const spotKeys = new Set(spot.spot_keys || [spot.spot_key]);
   const entries: QueueEntry[] = participants.flatMap((participant) => participant.hunts
-    .filter((hunt) => hunt.spot_key === spot.spot_key)
+    .filter((hunt) => spotKeys.has(hunt.spot_key))
     .map((hunt) => ({ hunt, participant })))
     .sort((a, b) => a.hunt.position - b.hunt.position || a.participant.ign.localeCompare(b.participant.ign));
 

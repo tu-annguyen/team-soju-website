@@ -8,6 +8,7 @@ const {
   scoreShinyWarCatches,
   TIER_POINTS,
 } = require('@team-soju/utils');
+const { groupEquivalentHuntSpots, parentLocationName } = require('./hunt-spot-groups');
 
 function parseJson(value, fallback) {
   try {
@@ -238,11 +239,11 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (species) => species.name.toLowerCase().includes(speciesFilter)
       ))
       : splitFilteredSpots;
-    const locations = [...new Set(matchingSpots.map((spot) => spot.location))]
+    const locations = [...new Set(matchingSpots.map((spot) => parentLocationName(spot.location)))]
       .sort((left, right) => left.localeCompare(right));
     const locationFilter = String(filters.location || '').trim().toLowerCase();
     const locationFilteredSpots = locationFilter
-      ? matchingSpots.filter((spot) => spot.location.toLowerCase().includes(locationFilter))
+      ? matchingSpots.filter((spot) => parentLocationName(spot.location).toLowerCase().includes(locationFilter))
       : matchingSpots;
     const minimumPointsPerHour = Math.max(0, Number(filters.minPointsPerHour) || 0);
     const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(selectedMethod);
@@ -251,8 +252,9 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (spot) => spot.pointsPerHour !== null && spot.pointsPerHour >= minimumPointsPerHour
       )
       : locationFilteredSpots;
+    const groupedSpots = groupEquivalentHuntSpots(pointsFilteredSpots);
     const sortByAverage = filters.sort === 'averagePoints' || !hasHourlyData;
-    pointsFilteredSpots.sort((a, b) => {
+    groupedSpots.sort((a, b) => {
       if (sortByAverage) return b.averagePoints - a.averagePoints || a.location.localeCompare(b.location);
       if (a.pointsPerHour === null) return b.pointsPerHour === null
         ? b.averagePoints - a.averagePoints || a.location.localeCompare(b.location)
@@ -263,8 +265,8 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     const page = Math.max(1, Number(filters.page) || 1);
     const pageSize = Math.min(1000, Math.max(1, Number(filters.pageSize) || 30));
     return {
-      items: pointsFilteredSpots.slice((page - 1) * pageSize, page * pageSize),
-      total: pointsFilteredSpots.length,
+      items: groupedSpots.slice((page - 1) * pageSize, page * pageSize),
+      total: groupedSpots.length,
       page,
       pageSize,
       locations,

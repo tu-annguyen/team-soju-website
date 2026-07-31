@@ -1,6 +1,7 @@
 import { groupHuntSpotsByPokemon } from './huntGroups';
-import HuntSpotCard from './HuntSpotCard';
+import HuntLocationCard from './HuntLocationCard';
 import SpeciesSpriteName from './SpeciesSpriteName';
+import { groupHuntSpotsByLocation } from './huntLocationGroups';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
 export type HuntView = 'location' | 'pokemon';
@@ -13,20 +14,32 @@ type Props = {
   view: HuntView;
   onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
   onToggle: (spotKey: string) => void;
+  selectedSeason?: string;
+  selectedTime?: string;
+  onSeasonChange?: (season: string) => void;
+  onTimeChange?: (time: string) => void;
 };
 
-export default function HuntResults({ expanded, participants, speciesFilter, spots, view, onQueue, onToggle }: Props) {
+export default function HuntResults({
+  expanded, participants, speciesFilter, spots, view, onQueue, onToggle,
+  selectedSeason, selectedTime, onSeasonChange, onTimeChange,
+}: Props) {
   if (view === 'location') {
+    const locationGroups = groupHuntSpotsByLocation(spots);
     return (
       <div className="space-y-3">
-        {spots.map((spot) => (
-          <HuntSpotCard
-            key={spot.spot_key}
-            expanded={expanded.has(spot.spot_key)}
+        {locationGroups.map((group) => (
+          <HuntLocationCard
+            expanded={expanded}
+            key={group.key}
             participants={participants}
+            selectedSeason={selectedSeason}
+            selectedTime={selectedTime}
+            spots={group.spots}
             onQueue={onQueue}
-            onToggle={() => onToggle(spot.spot_key)}
-            spot={spot}
+            onSeasonChange={onSeasonChange}
+            onTimeChange={onTimeChange}
+            onToggle={onToggle}
           />
         ))}
       </div>
@@ -60,15 +73,19 @@ export default function HuntResults({ expanded, participants, speciesFilter, spo
             </p>
           </div>
           <div className="space-y-3">
-            {speciesSpots.map((spot) => (
-              <HuntSpotCard
-                key={`${species.slug}-${species.form}-${spot.spot_key}`}
-                expanded={expanded.has(spot.spot_key)}
-                nested
+            {groupHuntSpotsByLocation(speciesSpots).map((group) => (
+              <HuntLocationCard
+                expanded={expanded}
+                key={`${species.slug}-${species.form}-${group.key}`}
                 participants={participants}
-                onQueue={(spotToQueue, current) => onQueue(spotToQueue, current, species)}
-                onToggle={() => onToggle(spot.spot_key)}
-                spot={spot}
+                selectedSeason={selectedSeason}
+                selectedTime={selectedTime}
+                spots={group.spots}
+                targetSpecies={species}
+                onQueue={onQueue}
+                onSeasonChange={onSeasonChange}
+                onTimeChange={onTimeChange}
+                onToggle={onToggle}
               />
             ))}
           </div>

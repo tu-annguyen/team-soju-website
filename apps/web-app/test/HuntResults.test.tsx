@@ -75,4 +75,77 @@ describe('HuntResults', () => {
     expect(screen.getByText('Team queue')).toBeInTheDocument();
     expect(screen.getByText('No one hunting or queued')).toBeInTheDocument();
   });
+
+  it('shows queue entries from every floor represented by a grouped location', () => {
+    const floorParticipant: ParticipantHunts = {
+      member_id: 'member-2', ign: 'FloorHunter', rank: 'Member', has_app_user: true,
+      hunts: [{ id: 'floor-hunt', position: 0, spot_key: 'mansion-3f', label: 'Pokemon Mansion (3F)' }],
+    };
+
+    render(
+      <HuntResults
+        expanded={new Set()}
+        participants={[floorParticipant]}
+        speciesFilter=""
+        spots={[{ ...spot, spot_keys: ['mansion', 'mansion-3f'] }]}
+        view="location"
+        onQueue={jest.fn()}
+        onToggle={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('FloorHunter · Current')).toBeInTheDocument();
+  });
+
+  it('keeps different floor splits inside one parent location card', () => {
+    const skyPillarSpots: HuntSpot[] = [
+      { ...spot, spot_key: 'sky-1f', location: 'Sky Pillar', location_areas: ['1F'] },
+      {
+        ...spot,
+        spot_key: 'sky-3f',
+        location: 'Sky Pillar',
+        location_areas: ['3F'],
+        time: 'morning',
+        averagePoints: 10,
+        composition: [{ ...vulpix, name: 'Altaria', slug: 'altaria' }],
+      },
+    ];
+
+    render(
+      <HuntResults
+        expanded={new Set(['sky-1f', 'sky-3f'])}
+        participants={[]}
+        speciesFilter=""
+        spots={skyPillarSpots}
+        view="location"
+        onQueue={jest.fn()}
+        onToggle={jest.fn()}
+      />
+    );
+
+    expect(screen.getAllByText('Sky Pillar')).toHaveLength(1);
+    expect(screen.getByText('1F · Sweet Scent split 1')).toBeInTheDocument();
+    expect(screen.getByText('3F · Sweet Scent split 2')).toBeInTheDocument();
+    expect(screen.getByText('Altaria')).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === 'Pokémon available · Kanto · 2 encounter splits')).toBeInTheDocument();
+  });
+
+  it('labels non-horde splits by encounter method and puts actions after the team queue', () => {
+    render(
+      <HuntResults
+        expanded={new Set()}
+        participants={[]}
+        speciesFilter=""
+        spots={[{ ...spot, method: 'Grass', horde_size: 0 }]}
+        view="location"
+        onQueue={jest.fn()}
+        onToggle={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Singles Grass')).toBeInTheDocument();
+    const teamQueue = screen.getByText('Team queue').parentElement;
+    const queueButton = screen.getByRole('button', { name: 'Queue' });
+    expect(teamQueue?.compareDocumentPosition(queueButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

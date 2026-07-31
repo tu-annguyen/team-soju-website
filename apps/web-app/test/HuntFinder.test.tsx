@@ -26,6 +26,25 @@ const makeSpot = (spotKey: string, location: string): HuntSpot => ({
 });
 
 describe('HuntFinder', () => {
+  it('uses Any labels and lets card chips update season and time filters', async () => {
+    const spot = makeSpot('mirage', 'Mirage Tower');
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [spot], locations: ['Mirage Tower'], total: 1 });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+
+    expect(await screen.findByRole('option', { name: 'Any season' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Any time' })).toBeInTheDocument();
+    expect(await screen.findByText('Mirage Tower')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Any season' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Night time' }));
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).not.toContain('season=');
+      expect(latestUrl).toContain('time=night');
+    });
+  });
+
   it('opens and collapses all visible locations from the view row', async () => {
     const spots = [
       makeSpot('mansion', 'Pokemon Mansion 2F'),
