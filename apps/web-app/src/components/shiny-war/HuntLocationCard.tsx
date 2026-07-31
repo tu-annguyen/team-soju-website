@@ -15,9 +15,14 @@ type Props = {
 };
 
 const SINGLE_METHODS = new Set(['Grass', 'Cave', 'Water', 'Inside', 'Dark Grass', 'Dust Cloud', 'Shadow']);
+const SWEET_SCENT_TERRAINS = new Set(['Grass', 'Dark Grass', 'Water', 'Cave', 'Inside']);
 
 function encounterType(spot: HuntSpot) {
-  if (spot.horde_size) return 'Sweet Scent';
+  if (spot.horde_size) {
+    return SWEET_SCENT_TERRAINS.has(spot.method)
+      ? `Sweet Scent ${spot.method}`
+      : 'Sweet Scent';
+  }
   if (SINGLE_METHODS.has(spot.method)) return `Singles ${spot.method}`;
   return spot.method;
 }
@@ -33,7 +38,7 @@ function splitTitles(spots: HuntSpot[]) {
     const type = encounterType(spot);
     const occurrence = (occurrences.get(type) || 0) + 1;
     occurrences.set(type, occurrence);
-    const needsSplitNumber = type === 'Sweet Scent' || (totals.get(type) || 0) > 1;
+    const needsSplitNumber = (totals.get(type) || 0) > 1;
     const label = needsSplitNumber ? `${type} split ${occurrence}` : type;
     const areas = spot.location_areas?.filter(Boolean) || [];
     return areas.length ? `${areas.join(', ')} · ${label}` : label;

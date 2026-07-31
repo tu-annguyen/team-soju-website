@@ -148,4 +148,24 @@ describe('HuntResults', () => {
     const queueButton = screen.getByRole('button', { name: 'Queue' });
     expect(teamQueue?.compareDocumentPosition(queueButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it.each([
+    ['Grass', 'Sweet Scent Grass'],
+    ['Dark Grass', 'Sweet Scent Dark Grass'],
+    ['Water', 'Sweet Scent Water'],
+  ])('includes the %s terrain in Sweet Scent split labels', (method, label) => {
+    render(
+      <HuntResults
+        expanded={new Set()}
+        participants={[]}
+        speciesFilter=""
+        spots={[{ ...spot, method }]}
+        view="location"
+        onQueue={jest.fn()}
+        onToggle={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
 });
