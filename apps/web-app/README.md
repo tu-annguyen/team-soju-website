@@ -45,3 +45,9 @@ A dynamic, content-driven frontend built with React.js and Astro components.
   ```
 
 - Discord registration uses the IGN entered on the create-account tab before redirecting to Discord.
+- Wrap member-only page content in `MemberGate` and pass the configured API base
+  URL. The gate handles signed-out, Discord-unlinked, non-member, and optional
+  permission-denied states.
+- Add `requiresTeamMembership` or `requiredPermission` to entries in the shared
+  tool registry to hide inaccessible navigation and Tools index links. Sensitive
+  data and mutations must still be protected by the corresponding API guard.

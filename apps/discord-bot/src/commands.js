@@ -174,6 +174,10 @@ const COMMANDS = [
         .setDescription('Date of catch (YYYY-MM-DD)')
         .setRequired(false))
     .addStringOption(option =>
+      option.setName('catch_time_utc')
+        .setDescription('Exact UTC capture time (HH:MM); required for active war participants')
+        .setRequired(false))
+    .addStringOption(option =>
       option.setName('status')
         .setDescription('Status of the shiny')
         .setRequired(false)
@@ -216,6 +220,10 @@ const COMMANDS = [
         .setDescription('How was it encountered?')
         .setRequired(true)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
+    .addStringOption(option =>
+      option.setName('catch_time_utc')
+        .setDescription('Exact UTC capture time (HH:MM); required for active war participants')
+        .setRequired(false))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
@@ -245,6 +253,10 @@ const COMMANDS = [
     .addStringOption(option =>
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
+        .setRequired(false))
+    .addStringOption(option =>
+      option.setName('catch_time_utc')
+        .setDescription('Correct exact UTC capture time (HH:MM)')
         .setRequired(false))
     .addStringOption(option =>
       option.setName('status')

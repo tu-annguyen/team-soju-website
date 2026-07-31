@@ -5,13 +5,14 @@ import type {
   CatchEventStatus,
 } from '../../utils/catchEventScoring';
 import type { Locale } from '../../i18n';
+import type { AuthUser } from '../../auth/types';
 
 export type ViewMode = 'events' | 'host';
 export type LegacyViewMode = ViewMode | 'create' | 'submit' | 'admin' | 'leaderboard';
 export type HostTab = 'create' | 'manage';
 export type EventTab = 'submission' | 'leaderboard';
 export type RuleRow = { id: string; name: string; points: string };
-export type AuthUser = { id: string; email: string; ign: string };
+export type { AuthUser };
 export type ScreenshotProof = { name?: string; fileName?: string; dataUrl?: string; url?: string };
 export type EventForm = typeof defaultEventForm;
 export type SubmissionForm = typeof defaultSubmissionForm;

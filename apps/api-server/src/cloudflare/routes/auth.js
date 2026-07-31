@@ -135,6 +135,7 @@ async function handleAuthRoutes(context) {
     requireBotAuth,
     getAuthenticatedUser,
     requireUser,
+    getAuthorizedSafeUser,
     signInUser,
     issueEmailVerification,
     maybeProxyLegacyRequest,
@@ -252,9 +253,14 @@ async function handleAuthRoutes(context) {
     }
 
     if (request.method === 'GET' && pathname === '/api/auth/discord') {
+      const wantsJson = request.headers.get('accept')?.includes('application/json');
+
       try {
         const { error, value } = discordStartSchema.validate(Object.fromEntries(url.searchParams.entries()));
         if (error) {
+          if (wantsJson) {
+            return json({ success: false, message: 'Invalid Discord sign-in request.' }, { status: 400 });
+          }
           return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Invalid Discord sign-in request.' }), 302);
         }
 
@@ -270,6 +276,9 @@ async function handleAuthRoutes(context) {
         if (value.mode === 'connect') {
           const auth = await requireUser(request, env, getRepositories());
           if (auth.response) {
+            if (wantsJson) {
+              return json({ success: false, message: 'Sign in before connecting Discord.' }, { status: 401 });
+            }
             return Response.redirect(buildWebRedirect(env, '/auth', { error: 'Sign in before connecting Discord.' }), 302);
           }
           userId = auth.user.id;
@@ -282,10 +291,24 @@ async function handleAuthRoutes(context) {
           response_type: 'code',
           state: await buildState({ ...value, userId }, env),
         });
+        const authorizationUrl = `https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`;
 
-        return Response.redirect(`https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`, 302);
+        if (wantsJson) {
+          return json({
+            success: true,
+            data: { authorizationUrl },
+          });
+        }
+
+        return Response.redirect(authorizationUrl, 302);
       } catch (error) {
         console.error('Error starting Discord OAuth:', error);
+        if (wantsJson) {
+          return json({
+            success: false,
+            message: error.publicMessage || 'Unable to start Discord sign-in.',
+          }, { status: 500 });
+        }
         return Response.redirect(buildWebRedirect(env, '/auth', {
           error: error.publicMessage || 'Unable to start Discord sign-in.',
         }), 302);
@@ -358,7 +381,7 @@ async function handleAuthRoutes(context) {
         }
 
         const loggedInUser = await getRepositories().users.recordLogin(user.id);
-        const safeUser = getRepositories().users.toSafeUser(loggedInUser || user);
+        const safeUser = await getAuthorizedSafeUser(getRepositories(), loggedInUser || user);
         const sessionToken = await signUserToken(safeUser, env);
         const handoffToken = await buildDiscordHandoffToken(safeUser, env);
 
@@ -393,7 +416,7 @@ async function handleAuthRoutes(context) {
           }, { status: 401 });
         }
 
-        const safeUser = getRepositories().users.toSafeUser(user);
+        const safeUser = await getAuthorizedSafeUser(getRepositories(), user);
         const token = await signUserToken(safeUser, env);
         return json({
           success: true,
@@ -441,7 +464,7 @@ async function handleAuthRoutes(context) {
 
         return json({
           success: true,
-          data: getRepositories().users.toSafeUser(user),
+          data: await getAuthorizedSafeUser(getRepositories(), user),
         });
       } catch {
         return json({
@@ -586,7 +609,7 @@ async function handleAuthRoutes(context) {
           ign: auth.user.ign,
         }));
 
-        const safeUser = getRepositories().users.toSafeUser(updatedUser || auth.user);
+        const safeUser = await getAuthorizedSafeUser(getRepositories(), updatedUser || auth.user);
         const token = await signUserToken(safeUser, env);
         return json({
           success: true,
@@ -633,7 +656,7 @@ async function handleAuthRoutes(context) {
         const updatedUser = await getRepositories().users.updatePassword(auth.user.id, await derivePasswordHash(value.newPassword));
         return json({
           success: true,
-          data: getRepositories().users.toSafeUser(updatedUser || auth.user),
+          data: await getAuthorizedSafeUser(getRepositories(), updatedUser || auth.user),
           message: auth.user.password_hash
             ? 'Password updated successfully.'
             : 'Password added successfully.',

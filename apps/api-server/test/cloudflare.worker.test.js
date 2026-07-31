@@ -1037,6 +1037,10 @@ describe('Cloudflare Worker API', () => {
           password_hash: 'secret',
           auth_provider: 'password',
         }),
+        findMembershipByUserId: jest.fn().mockResolvedValue({
+          id: 'member-1',
+          rank: 'Trainer',
+        }),
         toSafeUser: jest.fn((user) => ({
           id: user.id,
           email: user.email,
@@ -1069,6 +1073,12 @@ describe('Cloudflare Worker API', () => {
         email: 'trainer@example.com',
         ign: 'Trainer',
         auth_provider: 'password',
+        membership: {
+          id: 'member-1',
+          rank: 'Trainer',
+        },
+        roles: ['team_member'],
+        permissions: [],
       },
     });
   });
@@ -1248,6 +1258,68 @@ describe('Cloudflare Worker API', () => {
     expect(response.headers.get('location')).toContain('client_id=discord-client');
   });
 
+  it('returns a Discord connection URL to credentialed browser fetches', async () => {
+    const repositories = {
+      members: {},
+      shinies: {},
+      users: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'trainer@example.com',
+          ign: 'Trainer',
+        }),
+      },
+    };
+    const app = createWorkerApp({ repositories });
+    const sessionToken = await signJwt({
+      type: 'web_user',
+      sub: 'user-1',
+    }, 'test-secret', { expiresIn: '2m' });
+
+    const response = await app.fetch(new Request(
+      'https://api.example.com/api/auth/discord?mode=connect&returnTo=%2Fauth',
+      {
+        headers: {
+          accept: 'application/json',
+          cookie: `${AUTH_COOKIE_NAME}=${sessionToken}`,
+        },
+      }
+    ), createEnv({
+      DISCORD_CLIENT_ID: 'discord-client',
+      DISCORD_CLIENT_SECRET: 'discord-secret',
+      DISCORD_REDIRECT_URI: 'https://api.example.com/api/auth/discord/callback',
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.authorizationUrl).toContain('https://discord.com/oauth2/authorize');
+    expect(body.data.authorizationUrl).toContain('client_id=discord-client');
+    expect(repositories.users.findById).toHaveBeenCalledWith('user-1');
+  });
+
+  it('rejects Discord connection URL fetches without a browser session', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        users: {},
+      },
+    });
+
+    const response = await app.fetch(new Request(
+      'https://api.example.com/api/auth/discord?mode=connect&returnTo=%2Fauth',
+      { headers: { accept: 'application/json' } }
+    ), createEnv());
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body).toEqual({
+      success: false,
+      message: 'Sign in before connecting Discord.',
+    });
+  });
+
   it('exchanges Discord handoff tokens from the Worker and sets the browser session cookie', async () => {
     const repositories = {
       members: {},
@@ -1286,6 +1358,9 @@ describe('Cloudflare Worker API', () => {
       email: 'trainer@example.com',
       ign: 'Trainer',
       auth_provider: 'discord',
+      membership: null,
+      roles: [],
+      permissions: [],
     });
     expect(response.headers.get('set-cookie')).toContain(`${AUTH_COOKIE_NAME}=`);
     expect(response.headers.get('set-cookie')).toContain('SameSite=None');

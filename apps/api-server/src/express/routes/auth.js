@@ -15,6 +15,7 @@ const {
   signUserToken,
   verifyUserToken,
 } = require('../../middleware/auth');
+const { getAuthorizedSafeUser } = require('../authorization');
 const {
   sendEmailVerificationEmail,
   sendPasswordResetEmail,
@@ -271,7 +272,7 @@ function getBlacklistedIgnMessage() {
 
 async function signInUser(res, user, statusCode = 200, message = 'Signed in successfully.') {
   const loggedInUser = await User.recordLogin(user.id);
-  const safeUser = User.toSafeUser(loggedInUser || user);
+  const safeUser = await getAuthorizedSafeUser(loggedInUser || user);
   const token = signUserToken(safeUser);
 
   setAuthCookie(res, token);
@@ -583,7 +584,7 @@ router.post('/change-email', requireUser, async (req, res) => {
       ign: currentUser.ign,
     });
 
-    const safeUser = User.toSafeUser(updatedUser || currentUser);
+    const safeUser = await getAuthorizedSafeUser(updatedUser || currentUser);
     setAuthCookie(res, signUserToken(safeUser));
 
     return res.json({
@@ -647,7 +648,7 @@ router.post('/change-password', requireUser, async (req, res) => {
 
     return res.json({
       success: true,
-      data: User.toSafeUser(updatedUser || currentUser),
+      data: await getAuthorizedSafeUser(updatedUser || currentUser),
       message: currentUser.password_hash
         ? 'Password updated successfully.'
         : 'Password added successfully.',
@@ -725,7 +726,7 @@ router.get('/me', async (req, res) => {
 
     return res.json({
       success: true,
-      data: User.toSafeUser(user),
+      data: await getAuthorizedSafeUser(user),
     });
   } catch {
     clearAuthCookie(res);
@@ -758,7 +759,7 @@ router.post('/discord/session', async (req, res) => {
       });
     }
 
-    const safeUser = User.toSafeUser(user);
+    const safeUser = await getAuthorizedSafeUser(user);
     setAuthCookie(res, signUserToken(safeUser));
     return res.json({
       success: true,
@@ -774,10 +775,15 @@ router.post('/discord/session', async (req, res) => {
 });
 
 router.get('/discord', async (req, res) => {
+  const wantsJson = req.get('accept')?.includes('application/json');
+
   try {
     const { error, value } = discordStartSchema.validate(req.query);
 
     if (error) {
+      if (wantsJson) {
+        return res.status(400).json({ success: false, message: 'Invalid Discord sign-in request.' });
+      }
       return res.redirect(buildWebRedirect('/auth', { error: 'Invalid Discord sign-in request.' }));
     }
 
@@ -795,6 +801,9 @@ router.get('/discord', async (req, res) => {
       const token = getTokenFromRequest(req);
 
       if (!token) {
+        if (wantsJson) {
+          return res.status(401).json({ success: false, message: 'Sign in before connecting Discord.' });
+        }
         return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
       }
 
@@ -804,12 +813,18 @@ router.get('/discord', async (req, res) => {
 
         if (!user) {
           clearAuthCookie(res);
+          if (wantsJson) {
+            return res.status(401).json({ success: false, message: 'Sign in before connecting Discord.' });
+          }
           return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
         }
 
         userId = user.id;
       } catch {
         clearAuthCookie(res);
+        if (wantsJson) {
+          return res.status(401).json({ success: false, message: 'Sign in before connecting Discord.' });
+        }
         return res.redirect(buildWebRedirect('/auth', { error: 'Sign in before connecting Discord.' }));
       }
     }
@@ -824,10 +839,24 @@ router.get('/discord', async (req, res) => {
         userId,
       }),
     });
+    const authorizationUrl = `https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`;
 
-    return res.redirect(`https://discord.com/oauth2/authorize?${params.toString()}&scope=${getDiscordScopeParam()}`);
+    if (wantsJson) {
+      return res.json({
+        success: true,
+        data: { authorizationUrl },
+      });
+    }
+
+    return res.redirect(authorizationUrl);
   } catch (error) {
     console.error('Error starting Discord OAuth:', error);
+    if (wantsJson) {
+      return res.status(500).json({
+        success: false,
+        message: error.publicMessage || 'Unable to start Discord sign-in.',
+      });
+    }
     return res.redirect(buildWebRedirect('/auth', {
       error: error.publicMessage || 'Unable to start Discord sign-in.',
     }));
@@ -902,7 +931,7 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     const loggedInUser = await User.recordLogin(user.id);
-    const safeUser = User.toSafeUser(loggedInUser || user);
+    const safeUser = await getAuthorizedSafeUser(loggedInUser || user);
     const sessionToken = signUserToken(safeUser);
     const handoffToken = buildDiscordHandoffToken(safeUser);
 

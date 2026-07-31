@@ -9,7 +9,7 @@ import {
   navigateToLocaleOverride,
   type Locale,
 } from '../i18n';
-import { languageOptions, localeStorageKey, toolsLinks, type AuthUser } from './Header.config';
+import { canAccessToolLink, languageOptions, localeStorageKey, toolsLinks, type AuthUser } from './Header.config';
 import { LanguageIcon, UserIcon } from './HeaderIcons';
 
 type Props = {
@@ -33,11 +33,13 @@ const Header = ({ locale, apiBaseUrl }: Props) => {
   const toolsHref = getLocaleParamPath('/tools', activeLocale);
   const discordHref = getLocaleParamPath('/discord', activeLocale);
   const authHref = getLocaleParamPath('/auth', activeLocale);
-  const localizedToolLinks = toolsLinks.map((link) => ({
-    ...link,
-    href: getLocaleParamPath(link.href, activeLocale),
-    label: messages.tools.index[link.labelKey].title,
-  }));
+  const localizedToolLinks = toolsLinks
+    .filter((link) => canAccessToolLink(authUser, link))
+    .map((link) => ({
+      ...link,
+      href: getLocaleParamPath(link.href, activeLocale),
+      label: messages.tools.index[link.labelKey].title,
+    }));
   const activeLanguageOption = languageOptions.find((option) => option.value === activeLocale) || languageOptions[0];
 
   useEffect(() => {

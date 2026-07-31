@@ -1,16 +1,25 @@
 import React from 'react';
 import { getClientLocale, getLocaleParamPath, getTranslations } from '../i18n';
 import type { Locale } from '../i18n';
+import { useAuthUser } from '../auth/useAuthUser';
+import { canAccessToolLink, toolsLinks } from './Header.config';
 
 type Props = {
   locale?: Locale | string;
+  apiBaseUrl: string;
 };
 
-const ToolsIndexContent = ({ locale }: Props) => {
+const ToolsIndexContent = ({ locale, apiBaseUrl }: Props) => {
+  const { authUser } = useAuthUser(apiBaseUrl);
   const activeLocale = getClientLocale(locale);
   const messages = getTranslations(activeLocale);
   const feebasHref = getLocaleParamPath('/feebas-tile-checker', activeLocale);
   const catchEventsHref = getLocaleParamPath('/tools/catch-events', activeLocale);
+  const visibleToolHrefs = new Set(
+    toolsLinks
+      .filter((link) => canAccessToolLink(authUser, link))
+      .map((link) => link.href)
+  );
 
   return (
     <>
@@ -37,7 +46,7 @@ const ToolsIndexContent = ({ locale }: Props) => {
               {messages.tools.index.availableDescription}
             </p>
             <div className="grid gap-6 md:grid-cols-2">
-              <a
+              {visibleToolHrefs.has('/tools/catch-events') && <a
                 href={catchEventsHref}
                 className="group rounded-3xl border border-emerald-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-emerald-900 dark:bg-gray-900"
               >
@@ -53,8 +62,8 @@ const ToolsIndexContent = ({ locale }: Props) => {
                 <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary-600 dark:text-primary-400">
                   {messages.tools.index.openTool}
                 </span>
-              </a>
-              <a
+              </a>}
+              {visibleToolHrefs.has('/feebas-tile-checker') && <a
                 href={feebasHref}
                 className="group rounded-3xl border border-cyan-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-cyan-900 dark:bg-gray-900"
               >
@@ -70,7 +79,7 @@ const ToolsIndexContent = ({ locale }: Props) => {
                 <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary-600 dark:text-primary-400">
                   {messages.tools.index.openTool}
                 </span>
-              </a>
+              </a>}
             </div>
           </div>
         </div>

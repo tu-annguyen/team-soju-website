@@ -2,7 +2,18 @@
 // Only export functionality safe for browser/SSR (no sharp, axios, etc.)
 
 import tiers from './pokemon-tiers.json' with { type: 'json' };
+import shinyWar from './shiny-war.cjs';
 export { buildAnimatedShinySpriteUrl } from './sprite-url.mjs';
+
+export const {
+  SHINY_WAR_2026,
+  calculateHordeMetrics,
+  effectiveShinyDenominator,
+  getCatchBasePoints,
+  getShinyWarSeason,
+  isEligibleCatch,
+  scoreShinyWarCatches,
+} = shinyWar;
 
 const TIER_POINTS = {
   'Tier 0': 50,
