@@ -10,6 +10,11 @@ const huntSpecies = (hunt: Hunt) => {
   });
 };
 
+const huntLabel = (label: string) => label.replace(
+  /([35][x×])(?!\s+Sweet Scent)(?=\s*(?:·|$))/g,
+  '$1 Sweet Scent',
+);
+
 type Props = {
   rows: ParticipantHunts[];
   ownMemberId?: string;
@@ -40,7 +45,7 @@ function HuntCard({ busy, isOwn, row, onMove, onRemove }: HuntCardProps) {
             <li key={hunt.id || `${hunt.spot_key}-${index}`} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
               <div className="flex gap-2">
                 <span className="font-semibold text-primary-600">{index === 0 ? 'Current' : `Next ${index}`}</span>
-                <span className="flex-1 text-gray-900 dark:text-white">{hunt.label}</span>
+                <span className="flex-1 text-gray-900 dark:text-white">{huntLabel(hunt.label)}</span>
               </div>
               {huntSpecies(hunt).length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-gray-700 dark:text-gray-300">
