@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { Hunt, ParticipantHunts } from './types';
 import SpeciesSpriteName from './SpeciesSpriteName';
+import TeamBadge, { TEAM_LABELS } from './TeamBadge';
 
 const huntSpecies = (hunt: Hunt) => {
   const species = hunt.details?.species;
@@ -9,6 +11,11 @@ const huntSpecies = (hunt: Hunt) => {
     return entry && typeof entry.name === 'string' ? [entry] : [];
   });
 };
+
+const huntLabel = (label: string) => label.replace(
+  /([35][x×])(?!\s+Sweet Scent)(?=\s*(?:·|$))/g,
+  '$1 Sweet Scent',
+);
 
 type Props = {
   rows: ParticipantHunts[];
@@ -28,8 +35,11 @@ type HuntCardProps = {
 function HuntCard({ busy, isOwn, row, onMove, onRemove }: HuntCardProps) {
   return (
     <section className="break-inside-avoid rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-950 dark:text-white">{row.ign}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-950 dark:text-white">{row.ign}</h2>
+          <TeamBadge team={row.team} />
+        </div>
         {!row.has_app_user && <span className="text-xs font-medium text-amber-600">Account not linked</span>}
       </div>
       {row.hunts.length === 0 ? (
@@ -40,7 +50,7 @@ function HuntCard({ busy, isOwn, row, onMove, onRemove }: HuntCardProps) {
             <li key={hunt.id || `${hunt.spot_key}-${index}`} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
               <div className="flex gap-2">
                 <span className="font-semibold text-primary-600">{index === 0 ? 'Current' : `Next ${index}`}</span>
-                <span className="flex-1 text-gray-900 dark:text-white">{hunt.label}</span>
+                <span className="flex-1 text-gray-900 dark:text-white">{huntLabel(hunt.label)}</span>
               </div>
               {huntSpecies(hunt).length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -55,7 +65,7 @@ function HuntCard({ busy, isOwn, row, onMove, onRemove }: HuntCardProps) {
                 </div>
               )}
               {hunt.overlap_member_ids?.length ? (
-                <p className="mt-1 text-xs font-medium text-amber-600">Overlaps another participant’s location or family.</p>
+                <p className="mt-1 text-xs font-medium text-amber-600">Overlaps another participant’s location or species.</p>
               ) : null}
               {isOwn && (
                 <div className="mt-2 flex gap-2">
@@ -73,8 +83,10 @@ function HuntCard({ busy, isOwn, row, onMove, onRemove }: HuntCardProps) {
 }
 
 export default function HuntBoard({ rows, ownMemberId, busy, onSave }: Props) {
+  const [view, setView] = useState<'official' | 'team'>('official');
   const own = rows.find((row) => row.member_id === ownMemberId);
   const otherRows = rows.filter((row) => row.member_id !== ownMemberId);
+  const officialRows = otherRows.filter((row) => row.is_official);
   const mutate = async (index: number, direction: -1 | 1) => {
     if (!own) return;
     const queue = [...own.hunts].sort((a, b) => a.position - b.position);
@@ -93,13 +105,56 @@ export default function HuntBoard({ rows, ownMemberId, busy, onSave }: Props) {
   return (
     <div className="space-y-4">
       {own && <HuntCard busy={busy} isOwn row={own} onMove={mutate} onRemove={remove} />}
-      <div className="columns-1 gap-4 lg:columns-2">
-        {otherRows.map((row) => (
-          <div className="mb-4" key={row.member_id}>
-            <HuntCard busy={busy} isOwn={false} row={row} onMove={mutate} onRemove={remove} />
-          </div>
+      <div className="flex flex-wrap gap-2" aria-label="Hunt Board view" role="group">
+        {([['official', 'Official War'], ['team', 'Team War']] as const).map(([value, label]) => (
+          <button
+            aria-pressed={view === value}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${view === value
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200'}`}
+            key={value}
+            onClick={() => setView(value)}
+            type="button"
+          >
+            {label}
+          </button>
         ))}
       </div>
+      {view === 'official' ? (
+        <HuntCardColumns rows={officialRows} busy={busy} onMove={mutate} onRemove={remove} />
+      ) : (
+        <div className="space-y-7">
+          {(['bidoof', 'arceus'] as const).map((team) => {
+            const teamRows = otherRows.filter((row) => row.team === team);
+            return (
+              <section key={team}>
+                <div className="mb-3 flex items-center gap-3">
+                  <h2 className="text-xl font-bold text-gray-950 dark:text-white">{TEAM_LABELS[team]}</h2>
+                  <span className="text-sm text-gray-500">{teamRows.length + (own?.team === team ? 1 : 0)} participants</span>
+                </div>
+                <HuntCardColumns rows={teamRows} busy={busy} onMove={mutate} onRemove={remove} />
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HuntCardColumns({ rows, busy, onMove, onRemove }: {
+  rows: ParticipantHunts[];
+  busy: boolean;
+  onMove: (index: number, direction: -1 | 1) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="columns-1 gap-4 lg:columns-2">
+      {rows.map((row) => (
+        <div className="mb-4" key={row.member_id}>
+          <HuntCard busy={busy} isOwn={false} row={row} onMove={onMove} onRemove={onRemove} />
+        </div>
+      ))}
     </div>
   );
 }

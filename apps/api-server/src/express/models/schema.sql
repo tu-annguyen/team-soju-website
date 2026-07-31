@@ -401,9 +401,17 @@ CREATE TABLE IF NOT EXISTS shiny_war_participants (
   event_id TEXT NOT NULL REFERENCES shiny_war_events(id) ON DELETE CASCADE,
   member_id UUID NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
   added_by_user_id UUID REFERENCES app_users(id) ON DELETE SET NULL,
+  team TEXT NOT NULL DEFAULT 'bidoof' CHECK (team IN ('bidoof', 'arceus')),
+  is_official BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
   PRIMARY KEY (event_id, member_id)
 );
+
+ALTER TABLE shiny_war_participants
+  ADD COLUMN IF NOT EXISTS team TEXT NOT NULL DEFAULT 'bidoof'
+  CHECK (team IN ('bidoof', 'arceus'));
+ALTER TABLE shiny_war_participants
+  ADD COLUMN IF NOT EXISTS is_official BOOLEAN NOT NULL DEFAULT true;
 
 CREATE TABLE IF NOT EXISTS shiny_war_hunts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

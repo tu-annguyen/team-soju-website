@@ -21,6 +21,7 @@
     "d1:schema:staging": "wrangler d1 execute DB --config wrangler.jsonc --env staging --remote --file=src/cloudflare/schema.d1.sql",
     "d1:migrate:prod": "wrangler d1 migrations apply DB --config wrangler.jsonc --remote",
     "d1:migrate:staging": "wrangler d1 migrations apply DB --config wrangler.jsonc --env staging --remote",
+    "d1:migrate:local": "wrangler d1 migrations apply DB --config wrangler.jsonc --local",
     "import:shiny-war-dex": "node src/scripts/import-shiny-war-dex.js",
     "tail:cf": "wrangler tail --config wrangler.jsonc --format pretty",
     "tail:cf:staging": "wrangler tail --config wrangler.jsonc --env staging --format pretty",

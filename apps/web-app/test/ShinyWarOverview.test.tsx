@@ -11,6 +11,7 @@ const dashboard = {
   },
   currentSeason: 'Summer',
   teamTotal: 38,
+  teamTotals: { bidoof: 20, arceus: 18 },
   uniqueFamilyCount: 1,
   uniqueFamilies: ['vulpix'],
   standings: [{
@@ -18,6 +19,8 @@ const dashboard = {
     ign: 'SojuHunter',
     rank: 'Trainer',
     has_app_user: true,
+    team: 'bidoof' as const,
+    is_official: true,
     hunts: [],
     points: 38,
     catches: 1,
@@ -26,6 +29,9 @@ const dashboard = {
     id: 'shiny-1',
     pokemon: 'vulpix',
     ign: 'SojuHunter',
+    member_id: 'member-1',
+    team: 'bidoof' as const,
+    is_official: true,
     caught_at_utc: '2026-08-01T01:02:00.000Z',
     score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
   }],
@@ -37,9 +43,20 @@ describe('Shiny Wars overview', () => {
     render(<Overview dashboard={dashboard} canManage onEligibility={onEligibility} />);
 
     expect(screen.getByText('38 pts')).toBeInTheDocument();
+    expect(screen.getAllByText('Team Bidoof').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Team Bidoof 20 points, Team Arceus 18 points')).toBeInTheDocument();
     expect(screen.getByText('vulpix')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mark invalid' }));
     expect(onEligibility).toHaveBeenCalledWith('shiny-1', false);
   });
-});
 
+  it('uses species language and can hide internal event status', () => {
+    render(<Overview dashboard={dashboard} showEventStatus={false} />);
+
+    expect(screen.getByText('Unique species')).toBeInTheDocument();
+    expect(screen.getByText('Species coverage')).toBeInTheDocument();
+    expect(screen.getByText(/first species \+8/)).toBeInTheDocument();
+    expect(screen.queryByText('Current season')).not.toBeInTheDocument();
+    expect(screen.queryByText('Schedule')).not.toBeInTheDocument();
+  });
+});

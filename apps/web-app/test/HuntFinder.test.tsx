@@ -75,4 +75,34 @@ describe('HuntFinder', () => {
     expect(screen.getByRole('button', { name: 'Collapse Route 7' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: 'Collapse all' })).toHaveTextContent('- Collapse all');
   });
+
+  it('only enables the non-Safari filter for Singles and Fishing', async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+
+    const method = screen.getByLabelText('Encounter method');
+    const nonSafari = screen.getByLabelText('Non-Safari only');
+    expect(nonSafari).toBeDisabled();
+
+    fireEvent.change(method, { target: { value: 'Singles' } });
+    expect(nonSafari).toBeEnabled();
+    fireEvent.click(nonSafari);
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('method=Singles');
+      expect(latestUrl).toContain('nonSafari=true');
+    });
+
+    fireEvent.change(method, { target: { value: 'Sweet Scent' } });
+    expect(nonSafari).toBeDisabled();
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).not.toContain('nonSafari');
+    });
+
+    fireEvent.change(method, { target: { value: 'Fishing' } });
+    expect(nonSafari).toBeEnabled();
+  });
 });
