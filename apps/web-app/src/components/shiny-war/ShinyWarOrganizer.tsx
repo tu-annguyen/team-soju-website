@@ -6,7 +6,7 @@ import HordeFinder from './HordeFinder';
 import HuntBoard from './HuntBoard';
 import Overview from './Overview';
 import RosterManager from './RosterManager';
-import type { Dashboard, HordeSpot, Hunt, ParticipantHunts } from './types';
+import type { Dashboard, HordeSpecies, HordeSpot, Hunt, ParticipantHunts } from './types';
 
 type Tab = 'overview' | 'hunts' | 'finder' | 'roster';
 
@@ -53,7 +53,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
     }
   };
 
-  const queueSpot = async (spot: HordeSpot, current: boolean) => {
+  const queueSpot = async (spot: HordeSpot, current: boolean, targetSpecies?: HordeSpecies) => {
     const own = hunts.find((row) => row.member_id === ownMemberId);
     if (!own) {
       setError('You must be on the official roster to maintain a hunt queue.');
@@ -62,7 +62,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
     const hunt: Hunt = {
       position: 0,
       spot_key: spot.spot_key,
-      target_family_key: spot.composition[0]?.family_key,
+      target_family_key: targetSpecies?.family_key || spot.composition[0]?.family_key,
       label: `${spot.location} · ${spot.season} ${spot.time} · ${spot.horde_size}×`,
       details: {
         region: spot.region,

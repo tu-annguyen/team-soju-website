@@ -3,13 +3,14 @@ import { CATCH_EVENT_REGIONS } from '../../utils/catchEventLocations';
 import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
-import SpeciesSpriteName from './SpeciesSpriteName';
-import type { HordeSpot } from './types';
+import HordeResults from './HordeResults';
+import type { HordeView } from './HordeResults';
+import type { HordeSpecies, HordeSpot } from './types';
 
 type Props = {
   apiBaseUrl: string;
   defaultSeason: string;
-  onQueue: (spot: HordeSpot, current: boolean) => void;
+  onQueue: (spot: HordeSpot, current: boolean, targetSpecies?: HordeSpecies) => void;
 };
 
 const fieldClasses =
@@ -20,13 +21,15 @@ const checkboxClasses =
 
 export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Props) {
   const [filters, setFilters] = useState({
-    season: defaultSeason || 'Summer', region: '', species: '', tier: '', time: '',
+    season: defaultSeason || 'Summer', region: '', location: '', species: '', tier: '', time: '',
     hordeSize: '', hordesPerHour: '240', eventBoost: true, donator: false,
-    personalCharm: false, linkCharm: false, sort: 'pointsPerHour',
+    fullSplitOnly: false, personalCharm: false, linkCharm: false, sort: 'pointsPerHour',
   });
   const [spots, setSpots] = useState<HordeSpot[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
   const [expanded, setExpanded] = useState('');
+  const [view, setView] = useState<HordeView>('location');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -37,12 +40,13 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== '') params.set(key, String(value));
         });
-        params.set('pageSize', '50');
-        const data = await shinyWarRequest<{ items: HordeSpot[]; total: number }>(
+        params.set('pageSize', '1000');
+        const data = await shinyWarRequest<{ items: HordeSpot[]; total: number; locations: string[] }>(
           apiBaseUrl, `/hordes?${params}`
         );
         setSpots(data.items);
         setTotal(data.total);
+        setLocations(data.locations || []);
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : 'Could not load hordes.');
       }
@@ -67,8 +71,18 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
             className={fieldClasses}
             options={CATCH_EVENT_REGIONS}
             value={filters.region}
-            onChange={(region) => update('region', region)}
+            onChange={(region) => setFilters((current) => ({ ...current, region, location: '' }))}
             placeholder="Every region"
+          />
+        </label>
+        <label className={labelClasses}>
+          Location
+          <FilteredCombobox
+            className={fieldClasses}
+            options={locations}
+            value={filters.location}
+            onChange={(location) => update('location', location)}
+            placeholder="Every location"
           />
         </label>
         <label className={labelClasses}>
@@ -107,6 +121,10 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
           Hordes/hour
           <input type="number" min="1" max="1000" value={filters.hordesPerHour} onChange={(e) => update('hordesPerHour', e.target.value)} className={fieldClasses} />
         </label>
+        <label className="flex items-center gap-2 self-end rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300">
+          <input className={checkboxClasses} type="checkbox" checked={filters.fullSplitOnly} onChange={(e) => update('fullSplitOnly', e.target.checked)} />
+          100% split hordes only
+        </label>
         <fieldset className="rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 lg:col-span-4 dark:border-gray-700 dark:bg-gray-950">
           <legend className="px-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Boosts and charms</legend>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -122,42 +140,38 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
           </div>
         </fieldset>
       </div>
-      <p className="text-sm text-gray-500">{total} matching horde groups. Rates are normalized within each location/time group.</p>
-      {error && <p role="alert" className="text-rose-600">{error}</p>}
-      <div className="space-y-3">
-        {spots.map((spot) => (
-          <article key={spot.spot_key} className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-            <div className="flex flex-wrap items-start gap-4">
-              <button className="min-w-0 flex-1 text-left" onClick={() => setExpanded(expanded === spot.spot_key ? '' : spot.spot_key)}>
-                <h3 className="font-bold text-gray-950 dark:text-white">{spot.location}</h3>
-                <p className="text-sm text-gray-500">{spot.region} · {spot.season} {spot.time} · {spot.horde_size}× {spot.method}</p>
-              </button>
-              <div className="text-right"><strong className="text-xl text-primary-600">{spot.pointsPerHour.toFixed(3)}</strong><p className="text-xs text-gray-500">points/hour</p></div>
-              <div className="text-right"><strong>{spot.averagePoints.toFixed(2)}</strong><p className="text-xs text-gray-500">average/shiny</p></div>
-              <button className="btn btn-secondary text-sm" onClick={() => onQueue(spot, false)}>Queue</button>
-              <button className="btn btn-primary text-sm" onClick={() => onQueue(spot, true)}>Hunt now</button>
-            </div>
-            {expanded === spot.spot_key && (
-              <div className="mt-4 grid gap-2 border-t border-gray-100 pt-4 dark:border-gray-800 sm:grid-cols-2">
-                {spot.composition.map((species) => (
-                  <p key={`${species.slug}-${species.form}`} className="flex items-center text-sm text-gray-700 dark:text-gray-300">
-                    <SpeciesSpriteName
-                      className="font-bold"
-                      form={species.form}
-                      name={species.name}
-                      slug={species.slug}
-                    />
-                    <span>&nbsp;· {(species.split * 100).toFixed(2)}% · {species.tier} · Lv. {species.min_level}–{species.max_level}</span>
-                  </p>
-                ))}
-                <p className="text-xs text-gray-500 sm:col-span-2">
-                  {spot.encountersPerHour.toLocaleString()} encounters/hour · 1/{spot.denominator.toLocaleString()} effective odds
-                </p>
-              </div>
-            )}
-          </article>
+      <div className="flex flex-wrap gap-2" aria-label="Group horde results by" role="group">
+        {([['location', 'Location'], ['pokemon', 'Pokémon']] as const).map(([value, label]) => (
+          <button
+            aria-pressed={view === value}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              view === value
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+            }`}
+            key={value}
+            onClick={() => {
+              setView(value);
+              setExpanded('');
+            }}
+            type="button"
+          >
+            {label}
+          </button>
         ))}
       </div>
+      <p className="text-sm text-gray-500">
+        {total} matching horde groups. Rates are normalized within each location/time group.
+      </p>
+      {error && <p role="alert" className="text-rose-600">{error}</p>}
+      <HordeResults
+        expanded={expanded}
+        speciesFilter={filters.species}
+        spots={spots}
+        view={view}
+        onQueue={onQueue}
+        onToggle={(spotKey) => setExpanded(expanded === spotKey ? '' : spotKey)}
+      />
     </div>
   );
 }

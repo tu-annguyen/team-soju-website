@@ -45,6 +45,11 @@ export type HordeSpot = {
   composition: HordeSpecies[];
 };
 
+export type PokemonHordeGroup = {
+  species: HordeSpecies;
+  spots: HordeSpot[];
+};
+
 export type Dashboard = {
   event: {
     name: string;

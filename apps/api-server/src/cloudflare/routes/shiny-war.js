@@ -75,11 +75,13 @@ async function handleShinyWarRoutes(context) {
       const data = await repositories.shinyWar.listHordeSpots({
         season: url.searchParams.get('season') || undefined,
         region: url.searchParams.get('region') || undefined,
+        location: url.searchParams.get('location') || undefined,
         method: url.searchParams.get('method') || undefined,
         hordeSize: url.searchParams.get('hordeSize') || undefined,
         tier: url.searchParams.get('tier') || undefined,
         species: url.searchParams.get('species') || undefined,
         time: url.searchParams.get('time') || undefined,
+        fullSplitOnly: bool('fullSplitOnly'),
         sort: url.searchParams.get('sort') || undefined,
         page: url.searchParams.get('page') || undefined,
         pageSize: url.searchParams.get('pageSize') || undefined,
