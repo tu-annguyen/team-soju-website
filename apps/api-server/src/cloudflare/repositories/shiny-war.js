@@ -178,15 +178,22 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (species) => species.name.toLowerCase().includes(speciesFilter)
       ))
       : splitFilteredSpots;
+    const locations = [...new Set(matchingSpots.map((spot) => spot.location))]
+      .sort((left, right) => left.localeCompare(right));
+    const locationFilter = String(filters.location || '').trim().toLowerCase();
+    const locationFilteredSpots = locationFilter
+      ? matchingSpots.filter((spot) => spot.location.toLowerCase().includes(locationFilter))
+      : matchingSpots;
     const sort = filters.sort === 'averagePoints' ? 'averagePoints' : 'pointsPerHour';
-    matchingSpots.sort((a, b) => b[sort] - a[sort] || a.location.localeCompare(b.location));
+    locationFilteredSpots.sort((a, b) => b[sort] - a[sort] || a.location.localeCompare(b.location));
     const page = Math.max(1, Number(filters.page) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number(filters.pageSize) || 30));
+    const pageSize = Math.min(1000, Math.max(1, Number(filters.pageSize) || 30));
     return {
-      items: matchingSpots.slice((page - 1) * pageSize, page * pageSize),
-      total: matchingSpots.length,
+      items: locationFilteredSpots.slice((page - 1) * pageSize, page * pageSize),
+      total: locationFilteredSpots.length,
       page,
       pageSize,
+      locations,
     };
   }
 

@@ -130,6 +130,42 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].composition[0].split).toBe(1);
   });
 
+  it('filters by location and returns location combobox options before that filter', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1',
+      parameter: () => '?',
+      runCommand: jest.fn(),
+      runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+          species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+          tier: 'Tier 3', points: 30, form: '', min_level: 28, max_level: 30,
+          morning_rate: 5, day_rate: 5, night_rate: 5,
+        },
+        {
+          location_id: '1:1', location_name: 'Viridian Forest', region: 'Kanto',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+          species_name: 'Pikachu', slug: 'pikachu', family_key: 'pikachu',
+          tier: 'Tier 4', points: 15, form: '', min_level: 3, max_level: 5,
+          morning_rate: 5, day_rate: 5, night_rate: 5,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer',
+      time: 'day',
+      location: 'mansion',
+      profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].location).toBe('Pokemon Mansion 2F');
+    expect(result.locations).toEqual(['Pokemon Mansion 2F', 'Viridian Forest']);
+  });
+
   it('rejects malformed or oversized queues at the route boundary', () => {
     expect(cleanQueue([{ spot_key: 'spot', label: 'Mansion', details: {} }])).toHaveLength(1);
     expect(cleanQueue([{ spot_key: '', label: 'Missing spot' }])).toBeNull();
