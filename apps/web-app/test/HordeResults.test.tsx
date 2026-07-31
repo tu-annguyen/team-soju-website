@@ -28,7 +28,7 @@ describe('HordeResults', () => {
 
     render(
       <HordeResults
-        expanded=""
+        expanded={new Set()}
         speciesFilter=""
         spots={[spot]}
         view="pokemon"

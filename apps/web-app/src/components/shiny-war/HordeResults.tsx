@@ -6,7 +6,7 @@ import type { HordeSpecies, HordeSpot } from './types';
 export type HordeView = 'location' | 'pokemon';
 
 type Props = {
-  expanded: string;
+  expanded: ReadonlySet<string>;
   speciesFilter: string;
   spots: HordeSpot[];
   view: HordeView;
@@ -21,7 +21,7 @@ export default function HordeResults({ expanded, speciesFilter, spots, view, onQ
         {spots.map((spot) => (
           <HordeSpotCard
             key={spot.spot_key}
-            expanded={expanded === spot.spot_key}
+            expanded={expanded.has(spot.spot_key)}
             onQueue={onQueue}
             onToggle={() => onToggle(spot.spot_key)}
             spot={spot}
@@ -61,7 +61,7 @@ export default function HordeResults({ expanded, speciesFilter, spots, view, onQ
             {speciesSpots.map((spot) => (
               <HordeSpotCard
                 key={`${species.slug}-${species.form}-${spot.spot_key}`}
-                expanded={expanded === spot.spot_key}
+                expanded={expanded.has(spot.spot_key)}
                 nested
                 onQueue={(spotToQueue, current) => onQueue(spotToQueue, current, species)}
                 onToggle={() => onToggle(spot.spot_key)}

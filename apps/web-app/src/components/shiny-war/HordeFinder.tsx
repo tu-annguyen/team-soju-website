@@ -38,7 +38,7 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
   const [spots, setSpots] = useState<HordeSpot[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
-  const [expanded, setExpanded] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [view, setView] = useState<HordeView>('location');
   const [error, setError] = useState('');
 
@@ -71,6 +71,23 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
   const isSweetScent = filters.method === 'Sweet Scent';
   const isFishing = filters.method === 'Fishing';
   const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(filters.method);
+  const visibleSpotKeys = [...new Set(spots.map((spot) => spot.spot_key))];
+  const allLocationsExpanded = visibleSpotKeys.length > 0
+    && visibleSpotKeys.every((spotKey) => expanded.has(spotKey));
+
+  const toggleSpot = (spotKey: string) => {
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(spotKey)) next.delete(spotKey);
+      else next.add(spotKey);
+      return next;
+    });
+  };
+
+  const toggleAllSpots = () => {
+    setExpanded(allLocationsExpanded ? new Set() : new Set(visibleSpotKeys));
+  };
+
   return (
     <div className="space-y-5">
       <div className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4 dark:border-gray-700 dark:bg-gray-900">
@@ -167,25 +184,36 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
           </div>
         </fieldset>
       </div>
-      <div className="flex flex-wrap gap-2" aria-label="Group hunt results by" role="group">
-        {([['location', 'Location'], ['pokemon', 'Pokémon']] as const).map(([value, label]) => (
-          <button
-            aria-pressed={view === value}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${
-              view === value
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
-            }`}
-            key={value}
-            onClick={() => {
-              setView(value);
-              setExpanded('');
-            }}
-            type="button"
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2" aria-label="Group hunt results by" role="group">
+          {([['location', 'Location'], ['pokemon', 'Pokémon']] as const).map(([value, label]) => (
+            <button
+              aria-pressed={view === value}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                view === value
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+              }`}
+              key={value}
+              onClick={() => {
+                setView(value);
+                setExpanded(new Set());
+              }}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          className="rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          disabled={visibleSpotKeys.length === 0}
+          onClick={toggleAllSpots}
+          type="button"
+        >
+          <span aria-hidden="true">{allLocationsExpanded ? '-' : '+'}</span>{' '}
+          {allLocationsExpanded ? 'Collapse all' : 'Open all'}
+        </button>
       </div>
       <p className="text-sm text-gray-500">
         {total} matching encounter groups. Rates are normalized within each location/time group.
@@ -197,7 +225,7 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
         spots={spots}
         view={view}
         onQueue={onQueue}
-        onToggle={(spotKey) => setExpanded(expanded === spotKey ? '' : spotKey)}
+        onToggle={toggleSpot}
       />
     </div>
   );
