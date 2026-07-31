@@ -1,14 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import HuntBoard from '../src/components/shiny-war/HuntBoard';
 import type { ParticipantHunts } from '../src/components/shiny-war/types';
 
 const rows: ParticipantHunts[] = [
-  { member_id: 'other-1', ign: 'Alpha', rank: 'Member', has_app_user: true, hunts: [] },
+  { member_id: 'other-1', ign: 'Alpha', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true, hunts: [] },
   {
-    member_id: 'own', ign: 'SignedInHunter', rank: 'Member', has_app_user: true,
+    member_id: 'own', ign: 'SignedInHunter', rank: 'Member', has_app_user: true, team: 'arceus', is_official: true,
     hunts: [{ id: 'own-hunt', position: 0, spot_key: 'mansion', label: 'Pokemon Mansion 2F' }],
   },
-  { member_id: 'other-2', ign: 'Bravo', rank: 'Member', has_app_user: true, hunts: [] },
+  { member_id: 'other-2', ign: 'Bravo', rank: 'Member', has_app_user: true, team: 'arceus', is_official: true, hunts: [] },
 ];
 
 describe('HuntBoard', () => {
@@ -24,7 +24,7 @@ describe('HuntBoard', () => {
 
   it('identifies Sweet Scent in legacy horde labels', () => {
     const legacyRows: ParticipantHunts[] = [{
-      member_id: 'legacy', ign: 'LegacyHunter', rank: 'Member', has_app_user: true,
+      member_id: 'legacy', ign: 'LegacyHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
       hunts: [
         { position: 0, spot_key: 'five-horde', label: 'Route 1 · Summer Day · 5x' },
         { position: 1, spot_key: 'three-horde', label: 'Route 2 · Winter Night · 3× · Lure only' },
@@ -37,5 +37,20 @@ describe('HuntBoard', () => {
     expect(screen.getByText('Route 1 · Summer Day · 5x Sweet Scent')).toBeInTheDocument();
     expect(screen.getByText('Route 2 · Winter Night · 3× Sweet Scent · Lure only')).toBeInTheDocument();
     expect(screen.getByText('Route 3 · Any Day · 5× Sweet Scent')).toBeInTheDocument();
+  });
+
+  it('groups all participants by team in the Team War view', () => {
+    const teamRows: ParticipantHunts[] = [
+      ...rows,
+      { member_id: 'extra', ign: 'ExtraHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: false, hunts: [] },
+    ];
+    render(<HuntBoard rows={teamRows} ownMemberId="own" busy={false} onSave={jest.fn()} />);
+
+    expect(screen.queryByText('ExtraHunter')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Team War' }));
+
+    expect(screen.getByText('ExtraHunter')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Team Bidoof' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Team Arceus' })).toBeInTheDocument();
   });
 });

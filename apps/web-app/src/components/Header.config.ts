@@ -21,7 +21,6 @@ export const toolsLinks: ToolLink[] = [
   {
     href: '/events/2026/shiny-war',
     labelKey: 'shinyWarCard',
-    requiresTeamMembership: true,
   },
 ];
 

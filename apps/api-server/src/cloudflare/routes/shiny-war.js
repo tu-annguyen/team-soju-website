@@ -30,6 +30,49 @@ async function memberAuth(context) {
   );
 }
 
+function toPublicDashboard(dashboard) {
+  if (!dashboard) return null;
+  return {
+    teamTotal: dashboard.teamTotal,
+    teamTotals: dashboard.teamTotals,
+    uniqueFamilyCount: dashboard.uniqueFamilyCount,
+    uniqueFamilies: dashboard.uniqueFamilies,
+    standings: dashboard.standings.map(({ ign, team, points, catches }) => ({ ign, team, points, catches })),
+    recentCatches: dashboard.recentCatches.map((entry) => ({
+      pokemon: entry.pokemon,
+      ign: entry.ign,
+      team: entry.team,
+      caught_at_utc: entry.caught_at_utc,
+      score: {
+        base: entry.score.base,
+        secretBonus: entry.score.secretBonus,
+        safariBonus: entry.score.safariBonus,
+        uniqueBonus: entry.score.uniqueBonus,
+        total: entry.score.total,
+      },
+    })),
+  };
+}
+
+const VALID_TEAMS = new Set(['bidoof', 'arceus']);
+
+function participantLimitError(participants, team, isOfficial, memberId) {
+  const others = participants.filter((participant) => participant.member_id !== memberId);
+  if (others.length >= 36) return 'The team-war roster is limited to 36 participants.';
+  if (others.filter((participant) => participant.team === team).length >= 18) {
+    return `Each team-war roster is limited to 18 participants.`;
+  }
+  if (isOfficial && others.filter((participant) => participant.is_official).length >= 30) {
+    return 'The official roster is limited to 30 participants.';
+  }
+  if (isOfficial && others.filter(
+    (participant) => participant.team === team && participant.is_official
+  ).length >= 15) {
+    return 'Each team is limited to 15 official participants.';
+  }
+  return null;
+}
+
 async function handleShinyWarRoutes(context) {
   const { request, url, pathname, getRepositories } = context;
   if (!pathname.startsWith('/api/shiny-war')) return null;
@@ -37,6 +80,15 @@ async function handleShinyWarRoutes(context) {
   let match;
 
   try {
+    if (request.method === 'GET' && pathname === '/api/shiny-war/dashboard/public') {
+      const dashboard = await repositories.shinyWar.getDashboard(EVENT_ID);
+      return json({ success: true, data: toPublicDashboard(dashboard) }, {
+        headers: {
+          'cache-control': 'public, max-age=30, s-maxage=30, stale-while-revalidate=30',
+        },
+      });
+    }
+
     if (request.method === 'GET' && pathname === '/api/shiny-war/event') {
       const auth = await memberAuth(context);
       if (auth.response) return auth.response;
@@ -142,14 +194,48 @@ async function handleShinyWarRoutes(context) {
       if (event?.roster_locked) return json({ success: false, message: 'The roster is locked.' }, { status: 409 });
       const body = await readJson(request);
       if (!body.member_id) return json({ success: false, message: 'member_id is required.' }, { status: 400 });
-      const participants = await repositories.shinyWar.listParticipants(EVENT_ID);
-      if (participants.length >= 30) {
-        return json({ success: false, message: 'The official roster is limited to 30 participants.' }, { status: 409 });
+      const team = body.team || 'bidoof';
+      if (body.is_official !== undefined && typeof body.is_official !== 'boolean') {
+        return json({ success: false, message: 'A valid team and official-war status are required.' }, { status: 400 });
       }
-      return json({ success: true, data: await repositories.shinyWar.addParticipant(EVENT_ID, body.member_id, auth.user.id) }, { status: 201 });
+      const isOfficial = body.is_official !== false;
+      if (!VALID_TEAMS.has(team)) {
+        return json({ success: false, message: 'A valid team and official-war status are required.' }, { status: 400 });
+      }
+      const participants = await repositories.shinyWar.listParticipants(EVENT_ID);
+      const limitError = participantLimitError(participants, team, isOfficial);
+      if (limitError) return json({ success: false, message: limitError }, { status: 409 });
+      return json({
+        success: true,
+        data: await repositories.shinyWar.addParticipant(
+          EVENT_ID, body.member_id, auth.user.id, team, isOfficial
+        ),
+      }, { status: 201 });
     }
 
     match = pathname.match(/^\/api\/shiny-war\/participants\/([^/]+)$/);
+    if (request.method === 'PUT' && match) {
+      const auth = await managerAuth(context);
+      if (auth.response) return auth.response;
+      const event = await repositories.shinyWar.getEvent(EVENT_ID);
+      if (event?.roster_locked) return json({ success: false, message: 'The roster is locked.' }, { status: 409 });
+      const body = await readJson(request);
+      if (!VALID_TEAMS.has(body.team) || typeof body.is_official !== 'boolean') {
+        return json({ success: false, message: 'A valid team and official-war status are required.' }, { status: 400 });
+      }
+      const participants = await repositories.shinyWar.listParticipants(EVENT_ID);
+      if (!participants.some((participant) => participant.member_id === match[1])) {
+        return json({ success: false, message: 'Participant not found.' }, { status: 404 });
+      }
+      const limitError = participantLimitError(participants, body.team, body.is_official, match[1]);
+      if (limitError) return json({ success: false, message: limitError }, { status: 409 });
+      return json({
+        success: true,
+        data: await repositories.shinyWar.updateParticipant(
+          EVENT_ID, match[1], body.team, body.is_official
+        ),
+      });
+    }
     if (request.method === 'DELETE' && match) {
       const auth = await managerAuth(context);
       if (auth.response) return auth.response;
@@ -184,4 +270,4 @@ async function handleShinyWarRoutes(context) {
   return null;
 }
 
-module.exports = { cleanQueue, handleShinyWarRoutes };
+module.exports = { cleanQueue, handleShinyWarRoutes, participantLimitError, toPublicDashboard };

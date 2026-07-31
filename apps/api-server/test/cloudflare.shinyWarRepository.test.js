@@ -1,5 +1,5 @@
 const { createShinyWarRepository } = require('../src/cloudflare/repositories/shiny-war');
-const { cleanQueue } = require('../src/cloudflare/routes/shiny-war');
+const { cleanQueue, participantLimitError, toPublicDashboard } = require('../src/cloudflare/routes/shiny-war');
 const { groupEquivalentHuntSpots, locationAreaName, parentLocationName } = require('../src/cloudflare/repositories/hunt-spot-groups');
 
 describe('Shiny War hunt spot grouping', () => {
@@ -75,7 +75,108 @@ describe('Shiny War hunt spot grouping', () => {
   });
 });
 
+describe('Shiny War public dashboard', () => {
+  it('exposes only public standings and catch fields', () => {
+    const result = toPublicDashboard({
+      event: { roster_locked: true },
+      currentSeason: 'Summer',
+      teamTotal: 38,
+      teamTotals: { bidoof: 20, arceus: 18 },
+      uniqueFamilyCount: 1,
+      uniqueFamilies: ['vulpix'],
+      standings: [{ member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+      recentCatches: [{
+        id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
+        caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof', war_eligibility_override: true,
+        score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+      }],
+    });
+
+    expect(result).toEqual({
+      teamTotal: 38,
+      teamTotals: { bidoof: 20, arceus: 18 },
+      uniqueFamilyCount: 1,
+      uniqueFamilies: ['vulpix'],
+      standings: [{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+      recentCatches: [{
+        pokemon: 'Vulpix', ign: 'Hunter', team: 'bidoof', caught_at_utc: '2026-08-01T01:02:00.000Z',
+        score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+      }],
+    });
+  });
+});
+
+describe('Shiny War roster limits', () => {
+  const participant = (index, team, isOfficial) => ({
+    member_id: `member-${index}`, team, is_official: isOfficial,
+  });
+
+  it('allows three non-official additions after each team reaches 15 official members', () => {
+    const participants = [
+      ...Array.from({ length: 15 }, (_, index) => participant(index, 'bidoof', true)),
+      ...Array.from({ length: 15 }, (_, index) => participant(index + 15, 'arceus', true)),
+      ...Array.from({ length: 2 }, (_, index) => participant(index + 30, 'bidoof', false)),
+    ];
+
+    expect(participantLimitError(participants, 'bidoof', false)).toBeNull();
+    expect(participantLimitError(participants, 'bidoof', true))
+      .toBe('The official roster is limited to 30 participants.');
+  });
+
+  it('caps each internal team at 18 participants', () => {
+    const participants = Array.from(
+      { length: 18 },
+      (_, index) => participant(index, 'arceus', index < 15)
+    );
+
+    expect(participantLimitError(participants, 'arceus', false))
+      .toBe('Each team-war roster is limited to 18 participants.');
+  });
+});
+
 describe('Cloudflare Shiny Wars repository', () => {
+  it('scores the official roster together and the internal teams independently', async () => {
+    const participants = [
+      { event_id: '2026', member_id: 'bidoof-official', ign: 'BidoofOne', rank: 'Member', team: 'bidoof', is_official: 1, has_app_user: 1 },
+      { event_id: '2026', member_id: 'arceus-official', ign: 'ArceusOne', rank: 'Member', team: 'arceus', is_official: 1, has_app_user: 1 },
+      { event_id: '2026', member_id: 'bidoof-extra', ign: 'BidoofExtra', rank: 'Member', team: 'bidoof', is_official: 0, has_app_user: 1 },
+    ];
+    const catches = participants.map((participant, index) => ({
+      id: `shiny-${index}`,
+      original_trainer: participant.member_id,
+      ign: participant.ign,
+      pokemon: 'Vulpix',
+      family_key: 'vulpix',
+      tier: 'Tier 3',
+      tier_points: 30,
+      caught_at_utc: `2026-08-01T0${index + 1}:00:00.000Z`,
+      created_at: `2026-08-01T0${index + 1}:01:00.000Z`,
+      status: 'Owned',
+    }));
+    const repository = createShinyWarRepository({
+      dialect: 'd1',
+      parameter: () => '?',
+      runCommand: jest.fn(),
+      runOne: jest.fn().mockResolvedValue({
+        id: '2026', name: 'Shiny Wars', starts_at: '2026-08-01T00:00:00.000Z',
+        ends_at: '2026-08-29T00:00:00.000Z', seasons_json: '["Summer"]', season_days: 28,
+        roster_locked: 0,
+      }),
+      runSelect: jest.fn()
+        .mockResolvedValueOnce(participants)
+        .mockResolvedValueOnce(catches),
+    });
+
+    const dashboard = await repository.getDashboard('2026', new Date('2026-08-02T00:00:00.000Z'));
+
+    expect(dashboard.teamTotal).toBe(68);
+    expect(dashboard.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
+    expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(38);
+    expect(dashboard.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);
+    expect(dashboard.recentCatches.find((entry) => entry.member_id === 'bidoof-extra'))
+      .toMatchObject({ team: 'bidoof', is_official: false });
+  });
+
   it('normalizes raw 5% horde tables into the Mansion split', async () => {
     const repository = createShinyWarRepository({
       dialect: 'd1',
