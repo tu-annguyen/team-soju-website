@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
 import type { ParticipantHunts } from './types';
 
@@ -14,7 +15,14 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
   const [members, setMembers] = useState<Member[]>([]);
   const [selected, setSelected] = useState('');
   const [error, setError] = useState('');
-  const participantIds = new Set(participants.map((entry) => entry.member_id));
+  const availableMembers = useMemo(() => {
+    const participantIds = new Set(participants.map((entry) => entry.member_id));
+
+    return members
+      .filter((member) => !participantIds.has(member.id))
+      .sort((left, right) => left.ign.localeCompare(right.ign, undefined, { sensitivity: 'base' }));
+  }, [members, participants]);
+  const selectedMember = availableMembers.find((member) => member.ign === selected);
 
   useEffect(() => {
     fetch(`${apiBaseUrl.replace(/\/+$/, '')}/members`, { credentials: 'include' })
@@ -38,7 +46,7 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-gray-950 dark:text-white">Official Roster</h2>
+            <h2 className="text-xl font-bold text-gray-950 dark:text-white">Official roster</h2>
             <p className="text-sm text-gray-500">{participants.length} participants · {locked ? 'Locked' : 'Open'}</p>
           </div>
           <button
@@ -50,16 +58,25 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
         </div>
         {!locked && (
           <div className="mt-5 flex gap-3">
-            <select value={selected} onChange={(event) => setSelected(event.target.value)} className="min-w-0 flex-1 rounded-lg border-gray-300 dark:bg-gray-800">
-              <option value="">Select an active member…</option>
-              {members.filter((member) => !participantIds.has(member.id)).map((member) => (
-                <option key={member.id} value={member.id}>{member.ign}</option>
-              ))}
-            </select>
+            <div className="min-w-0 flex-1">
+              <FilteredCombobox
+                className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                options={availableMembers.map((member) => member.ign)}
+                placeholder="Select an active member…"
+                value={selected}
+                onChange={setSelected}
+              />
+            </div>
             <button
               className="btn btn-primary"
-              disabled={!selected}
-              onClick={() => mutate('/participants', { method: 'POST', body: JSON.stringify({ member_id: selected }) })}
+              disabled={!selectedMember}
+              onClick={() =>
+                selectedMember &&
+                mutate('/participants', {
+                  method: 'POST',
+                  body: JSON.stringify({ member_id: selectedMember.id }),
+                })
+              }
             >
               Add
             </button>
@@ -90,4 +107,3 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
     </div>
   );
 }
-
