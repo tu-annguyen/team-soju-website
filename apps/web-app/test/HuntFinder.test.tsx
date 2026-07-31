@@ -37,7 +37,7 @@ describe('HuntFinder', () => {
       total: spots.length,
     });
 
-    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" onQueue={jest.fn()} />);
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
 
     const openAll = await screen.findByRole('button', { name: 'Open all' });
     await waitFor(() => expect(openAll).toBeEnabled());

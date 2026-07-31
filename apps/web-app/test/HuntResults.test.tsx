@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import HuntResults from '../src/components/shiny-war/HuntResults';
-import type { HuntSpot } from '../src/components/shiny-war/types';
+import type { HuntSpot, ParticipantHunts } from '../src/components/shiny-war/types';
 
 const vulpix = {
   name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix', tier: 'Tier 3',
@@ -22,6 +22,14 @@ const spot: HuntSpot = {
   composition: [vulpix],
 };
 
+const participants: ParticipantHunts[] = [{
+  member_id: 'member-1', ign: 'SojuHunter', rank: 'Member', has_app_user: true,
+  hunts: [
+    { id: 'hunt-1', position: 0, spot_key: 'mansion', label: 'Pokemon Mansion 2F' },
+    { id: 'hunt-2', position: 2, spot_key: 'mansion', label: 'Pokemon Mansion 2F' },
+  ],
+}];
+
 describe('HuntResults', () => {
   it('shows Pokémon groups with each location-level metric and queues the grouped species', () => {
     const onQueue = jest.fn();
@@ -29,6 +37,7 @@ describe('HuntResults', () => {
     render(
       <HuntResults
         expanded={new Set()}
+        participants={participants}
         speciesFilter=""
         spots={[spot]}
         view="pokemon"
@@ -43,8 +52,27 @@ describe('HuntResults', () => {
     expect(screen.getByText('Pokemon Mansion 2F')).toBeInTheDocument();
     expect(screen.getByText('1.333')).toBeInTheDocument();
     expect(screen.getByText('30.00')).toBeInTheDocument();
+    expect(screen.getByText('SojuHunter · Current')).toBeInTheDocument();
+    expect(screen.getByText('SojuHunter · Next 2')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Queue' }));
     expect(onQueue).toHaveBeenCalledWith(spot, false, vulpix);
+  });
+
+  it('shows an empty team queue row when no participant selected the location', () => {
+    render(
+      <HuntResults
+        expanded={new Set()}
+        participants={[]}
+        speciesFilter=""
+        spots={[spot]}
+        view="location"
+        onQueue={jest.fn()}
+        onToggle={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Team queue')).toBeInTheDocument();
+    expect(screen.getByText('No one hunting or queued')).toBeInTheDocument();
   });
 });

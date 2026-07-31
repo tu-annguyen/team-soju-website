@@ -5,11 +5,12 @@ import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
 import HuntResults from './HuntResults';
 import type { HuntView } from './HuntResults';
-import type { HuntSpecies, HuntSpot } from './types';
+import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
 type Props = {
   apiBaseUrl: string;
   defaultSeason: string;
+  participants: ParticipantHunts[];
   onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
 };
 
@@ -28,7 +29,7 @@ const encounterMethods = [
   ['Rock Smash', 'Rock Smash'],
 ] as const;
 
-export default function HuntFinder({ apiBaseUrl, defaultSeason, onQueue }: Props) {
+export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, onQueue }: Props) {
   const [filters, setFilters] = useState({
     season: defaultSeason || 'Summer', region: '', location: '', species: '', tier: '', time: '', method: 'All',
     hordeSize: '', hordesPerHour: '240', eventBoost: true, donator: false,
@@ -221,6 +222,7 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, onQueue }: Props
       {error && <p role="alert" className="text-rose-600">{error}</p>}
       <HuntResults
         expanded={expanded}
+        participants={participants}
         speciesFilter={filters.species}
         spots={spots}
         view={view}

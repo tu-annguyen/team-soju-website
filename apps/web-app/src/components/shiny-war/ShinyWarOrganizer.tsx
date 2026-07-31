@@ -120,7 +120,14 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
           <Overview dashboard={dashboard} canManage={canManage} onEligibility={setEligibility} />
         )}
         {tab === 'hunts' && <HuntBoard rows={hunts} ownMemberId={ownMemberId} busy={busy} onSave={saveQueue} />}
-        {tab === 'finder' && <HuntFinder apiBaseUrl={apiBaseUrl} defaultSeason={dashboard.currentSeason || 'Summer'} onQueue={queueSpot} />}
+        {tab === 'finder' && (
+          <HuntFinder
+            apiBaseUrl={apiBaseUrl}
+            defaultSeason={dashboard.currentSeason || 'Summer'}
+            participants={hunts}
+            onQueue={queueSpot}
+          />
+        )}
         {tab === 'roster' && canManage && (
           <RosterManager
             apiBaseUrl={apiBaseUrl}

@@ -1,12 +1,13 @@
 import { groupHuntSpotsByPokemon } from './huntGroups';
 import HuntSpotCard from './HuntSpotCard';
 import SpeciesSpriteName from './SpeciesSpriteName';
-import type { HuntSpecies, HuntSpot } from './types';
+import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
 export type HuntView = 'location' | 'pokemon';
 
 type Props = {
   expanded: ReadonlySet<string>;
+  participants: ParticipantHunts[];
   speciesFilter: string;
   spots: HuntSpot[];
   view: HuntView;
@@ -14,7 +15,7 @@ type Props = {
   onToggle: (spotKey: string) => void;
 };
 
-export default function HuntResults({ expanded, speciesFilter, spots, view, onQueue, onToggle }: Props) {
+export default function HuntResults({ expanded, participants, speciesFilter, spots, view, onQueue, onToggle }: Props) {
   if (view === 'location') {
     return (
       <div className="space-y-3">
@@ -22,6 +23,7 @@ export default function HuntResults({ expanded, speciesFilter, spots, view, onQu
           <HuntSpotCard
             key={spot.spot_key}
             expanded={expanded.has(spot.spot_key)}
+            participants={participants}
             onQueue={onQueue}
             onToggle={() => onToggle(spot.spot_key)}
             spot={spot}
@@ -63,6 +65,7 @@ export default function HuntResults({ expanded, speciesFilter, spots, view, onQu
                 key={`${species.slug}-${species.form}-${spot.spot_key}`}
                 expanded={expanded.has(spot.spot_key)}
                 nested
+                participants={participants}
                 onQueue={(spotToQueue, current) => onQueue(spotToQueue, current, species)}
                 onToggle={() => onToggle(spot.spot_key)}
                 spot={spot}
