@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { hasPermission } from '../../auth/authorization';
 import { useAuthUser } from '../../auth/useAuthUser';
 import { shinyWarRequest } from './api';
-import HordeFinder from './HordeFinder';
+import HuntFinder from './HuntFinder';
 import HuntBoard from './HuntBoard';
 import Overview from './Overview';
+import PokeMmoClock from './PokeMmoClock';
 import RosterManager from './RosterManager';
-import type { Dashboard, HordeSpecies, HordeSpot, Hunt, ParticipantHunts } from './types';
+import type { Dashboard, Hunt, HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
 type Tab = 'overview' | 'hunts' | 'finder' | 'roster';
 
@@ -53,7 +54,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
     }
   };
 
-  const queueSpot = async (spot: HordeSpot, current: boolean, targetSpecies?: HordeSpecies) => {
+  const queueSpot = async (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => {
     const own = hunts.find((row) => row.member_id === ownMemberId);
     if (!own) {
       setError('You must be on the official roster to maintain a hunt queue.');
@@ -63,7 +64,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
       position: 0,
       spot_key: spot.spot_key,
       target_family_key: targetSpecies?.family_key || spot.composition[0]?.family_key,
-      label: `${spot.location} · ${spot.season} ${spot.time} · ${spot.horde_size}×`,
+      label: `${spot.location} · ${spot.season} ${spot.time} · ${spot.horde_size ? `${spot.horde_size}× Sweet Scent` : spot.method}${spot.is_lure ? ' · Lure only' : ''}`,
       details: {
         region: spot.region,
         species: spot.composition.map(({ name, slug, form }) => ({ name, slug, form })),
@@ -90,7 +91,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
   }
 
   const tabs: Array<[Tab, string]> = [
-    ['overview', 'Overview'], ['hunts', 'Hunt Board'], ['finder', 'Horde Finder'],
+    ['overview', 'Overview'], ['hunts', 'Hunt Board'], ['finder', 'Hunt Finder'],
     ...(canManage ? [['roster', 'Roster Management'] as [Tab, string]] : []),
   ];
 
@@ -101,9 +102,10 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
           <p className="text-sm font-semibold uppercase tracking-widest text-primary-600">Team Soju internal tool</p>
           <h1 className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">Shiny Wars 2026 Organizer</h1>
           <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-300">
-            Coordinate hunts, compare horde value, and follow catches submitted through the Discord bot. The official leaderboard remains authoritative.
+            Coordinate hunts, compare wild encounter value, and follow catches submitted through the Discord bot. The official leaderboard remains authoritative.
           </p>
         </div>
+        <PokeMmoClock event={dashboard.event} />
         <nav className="mb-7 flex gap-2 overflow-x-auto" aria-label="Organizer sections">
           {tabs.map(([value, label]) => (
             <button
@@ -120,7 +122,14 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
           <Overview dashboard={dashboard} canManage={canManage} onEligibility={setEligibility} />
         )}
         {tab === 'hunts' && <HuntBoard rows={hunts} ownMemberId={ownMemberId} busy={busy} onSave={saveQueue} />}
-        {tab === 'finder' && <HordeFinder apiBaseUrl={apiBaseUrl} defaultSeason={dashboard.currentSeason || 'Summer'} onQueue={queueSpot} />}
+        {tab === 'finder' && (
+          <HuntFinder
+            apiBaseUrl={apiBaseUrl}
+            defaultSeason={dashboard.currentSeason || 'Summer'}
+            participants={hunts}
+            onQueue={queueSpot}
+          />
+        )}
         {tab === 'roster' && canManage && (
           <RosterManager
             apiBaseUrl={apiBaseUrl}

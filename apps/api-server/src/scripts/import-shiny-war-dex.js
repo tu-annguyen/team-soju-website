@@ -53,6 +53,18 @@ function cleanMethod(value) {
   return KNOWN_METHODS.find((method) => cleaned.endsWith(method)) || cleaned;
 }
 
+function isLureEncounter(rawLocation) {
+  return Boolean(
+    rawLocation.is_lure
+    || rawLocation.lure_only
+    || rawLocation.requires_lure
+    || /\blure\b/i.test(cleanText(rawLocation.type))
+    || ['rarity_morning', 'rarity_day', 'rarity_night'].some(
+      (field) => /^lure(?: only)?$/i.test(cleanText(rawLocation[field]))
+    )
+  );
+}
+
 function speciesSlug(value) {
   return cleanText(value)
     .toLowerCase()
@@ -80,7 +92,9 @@ function resolveTier(slug) {
 }
 
 function parseRate(value) {
-  const match = cleanText(value).match(/^([0-9]+(?:\.[0-9]+)?)%$/);
+  const cleaned = cleanText(value);
+  if (/^lure(?: only)?$/i.test(cleaned)) return 5;
+  const match = cleaned.match(/^([0-9]+(?:\.[0-9]+)?)%$/);
   return match ? Number(match[1]) : null;
 }
 
@@ -201,13 +215,14 @@ function normalizePokedex(monsters) {
         minLevel: Number(rawLocation.min_level) || 0,
         maxLevel: Number(rawLocation.max_level) || 0,
         hordeSize,
+        isLure: isLureEncounter(rawLocation),
         morningRate: parseRate(rawLocation.rarity_morning),
         dayRate: parseRate(rawLocation.rarity_day),
         nightRate: parseRate(rawLocation.rarity_night),
       };
       const keyParts = [
         encounter.speciesId, encounter.form, encounter.locationId, encounter.method,
-        encounter.season, encounter.minLevel, encounter.maxLevel, encounter.hordeSize,
+        encounter.season, encounter.minLevel, encounter.maxLevel, encounter.hordeSize, encounter.isLure,
       ];
       const id = deterministicId(keyParts);
       const existing = encounters.get(id);
@@ -248,9 +263,10 @@ function toSql(data) {
     ].map(sqlValue).join(',')});`
   ));
   data.encounters.forEach((row) => lines.push(
-    `INSERT INTO pokedex_encounters (id,species_id,form,location_id,method,season,min_level,max_level,horde_size,morning_rate,day_rate,night_rate) VALUES (${[
+    `INSERT INTO pokedex_encounters (id,species_id,form,location_id,method,season,min_level,max_level,horde_size,is_lure,morning_rate,day_rate,night_rate) VALUES (${[
       row.id, row.speciesId, row.form, row.locationId, row.method, row.season,
-      row.minLevel, row.maxLevel, row.hordeSize, row.morningRate, row.dayRate, row.nightRate,
+      row.minLevel, row.maxLevel, row.hordeSize, row.isLure ? 1 : 0,
+      row.morningRate, row.dayRate, row.nightRate,
     ].map(sqlValue).join(',')});`
   ));
   return `${lines.join('\n')}\n`;
@@ -298,6 +314,7 @@ if (require.main === module) {
 
 module.exports = {
   cleanMethod,
+  isLureEncounter,
   normalizePokedex,
   parseRate,
   speciesSlug,

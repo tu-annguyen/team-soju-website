@@ -1,12 +1,12 @@
-import { groupHordeSpotsByPokemon } from '../src/components/shiny-war/hordeGroups';
-import type { HordeSpot } from '../src/components/shiny-war/types';
+import { groupHuntSpotsByPokemon } from '../src/components/shiny-war/huntGroups';
+import type { HuntSpot } from '../src/components/shiny-war/types';
 
 const species = {
   name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix', tier: 'Tier 3',
   points: 30, split: 1, form: '', min_level: 20, max_level: 22,
 };
 
-const makeSpot = (spot_key: string, location: string): HordeSpot => ({
+const makeSpot = (spot_key: string, location: string): HuntSpot => ({
   spot_key,
   location,
   region: 'Kanto',
@@ -21,9 +21,9 @@ const makeSpot = (spot_key: string, location: string): HordeSpot => ({
   composition: [species],
 });
 
-describe('groupHordeSpotsByPokemon', () => {
+describe('groupHuntSpotsByPokemon', () => {
   it('keeps every location and its metrics under the species', () => {
-    const groups = groupHordeSpotsByPokemon([
+    const groups = groupHuntSpotsByPokemon([
       makeSpot('mansion', 'Pokemon Mansion 2F'),
       { ...makeSpot('route', 'Route 7'), pointsPerHour: 0.8, averagePoints: 22 },
     ]);
@@ -41,7 +41,7 @@ describe('groupHordeSpotsByPokemon', () => {
       { ...species, name: 'Grimer', slug: 'grimer', family_key: 'grimer', split: 0.5 },
     ];
 
-    const groups = groupHordeSpotsByPokemon([mixedSpot], 'vul');
+    const groups = groupHuntSpotsByPokemon([mixedSpot], 'vul');
 
     expect(groups.map(({ species: entry }) => entry.name)).toEqual(['Vulpix']);
     expect(groups[0].spots[0].composition).toHaveLength(2);
@@ -57,8 +57,23 @@ describe('groupHordeSpotsByPokemon', () => {
       { ...species, name: 'Grimer', slug: 'grimer', family_key: 'grimer' },
     ];
 
-    const groups = groupHordeSpotsByPokemon([mixedSpot, bestVulpixSpot]);
+    const groups = groupHuntSpotsByPokemon([mixedSpot, bestVulpixSpot]);
 
     expect(groups.map(({ species: entry }) => entry.name)).toEqual(['Vulpix', 'Grimer', 'Pikachu']);
+  });
+
+  it('sorts Pokémon without hourly data by point potential', () => {
+    const lowPointSpot = makeSpot('rocks-low', 'Low Point Cave');
+    lowPointSpot.pointsPerHour = null;
+    lowPointSpot.encountersPerHour = null;
+    lowPointSpot.composition = [{ ...species, name: 'Rattata', slug: 'rattata', points: 3 }];
+    const highPointSpot = makeSpot('rocks-high', 'High Point Cave');
+    highPointSpot.pointsPerHour = null;
+    highPointSpot.encountersPerHour = null;
+    highPointSpot.composition = [{ ...species, name: 'Vulpix', slug: 'vulpix', points: 30 }];
+
+    const groups = groupHuntSpotsByPokemon([lowPointSpot, highPointSpot]);
+
+    expect(groups.map(({ species: entry }) => entry.name)).toEqual(['Vulpix', 'Rattata']);
   });
 });
