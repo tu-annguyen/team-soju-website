@@ -4,7 +4,9 @@ export type Hunt = {
   spot_key: string;
   target_family_key?: string | null;
   label: string;
-  details?: Record<string, unknown>;
+  details?: Record<string, unknown> & {
+    species?: Array<string | Pick<HordeSpecies, 'name' | 'slug' | 'form'>>;
+  };
   overlap_member_ids?: string[];
 };
 

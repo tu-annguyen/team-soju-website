@@ -3,6 +3,7 @@ import { CATCH_EVENT_REGIONS } from '../../utils/catchEventLocations';
 import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
+import SpeciesSpriteName from './SpeciesSpriteName';
 import type { HordeSpot } from './types';
 
 type Props = {
@@ -139,8 +140,14 @@ export default function HordeFinder({ apiBaseUrl, defaultSeason, onQueue }: Prop
             {expanded === spot.spot_key && (
               <div className="mt-4 grid gap-2 border-t border-gray-100 pt-4 dark:border-gray-800 sm:grid-cols-2">
                 {spot.composition.map((species) => (
-                  <p key={`${species.slug}-${species.form}`} className="text-sm text-gray-700 dark:text-gray-300">
-                    <strong>{species.name}</strong> · {(species.split * 100).toFixed(2)}% · {species.tier} · Lv. {species.min_level}–{species.max_level}
+                  <p key={`${species.slug}-${species.form}`} className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                    <SpeciesSpriteName
+                      className="font-bold"
+                      form={species.form}
+                      name={species.name}
+                      slug={species.slug}
+                    />
+                    <span>&nbsp;· {(species.split * 100).toFixed(2)}% · {species.tier} · Lv. {species.min_level}–{species.max_level}</span>
                   </p>
                 ))}
                 <p className="text-xs text-gray-500 sm:col-span-2">

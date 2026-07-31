@@ -66,7 +66,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
       label: `${spot.location} · ${spot.season} ${spot.time} · ${spot.horde_size}×`,
       details: {
         region: spot.region,
-        species: spot.composition.map((entry) => entry.name),
+        species: spot.composition.map(({ name, slug, form }) => ({ name, slug, form })),
         points_per_hour: spot.pointsPerHour,
       },
     };

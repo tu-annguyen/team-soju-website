@@ -1,4 +1,14 @@
 import type { Hunt, ParticipantHunts } from './types';
+import SpeciesSpriteName from './SpeciesSpriteName';
+
+const huntSpecies = (hunt: Hunt) => {
+  const species = hunt.details?.species;
+  if (!Array.isArray(species)) return [];
+  return species.flatMap((entry) => {
+    if (typeof entry === 'string') return [{ name: entry }];
+    return entry && typeof entry.name === 'string' ? [entry] : [];
+  });
+};
 
 type Props = {
   rows: ParticipantHunts[];
@@ -42,6 +52,18 @@ export default function HuntBoard({ rows, ownMemberId, busy, onSave }: Props) {
                     <span className="font-semibold text-primary-600">{index === 0 ? 'Current' : `Next ${index}`}</span>
                     <span className="flex-1 text-gray-900 dark:text-white">{hunt.label}</span>
                   </div>
+                  {huntSpecies(hunt).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {huntSpecies(hunt).map((species, speciesIndex) => (
+                        <SpeciesSpriteName
+                          key={`${species.slug || species.name}-${species.form || ''}-${speciesIndex}`}
+                          form={species.form}
+                          name={species.name}
+                          slug={species.slug}
+                        />
+                      ))}
+                    </div>
+                  )}
                   {hunt.overlap_member_ids?.length ? (
                     <p className="mt-1 text-xs font-medium text-amber-600">Overlaps another participant’s location or family.</p>
                   ) : null}
@@ -61,4 +83,3 @@ export default function HuntBoard({ rows, ownMemberId, busy, onSave }: Props) {
     </div>
   );
 }
-

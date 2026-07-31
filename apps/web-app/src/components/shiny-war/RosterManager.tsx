@@ -38,7 +38,7 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-gray-950 dark:text-white">Official roster</h2>
+            <h2 className="text-xl font-bold text-gray-950 dark:text-white">Official Roster</h2>
             <p className="text-sm text-gray-500">{participants.length} participants · {locked ? 'Locked' : 'Open'}</p>
           </div>
           <button
