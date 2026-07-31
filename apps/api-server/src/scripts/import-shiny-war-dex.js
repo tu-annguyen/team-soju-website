@@ -90,7 +90,34 @@ function sqlValue(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-function buildFamilyKeys(monsters) {
+function buildSpeciesSlugs(monsters) {
+  const baseCounts = new Map();
+  const formNamesById = new Map();
+  monsters.forEach((monster) => {
+    const base = speciesSlug(monster.name);
+    baseCounts.set(base, (baseCounts.get(base) || 0) + 1);
+    (monster.forms || []).forEach((form) => {
+      formNamesById.set(Number(form.id), cleanText(form.name));
+    });
+  });
+
+  const firstIdByBase = new Map();
+  const usedSlugs = new Set();
+  return new Map(monsters.map((monster) => {
+    const id = Number(monster.id);
+    const base = speciesSlug(monster.name);
+    if (!firstIdByBase.has(base)) firstIdByBase.set(base, id);
+    const formSlug = speciesSlug(formNamesById.get(id));
+    let slug = baseCounts.get(base) === 1 || firstIdByBase.get(base) === id
+      ? base
+      : (formSlug && formSlug !== base ? formSlug : `${base}-form-${id}`);
+    if (usedSlugs.has(slug)) slug = `${slug}-form-${id}`;
+    usedSlugs.add(slug);
+    return [id, slug];
+  }));
+}
+
+function buildFamilyKeys(monsters, speciesSlugs) {
   const parents = new Map(monsters.map((monster) => [Number(monster.id), Number(monster.id)]));
   const byName = new Map(monsters.map((monster) => [cleanText(monster.name).toLowerCase(), Number(monster.id)]));
   const find = (id) => {
@@ -108,13 +135,17 @@ function buildFamilyKeys(monsters) {
   };
 
   monsters.forEach((monster) => {
+    (monster.forms || []).forEach((form) => union(Number(monster.id), Number(form.id)));
     (monster.evolutions || []).forEach((evolution) => {
       const targetId = Number(evolution.id) || byName.get(cleanText(evolution.name).toLowerCase());
       if (targetId) union(Number(monster.id), targetId);
     });
   });
 
-  const namesById = new Map(monsters.map((monster) => [Number(monster.id), speciesSlug(monster.name)]));
+  const namesById = new Map(monsters.map((monster) => [
+    Number(monster.id),
+    speciesSlugs.get(Number(monster.id)) || speciesSlug(monster.name),
+  ]));
   return new Map(monsters.map((monster) => {
     const rootId = find(Number(monster.id));
     return [Number(monster.id), namesById.get(rootId) || speciesSlug(monster.name)];
@@ -126,15 +157,16 @@ function deterministicId(parts) {
 }
 
 function normalizePokedex(monsters) {
-  const familyKeys = buildFamilyKeys(monsters);
+  const speciesSlugs = buildSpeciesSlugs(monsters);
+  const familyKeys = buildFamilyKeys(monsters, speciesSlugs);
   const species = [];
   const locations = new Map();
   const encounters = new Map();
   const unknownHordeTiers = new Set();
 
   monsters.forEach((monster) => {
-    const slug = speciesSlug(monster.name);
-    const tier = resolveTier(slug);
+    const slug = speciesSlugs.get(Number(monster.id)) || speciesSlug(monster.name);
+    const tier = resolveTier(speciesSlug(monster.name));
     const points = TIER_POINTS[tier] || (tier === 'Legendary/Mythical' ? 200 : 0);
     species.push({
       id: Number(monster.id),
