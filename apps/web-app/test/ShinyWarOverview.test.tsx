@@ -44,6 +44,8 @@ describe('Shiny Wars overview', () => {
 
     expect(screen.getByText('38 pts')).toBeInTheDocument();
     expect(screen.getAllByText('Team Bidoof').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: 'Team Bidoof' })).toHaveLength(3);
+    expect(screen.getByRole('img', { name: 'Team Arceus' })).toBeInTheDocument();
     expect(screen.getByLabelText('Team Bidoof 20 points, Team Arceus 18 points')).toBeInTheDocument();
     expect(screen.getByText('Vulpix')).toBeInTheDocument();
     expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
