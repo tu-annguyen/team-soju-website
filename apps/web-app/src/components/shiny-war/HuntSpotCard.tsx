@@ -66,15 +66,18 @@ export default function HuntSpotCard({
       {expanded && (
         <div className="mt-4 grid gap-2 border-t border-gray-100 pt-4 dark:border-gray-800 sm:grid-cols-2">
           {spot.composition.map((species) => (
-            <p key={`${species.slug}-${species.form}`} className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+            <p key={`${species.slug}-${species.form}`} className="flex flex-wrap items-center text-sm text-gray-700 sm:flex-nowrap dark:text-gray-300">
               <SpeciesSpriteName
                 className="font-bold"
                 form={species.form}
                 name={species.name}
                 slug={species.slug}
               />
-              <span>&nbsp;· {(species.split * 100).toFixed(2)}% · {species.tier} · Lv. {species.min_level}–{species.max_level}</span>
-              {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· Lure only</span>}
+              <span className="basis-full pl-10 sm:basis-auto sm:pl-0">
+                <span className="hidden sm:inline">&nbsp;· </span>
+                {(species.split * 100).toFixed(2)}% · {species.tier} · Lv. {species.min_level}–{species.max_level}
+                {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· Lure only</span>}
+              </span>
             </p>
           ))}
           <p className="text-xs text-gray-500 sm:col-span-2">
