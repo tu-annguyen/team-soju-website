@@ -40,11 +40,15 @@ CREATE TABLE IF NOT EXISTS team_shinies (
   status TEXT NOT NULL DEFAULT 'Owned' CHECK (status IN ('Owned', 'Sold', 'Fled', 'Died', 'Bred')),
   notes TEXT,
   caught_at_utc TIMESTAMPTZ,
+  catch_timezone TEXT,
   war_eligibility_override BOOLEAN,
   created_at TIMESTAMPTZ DEFAULT now());
 
 ALTER TABLE team_shinies
   ADD COLUMN IF NOT EXISTS caught_at_utc TIMESTAMPTZ;
+
+ALTER TABLE team_shinies
+  ADD COLUMN IF NOT EXISTS catch_timezone TEXT;
 
 ALTER TABLE team_shinies
   ADD COLUMN IF NOT EXISTS war_eligibility_override BOOLEAN;

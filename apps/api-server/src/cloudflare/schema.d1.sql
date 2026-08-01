@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS team_shinies (
   status TEXT NOT NULL DEFAULT 'Owned' CHECK (status IN ('Owned', 'Sold', 'Fled', 'Died', 'Bred')),
   notes TEXT,
   caught_at_utc TEXT,
+  catch_timezone TEXT,
   war_eligibility_override INTEGER CHECK (war_eligibility_override IN (0, 1)),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 ) STRICT;

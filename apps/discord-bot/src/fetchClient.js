@@ -79,13 +79,14 @@ async function request(url, options = {}) {
       : await response.text();
 
     if (!response.ok) {
-      console.error('[discord] Upstream request failed:', {
+      const errorLog = {
         method: init.method || 'GET',
         url,
         status: response.status,
         statusText: response.statusText,
         body: typeof payload === 'string' ? payload.slice(0, 300) : payload,
-      });
+      };
+      console.error('[discord] Upstream request failed:', JSON.stringify(errorLog, null, 2));
       const error = new Error(
         payload?.message ||
         payload?.error ||

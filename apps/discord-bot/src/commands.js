@@ -78,6 +78,14 @@ function configurePokemonAutocompleteOption(option, description, required) {
     .setAutocomplete(true);
 }
 
+function configureTimezoneAutocompleteOption(option) {
+  return option
+    .setName('timezone')
+    .setDescription('Timezone where the shiny was caught')
+    .setRequired(true)
+    .setAutocomplete(true);
+}
+
 // Define required roles for commands
 const COMMAND_PERMISSIONS = {
   // Public commands (all members)
@@ -169,13 +177,14 @@ const COMMANDS = [
         .setDescription('How was it encountered?')
         .setRequired(true)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
+    .addStringOption(configureTimezoneAutocompleteOption)
     .addStringOption(option =>
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
         .setRequired(false))
     .addStringOption(option =>
-      option.setName('catch_time_utc')
-        .setDescription('Exact UTC capture time (HH:MM); required for active war participants')
+      option.setName('catch_time')
+        .setDescription('Local capture time (HH:MM)')
         .setRequired(false))
     .addStringOption(option =>
       option.setName('status')
@@ -220,10 +229,7 @@ const COMMANDS = [
         .setDescription('How was it encountered?')
         .setRequired(true)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
-    .addStringOption(option =>
-      option.setName('catch_time_utc')
-        .setDescription('Exact UTC capture time (HH:MM); required for active war participants')
-        .setRequired(false))
+    .addStringOption(configureTimezoneAutocompleteOption)
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
@@ -240,6 +246,7 @@ const COMMANDS = [
       option.setName('shiny_id')
         .setDescription('ID of the shiny to edit')
         .setRequired(true))
+    .addStringOption(configureTimezoneAutocompleteOption)
     .addStringOption(option => configurePokemonAutocompleteOption(option, 'Pokemon name', false))
     .addStringOption(option =>
       option.setName('variant')
@@ -255,8 +262,8 @@ const COMMANDS = [
         .setDescription('Date of catch (YYYY-MM-DD)')
         .setRequired(false))
     .addStringOption(option =>
-      option.setName('catch_time_utc')
-        .setDescription('Correct exact UTC capture time (HH:MM)')
+      option.setName('catch_time')
+        .setDescription('Correct local capture time (HH:MM)')
         .setRequired(false))
     .addStringOption(option =>
       option.setName('status')

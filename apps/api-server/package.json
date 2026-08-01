@@ -12,6 +12,7 @@
     "import:mt-coronet-feebas-tally": "node src/config/import-mt-coronet-feebas-tally.js",
     "export:d1": "node src/scripts/export-postgres-to-d1.js",
     "dev:worker": "wrangler dev --local --config wrangler.jsonc --env-file ../../.env --inspector-port 9230",
+    "dev:worker:local-ocr": "npm run d1:migrate:local && wrangler dev --local --config wrangler.jsonc --env-file ../../.env --var LEGACY_API_BASE_URL:http://localhost:3001 --inspector-port 9230",
     "dev:worker:staging": "wrangler dev --local --config wrangler.jsonc --env staging --env-file ../../.env --inspector-port 9230",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\"",
     "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",
