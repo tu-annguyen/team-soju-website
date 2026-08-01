@@ -5,7 +5,10 @@ export type Hunt = {
   target_family_key?: string | null;
   label: string;
   details?: Record<string, unknown> & {
-    species?: Array<string | Pick<HuntSpecies, 'name' | 'slug' | 'form'>>;
+    species?: Array<string | (
+      Pick<HuntSpecies, 'name' | 'slug' | 'form'>
+      & Partial<Pick<HuntSpecies, 'family_key'>>
+    )>;
     spot?: Pick<HuntSpot, 'region' | 'season' | 'time' | 'method' | 'horde_size' | 'is_lure'>;
   };
   overlap_member_ids?: string[];

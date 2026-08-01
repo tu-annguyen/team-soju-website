@@ -60,6 +60,28 @@ describe('HuntBoard', () => {
     expect(screen.getByText('Hoenn · Summer Day · 5× Sweet Scent Grass · Lure only')).toBeInTheDocument();
   });
 
+  it('warns in orange when any species in a hunt has already been caught', () => {
+    const duplicateRows: ParticipantHunts[] = [{
+      member_id: 'duplicate', ign: 'DuplicateHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
+      hunts: [{
+        position: 0,
+        spot_key: 'route-7',
+        target_family_key: 'magmar',
+        label: 'Route 7',
+        details: {
+          species: [
+            { name: 'Magmar', slug: 'magmar', family_key: 'magby' },
+            { name: 'Ponyta', slug: 'ponyta' },
+          ],
+        },
+      }],
+    }];
+
+    render(<HuntBoard rows={duplicateRows} caughtFamilyKeys={['Ponyta']} busy={false} onSave={jest.fn()} />);
+
+    expect(screen.getByText('Already caught: Ponyta.')).toHaveClass('text-orange-600');
+  });
+
   it('groups all participants by team in the Team War view', () => {
     const teamRows: ParticipantHunts[] = [
       ...rows,
