@@ -13,7 +13,7 @@ type Props = {
   speciesFilter: string;
   spots: HuntSpot[];
   view: HuntView;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   onToggle: (spotKey: string) => void;
   selectedSeason?: string;
   selectedTime?: string;

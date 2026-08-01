@@ -6,6 +6,7 @@ export type Hunt = {
   label: string;
   details?: Record<string, unknown> & {
     species?: Array<string | Pick<HuntSpecies, 'name' | 'slug' | 'form'>>;
+    spot?: Pick<HuntSpot, 'region' | 'season' | 'time' | 'method' | 'horde_size' | 'is_lure'>;
   };
   overlap_member_ids?: string[];
 };

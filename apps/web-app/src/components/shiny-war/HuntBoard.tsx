@@ -12,10 +12,29 @@ const huntSpecies = (hunt: Hunt) => {
   });
 };
 
-const huntLabel = (label: string) => label.replace(
-  /([35][x×])(?!\s+Sweet Scent)(?=\s*(?:·|$))/g,
-  '$1 Sweet Scent',
-);
+const SWEET_SCENT_TERRAINS = new Set(['Grass', 'Dark Grass', 'Water', 'Cave', 'Inside']);
+
+const huntLabel = (hunt: Hunt) => {
+  const label = hunt.label.replace(
+    /([35][x×])(?!\s+Sweet Scent)(?=\s*(?:·|$))/g,
+    '$1 Sweet Scent',
+  );
+  const method = hunt.details?.spot?.method || hunt.spot_key.split('|')[1] || '';
+  if (!SWEET_SCENT_TERRAINS.has(method)) return label;
+  return label.replace(
+    /Sweet Scent(?!\s+(?:Grass|Dark Grass|Water|Cave|Inside))/g,
+    `Sweet Scent ${method}`,
+  );
+};
+
+const huntSpotData = (hunt: Hunt) => {
+  const spot = hunt.details?.spot;
+  if (!spot) return '';
+  const terrain = SWEET_SCENT_TERRAINS.has(spot.method) ? ` ${spot.method}` : '';
+  const method = spot.horde_size ? `${spot.horde_size}× Sweet Scent${terrain}` : spot.method;
+  const time = spot.time.charAt(0).toUpperCase() + spot.time.slice(1);
+  return `${spot.region} · ${spot.season} ${time} · ${method}${spot.is_lure ? ' · Lure only' : ''}`;
+};
 
 type Props = {
   rows: ParticipantHunts[];
@@ -50,8 +69,9 @@ function HuntCard({ busy, isOwn, row, onMove, onRemove }: HuntCardProps) {
             <li key={hunt.id || `${hunt.spot_key}-${index}`} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
               <div className="flex gap-2">
                 <span className="font-semibold text-primary-600">{index === 0 ? 'Current' : `Next ${index}`}</span>
-                <span className="flex-1 text-gray-900 dark:text-white">{huntLabel(hunt.label)}</span>
+                <span className="flex-1 text-gray-900 dark:text-white">{huntLabel(hunt)}</span>
               </div>
+              {huntSpotData(hunt) && <p className="mt-1 text-sm text-gray-500">{huntSpotData(hunt)}</p>}
               {huntSpecies(hunt).length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                   {huntSpecies(hunt).map((species, speciesIndex) => (
@@ -65,7 +85,7 @@ function HuntCard({ busy, isOwn, row, onMove, onRemove }: HuntCardProps) {
                 </div>
               )}
               {hunt.overlap_member_ids?.length ? (
-                <p className="mt-1 text-xs font-medium text-amber-600">Overlaps another participant’s location or species.</p>
+                <p className="mt-1 text-xs font-medium text-yellow-500 dark:text-yellow-300">Overlaps another participant’s location or species.</p>
               ) : null}
               {isOwn && (
                 <div className="mt-2 flex gap-2">

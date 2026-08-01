@@ -56,7 +56,7 @@ describe('HuntResults', () => {
     expect(screen.getByText('SojuHunter · Next 2')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Queue' }));
-    expect(onQueue).toHaveBeenCalledWith(spot, false, vulpix);
+    expect(onQueue).toHaveBeenCalledWith(spot, false, vulpix, 'Sweet Scent');
   });
 
   it('shows an empty team queue row when no participant selected the location', () => {

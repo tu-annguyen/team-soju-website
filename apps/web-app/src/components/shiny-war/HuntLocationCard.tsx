@@ -9,7 +9,7 @@ type Props = {
   spots: HuntSpot[];
   targetSpecies?: HuntSpecies;
   locationOpen: boolean;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   onSeasonChange?: (season: string) => void;
   onTimeChange?: (time: string) => void;
   onToggle: (spotKey: string) => void;

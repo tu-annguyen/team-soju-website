@@ -12,7 +12,7 @@ type Props = {
   apiBaseUrl: string;
   defaultSeason: string;
   participants: ParticipantHunts[];
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
 };
 
 const fieldClasses =

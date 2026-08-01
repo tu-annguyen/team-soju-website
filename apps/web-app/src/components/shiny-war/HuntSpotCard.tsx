@@ -9,7 +9,7 @@ type Props = {
   nested?: boolean;
   participants: ParticipantHunts[];
   targetSpecies?: HuntSpecies;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   onToggle: () => void;
   selectedSeason?: string;
   selectedTime?: string;
@@ -86,8 +86,8 @@ export default function HuntSpotCard({
       )}
       <LocationQueueStatus participants={participants} spot={spot} />
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button className="btn btn-secondary w-full whitespace-nowrap text-sm" onClick={() => onQueue(spot, false, targetSpecies)}>Queue</button>
-        <button className="btn btn-primary w-full whitespace-nowrap text-sm" onClick={() => onQueue(spot, true, targetSpecies)}>Hunt now</button>
+        <button className="btn btn-secondary w-full whitespace-nowrap text-sm" onClick={() => onQueue(spot, false, targetSpecies, title)}>Queue</button>
+        <button className="btn btn-primary w-full whitespace-nowrap text-sm" onClick={() => onQueue(spot, true, targetSpecies, title)}>Hunt now</button>
       </div>
     </article>
   );
