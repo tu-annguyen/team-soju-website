@@ -60,4 +60,24 @@ describe('Shiny Wars overview', () => {
     expect(screen.queryByText('Current season')).not.toBeInTheDocument();
     expect(screen.queryByText('Schedule')).not.toBeInTheDocument();
   });
+
+  it('paginates catches that do not fit beside the standings', () => {
+    const catches = ['vulpix', 'eevee', 'pikachu'].map((pokemon, index) => ({
+      ...dashboard.recentCatches[0],
+      id: `shiny-${index + 1}`,
+      pokemon,
+    }));
+
+    render(<Overview dashboard={{ ...dashboard, recentCatches: catches }} />);
+
+    expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
+    expect(screen.queryByText(/SojuHunter · Eevee/)).not.toBeInTheDocument();
+    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.queryByText(/SojuHunter · Vulpix/)).not.toBeInTheDocument();
+    expect(screen.getByText(/SojuHunter · Eevee/)).toBeInTheDocument();
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+  });
 });

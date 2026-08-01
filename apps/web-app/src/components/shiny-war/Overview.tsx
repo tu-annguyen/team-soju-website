@@ -1,12 +1,8 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { Dashboard, PublicDashboard } from './types';
 import { capitalize } from '../../utils/pokemonName';
+import RecentCatches from './RecentCatches';
 import TeamBadge from './TeamBadge';
-
-function formatUtc(value: string) {
-  return new Intl.DateTimeFormat('en', {
-    dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC',
-  }).format(new Date(value));
-}
 
 type Props = {
   dashboard: Dashboard | PublicDashboard;
@@ -16,6 +12,8 @@ type Props = {
 };
 
 export default function Overview({ dashboard, showEventStatus = true, canManage, onEligibility }: Props) {
+  const standingsRef = useRef<HTMLElement>(null);
+  const [standingsHeight, setStandingsHeight] = useState<number>();
   const fullDashboard = 'event' in dashboard ? dashboard : null;
   const eventStats = fullDashboard && showEventStatus ? [
     ['Current season', fullDashboard.currentSeason || 'Outside event window'],
@@ -28,6 +26,19 @@ export default function Overview({ dashboard, showEventStatus = true, canManage,
   ];
   const splitTotal = dashboard.teamTotals.bidoof + dashboard.teamTotals.arceus;
   const bidoofWidth = splitTotal ? (dashboard.teamTotals.bidoof / splitTotal) * 100 : 50;
+
+  useLayoutEffect(() => {
+    const standings = standingsRef.current;
+    if (!standings) return undefined;
+
+    const updateHeight = () => setStandingsHeight(standings.getBoundingClientRect().height || undefined);
+    updateHeight();
+
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(standings);
+    return () => observer.disconnect();
+  }, [dashboard.standings.length]);
 
   return (
     <div className="space-y-6">
@@ -60,7 +71,7 @@ export default function Overview({ dashboard, showEventStatus = true, canManage,
         </div>
       </section>
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+        <section ref={standingsRef} className="min-h-64 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="text-xl font-bold text-gray-950 dark:text-white">Participant standings</h2>
           <div className="mt-4 divide-y divide-gray-100 dark:divide-gray-800">
             {dashboard.standings.map((row, index) => (
@@ -75,35 +86,14 @@ export default function Overview({ dashboard, showEventStatus = true, canManage,
             ))}
           </div>
         </section>
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="text-xl font-bold text-gray-950 dark:text-white">Recent catches</h2>
-          <div className="mt-4 space-y-3">
-            {dashboard.recentCatches.length === 0 && <p className="text-gray-500">No eligible catches yet.</p>}
-            {dashboard.recentCatches.map((entry) => (
-              <div key={'id' in entry ? entry.id : `${entry.ign}-${entry.pokemon}-${entry.caught_at_utc}`} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
-                <div className="flex justify-between gap-3">
-                  <p className="flex flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
-                    {entry.ign} · {capitalize(entry.pokemon)} <TeamBadge team={entry.team} />
-                  </p>
-                  <strong className="text-primary-600">+{entry.score.total}</strong>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  {formatUtc(entry.caught_at_utc)} UTC · base {entry.score.base}
-                  {entry.score.uniqueBonus ? ' · first species +8' : ''}
-                  {entry.score.secretBonus ? ' · secret +20' : ''}
-                  {entry.score.safariBonus ? ' · safari +10' : ''}
-                </p>
-                {canManage && onEligibility && 'id' in entry && (
-                  <div className="mt-2 flex gap-3 text-xs">
-                    <button className="text-rose-600" onClick={() => onEligibility(entry.id, false)}>Mark invalid</button>
-                    <button className="text-primary-600" onClick={() => onEligibility(entry.id, true)}>Force eligible</button>
-                    <button className="text-gray-500" onClick={() => onEligibility(entry.id, null)}>Use rules</button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+        <div className="relative min-h-64 lg:min-h-0">
+          <RecentCatches
+            catches={dashboard.recentCatches}
+            canManage={canManage}
+            maxHeight={standingsHeight}
+            onEligibility={onEligibility}
+          />
+        </div>
       </div>
       <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
         <h2 className="text-xl font-bold text-gray-950 dark:text-white">Species coverage</h2>
