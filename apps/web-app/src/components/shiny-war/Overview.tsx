@@ -53,11 +53,15 @@ export default function Overview({ dashboard, showEventStatus = true, canManage,
       <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-400">Team Bidoof</p>
+            <p className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-400">
+              <TeamBadge team="bidoof" /> Team Bidoof
+            </p>
             <p className="text-2xl font-bold text-gray-950 dark:text-white">{dashboard.teamTotals.bidoof.toLocaleString()} pts</p>
           </div>
           <div className="text-right">
-            <p className="text-sm font-semibold text-gray-500 dark:text-gray-300">Team Arceus</p>
+            <p className="flex items-center justify-end gap-2 text-sm font-semibold text-gray-500 dark:text-gray-300">
+              Team Arceus <TeamBadge team="arceus" />
+            </p>
             <p className="text-2xl font-bold text-gray-950 dark:text-white">{dashboard.teamTotals.arceus.toLocaleString()} pts</p>
           </div>
         </div>
