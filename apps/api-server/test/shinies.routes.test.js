@@ -393,5 +393,28 @@ describe('Shinies routes', () => {
         }),
       }));
     });
+
+    it('uses the bot token for the local Worker bridge', async () => {
+      process.env.SCREENSHOT_DATA_API_BASE_URL = 'http://localhost:8787/api';
+      process.env.SCREENSHOT_DATA_API_BOT_TOKEN = 'staging-token';
+      process.env.BOT_API_TOKEN = 'local-bot-token';
+      global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({
+        success: true,
+        data: [],
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }));
+
+      await shiniesRouter._test.findAllMembers();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:8787/api/members',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer local-bot-token' }),
+        })
+      );
+      delete process.env.BOT_API_TOKEN;
+    });
   });
 });

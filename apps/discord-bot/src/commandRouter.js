@@ -63,8 +63,9 @@ function getCommandHandler(commandName) {
 
 function getAutocompleteHandler(commandName) {
   const handlerMap = {
-    'addshiny': shinyHandlers.handlePokemonAutocomplete,
-    'editshiny': shinyHandlers.handlePokemonAutocomplete,
+    'addshiny': shinyHandlers.handleShinyAutocomplete,
+    'addshinyscreenshot': shinyHandlers.handleShinyAutocomplete,
+    'editshiny': shinyHandlers.handleShinyAutocomplete,
   };
 
   return handlerMap[commandName] || null;

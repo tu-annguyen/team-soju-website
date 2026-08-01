@@ -91,12 +91,14 @@ describe('shiny OCR parsing', () => {
     const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Woobat was caught by Pokio! 2026-03-21, 3:03 PM');
 
     expect(parsed.date).toBe('2026-03-21');
+    expect(parsed.time).toBe('15:03');
   });
 
   it('parses DD/MM/YYYY when the day makes the format unambiguous', () => {
     const parsed = shiniesRouter._test.parseDataFromOcr('Shiny Sneasel was caught by Llensjo! 16/03/2026, 14:08');
 
     expect(parsed.date).toBe('2026-03-16');
+    expect(parsed.time).toBe('14:08');
   });
 
   it('parses dot-separated dates when the day makes the format unambiguous', () => {

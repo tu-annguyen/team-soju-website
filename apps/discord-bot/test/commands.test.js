@@ -57,6 +57,36 @@ describe('commands', () => {
     expect(pokemonOption.choices).toBeUndefined();
   });
 
+  it.each(['addshiny', 'addshinyscreenshot', 'editshiny'])(
+    'requires timezone autocomplete on /%s',
+    (commandName) => {
+      const command = COMMANDS.find(item => item.toJSON().name === commandName);
+      const timezoneOption = command.toJSON().options.find(option => option.name === 'timezone');
+
+      expect(timezoneOption).toEqual(expect.objectContaining({
+        type: 3,
+        required: true,
+        autocomplete: true,
+      }));
+      expect(timezoneOption.choices).toBeUndefined();
+    }
+  );
+
+  it.each(['addshiny', 'addshinyscreenshot', 'editshiny'])(
+    'removes catch_time_utc from /%s',
+    (commandName) => {
+      const command = COMMANDS.find(item => item.toJSON().name === commandName);
+      expect(command.toJSON().options.find(option => option.name === 'catch_time_utc')).toBeUndefined();
+    }
+  );
+
+  it.each(['addshiny', 'editshiny'])('accepts local catch_time on /%s', (commandName) => {
+    const command = COMMANDS.find(item => item.toJSON().name === commandName);
+    expect(command.toJSON().options.find(option => option.name === 'catch_time')).toEqual(
+      expect.objectContaining({ type: 3, required: false })
+    );
+  });
+
   it('caps /shinies limit at 25', () => {
     const shinies = COMMANDS.find(command => command.toJSON().name === 'shinies');
 

@@ -1,4 +1,5 @@
 import { zonedLocalDateTimeToUtc } from '../../utils/catchEventScoring';
+import { getTimezoneOptions as getSharedTimezoneOptions } from '@team-soju/utils';
 import type {
   CatchEventConfig,
   CatchEventRule,
@@ -116,25 +117,7 @@ export function pickRandomItems<T>(items: readonly T[], count: number) {
 }
 
 export function getTimezoneOptions(): TimezoneOption[] {
-  const now = new Date();
-  const zones =
-    typeof Intl.supportedValuesOf === 'function'
-      ? Intl.supportedValuesOf('timeZone')
-      : [DEFAULT_TIMEZONE, 'America/Los_Angeles', 'UTC', 'Europe/London', 'Asia/Tokyo'];
-
-  return zones.map((zone) => {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: zone,
-      timeZoneName: 'shortOffset',
-      hour: '2-digit',
-    }).formatToParts(now);
-    const offset = parts.find((part) => part.type === 'timeZoneName')?.value || 'GMT';
-
-    return {
-      value: zone,
-      label: `${zone} (${offset.replace('GMT', 'UTC')})`,
-    };
-  });
+  return getSharedTimezoneOptions();
 }
 
 function getIntlLocale(locale: Locale | string = 'en') {

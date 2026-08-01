@@ -6,6 +6,13 @@ const { capitalize, getNationalNumber, getSpriteUrl, greyscale, getPokemonVarian
 const TeamShiny = require('../models/TeamShiny');
 const TeamMember = require('../models/TeamMember');
 const { parseMobileStatsPanel } = require('../../utils/mobileStatsParser');
+const {
+  extractLocalTimeFromOcr,
+  getFallbackLocalDate,
+  isValidTimezone,
+  localCatchDateTimeToUtc,
+  normalizeTimezoneInput,
+} = require('../../utils/shinyCatchTime');
 const router = express.Router();
 const { authenticateBot, generateBotToken } = require('../../middleware/auth');
 
@@ -46,6 +53,17 @@ function getScreenshotDataApiBaseUrl() {
 }
 
 function getScreenshotDataApiToken() {
+  const baseUrl = getScreenshotDataApiBaseUrl();
+  if (baseUrl) {
+    try {
+      const hostname = new URL(baseUrl).hostname;
+      if (['localhost', '127.0.0.1', '::1'].includes(hostname) && process.env.BOT_API_TOKEN) {
+        return process.env.BOT_API_TOKEN;
+      }
+    } catch {
+      // The request helper will report an invalid configured URL.
+    }
+  }
   return process.env.SCREENSHOT_DATA_API_BOT_TOKEN || generateBotToken();
 }
 
@@ -365,6 +383,7 @@ const shinySchema = Joi.object({
   original_trainer: Joi.string().uuid().required(),
   catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   caught_at_utc: Joi.string().isoDate().optional(),
+  catch_timezone: Joi.string().trim().max(80).optional(),
   total_encounters: Joi.number().integer().min(0).default(0),
   species_encounters: Joi.number().integer().min(0).default(0),
   encounter_type: Joi.string().valid(...ENCOUNTER_TYPE_CHOICES).required(),
@@ -390,6 +409,7 @@ const updateShinySchema = Joi.object({
   original_trainer: Joi.string().uuid().optional(),
   catch_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
   caught_at_utc: Joi.string().isoDate().optional(),
+  catch_timezone: Joi.string().trim().max(80).optional(),
   total_encounters: Joi.number().integer().min(0).optional(),
   species_encounters: Joi.number().integer().min(0).optional(),
   encounter_type: Joi.string().valid(...ENCOUNTER_TYPE_CHOICES).optional(),
@@ -414,7 +434,9 @@ const screenshotSchema = Joi.object({
   is_secret: Joi.boolean().default(false),
   is_alpha: Joi.boolean().default(false),
   command_called_at: Joi.string().isoDate().optional(),
-  catch_time_utc: Joi.string().pattern(/^(?:[01]\d|2[0-3]):[0-5]\d$/).optional(),
+  timezone: Joi.string().trim().max(80).required().custom((value, helpers) => (
+    isValidTimezone(value) ? normalizeTimezoneInput(value) : helpers.error('any.invalid')
+  ), 'IANA timezone validation'),
   discord_user_id: Joi.string().required(),
   member_roles: Joi.array().items(Joi.string()).default([]),
 });
@@ -765,6 +787,7 @@ function parseDataFromOcr(text) {
   return {
     date: dateResult.isoDate,
     dateWasAmbiguous: dateResult.wasAmbiguous,
+    time: extractLocalTimeFromOcr(text),
     name,
     trainer,
     hp: ivs[0] ?? null,
@@ -1045,6 +1068,10 @@ function validateParsedData(data) {
     return { isValid: false, error: 'Date is missing or invalid.' };
   }
 
+  if (!data.time || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(data.time)) {
+    return { isValid: false, error: 'Catch time is missing or invalid.' };
+  }
+
   return { isValid: true, error: null };
 }
 
@@ -1093,6 +1120,14 @@ function buildOcrExtractedFieldsSummary({ parsed, mergedParsed, trainer }) {
     extractedFields.push({
       name: 'Catch Date',
       value: parsed.date,
+      inline: true,
+    });
+  }
+
+  if (parsed.time) {
+    extractedFields.push({
+      name: 'Catch Time',
+      value: `${parsed.time} ${mergedParsed.timezone || ''}`.trim(),
       inline: true,
     });
   }
@@ -1193,10 +1228,11 @@ async function createShinyFromScreenshotValue(value) {
     }
 
     const mergedParsed = mergeParsedStats(parsed, mobileStats);
+    mergedParsed.timezone = value.timezone;
     const notes = [];
 
     if (mergedParsed.dateWasAmbiguous) {
-      const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
+      const fallbackDate = getFallbackLocalDate(value.command_called_at, value.timezone);
       mergedParsed.date = fallbackDate;
       notes.push(`Ambiguous date was found in screenshot. The caught date was set to today's date (${fallbackDate}), instead. Select **Edit** > **Catch Date** to change.`);
     }
@@ -1206,7 +1242,7 @@ async function createShinyFromScreenshotValue(value) {
     }
 
     if (isAfterIsoDate(mergedParsed.date, getLatestPossibleTodayIso())) {
-      const fallbackDate = String(value.command_called_at || new Date().toISOString()).slice(0, 10);
+      const fallbackDate = getFallbackLocalDate(value.command_called_at, value.timezone);
       notes.push(`The date was read as ${mergedParsed.date}, which is in the future. The caught date was set to today's date (${fallbackDate}), instead. Please double-check the date. Select **Edit** > **Catch Date** to change.`);
       mergedParsed.date = fallbackDate;
     }
@@ -1261,9 +1297,12 @@ async function createShinyFromScreenshotValue(value) {
       variants: normalizeVariantName(mergedParsed.name),
       original_trainer: trainer.id,
       catch_date: mergedParsed.date,
-      ...(value.catch_time_utc ? {
-        caught_at_utc: `${mergedParsed.date}T${value.catch_time_utc}:00.000Z`,
-      } : {}),
+      caught_at_utc: localCatchDateTimeToUtc(
+        mergedParsed.date,
+        mergedParsed.time,
+        value.timezone
+      ),
+      catch_timezone: value.timezone,
       encounter_type: value.encounter_type,
       is_secret: value.is_secret,
       is_alpha: value.is_alpha,
