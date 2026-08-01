@@ -45,7 +45,8 @@ describe('Shiny Wars overview', () => {
     expect(screen.getByText('38 pts')).toBeInTheDocument();
     expect(screen.getAllByText('Team Bidoof').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Team Bidoof 20 points, Team Arceus 18 points')).toBeInTheDocument();
-    expect(screen.getByText('vulpix')).toBeInTheDocument();
+    expect(screen.getByText('Vulpix')).toBeInTheDocument();
+    expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mark invalid' }));
     expect(onEligibility).toHaveBeenCalledWith('shiny-1', false);
   });

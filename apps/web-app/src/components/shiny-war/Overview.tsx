@@ -1,4 +1,5 @@
 import type { Dashboard, PublicDashboard } from './types';
+import { capitalize } from '../../utils/pokemonName';
 import TeamBadge from './TeamBadge';
 
 function formatUtc(value: string) {
@@ -82,7 +83,7 @@ export default function Overview({ dashboard, showEventStatus = true, canManage,
               <div key={'id' in entry ? entry.id : `${entry.ign}-${entry.pokemon}-${entry.caught_at_utc}`} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
                 <div className="flex justify-between gap-3">
                   <p className="flex flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
-                    {entry.ign} · {entry.pokemon} <TeamBadge team={entry.team} />
+                    {entry.ign} · {capitalize(entry.pokemon)} <TeamBadge team={entry.team} />
                   </p>
                   <strong className="text-primary-600">+{entry.score.total}</strong>
                 </div>
@@ -110,7 +111,7 @@ export default function Overview({ dashboard, showEventStatus = true, canManage,
           {dashboard.uniqueFamilies.length === 0 && <p className="text-gray-500">No species covered yet.</p>}
           {dashboard.uniqueFamilies.map((species) => (
             <span key={species} className="rounded-full bg-primary-50 px-3 py-1 text-sm text-primary-700 dark:bg-primary-950 dark:text-primary-200">
-              {species}
+              {capitalize(species)}
             </span>
           ))}
         </div>

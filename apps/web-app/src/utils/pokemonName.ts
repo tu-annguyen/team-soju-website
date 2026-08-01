@@ -1,6 +1,9 @@
-import { capitalize } from '@team-soju/utils';
-
-export { capitalize };
+export const capitalize = (value: string) => {
+  const normalized = String(value || '').trim();
+  return normalized
+    ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase()
+    : normalized;
+};
 
 const normalizePokemonLabel = (value: string) =>
   String(value || '')
