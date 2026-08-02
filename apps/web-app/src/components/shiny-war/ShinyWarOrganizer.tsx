@@ -148,6 +148,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
         {tab === 'finder' && (
           <HuntFinder
             apiBaseUrl={apiBaseUrl}
+            caughtFamilyKeys={ownCaughtFamilyKeys}
             defaultSeason={dashboard.currentSeason || 'Summer'}
             participants={hunts}
             onQueue={queueSpot}
