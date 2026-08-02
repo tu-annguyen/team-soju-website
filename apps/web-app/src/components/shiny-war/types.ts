@@ -33,6 +33,7 @@ export type HuntSpecies = {
   tier: string;
   points: number;
   split: number;
+  rate_unknown?: boolean;
   form?: string;
   min_level: number;
   max_level: number;

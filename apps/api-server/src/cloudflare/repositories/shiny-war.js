@@ -201,22 +201,28 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     const times = filters.time ? [filters.time] : ['morning', 'day', 'night'];
     const groups = new Map();
     for (const row of rows) {
-      const legacyLureEncounter = ['morning', 'day', 'night'].every(
+      const hasNoRecordedRates = ['morning', 'day', 'night'].every(
         (time) => row[`${time}_rate`] === null || row[`${time}_rate`] === undefined
       );
+      const legacyLureEncounter = Number(row.horde_size) === 0 && hasNoRecordedRates;
+      const hasUnknownIllusionRate = Number(row.horde_size) > 0
+        && row.slug === 'zorua'
+        && hasNoRecordedRates;
       const seasons = row.season === 'Any'
         ? (filters.season ? [filters.season] : SHINY_WAR_2026.seasons)
         : [row.season];
       for (const season of seasons) {
         for (const time of times) {
           const rate = legacyLureEncounter ? 5 : row[`${time}_rate`];
-          if (rate === null || rate === undefined || Number(rate) <= 0) continue;
+          if (!hasUnknownIllusionRate
+            && (rate === null || rate === undefined || Number(rate) <= 0)) continue;
           const key = [row.location_id, row.method, season, time, row.horde_size].join('|');
           if (!groups.has(key)) groups.set(key, { key, row: { ...row, season }, time, species: [] });
           groups.get(key).species.push({
             name: row.species_name, slug: row.slug, family_key: row.family_key,
-            tier: row.tier, points: row.points, rate: Number(rate),
-            is_lure: Boolean(row.is_lure) || legacyLureEncounter,
+            tier: row.tier, points: row.points, rate: hasUnknownIllusionRate ? 0 : Number(rate),
+            rate_unknown: hasUnknownIllusionRate,
+            is_lure: Number(row.horde_size) === 0 && (Boolean(row.is_lure) || legacyLureEncounter),
             form: row.form, min_level: row.min_level, max_level: row.max_level,
           });
         }

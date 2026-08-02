@@ -52,6 +52,7 @@ describe('Shiny Wars Pokedex importer', () => {
     const lureLocation = {
       ...monsters[0].locations[0],
       type: 'Grass',
+      is_horde_3x: false,
       rarity_morning: 'Lure',
       rarity_day: 'Lure only',
     };
@@ -60,6 +61,33 @@ describe('Shiny Wars Pokedex importer', () => {
     expect(isLureEncounter(lureLocation)).toBe(true);
     expect(data.encounters[0]).toMatchObject({ isLure: true, morningRate: 5, dayRate: 5 });
     expect(toSql(data)).toContain(',is_lure,');
+  });
+
+  it('does not treat Zorua Illusion horde appearances as lure encounters', () => {
+    const zorua = {
+      id: 570,
+      name: 'Zorua',
+      evolutions: [],
+      locations: [{
+        ...monsters[0].locations[0],
+        type: 'Sweet Scent',
+        is_horde_3x: true,
+        rarity_morning: 'Lure only',
+        rarity_day: 'Lure only',
+        rarity_night: 'Lure only',
+      }],
+    };
+
+    const data = normalizePokedex([zorua]);
+
+    expect(data.encounters[0]).toMatchObject({
+      speciesId: 570,
+      hordeSize: 3,
+      isLure: false,
+      morningRate: null,
+      dayRate: null,
+      nightRate: null,
+    });
   });
 
   it('gives repeated form records unique slugs while retaining one family', () => {

@@ -75,7 +75,9 @@ export default function HuntSpotCard({
               />
               <span className="basis-full pl-10 sm:basis-auto sm:pl-0">
                 <span className="hidden sm:inline">&nbsp;· </span>
-                {(species.split * 100).toFixed(2)}% · {species.tier} · Lv. {species.min_level}–{species.max_level}
+                {species.rate_unknown
+                  ? <span aria-label="Unknown encounter rate">???</span>
+                  : `${(species.split * 100).toFixed(2)}%`} · {species.tier} · Lv. {species.min_level}–{species.max_level}
                 {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· Lure only</span>}
               </span>
             </p>

@@ -76,6 +76,33 @@ describe('HuntResults', () => {
     expect(screen.getByText('No one hunting or queued')).toBeInTheDocument();
   });
 
+  it('shows an unknown rate for Zorua Illusion horde encounters', () => {
+    render(
+      <HuntResults
+        expanded={new Set(['mansion'])}
+        participants={[]}
+        speciesFilter=""
+        spots={[{
+          ...spot,
+          composition: [{
+            ...vulpix,
+            name: 'Zorua',
+            slug: 'zorua',
+            family_key: 'zorua',
+            split: 0,
+            rate_unknown: true,
+          }],
+        }]}
+        view="location"
+        onQueue={jest.fn()}
+        onToggle={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Zorua')).toBeInTheDocument();
+    expect(screen.getByLabelText('Unknown encounter rate')).toHaveTextContent('???');
+  });
+
   it('shows queue entries from every floor represented by a grouped location', () => {
     const floorParticipant: ParticipantHunts = {
       member_id: 'member-2', ign: 'FloorHunter', rank: 'Member', has_app_user: true, team: 'arceus', is_official: true,

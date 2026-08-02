@@ -206,6 +206,9 @@ function normalizePokedex(monsters) {
       });
 
       if (hordeSize && tier === 'Unknown') unknownHordeTiers.add(slug);
+      const hasUnknownIllusionRate = hordeSize > 0
+        && slug === 'zorua'
+        && isLureEncounter(rawLocation);
       const encounter = {
         speciesId: Number(monster.id),
         form: cleanText(rawLocation.form),
@@ -215,10 +218,13 @@ function normalizePokedex(monsters) {
         minLevel: Number(rawLocation.min_level) || 0,
         maxLevel: Number(rawLocation.max_level) || 0,
         hordeSize,
-        isLure: isLureEncounter(rawLocation),
-        morningRate: parseRate(rawLocation.rarity_morning),
-        dayRate: parseRate(rawLocation.rarity_day),
-        nightRate: parseRate(rawLocation.rarity_night),
+        // Lures only modify single encounters. Some source rows (notably Zorua,
+        // whose Illusion ability makes it appear as another horde member) are
+        // labeled "Lure only" even though they belong to Sweet Scent hordes.
+        isLure: hordeSize === 0 && isLureEncounter(rawLocation),
+        morningRate: hasUnknownIllusionRate ? null : parseRate(rawLocation.rarity_morning),
+        dayRate: hasUnknownIllusionRate ? null : parseRate(rawLocation.rarity_day),
+        nightRate: hasUnknownIllusionRate ? null : parseRate(rawLocation.rarity_night),
       };
       const keyParts = [
         encounter.speciesId, encounter.form, encounter.locationId, encounter.method,

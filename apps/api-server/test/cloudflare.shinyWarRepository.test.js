@@ -214,6 +214,43 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].pointsPerHour).toBe(0.7);
   });
 
+  it('keeps Zorua in Sweet Scent compositions without labeling it as lure-only', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1',
+      parameter: () => '?',
+      runCommand: jest.fn(),
+      runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '4:1', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 3, is_lure: 0,
+          species_name: 'Heracross', slug: 'heracross', family_key: 'heracross',
+          tier: 'Tier 3', points: 30, form: '', min_level: 20, max_level: 21,
+          morning_rate: 2, day_rate: 2, night_rate: 2,
+        },
+        {
+          location_id: '4:1', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 3, is_lure: 1,
+          species_name: 'Zorua', slug: 'zorua', family_key: 'zorua',
+          tier: 'Tier 2', points: 40, form: '', min_level: 20, max_level: 21,
+          morning_rate: null, day_rate: null, night_rate: null,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].is_lure).toBe(false);
+    expect(result.items[0].composition).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'Zorua', is_lure: false, rate_unknown: true, split: 0,
+      }),
+    ]));
+  });
+
   it('filters horde locations by species without changing their composition', async () => {
     const runSelect = jest.fn().mockResolvedValue([
       {
