@@ -9,7 +9,7 @@ export type Hunt = {
       Pick<HuntSpecies, 'name' | 'slug' | 'form'>
       & Partial<Pick<HuntSpecies, 'family_key'>>
     )>;
-    spot?: Pick<HuntSpot, 'region' | 'season' | 'time' | 'method' | 'horde_size' | 'is_lure'>;
+    spot?: Pick<HuntSpot, 'region' | 'season' | 'time' | 'method' | 'horde_size' | 'is_lure' | 'is_special'>;
   };
   overlap_member_ids?: string[];
 };
@@ -38,6 +38,7 @@ export type HuntSpecies = {
   min_level: number;
   max_level: number;
   is_lure?: boolean;
+  is_special?: boolean;
 };
 
 export type HuntSpot = {
@@ -52,6 +53,7 @@ export type HuntSpot = {
   times?: string[];
   horde_size: number;
   is_lure?: boolean;
+  is_special?: boolean;
   denominator: number;
   averagePoints: number;
   encountersPerHour: number | null;

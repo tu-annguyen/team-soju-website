@@ -1,6 +1,7 @@
 const {
   cleanMethod,
   isLureEncounter,
+  isSpecialEncounter,
   normalizePokedex,
   stripInvalidJsonControlCharacters,
   toSql,
@@ -88,6 +89,29 @@ describe('Shiny Wars Pokedex importer', () => {
       dayRate: null,
       nightRate: null,
     });
+  });
+
+  it('preserves Special encounters without treating them as lures', () => {
+    const specialLocation = {
+      ...monsters[0].locations[0],
+      type: 'Dust Cloud',
+      is_horde_3x: false,
+      rarity_morning: 'Special',
+      rarity_day: 'Special',
+      rarity_night: 'Special',
+    };
+    const data = normalizePokedex([{ ...monsters[0], locations: [specialLocation] }, monsters[1]]);
+
+    expect(isSpecialEncounter(specialLocation)).toBe(true);
+    expect(isLureEncounter(specialLocation)).toBe(false);
+    expect(data.encounters[0]).toMatchObject({
+      isLure: false,
+      isSpecial: true,
+      morningRate: null,
+      dayRate: null,
+      nightRate: null,
+    });
+    expect(toSql(data)).toContain(',is_lure,is_special,');
   });
 
   it('gives repeated form records unique slugs while retaining one family', () => {

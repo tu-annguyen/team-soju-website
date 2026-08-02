@@ -318,6 +318,7 @@ CREATE TABLE IF NOT EXISTS pokedex_encounters (
   max_level INTEGER NOT NULL,
   horde_size INTEGER NOT NULL DEFAULT 0 CHECK (horde_size IN (0, 3, 5)),
   is_lure INTEGER NOT NULL DEFAULT 0 CHECK (is_lure IN (0, 1)),
+  is_special INTEGER NOT NULL DEFAULT 0 CHECK (is_special IN (0, 1)),
   morning_rate REAL,
   day_rate REAL,
   night_rate REAL

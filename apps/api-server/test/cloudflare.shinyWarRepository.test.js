@@ -414,6 +414,129 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(runSelect.mock.calls[0][1]).not.toContain(5);
   });
 
+  it('labels Special encounters and excludes them from points-per-hour calculations', async () => {
+    const runSelect = jest.fn().mockResolvedValue([
+      {
+        location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
+        method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 0,
+        species_name: 'Drilbur', slug: 'drilbur', family_key: 'drilbur',
+        tier: 'Tier 1', points: 45, form: '', min_level: 36, max_level: 41,
+        morning_rate: null, day_rate: null, night_rate: null,
+      },
+      {
+        location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
+        method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 0,
+        species_name: 'Boldore', slug: 'boldore', family_key: 'roggenrola',
+        tier: 'Tier 7', points: 3, form: '', min_level: 36, max_level: 41,
+        morning_rate: 100, day_rate: 100, night_rate: 100,
+      },
+    ]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', season: 'Summer', time: 'day', profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({ is_lure: false, is_special: true });
+    expect(result.items[0].pointsPerHour).toBeCloseTo(0.03);
+    expect(result.items[0].composition).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Drilbur', is_lure: false, is_special: true, split: 0 }),
+      expect.objectContaining({ name: 'Boldore', is_special: false, split: 1 }),
+    ]));
+  });
+
+  it('separates legacy rustling-grass Special encounters from real Unova lures', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '4:2', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Grass', season: 'Summer', horde_size: 0, is_lure: 0, is_special: 0,
+          species_name: 'Emolga', slug: 'emolga', family_key: 'emolga',
+          tier: 'Tier 1', points: 45, form: '', min_level: 24, max_level: 26,
+          morning_rate: null, day_rate: null, night_rate: null,
+        },
+        {
+          location_id: '4:2', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Grass', season: 'Any', horde_size: 0, is_lure: 1, is_special: 0,
+          species_name: 'Servine', slug: 'servine', family_key: 'snivy',
+          tier: 'Tier 0', points: 50, form: '', min_level: 27, max_level: 27,
+          morning_rate: 5, day_rate: 5, night_rate: 5,
+        },
+        {
+          location_id: '4:2', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Grass', season: 'Summer', horde_size: 0, is_lure: 0, is_special: 0,
+          species_name: 'Cottonee', slug: 'cottonee', family_key: 'cottonee',
+          tier: 'Tier 5', points: 10, form: '', min_level: 22, max_level: 24,
+          morning_rate: 10, day_rate: 10, night_rate: 10,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', season: 'Summer', time: 'day', profile: { eventBoost: false },
+    });
+    const emolga = result.items[0].composition.find((entry) => entry.name === 'Emolga');
+    const servine = result.items[0].composition.find((entry) => entry.name === 'Servine');
+
+    expect(result.items[0]).toMatchObject({ is_special: true, is_lure: true });
+    expect(emolga).toMatchObject({ is_special: true, is_lure: false, split: 0 });
+    expect(servine).toMatchObject({ is_special: false, is_lure: true });
+  });
+
+  it('recognizes legacy Feebas rows as Special without a migrated flag', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([{
+        location_id: '1:1', location_name: 'Route 119', region: 'Hoenn',
+        method: 'Super Rod', season: 'Any', horde_size: 0, is_lure: 1, is_special: 0,
+        species_name: 'Feebas', slug: 'feebas', family_key: 'feebas',
+        tier: 'Tier 2', points: 40, form: '', min_level: 20, max_level: 25,
+        morning_rate: 5, day_rate: 5, night_rate: 5,
+      }]),
+    });
+
+    const result = await repository.listHordeSpots({ method: 'Fishing', time: 'day' });
+
+    expect(result.items[0]).toMatchObject({ is_special: true, is_lure: false, pointsPerHour: 0 });
+    expect(result.items[0].composition[0]).toMatchObject({
+      name: 'Feebas', is_special: true, is_lure: false, split: 0,
+    });
+  });
+
+  it('keeps a useful average for Special-only spots while reporting zero points per hour', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
+          method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 1,
+          species_name: 'Drilbur', slug: 'drilbur', family_key: 'drilbur',
+          tier: 'Tier 1', points: 45, form: '', min_level: 36, max_level: 41,
+          morning_rate: null, day_rate: null, night_rate: null,
+        },
+        {
+          location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
+          method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 1,
+          species_name: 'Lucario', slug: 'lucario', family_key: 'riolu',
+          tier: 'Tier 0', points: 50, form: '', min_level: 36, max_level: 41,
+          morning_rate: null, day_rate: null, night_rate: null,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', season: 'Summer', time: 'day', profile: { eventBoost: false },
+    });
+
+    expect(result.items[0].averagePoints).toBe(47.5);
+    expect(result.items[0].pointsPerHour).toBe(0);
+    expect(result.items[0].composition.every((entry) => entry.split === 0)).toBe(true);
+  });
+
   it('includes legacy Any-season Lure encounters such as Togetic in every season', async () => {
     const runSelect = jest.fn().mockResolvedValue([
       {

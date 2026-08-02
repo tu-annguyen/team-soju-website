@@ -43,7 +43,7 @@ const huntSpotData = (hunt: Hunt) => {
   const terrain = SWEET_SCENT_TERRAINS.has(spot.method) ? ` ${spot.method}` : '';
   const method = spot.horde_size ? `${spot.horde_size}× Sweet Scent${terrain}` : spot.method;
   const time = spot.time.charAt(0).toUpperCase() + spot.time.slice(1);
-  return `${spot.region} · ${spot.season} ${time} · ${method}${spot.is_lure ? ' · Lure only' : ''}`;
+  return `${spot.region} · ${spot.season} ${time} · ${method}${spot.is_lure ? ' · Lure only' : ''}${spot.is_special ? ' · Special' : ''}`;
 };
 
 type Props = {

@@ -30,6 +30,26 @@ const ENCOUNTER_METHODS = Object.freeze({
 const FISHING_METHODS = new Set(ENCOUNTER_METHODS.Fishing);
 const METHODS_WITHOUT_HOURLY_DATA = new Set(['Headbutt', 'Rock Smash', 'Rocks']);
 
+function isSpecialEncounterRow(row) {
+  if (Number(row.horde_size) > 0) return false;
+  if (row.is_special === true || Number(row.is_special) === 1) return true;
+  const hasNoRecordedRates = ['morning', 'day', 'night'].every(
+    (time) => row[`${time}_rate`] === null || row[`${time}_rate`] === undefined
+  );
+  const hasLegacySpecialRate = hasNoRecordedRates
+    || row.is_lure === true
+    || Number(row.is_lure) === 1;
+  if (!hasLegacySpecialRate) return false;
+
+  // Migration 0002 converted every null-rate row to a lure. In the source data,
+  // real lures are Any-season records; Unova's seasonal null-rate records are
+  // phenomena. The remaining Any-season exceptions are identifiable directly.
+  return (row.region === 'Unova' && row.season !== 'Any')
+    || ['Dust Cloud', 'Shadow'].includes(row.method)
+    || row.slug === 'feebas'
+    || (row.region === 'Unova' && row.location_name === 'Marvelous Bridge' && row.slug === 'swanna');
+}
+
 function encounterRatePerHour(row, filters) {
   if (Number(row.horde_size) > 0) {
     return (Number(filters.hordesPerHour) || 240) * Number(row.horde_size);
@@ -205,6 +225,7 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (time) => row[`${time}_rate`] === null || row[`${time}_rate`] === undefined
       );
       const legacyLureEncounter = Number(row.horde_size) === 0 && hasNoRecordedRates;
+      const isSpecialEncounter = isSpecialEncounterRow(row);
       const hasUnknownIllusionRate = Number(row.horde_size) > 0
         && row.slug === 'zorua'
         && hasNoRecordedRates;
@@ -213,16 +234,19 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         : [row.season];
       for (const season of seasons) {
         for (const time of times) {
-          const rate = legacyLureEncounter ? 5 : row[`${time}_rate`];
-          if (!hasUnknownIllusionRate
+          const rate = legacyLureEncounter && !isSpecialEncounter ? 5 : row[`${time}_rate`];
+          if (!isSpecialEncounter && !hasUnknownIllusionRate
             && (rate === null || rate === undefined || Number(rate) <= 0)) continue;
           const key = [row.location_id, row.method, season, time, row.horde_size].join('|');
           if (!groups.has(key)) groups.set(key, { key, row: { ...row, season }, time, species: [] });
           groups.get(key).species.push({
             name: row.species_name, slug: row.slug, family_key: row.family_key,
-            tier: row.tier, points: row.points, rate: hasUnknownIllusionRate ? 0 : Number(rate),
+            tier: row.tier, points: row.points,
+            rate: isSpecialEncounter || hasUnknownIllusionRate ? 0 : Number(rate),
             rate_unknown: hasUnknownIllusionRate,
-            is_lure: Number(row.horde_size) === 0 && (Boolean(row.is_lure) || legacyLureEncounter),
+            is_lure: !isSpecialEncounter && Number(row.horde_size) === 0
+              && (Boolean(row.is_lure) || legacyLureEncounter),
+            is_special: isSpecialEncounter,
             form: row.form, min_level: row.min_level, max_level: row.max_level,
           });
         }
@@ -236,6 +260,10 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         denominator,
         hordeSize: 1,
       });
+      const specialSpecies = species.filter((entry) => entry.is_special);
+      const averagePoints = specialSpecies.length === species.length
+        ? specialSpecies.reduce((sum, entry) => sum + Number(entry.points || 0), 0) / specialSpecies.length
+        : metrics.averagePoints;
       return {
         spot_key: key,
         region: row.region,
@@ -246,8 +274,10 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         time,
         horde_size: row.horde_size,
         is_lure: species.some((entry) => entry.is_lure),
+        is_special: species.some((entry) => entry.is_special),
         denominator,
         ...metrics,
+        averagePoints,
         encountersPerHour,
         pointsPerHour: encountersPerHour === null ? null : metrics.pointsPerHour,
       };

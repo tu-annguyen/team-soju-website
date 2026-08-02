@@ -78,6 +78,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
           method: spot.method,
           horde_size: spot.horde_size,
           is_lure: spot.is_lure,
+          is_special: spot.is_special,
         },
       },
     };

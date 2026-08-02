@@ -103,6 +103,28 @@ describe('HuntResults', () => {
     expect(screen.getByLabelText('Unknown encounter rate')).toHaveTextContent('???');
   });
 
+  it('labels Special encounters without showing a lure label', () => {
+    render(
+      <HuntResults
+        expanded={new Set(['mansion'])}
+        participants={[]}
+        speciesFilter=""
+        spots={[{
+          ...spot,
+          is_special: true,
+          composition: [{ ...vulpix, is_special: true, split: 0 }],
+        }]}
+        view="location"
+        onQueue={jest.fn()}
+        onToggle={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Special')).toBeInTheDocument();
+    expect(screen.getByText(/Includes Special encounters/)).toBeInTheDocument();
+    expect(screen.queryByText(/Lure only/i)).not.toBeInTheDocument();
+  });
+
   it('shows queue entries from every floor represented by a grouped location', () => {
     const floorParticipant: ParticipantHunts = {
       member_id: 'member-2', ign: 'FloorHunter', rank: 'Member', has_app_user: true, team: 'arceus', is_official: true,

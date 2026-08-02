@@ -365,12 +365,14 @@ CREATE TABLE IF NOT EXISTS pokedex_encounters (
   max_level INTEGER NOT NULL,
   horde_size INTEGER NOT NULL DEFAULT 0 CHECK (horde_size IN (0, 3, 5)),
   is_lure BOOLEAN NOT NULL DEFAULT false,
+  is_special BOOLEAN NOT NULL DEFAULT false,
   morning_rate DOUBLE PRECISION,
   day_rate DOUBLE PRECISION,
   night_rate DOUBLE PRECISION
 );
 
 ALTER TABLE pokedex_encounters ADD COLUMN IF NOT EXISTS is_lure BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE pokedex_encounters ADD COLUMN IF NOT EXISTS is_special BOOLEAN NOT NULL DEFAULT false;
 
 UPDATE pokedex_encounters
 SET is_lure = true,
@@ -380,6 +382,31 @@ SET is_lure = true,
 WHERE morning_rate IS NULL
   AND day_rate IS NULL
   AND night_rate IS NULL;
+
+UPDATE pokedex_encounters e
+SET is_special = true,
+    is_lure = false,
+    morning_rate = NULL,
+    day_rate = NULL,
+    night_rate = NULL
+FROM pokedex_locations l
+WHERE l.id = e.location_id
+  AND (
+    (e.is_lure = true AND l.region = 'Unova' AND e.season <> 'Any')
+    OR e.method IN ('Dust Cloud', 'Shadow')
+    OR EXISTS (
+      SELECT 1 FROM pokedex_species s
+      WHERE s.id = e.species_id AND LOWER(s.name) = 'feebas'
+    )
+    OR (
+      l.region = 'Unova'
+      AND l.name = 'Marvelous Bridge'
+      AND EXISTS (
+        SELECT 1 FROM pokedex_species s
+        WHERE s.id = e.species_id AND LOWER(s.name) = 'swanna'
+      )
+    )
+  );
 
 CREATE TABLE IF NOT EXISTS shiny_war_events (
   id TEXT PRIMARY KEY,

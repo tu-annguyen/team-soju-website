@@ -40,6 +40,7 @@ export default function HuntSpotCard({
             <p className="truncate whitespace-nowrap text-sm text-gray-500">
               {spot.region} · {spot.horde_size ? `${spot.horde_size}× Sweet Scent` : spot.method}
               {spot.is_lure && <span className="font-semibold text-amber-600 dark:text-amber-400"> · Includes Lure-only encounters</span>}
+              {spot.is_special && <span className="font-semibold text-sky-600 dark:text-sky-400"> · Includes Special encounters</span>}
             </p>
           </button>
           <HuntFilterChips
@@ -77,6 +78,8 @@ export default function HuntSpotCard({
                 <span className="hidden sm:inline">&nbsp;· </span>
                 {species.rate_unknown
                   ? <span aria-label="Unknown encounter rate">???</span>
+                  : species.is_special
+                    ? <span className="font-semibold text-sky-600 dark:text-sky-400">Special</span>
                   : `${(species.split * 100).toFixed(2)}%`} · {species.tier} · Lv. {species.min_level}–{species.max_level}
                 {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· Lure only</span>}
               </span>
