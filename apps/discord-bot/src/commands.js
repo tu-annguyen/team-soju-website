@@ -177,15 +177,15 @@ const COMMANDS = [
         .setDescription('How was it encountered?')
         .setRequired(true)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
-    .addStringOption(configureTimezoneAutocompleteOption)
     .addStringOption(option =>
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
-        .setRequired(false))
+        .setRequired(true))
     .addStringOption(option =>
       option.setName('catch_time')
         .setDescription('Local capture time (HH:MM)')
-        .setRequired(false))
+        .setRequired(true))
+    .addStringOption(configureTimezoneAutocompleteOption)
     .addStringOption(option =>
       option.setName('status')
         .setDescription('Status of the shiny')
