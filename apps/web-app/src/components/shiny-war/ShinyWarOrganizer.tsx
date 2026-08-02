@@ -20,6 +20,8 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
   const [busy, setBusy] = useState(false);
   const canManage = hasPermission(authUser, 'shiny_war:manage');
   const ownMemberId = authUser?.membership?.id;
+  const ownCaughtFamilyKeys = dashboard?.standings
+    .find((participant) => participant.member_id === ownMemberId)?.caughtFamilyKeys || [];
 
   const refresh = useCallback(async () => {
     try {
@@ -54,7 +56,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
     }
   };
 
-  const queueSpot = async (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => {
+  const queueSpot = async (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, spotTitle?: string) => {
     const own = hunts.find((row) => row.member_id === ownMemberId);
     if (!own) {
       setError('You must be on the official roster to maintain a hunt queue.');
@@ -64,11 +66,20 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
       position: 0,
       spot_key: spot.spot_key,
       target_family_key: targetSpecies?.family_key || spot.composition[0]?.family_key,
-      label: `${spot.location} · ${spot.season} ${spot.time} · ${spot.horde_size ? `${spot.horde_size}× Sweet Scent` : spot.method}${spot.is_lure ? ' · Lure only' : ''}`,
+      label: spotTitle ? `${spot.location} · ${spotTitle}` : spot.location,
       details: {
         region: spot.region,
-        species: spot.composition.map(({ name, slug, form }) => ({ name, slug, form })),
+        species: spot.composition.map(({ name, slug, form, family_key }) => ({ name, slug, form, family_key })),
         points_per_hour: spot.pointsPerHour,
+        spot: {
+          region: spot.region,
+          season: spot.season,
+          time: spot.time,
+          method: spot.method,
+          horde_size: spot.horde_size,
+          is_lure: spot.is_lure,
+          is_special: spot.is_special,
+        },
       },
     };
     const existing = [...own.hunts].sort((a, b) => a.position - b.position);
@@ -102,7 +113,10 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
           <p className="text-sm font-semibold uppercase tracking-widest text-primary-600">Team Soju internal tool</p>
           <h1 className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">Shiny Wars 2026 Organizer</h1>
           <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-300">
-            Coordinate hunts, compare wild encounter value, and follow catches submitted through the Discord bot. The official leaderboard remains authoritative.
+            Coordinate hunts, compare wild encounter value, and follow catches submitted through the Discord bot.{' '} 
+            <a href="https://pokemmo.com/en/shiny_wars/2026/" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300" target="_blank" rel="noopener noreferrer">
+              The official leaderboard
+            </a> remains authoritative.
           </p>
         </div>
         <PokeMmoClock event={dashboard.event} />
@@ -121,10 +135,20 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
         {tab === 'overview' && (
           <Overview dashboard={dashboard} canManage={canManage} onEligibility={setEligibility} />
         )}
-        {tab === 'hunts' && <HuntBoard rows={hunts} ownMemberId={ownMemberId} busy={busy} onSave={saveQueue} />}
+        {tab === 'hunts' && (
+          <HuntBoard
+            rows={hunts}
+            playerCaughtFamilyKeys={ownCaughtFamilyKeys}
+            uniqueFamilyKeys={dashboard.uniqueFamilies}
+            ownMemberId={ownMemberId}
+            busy={busy}
+            onSave={saveQueue}
+          />
+        )}
         {tab === 'finder' && (
           <HuntFinder
             apiBaseUrl={apiBaseUrl}
+            caughtFamilyKeys={ownCaughtFamilyKeys}
             defaultSeason={dashboard.currentSeason || 'Summer'}
             participants={hunts}
             onQueue={queueSpot}

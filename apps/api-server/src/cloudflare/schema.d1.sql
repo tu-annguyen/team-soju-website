@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS team_shinies (
   status TEXT NOT NULL DEFAULT 'Owned' CHECK (status IN ('Owned', 'Sold', 'Fled', 'Died', 'Bred')),
   notes TEXT,
   caught_at_utc TEXT,
+  catch_timezone TEXT,
   war_eligibility_override INTEGER CHECK (war_eligibility_override IN (0, 1)),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 ) STRICT;
@@ -317,6 +318,7 @@ CREATE TABLE IF NOT EXISTS pokedex_encounters (
   max_level INTEGER NOT NULL,
   horde_size INTEGER NOT NULL DEFAULT 0 CHECK (horde_size IN (0, 3, 5)),
   is_lure INTEGER NOT NULL DEFAULT 0 CHECK (is_lure IN (0, 1)),
+  is_special INTEGER NOT NULL DEFAULT 0 CHECK (is_special IN (0, 1)),
   morning_rate REAL,
   day_rate REAL,
   night_rate REAL

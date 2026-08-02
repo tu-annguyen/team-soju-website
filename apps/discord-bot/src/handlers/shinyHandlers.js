@@ -24,6 +24,11 @@ const {
   getNationalNumber,
   getSpriteUrl,
   getPokemonVariants,
+  getDateInTimezone,
+  getTimeInTimezone,
+  getTimezoneOptions,
+  normalizeTimezoneInput,
+  zonedLocalDateTimeToUtc,
 } = require('@team-soju/utils');
 
 function getApiBaseUrl() {
@@ -62,6 +67,8 @@ const FIELD_CODES = {
   nature: 'n',
   special: 'x',
   catch_date: 'd',
+  catch_time: 't',
+  timezone: 'z',
   encounters: 'c',
   ivs: 'i',
 };
@@ -73,12 +80,35 @@ function getAuthHeaders() {
   return { headers: { Authorization: `Bearer ${process.env.BOT_API_TOKEN}` } };
 }
 
-function combineUtcDateTime(date, time) {
+function combineLocalDateTime(date, time, timezone) {
   if (!time) return null;
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-    throw new Error('UTC capture time must use HH:MM in 24-hour format.');
+    throw new Error('Local capture time must use HH:MM in 24-hour format.');
   }
-  return `${date}T${time}:00.000Z`;
+  return zonedLocalDateTimeToUtc(`${date}T${time}:00`, timezone);
+}
+
+function getTimezoneOption(interaction) {
+  const value = interaction.options.getString('timezone');
+  return normalizeTimezoneInput(value) || value;
+}
+
+function getShinyCatchTimezone(shiny) {
+  return normalizeTimezoneInput(shiny?.catch_timezone) || 'UTC';
+}
+
+function getShinyCatchTime(shiny) {
+  if (!shiny?.caught_at_utc) return null;
+  return getTimeInTimezone(shiny.caught_at_utc, getShinyCatchTimezone(shiny));
+}
+
+function getCatchTimeFields(shiny) {
+  const catchTime = getShinyCatchTime(shiny);
+  if (!catchTime) return [];
+  return [
+    { name: 'Catch Time', value: catchTime, inline: true },
+    { name: 'Timezone', value: getShinyCatchTimezone(shiny), inline: true },
+  ];
 }
 
 function formatPokemonAutocompleteLabel(name) {
@@ -112,6 +142,33 @@ async function handlePokemonAutocomplete(interaction) {
   }
 
   await interaction.respondAutocomplete(getPokemonAutocompleteChoices(interaction.options.getFocused(true)));
+}
+
+function getTimezoneAutocompleteChoices(query) {
+  const normalizedQuery = String(query || '').trim().toLowerCase();
+  return getTimezoneOptions()
+    .filter(({ value, label }) => (
+      !normalizedQuery
+      || value.toLowerCase().includes(normalizedQuery)
+      || label.toLowerCase().includes(normalizedQuery)
+    ))
+    .slice(0, MAX_AUTOCOMPLETE_CHOICES)
+    .map(({ value, label }) => ({ name: label.slice(0, 100), value }));
+}
+
+async function handleShinyAutocomplete(interaction) {
+  const focusedOption = interaction.options.getFocusedOption();
+  if (focusedOption?.name === 'pokemon') {
+    await handlePokemonAutocomplete(interaction);
+    return;
+  }
+  if (focusedOption?.name === 'timezone') {
+    await interaction.respondAutocomplete(
+      getTimezoneAutocompleteChoices(interaction.options.getFocused(true))
+    );
+    return;
+  }
+  await interaction.respondAutocomplete([]);
 }
 
 function normalizeVariantSlug(value) {
@@ -522,6 +579,7 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
       })(),
       { name: 'Status', value: getStatusValue(shiny), inline: true },
       shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
+      ...getCatchTimeFields(shiny),
       shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
       shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
       shiny.is_alpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
@@ -554,6 +612,7 @@ async function buildFailedShinyPayload(shiny) {
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     { name: 'Status', value: status, inline: true },
     shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
+    ...getCatchTimeFields(shiny),
     shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
   ].filter(Boolean));
 
@@ -704,6 +763,18 @@ function buildAdvancedFieldModal(shiny, field, state = {}) {
       value: shiny.catch_date || '',
       customId: 'catch_date',
       title: 'Advanced Text Fields',
+    },
+    catch_time: {
+      label: 'Local catch time (HH:MM)',
+      value: getShinyCatchTime(shiny) || '',
+      customId: 'catch_time',
+      title: 'Edit Catch Time',
+    },
+    timezone: {
+      label: 'Timezone (for example, Europe/London)',
+      value: shiny.catch_timezone || (shiny.caught_at_utc ? 'UTC' : ''),
+      customId: 'timezone',
+      title: 'Edit Catch Timezone',
     },
     encounters: {
       label: 'Encounters (total,species)',
@@ -859,6 +930,8 @@ async function buildEditControlsPayload(interaction, state, content = null) {
     ),
     new ActionRowBuilder().addComponents(
       buildPickerButton(buildAdvancedFieldButtonCustomId('catch_date', state), 'Catch Date'),
+      buildPickerButton(buildAdvancedFieldButtonCustomId('catch_time', state), 'Catch Time'),
+      buildPickerButton(buildAdvancedFieldButtonCustomId('timezone', state), 'Timezone'),
       buildPickerButton(buildAdvancedFieldButtonCustomId('encounters', state), 'Encounters'),
       buildPickerButton(buildAdvancedFieldButtonCustomId('ivs', state), 'IVs')
     ),
@@ -1232,8 +1305,9 @@ async function handleAddShiny(interaction) {
   }
 
   const pokemon = interaction.options.getString('pokemon');
-  const catchDate = interaction.options.getString('catch_date') || new Date().toISOString().split('T')[0];
-  const catchTimeUtc = interaction.options.getString('catch_time_utc');
+  const timezone = getTimezoneOption(interaction);
+  const catchDate = interaction.options.getString('catch_date') || getDateInTimezone(new Date(), timezone);
+  const catchTime = interaction.options.getString('catch_time') || getTimeInTimezone(new Date(), timezone);
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
   const status = interaction.options.getString('status') || 'Owned';
   const isSecret = interaction.options.getBoolean('secret') || false;
@@ -1275,7 +1349,10 @@ async function handleAddShiny(interaction) {
       pokemon,
       national_number: nationalNumber,
       catch_date: catchDate,
-      ...(catchTimeUtc ? { caught_at_utc: combineUtcDateTime(catchDate, catchTimeUtc) } : {}),
+      ...(catchTime ? {
+        caught_at_utc: combineLocalDateTime(catchDate, catchTime, timezone),
+        catch_timezone: timezone,
+      } : {}),
       encounter_type: encounterType,
       status,
       is_secret: isSecret,
@@ -1302,6 +1379,7 @@ async function handleAddShiny(interaction) {
       { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
       { name: 'Trainer', value: shiny.trainer_name, inline: true },
       { name: 'Catch Date', value: shiny.catch_date, inline: true },
+      ...getCatchTimeFields(shiny),
       ...[
         encounterType ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
         status !== 'Owned' ? { name: 'Status', value: shiny.status || status, inline: true } : null,
@@ -1343,7 +1421,7 @@ async function handleAddShinyScreenshot(interaction) {
       is_secret: interaction.options.getBoolean('secret') || false,
       is_alpha: interaction.options.getBoolean('alpha') || false,
       command_called_at: new Date(interaction.createdTimestamp || Date.now()).toISOString(),
-      catch_time_utc: interaction.options.getString('catch_time_utc') || undefined,
+      timezone: getTimezoneOption(interaction),
       discord_user_id: interaction.user.id,
       member_roles: getMemberRoles(interaction).map(role => role.name),
       discord_application_id: interaction.applicationId,
@@ -1358,9 +1436,16 @@ async function handleAddShinyScreenshot(interaction) {
         : 'Screenshot received. Processing now. This message will update when OCR finishes.',
     });
   } catch (error) {
-    const details = error.response?.data?.details?.ocr_text
-      ? `\nOCR result:\n${codeBlock(error.response.data.details.ocr_text)}`
+    const responseDetails = error.response?.data?.details;
+    const validationDetails = Array.isArray(responseDetails)
+      ? responseDetails
+        .map(detail => detail?.message)
+        .filter(Boolean)
+        .join('; ')
       : '';
+    const details = responseDetails?.ocr_text
+      ? `\nOCR result:\n${codeBlock(responseDetails.ocr_text)}`
+      : validationDetails ? `\n${validationDetails}` : '';
     await interaction.reply({ content: `Error: ${error.response?.data?.message || error.message}${details}` });
   }
 }
@@ -1372,7 +1457,8 @@ async function handleEditShiny(interaction) {
   const pokemon = interaction.options.getString('pokemon');
   const variant = interaction.options.getString('variant');
   const catchDate = interaction.options.getString('catch_date');
-  const catchTimeUtc = interaction.options.getString('catch_time_utc');
+  const catchTime = interaction.options.getString('catch_time');
+  const timezone = getTimezoneOption(interaction);
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
   const status = interaction.options.getString('status');
   const isSecret = interaction.options.getBoolean('secret');
@@ -1403,11 +1489,14 @@ async function handleEditShiny(interaction) {
     }
     if (variant) updates.variants = normalizeVariantSlug(variant);
     if (catchDate) updates.catch_date = catchDate;
-    if (catchTimeUtc) {
+    if (catchTime) {
       const effectiveDate = catchDate || existingShiny.catch_date;
-      updates.caught_at_utc = combineUtcDateTime(effectiveDate, catchTimeUtc);
+      updates.caught_at_utc = combineLocalDateTime(effectiveDate, catchTime, timezone);
+      updates.catch_timezone = timezone;
     } else if (catchDate && existingShiny.caught_at_utc) {
-      updates.caught_at_utc = `${catchDate}${existingShiny.caught_at_utc.slice(10)}`;
+      const existingLocalTime = getTimeInTimezone(existingShiny.caught_at_utc, timezone);
+      updates.caught_at_utc = combineLocalDateTime(catchDate, existingLocalTime, timezone);
+      updates.catch_timezone = timezone;
     }
     if (encounterType) updates.encounter_type = encounterType;
     if (status) updates.status = status;
@@ -1718,12 +1807,33 @@ async function handleShinyEditModal(interaction) {
 
   try {
     await interaction.deferUpdate();
-    await requireOwnedShiny(interaction, shinyId);
+    const shiny = await requireOwnedShiny(interaction, shinyId);
 
     const updates = {};
     const value = interaction.fields.getTextInputValue(field)?.trim();
 
-    if (field === 'catch_date' && value) updates.catch_date = value;
+    if (field === 'catch_date' && value) {
+      updates.catch_date = value;
+      if (shiny.caught_at_utc) {
+        const timezone = getShinyCatchTimezone(shiny);
+        updates.caught_at_utc = combineLocalDateTime(value, getShinyCatchTime(shiny), timezone);
+        updates.catch_timezone = timezone;
+      }
+    }
+    if (field === 'catch_time' && value) {
+      const timezone = getShinyCatchTimezone(shiny);
+      updates.caught_at_utc = combineLocalDateTime(shiny.catch_date, value, timezone);
+      updates.catch_timezone = timezone;
+    }
+    if (field === 'timezone' && value) {
+      const timezone = normalizeTimezoneInput(value);
+      if (!timezone) throw new Error('Timezone must be a valid IANA timezone, such as Australia/Melbourne.');
+      updates.catch_timezone = timezone;
+      if (shiny.caught_at_utc) {
+        const existingLocalTime = getShinyCatchTime(shiny);
+        updates.caught_at_utc = combineLocalDateTime(shiny.catch_date, existingLocalTime, timezone);
+      }
+    }
     if (field === 'ivs' && value) Object.assign(updates, parseIvInput(value));
     if (field === 'encounters' && value) Object.assign(updates, parseEncounterInput(value));
 
@@ -1758,6 +1868,7 @@ module.exports = {
   handleFailShiny,
   handleGetMyShinies,
   handlePokemonAutocomplete,
+  handleShinyAutocomplete,
   handleGetShinies,
   handleGetShiny,
   handleShinyComponent,

@@ -152,7 +152,9 @@ Record a new shiny Pokemon catch.
 - `pokemon` (required): Pokemon name
 - `pokedex_number` (required): National Pokedex number
 - `encounter_type` (required): How it was encountered
+- `timezone` (required): IANA timezone where the shiny was caught (autocomplete)
 - `catch_date` (optional): Date of the catch (YYYY-MM-DD) (default: today)
+- `catch_time` (optional): Local catch time (HH:MM)
 - `status` (optional): Status of the shiny (`Owned`, `Sold`, `Fled`, `Died`, `Bred`)
 - `secret` (optional): Is this a secret shiny?
 - `total_encounters` (optional): Total encounters before catch
@@ -162,7 +164,7 @@ Record a new shiny Pokemon catch.
 
 **Example:**
 ```
-/addshiny trainer:tunacore pokemon:dratini encounter_type:Horde catch_date:2026-01-15 total_encounters:20374 species_encounters:3332 nature:Bold ivs:11,1,15,31,14,4
+/addshiny trainer:tunacore pokemon:dratini encounter_type:Horde timezone:America/Los_Angeles catch_date:2026-01-15 catch_time:20:30 total_encounters:20374 species_encounters:3332 nature:Bold ivs:11,1,15,31,14,4
 ```
 
 **Notable optional fields:**
@@ -173,16 +175,18 @@ Record a new shiny Pokemon catch with an uploaded screenshot.
 **Options:**
 - `screenshot` (required): Screenshot of the shiny Pokemon's share page
 - `encounter_type` (required): How it was encountered
+- `timezone` (required): IANA timezone where the shiny was caught (autocomplete)
 - `secret` (optional): Is this a secret shiny?
 - `alpha` (optional): Is this an alpha shiny?
 
 **Date handling:**
 - The bot auto-detects screenshot dates when the format is unambiguous, including common forms like `MM/DD/YY`, `DD/MM/YYYY`, and `YYYY-MM-DD`.
+- The bot reads the local catch time from the screenshot and converts it to UTC using the selected timezone for Shiny War eligibility.
 - If the screenshot date is ambiguous, such as `03/04/26`, the OCR flow does not guess. It uses the date the command was called instead and adds an `ambiguous date` note before the success embed.
 
 **Example:**
 ```
-/addshinyscreenshot screenshot:image.png encounter_type:Horde secret:False
+/addshinyscreenshot screenshot:image.png encounter_type:Horde timezone:America/Los_Angeles secret:False
 ```
 
 #### `/editshiny` (⚠️Deprecated) 
@@ -191,13 +195,15 @@ Update an existing shiny entry.
 
 **Options:**
 - `shiny_id` (required): ID of shiny to edit
+- `timezone` (required): IANA timezone where the shiny was caught (autocomplete)
 - All other options are optional for updating
+- `catch_time` (optional): Correct local catch time (HH:MM)
 - `variant` (optional): Pokemon form slug. This must be a valid name from PokeAPI's `pokemon-form` route, such as `deerling-winter` or `basculin-blue-striped`.
 - `status` (optional): Dropdown with `Owned`, `Sold`, `Fled`, `Died`, `Bred`
 
 **Example:**
 ```
-/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 variant:deerling-winter total_encounters:2000 secret:true
+/editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 timezone:America/Los_Angeles variant:deerling-winter total_encounters:2000 secret:true
 ```
 
 #### `/failshiny` (⚠️Deprecated)

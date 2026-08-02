@@ -44,8 +44,11 @@ describe('Shiny Wars overview', () => {
 
     expect(screen.getByText('38 pts')).toBeInTheDocument();
     expect(screen.getAllByText('Team Bidoof').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: 'Team Bidoof' })).toHaveLength(3);
+    expect(screen.getByRole('img', { name: 'Team Arceus' })).toBeInTheDocument();
     expect(screen.getByLabelText('Team Bidoof 20 points, Team Arceus 18 points')).toBeInTheDocument();
-    expect(screen.getByText('vulpix')).toBeInTheDocument();
+    expect(screen.getByText('Vulpix')).toBeInTheDocument();
+    expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mark invalid' }));
     expect(onEligibility).toHaveBeenCalledWith('shiny-1', false);
   });
@@ -58,5 +61,25 @@ describe('Shiny Wars overview', () => {
     expect(screen.getByText(/first species \+8/)).toBeInTheDocument();
     expect(screen.queryByText('Current season')).not.toBeInTheDocument();
     expect(screen.queryByText('Schedule')).not.toBeInTheDocument();
+  });
+
+  it('paginates catches that do not fit beside the standings', () => {
+    const catches = ['vulpix', 'eevee', 'pikachu'].map((pokemon, index) => ({
+      ...dashboard.recentCatches[0],
+      id: `shiny-${index + 1}`,
+      pokemon,
+    }));
+
+    render(<Overview dashboard={{ ...dashboard, recentCatches: catches }} />);
+
+    expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
+    expect(screen.queryByText(/SojuHunter · Eevee/)).not.toBeInTheDocument();
+    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.queryByText(/SojuHunter · Vulpix/)).not.toBeInTheDocument();
+    expect(screen.getByText(/SojuHunter · Eevee/)).toBeInTheDocument();
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
   });
 });

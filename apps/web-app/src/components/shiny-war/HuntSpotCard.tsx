@@ -9,7 +9,7 @@ type Props = {
   nested?: boolean;
   participants: ParticipantHunts[];
   targetSpecies?: HuntSpecies;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   onToggle: () => void;
   selectedSeason?: string;
   selectedTime?: string;
@@ -40,6 +40,7 @@ export default function HuntSpotCard({
             <p className="truncate whitespace-nowrap text-sm text-gray-500">
               {spot.region} · {spot.horde_size ? `${spot.horde_size}× Sweet Scent` : spot.method}
               {spot.is_lure && <span className="font-semibold text-amber-600 dark:text-amber-400"> · Includes Lure-only encounters</span>}
+              {spot.is_special && <span className="font-semibold text-sky-600 dark:text-sky-400"> · Includes Special encounters</span>}
             </p>
           </button>
           <HuntFilterChips
@@ -66,15 +67,22 @@ export default function HuntSpotCard({
       {expanded && (
         <div className="mt-4 grid gap-2 border-t border-gray-100 pt-4 dark:border-gray-800 sm:grid-cols-2">
           {spot.composition.map((species) => (
-            <p key={`${species.slug}-${species.form}`} className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+            <p key={`${species.slug}-${species.form}`} className="flex flex-wrap items-center text-sm text-gray-700 sm:flex-nowrap dark:text-gray-300">
               <SpeciesSpriteName
                 className="font-bold"
                 form={species.form}
                 name={species.name}
                 slug={species.slug}
               />
-              <span>&nbsp;· {(species.split * 100).toFixed(2)}% · {species.tier} · Lv. {species.min_level}–{species.max_level}</span>
-              {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· Lure only</span>}
+              <span className="basis-full pl-10 sm:basis-auto sm:pl-0">
+                <span className="hidden sm:inline">&nbsp;· </span>
+                {species.rate_unknown
+                  ? <span aria-label="Unknown encounter rate">???</span>
+                  : species.is_special
+                    ? <span className="font-semibold text-sky-600 dark:text-sky-400">Special</span>
+                  : `${(species.split * 100).toFixed(2)}%`} · {species.tier} · Lv. {species.min_level}–{species.max_level}
+                {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· Lure only</span>}
+              </span>
             </p>
           ))}
           <p className="text-xs text-gray-500 sm:col-span-2">
@@ -86,8 +94,8 @@ export default function HuntSpotCard({
       )}
       <LocationQueueStatus participants={participants} spot={spot} />
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button className="btn btn-secondary w-full whitespace-nowrap text-sm" onClick={() => onQueue(spot, false, targetSpecies)}>Queue</button>
-        <button className="btn btn-primary w-full whitespace-nowrap text-sm" onClick={() => onQueue(spot, true, targetSpecies)}>Hunt now</button>
+        <button className="btn btn-secondary w-full whitespace-nowrap text-sm" onClick={() => onQueue(spot, false, targetSpecies, title)}>Queue</button>
+        <button className="btn btn-primary w-full whitespace-nowrap text-sm" onClick={() => onQueue(spot, true, targetSpecies, title)}>Hunt now</button>
       </div>
     </article>
   );

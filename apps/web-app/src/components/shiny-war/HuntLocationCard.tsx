@@ -9,7 +9,7 @@ type Props = {
   spots: HuntSpot[];
   targetSpecies?: HuntSpecies;
   locationOpen: boolean;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   onSeasonChange?: (season: string) => void;
   onTimeChange?: (time: string) => void;
   onToggle: (spotKey: string) => void;
@@ -72,7 +72,7 @@ export default function HuntLocationCard({
         >
           <span className="block text-xl font-bold text-gray-950 dark:text-white">{firstSpot.location}</span>
           <span className="mt-1 block text-sm font-semibold text-primary-600 dark:text-primary-300">
-            Pokémon available · {firstSpot.region} · {spots.length} encounter {spots.length === 1 ? 'split' : 'splits'}
+            {firstSpot.region} · {spots.length} encounter {spots.length === 1 ? 'split' : 'splits'}
           </span>
         </button>
         <div className="flex shrink-0 items-center gap-2">

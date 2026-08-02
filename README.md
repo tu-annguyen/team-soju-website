@@ -38,6 +38,7 @@ All commands are run from the root of the project:
 | `npm run dev`             | Concurrently starts local dev servers for web, API Worker, and bot Worker |
 | `npm run dev:staging`     | Starts local dev servers with staging Worker configuration            |
 | `npm run dev:api:express` | Starts the legacy Express API locally                                 |
+| `npm run dev:api:local-ocr` | Starts the local Worker API and proxies OCR routes to Express on port 3001 |
 | `npm run test:web`        | Tests frontend web application                                        |
 | `npm run test:api`        | Tests backend API                                                     |
 | `npm run test:api`        | Tests Discord bot

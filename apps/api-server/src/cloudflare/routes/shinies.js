@@ -204,7 +204,7 @@ async function handleShiniesRoutes(context) {
           if (participants.some((entry) => entry.member_id === value.original_trainer)) {
             return json({
               success: false,
-              message: 'An exact UTC capture time is required for Shiny Wars participants.',
+              message: 'An exact capture time and timezone are required for Shiny Wars participants.',
             }, { status: 400 });
           }
         }

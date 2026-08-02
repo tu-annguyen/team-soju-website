@@ -10,9 +10,10 @@ import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
 type Props = {
   apiBaseUrl: string;
+  caughtFamilyKeys?: string[];
   defaultSeason: string;
   participants: ParticipantHunts[];
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
 };
 
 const fieldClasses =
@@ -30,7 +31,9 @@ const encounterMethods = [
   ['Rock Smash', 'Rock Smash'],
 ] as const;
 
-export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, onQueue }: Props) {
+export default function HuntFinder({
+  apiBaseUrl, caughtFamilyKeys = [], defaultSeason, participants, onQueue,
+}: Props) {
   const [filters, setFilters] = useState({
     season: defaultSeason || 'Summer', region: '', location: '', species: '', tier: '', time: '', method: 'All',
     hordeSize: '', hordesPerHour: '240', eventBoost: true, donator: false,
@@ -244,6 +247,7 @@ export default function HuntFinder({ apiBaseUrl, defaultSeason, participants, on
       </p>
       {error && <p role="alert" className="text-rose-600">{error}</p>}
       <HuntResults
+        caughtFamilyKeys={caughtFamilyKeys}
         expanded={expanded}
         participants={participants}
         speciesFilter={filters.species}

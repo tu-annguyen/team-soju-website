@@ -5,7 +5,11 @@ export type Hunt = {
   target_family_key?: string | null;
   label: string;
   details?: Record<string, unknown> & {
-    species?: Array<string | Pick<HuntSpecies, 'name' | 'slug' | 'form'>>;
+    species?: Array<string | (
+      Pick<HuntSpecies, 'name' | 'slug' | 'form'>
+      & Partial<Pick<HuntSpecies, 'family_key'>>
+    )>;
+    spot?: Pick<HuntSpot, 'region' | 'season' | 'time' | 'method' | 'horde_size' | 'is_lure' | 'is_special'>;
   };
   overlap_member_ids?: string[];
 };
@@ -29,10 +33,12 @@ export type HuntSpecies = {
   tier: string;
   points: number;
   split: number;
+  rate_unknown?: boolean;
   form?: string;
   min_level: number;
   max_level: number;
   is_lure?: boolean;
+  is_special?: boolean;
 };
 
 export type HuntSpot = {
@@ -47,6 +53,7 @@ export type HuntSpot = {
   times?: string[];
   horde_size: number;
   is_lure?: boolean;
+  is_special?: boolean;
   denominator: number;
   averagePoints: number;
   encountersPerHour: number | null;
@@ -73,7 +80,7 @@ export type Dashboard = {
   teamTotals: Record<ShinyWarTeam, number>;
   uniqueFamilyCount: number;
   uniqueFamilies: string[];
-  standings: Array<ParticipantHunts & { points: number; catches: number }>;
+  standings: Array<ParticipantHunts & { points: number; catches: number; caughtFamilyKeys: string[] }>;
   recentCatches: Array<{
     id: string;
     pokemon: string;

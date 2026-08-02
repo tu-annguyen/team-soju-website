@@ -384,6 +384,7 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
         shinyData.status || 'Owned',
         shinyData.notes ?? null,
         shinyData.caught_at_utc ?? null,
+        shinyData.catch_timezone ?? null,
       ];
 
       if (dialect === 'd1') {
@@ -392,9 +393,9 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
             id, national_number, pokemon, variants, original_trainer, catch_date, total_encounters,
             species_encounters, encounter_type, location, nature, iv_hp, iv_attack, iv_defense,
             iv_sp_attack, iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes,
-            caught_at_utc
+            caught_at_utc, catch_timezone
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, params)).run();
         return this.findById(id);
       }
@@ -404,10 +405,10 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
           id, national_number, pokemon, variants, original_trainer, catch_date, total_encounters,
           species_encounters, encounter_type, location, nature, iv_hp, iv_attack, iv_defense,
           iv_sp_attack, iv_sp_defense, iv_speed, is_secret, is_alpha, screenshot_url, status, notes,
-          caught_at_utc
+          caught_at_utc, catch_timezone
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
         )
         RETURNING id
       `, params);
@@ -438,7 +439,8 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
               screenshot_url = COALESCE(?, screenshot_url),
               status = CASE WHEN ? THEN ? ELSE status END,
               notes = CASE WHEN ? THEN ? ELSE notes END,
-              caught_at_utc = COALESCE(?, caught_at_utc)
+              caught_at_utc = COALESCE(?, caught_at_utc),
+              catch_timezone = COALESCE(?, catch_timezone)
           WHERE id = ?
         `, [
           shinyData.national_number ?? null,
@@ -465,6 +467,7 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
           Object.prototype.hasOwnProperty.call(shinyData, 'notes') ? 1 : 0,
           shinyData.notes ?? null,
           shinyData.caught_at_utc ?? null,
+          shinyData.catch_timezone ?? null,
           id,
         ])).run();
         return this.findById(id);
@@ -492,7 +495,8 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
             screenshot_url = COALESCE($20, screenshot_url),
             status = CASE WHEN $22 THEN $21 ELSE status END,
             notes = CASE WHEN $24 THEN $23 ELSE notes END,
-            caught_at_utc = COALESCE($25, caught_at_utc)
+            caught_at_utc = COALESCE($25, caught_at_utc),
+            catch_timezone = COALESCE($26, catch_timezone)
         WHERE id = $1
         RETURNING *
       `, [
@@ -521,6 +525,7 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
         shinyData.notes,
         Object.prototype.hasOwnProperty.call(shinyData, 'notes'),
         shinyData.caught_at_utc,
+        shinyData.catch_timezone,
       ]);
       if (!result.rows[0]) return null;
       return this.findById(id);

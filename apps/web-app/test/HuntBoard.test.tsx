@@ -26,17 +26,71 @@ describe('HuntBoard', () => {
     const legacyRows: ParticipantHunts[] = [{
       member_id: 'legacy', ign: 'LegacyHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
       hunts: [
-        { position: 0, spot_key: 'five-horde', label: 'Route 1 · Summer Day · 5x' },
-        { position: 1, spot_key: 'three-horde', label: 'Route 2 · Winter Night · 3× · Lure only' },
-        { position: 2, spot_key: 'current-label', label: 'Route 3 · Any Day · 5× Sweet Scent' },
+        { position: 0, spot_key: 'route-1|Grass|Summer|day|5', label: 'Route 1 · Summer Day · 5x' },
+        { position: 1, spot_key: 'route-2|Dark Grass|Winter|night|3', label: 'Route 2 · Winter Night · 3× · Lure only' },
+        { position: 2, spot_key: 'route-3|Water|Any|day|5', label: 'Route 3 · Any Day · 5× Sweet Scent' },
       ],
     }];
 
     render(<HuntBoard rows={legacyRows} busy={false} onSave={jest.fn()} />);
 
-    expect(screen.getByText('Route 1 · Summer Day · 5x Sweet Scent')).toBeInTheDocument();
-    expect(screen.getByText('Route 2 · Winter Night · 3× Sweet Scent · Lure only')).toBeInTheDocument();
-    expect(screen.getByText('Route 3 · Any Day · 5× Sweet Scent')).toBeInTheDocument();
+    expect(screen.getByText('Route 1 · Summer Day · 5x Sweet Scent Grass')).toBeInTheDocument();
+    expect(screen.getByText('Route 2 · Winter Night · 3× Sweet Scent Dark Grass · Lure only')).toBeInTheDocument();
+    expect(screen.getByText('Route 3 · Any Day · 5× Sweet Scent Water')).toBeInTheDocument();
+  });
+
+  it('shows the queued spot title and the same spot metadata as the finder card', () => {
+    const spotRows: ParticipantHunts[] = [{
+      member_id: 'spot', ign: 'SpotHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
+      hunts: [{
+        position: 0,
+        spot_key: 'sky-pillar',
+        label: 'Sky Pillar · 1F · Sweet Scent Grass',
+        details: {
+          spot: {
+            region: 'Hoenn', season: 'Summer', time: 'day', method: 'Grass', horde_size: 5, is_lure: true,
+          },
+        },
+      }],
+    }];
+
+    render(<HuntBoard rows={spotRows} busy={false} onSave={jest.fn()} />);
+
+    expect(screen.getByText('Sky Pillar · 1F · Sweet Scent Grass')).toBeInTheDocument();
+    expect(screen.getByText('Hoenn · Summer Day · 5× Sweet Scent Grass · Lure only')).toBeInTheDocument();
+  });
+
+  it('separates the player duplicate penalty from the team unique species warning', () => {
+    const duplicateRows: ParticipantHunts[] = [{
+      member_id: 'duplicate', ign: 'DuplicateHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
+      hunts: [{
+        position: 0,
+        spot_key: 'route-7',
+        target_family_key: 'magmar',
+        overlap_member_ids: ['other-hunter'],
+        label: 'Route 7',
+        details: {
+          species: [
+            { name: 'Magmar', slug: 'magmar', family_key: 'magby' },
+            { name: 'Ponyta', slug: 'ponyta' },
+          ],
+        },
+      }],
+    }];
+
+    render(
+      <HuntBoard
+        rows={duplicateRows}
+        playerCaughtFamilyKeys={['Ponyta']}
+        uniqueFamilyKeys={['Magby', 'Ponyta']}
+        busy={false}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Potential duplicate penalty. Already caught: Ponyta.')).toHaveClass('text-orange-600');
+    expect(screen.getByText('Not eligible for unique species bonus: Magmar, Ponyta.')).toHaveClass('text-yellow-500');
+    expect(screen.queryByText('Overlaps another participant’s location or species.')).not.toBeInTheDocument();
   });
 
   it('groups all participants by team in the Team War view', () => {

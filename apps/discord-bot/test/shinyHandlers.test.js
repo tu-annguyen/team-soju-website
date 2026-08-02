@@ -22,6 +22,14 @@ jest.mock('@team-soju/utils', () => ({
   getPokemonEvolutionLine: jest.fn().mockResolvedValue(['charmander', 'charmeleon', 'charizard']),
   getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
   getPokemonVariants: jest.fn(),
+  getDateInTimezone: jest.fn(() => '2026-01-15'),
+  getTimeInTimezone: jest.fn(() => '12:30'),
+  getTimezoneOptions: jest.fn(() => [
+    { value: 'America/Los_Angeles', label: 'America/Los_Angeles (UTC-7)' },
+    { value: 'America/New_York', label: 'America/New_York (UTC-4)' },
+  ]),
+  normalizeTimezoneInput: jest.fn(value => String(value || '').replace(/\s+\(UTC[^)]*\)$/, '')),
+  zonedLocalDateTimeToUtc: jest.fn((value, timezone) => `${value}[${timezone}]`),
 }));
 
 const fetchClient = require('../src/fetchClient');
@@ -37,6 +45,7 @@ const {
   handleGetShinies,
   handleGetMyShinies,
   handlePokemonAutocomplete,
+  handleShinyAutocomplete,
   handleShinyComponent,
   handleShinyEditModal,
 } = require('../src/handlers/shinyHandlers');
@@ -110,6 +119,22 @@ describe('shinyHandlers', () => {
       { name: 'Charmander', value: 'charmander' },
       { name: 'Charmeleon', value: 'charmeleon' },
       { name: 'Chimchar', value: 'chimchar' },
+    ]);
+  });
+
+  it('returns filtered timezone autocomplete suggestions', async () => {
+    const interaction = createMockInteraction({
+      isChatInputCommand: jest.fn().mockReturnValue(false),
+      isAutocomplete: jest.fn().mockReturnValue(true),
+      respondAutocomplete: jest.fn().mockResolvedValue(undefined),
+    });
+    interaction.options.getFocused = jest.fn().mockReturnValue('los');
+    interaction.options.getFocusedOption = jest.fn().mockReturnValue({ name: 'timezone' });
+
+    await handleShinyAutocomplete(interaction);
+
+    expect(interaction.respondAutocomplete).toHaveBeenCalledWith([
+      { name: 'America/Los_Angeles (UTC-7)', value: 'America/Los_Angeles' },
     ]);
   });
 
@@ -249,6 +274,8 @@ describe('shinyHandlers', () => {
           expect.objectContaining({
             components: expect.arrayContaining([
               expect.objectContaining({ custom_id: 'sh:tm:catch_date:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:tm:catch_time:selected-id' }),
+              expect.objectContaining({ custom_id: 'sh:tm:timezone:selected-id' }),
               expect.objectContaining({ custom_id: 'sh:tm:encounters:selected-id' }),
               expect.objectContaining({ custom_id: 'sh:tm:ivs:selected-id' }),
             ]),
@@ -366,6 +393,50 @@ describe('shinyHandlers', () => {
     expect(modal.title).toBe('Advanced Text Fields');
     expect(modal.components).toHaveLength(1);
     expect(modal.components[0].components[0].custom_id).toBe('catch_date');
+  });
+
+  it('opens a populated local catch time modal from Edit', async () => {
+    const interaction = createMockInteraction({
+      customId: 'sh:tm:catch_time:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      showModal: jest.fn().mockResolvedValue(undefined),
+    });
+    fetchClient.get.mockResolvedValue({
+      data: { data: {
+        id: 'selected-id', pokemon: 'ponyta', trainer_name: 'T1', catch_date: '2026-08-01',
+        caught_at_utc: '2026-07-31T19:06:00.000Z', catch_timezone: 'Australia/Melbourne',
+      } },
+    });
+
+    await handleShinyComponent(interaction);
+
+    const modal = interaction.showModal.mock.calls[0][0].toJSON();
+    expect(modal.title).toBe('Edit Catch Time');
+    expect(modal.components[0].components[0]).toEqual(expect.objectContaining({
+      custom_id: 'catch_time', value: '12:30',
+    }));
+  });
+
+  it('displays catch time and timezone when a timestamp is available', async () => {
+    const interaction = createMockInteraction({ options: { id: 'selected-id' } });
+    fetchClient.get.mockResolvedValue({
+      data: { data: {
+        id: 'selected-id', pokemon: 'ponyta', pokemon_name: 'Ponyta', national_number: 77,
+        trainer_name: 'T1', catch_date: '2026-08-01',
+        caught_at_utc: '2026-07-31T19:06:00.000Z', catch_timezone: 'Australia/Melbourne',
+      } },
+    });
+
+    await handleGetShiny(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({
+      embeds: [expect.objectContaining({ data: expect.objectContaining({
+        fields: expect.arrayContaining([
+          expect.objectContaining({ name: 'Catch Time', value: '12:30' }),
+          expect.objectContaining({ name: 'Timezone', value: 'Australia/Melbourne' }),
+        ]),
+      }) })],
+    }));
   });
 
   it('opens the encounter type picker from the edit controls', async () => {
@@ -702,6 +773,32 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('recalculates the UTC catch timestamp when timezone is edited', async () => {
+    const interaction = createMockInteraction({
+      customId: 'shm:advanced:timezone:selected-id',
+      fields: { getTextInputValue: jest.fn(() => 'Australia/Melbourne (UTC+10)') },
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+    });
+    const shiny = {
+      id: 'selected-id', pokemon: 'ponyta', pokemon_name: 'Ponyta', national_number: 77,
+      trainer_name: 'T1', catch_date: '2026-08-01',
+      caught_at_utc: '2026-08-01T12:30:00.000Z', catch_timezone: 'UTC',
+    };
+    fetchClient.get.mockResolvedValue({ data: { data: shiny } });
+    fetchClient.put.mockResolvedValue({ data: { data: shiny } });
+
+    await handleShinyEditModal(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({
+        caught_at_utc: '2026-08-01T12:30:00[Australia/Melbourne]',
+        catch_timezone: 'Australia/Melbourne',
+      }),
+      expect.any(Object)
+    );
+  });
+
   it('updates the shiny variant from the post-add dropdown', async () => {
     const interaction = createMockInteraction({
       customId: 'sh:r:v:a:_:1:10:selected-id',
@@ -798,9 +895,11 @@ describe('shinyHandlers', () => {
         pokemon: 'dratini',
         encounter_type: '5x Horde',
         catch_date: '2026-01-15',
+        catch_time: '20:30',
         status: 'Bred',
         secret: false,
         alpha: false,
+        timezone: 'America/Los_Angeles (UTC-7)',
         total_encounters: 1000,
         species_encounters: 100,
         nature: 'Bold',
@@ -835,6 +934,14 @@ describe('shinyHandlers', () => {
     });
 
     await handleAddShiny(interaction);
+
+    expect(fetchClient.post).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies'),
+      expect.objectContaining({
+        caught_at_utc: '2026-01-15T20:30:00[America/Los_Angeles]',
+      }),
+      expect.any(Object)
+    );
 
     expect(fetchClient.post).toHaveBeenCalledWith(
       expect.stringContaining('/shinies'),
@@ -937,6 +1044,7 @@ describe('shinyHandlers', () => {
         encounter_type: '5x Horde',
         secret: false,
         alpha: false,
+        timezone: 'America/Los_Angeles (UTC-7)',
       },
     });
 
@@ -959,6 +1067,7 @@ describe('shinyHandlers', () => {
         discord_application_id: 'app-123',
         discord_interaction_token: 'interaction-token',
         callback_url: 'https://example.com/internal/screenshot-result',
+        timezone: 'America/Los_Angeles',
       }),
       expect.any(Object)
     );

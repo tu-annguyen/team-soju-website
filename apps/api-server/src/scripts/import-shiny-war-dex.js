@@ -65,6 +65,16 @@ function isLureEncounter(rawLocation) {
   );
 }
 
+function isSpecialEncounter(rawLocation) {
+  return Boolean(
+    rawLocation.is_special
+    || rawLocation.special
+    || ['rarity_morning', 'rarity_day', 'rarity_night'].some(
+      (field) => /^special$/i.test(cleanText(rawLocation[field]))
+    )
+  );
+}
+
 function speciesSlug(value) {
   return cleanText(value)
     .toLowerCase()
@@ -206,6 +216,10 @@ function normalizePokedex(monsters) {
       });
 
       if (hordeSize && tier === 'Unknown') unknownHordeTiers.add(slug);
+      const hasUnknownIllusionRate = hordeSize > 0
+        && slug === 'zorua'
+        && isLureEncounter(rawLocation);
+      const isSpecial = hordeSize === 0 && isSpecialEncounter(rawLocation);
       const encounter = {
         speciesId: Number(monster.id),
         form: cleanText(rawLocation.form),
@@ -215,14 +229,19 @@ function normalizePokedex(monsters) {
         minLevel: Number(rawLocation.min_level) || 0,
         maxLevel: Number(rawLocation.max_level) || 0,
         hordeSize,
-        isLure: isLureEncounter(rawLocation),
-        morningRate: parseRate(rawLocation.rarity_morning),
-        dayRate: parseRate(rawLocation.rarity_day),
-        nightRate: parseRate(rawLocation.rarity_night),
+        // Lures only modify single encounters. Some source rows (notably Zorua,
+        // whose Illusion ability makes it appear as another horde member) are
+        // labeled "Lure only" even though they belong to Sweet Scent hordes.
+        isLure: !isSpecial && hordeSize === 0 && isLureEncounter(rawLocation),
+        isSpecial,
+        morningRate: hasUnknownIllusionRate ? null : parseRate(rawLocation.rarity_morning),
+        dayRate: hasUnknownIllusionRate ? null : parseRate(rawLocation.rarity_day),
+        nightRate: hasUnknownIllusionRate ? null : parseRate(rawLocation.rarity_night),
       };
       const keyParts = [
         encounter.speciesId, encounter.form, encounter.locationId, encounter.method,
-        encounter.season, encounter.minLevel, encounter.maxLevel, encounter.hordeSize, encounter.isLure,
+        encounter.season, encounter.minLevel, encounter.maxLevel, encounter.hordeSize,
+        encounter.isLure, encounter.isSpecial,
       ];
       const id = deterministicId(keyParts);
       const existing = encounters.get(id);
@@ -263,9 +282,10 @@ function toSql(data) {
     ].map(sqlValue).join(',')});`
   ));
   data.encounters.forEach((row) => lines.push(
-    `INSERT INTO pokedex_encounters (id,species_id,form,location_id,method,season,min_level,max_level,horde_size,is_lure,morning_rate,day_rate,night_rate) VALUES (${[
+    `INSERT INTO pokedex_encounters (id,species_id,form,location_id,method,season,min_level,max_level,horde_size,is_lure,is_special,morning_rate,day_rate,night_rate) VALUES (${[
       row.id, row.speciesId, row.form, row.locationId, row.method, row.season,
       row.minLevel, row.maxLevel, row.hordeSize, row.isLure ? 1 : 0,
+      row.isSpecial ? 1 : 0,
       row.morningRate, row.dayRate, row.nightRate,
     ].map(sqlValue).join(',')});`
   ));
@@ -315,6 +335,7 @@ if (require.main === module) {
 module.exports = {
   cleanMethod,
   isLureEncounter,
+  isSpecialEncounter,
   normalizePokedex,
   parseRate,
   speciesSlug,

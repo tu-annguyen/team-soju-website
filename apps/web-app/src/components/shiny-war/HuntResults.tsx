@@ -3,17 +3,18 @@ import { groupHuntSpotsByPokemon } from './huntGroups';
 import HuntLocationCard from './HuntLocationCard';
 import SpeciesSpriteName from './SpeciesSpriteName';
 import { groupHuntSpotsByLocation } from './huntLocationGroups';
-import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
+import type { HuntSpecies, HuntSpot, ParticipantHunts, PokemonHuntGroup } from './types';
 
 export type HuntView = 'location' | 'pokemon';
 
 type Props = {
+  caughtFamilyKeys?: string[];
   expanded: ReadonlySet<string>;
   participants: ParticipantHunts[];
   speciesFilter: string;
   spots: HuntSpot[];
   view: HuntView;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies) => void;
+  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   onToggle: (spotKey: string) => void;
   selectedSeason?: string;
   selectedTime?: string;
@@ -24,10 +25,11 @@ type Props = {
 };
 
 export default function HuntResults({
-  expanded, participants, speciesFilter, spots, view, onQueue, onToggle,
+  caughtFamilyKeys = [], expanded, participants, speciesFilter, spots, view, onQueue, onToggle,
   selectedSeason, selectedTime, onSeasonChange, onTimeChange,
   collapsedLocations, onToggleLocation,
 }: Props) {
+  const caughtFamilyKeySet = new Set(caughtFamilyKeys.map(normalizeSpeciesKey));
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
   const toggleLocation = onToggleLocation || ((locationKey: string) => {
@@ -39,7 +41,10 @@ export default function HuntResults({
     });
   });
   if (view === 'location') {
-    const locationGroups = groupHuntSpotsByLocation(spots);
+    const locationGroups = prioritizeUncaught(
+      groupHuntSpotsByLocation(spots),
+      (group) => hasCaughtSpecies(group.spots, caughtFamilyKeySet),
+    );
     return (
       <div className="space-y-3">
         {locationGroups.map((group) => (
@@ -62,7 +67,10 @@ export default function HuntResults({
     );
   }
 
-  const groups = groupHuntSpotsByPokemon(spots, speciesFilter);
+  const groups = prioritizePokemonGroups(
+    groupHuntSpotsByPokemon(spots, speciesFilter),
+    caughtFamilyKeySet,
+  );
 
   return (
     <div className="space-y-4">
@@ -89,7 +97,10 @@ export default function HuntResults({
             </p>
           </div>
           <div className="space-y-3">
-            {groupHuntSpotsByLocation(speciesSpots).map((group) => (
+            {prioritizeUncaught(
+              groupHuntSpotsByLocation(speciesSpots),
+              (group) => hasCaughtSpecies(group.spots, caughtFamilyKeySet),
+            ).map((group) => (
               <HuntLocationCard
                 expanded={expanded}
                 key={`${species.slug}-${species.form}-${group.key}`}
@@ -111,4 +122,55 @@ export default function HuntResults({
       ))}
     </div>
   );
+}
+
+const normalizeSpeciesKey = (value: string) => value.trim().toLowerCase().replace(/[ .]+/g, '-');
+
+function hasCaughtSpecies(spots: HuntSpot[], caughtFamilyKeys: ReadonlySet<string>) {
+  return spots.some((spot) => spot.composition.some(
+    (species) => caughtFamilyKeys.has(normalizeSpeciesKey(species.family_key)),
+  ));
+}
+
+function prioritizePokemonGroups(
+  groups: PokemonHuntGroup[],
+  caughtFamilyKeys: ReadonlySet<string>,
+) {
+  return [...groups].sort((left, right) => {
+    const leftCaught = caughtFamilyKeys.has(normalizeSpeciesKey(left.species.family_key));
+    const rightCaught = caughtFamilyKeys.has(normalizeSpeciesKey(right.species.family_key));
+    if (leftCaught !== rightCaught) return leftCaught ? 1 : -1;
+
+    const leftRate = bestPrioritizedRate(left, caughtFamilyKeys, leftCaught);
+    const rightRate = bestPrioritizedRate(right, caughtFamilyKeys, rightCaught);
+    if (leftRate !== null || rightRate !== null) {
+      if (leftRate === null) return 1;
+      if (rightRate === null) return -1;
+      if (leftRate !== rightRate) return rightRate - leftRate;
+    }
+
+    return right.species.points - left.species.points
+      || left.species.name.localeCompare(right.species.name);
+  });
+}
+
+function bestPrioritizedRate(
+  group: PokemonHuntGroup,
+  caughtFamilyKeys: ReadonlySet<string>,
+  targetCaught: boolean,
+) {
+  const locationGroups = groupHuntSpotsByLocation(group.spots);
+  const prioritizedSpots = targetCaught
+    ? group.spots
+    : locationGroups
+      .filter((locationGroup) => !hasCaughtSpecies(locationGroup.spots, caughtFamilyKeys))
+      .flatMap((locationGroup) => locationGroup.spots);
+  const rates = prioritizedSpots.flatMap(
+    (spot) => spot.pointsPerHour === null ? [] : [spot.pointsPerHour],
+  );
+  return rates.length ? Math.max(...rates) : null;
+}
+
+function prioritizeUncaught<T>(items: T[], isCaught: (item: T) => boolean) {
+  return [...items.filter((item) => !isCaught(item)), ...items.filter(isCaught)];
 }
