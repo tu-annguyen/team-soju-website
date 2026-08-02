@@ -78,7 +78,7 @@ export type Dashboard = {
   teamTotals: Record<ShinyWarTeam, number>;
   uniqueFamilyCount: number;
   uniqueFamilies: string[];
-  standings: Array<ParticipantHunts & { points: number; catches: number }>;
+  standings: Array<ParticipantHunts & { points: number; catches: number; caughtFamilyKeys: string[] }>;
   recentCatches: Array<{
     id: string;
     pokemon: string;

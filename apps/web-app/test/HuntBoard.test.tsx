@@ -60,13 +60,14 @@ describe('HuntBoard', () => {
     expect(screen.getByText('Hoenn · Summer Day · 5× Sweet Scent Grass · Lure only')).toBeInTheDocument();
   });
 
-  it('warns in orange when any species in a hunt has already been caught', () => {
+  it('separates the player duplicate penalty from the team unique species warning', () => {
     const duplicateRows: ParticipantHunts[] = [{
       member_id: 'duplicate', ign: 'DuplicateHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
       hunts: [{
         position: 0,
         spot_key: 'route-7',
         target_family_key: 'magmar',
+        overlap_member_ids: ['other-hunter'],
         label: 'Route 7',
         details: {
           species: [
@@ -77,9 +78,19 @@ describe('HuntBoard', () => {
       }],
     }];
 
-    render(<HuntBoard rows={duplicateRows} caughtFamilyKeys={['Ponyta']} busy={false} onSave={jest.fn()} />);
+    render(
+      <HuntBoard
+        rows={duplicateRows}
+        playerCaughtFamilyKeys={['Ponyta']}
+        uniqueFamilyKeys={['Magby', 'Ponyta']}
+        busy={false}
+        onSave={jest.fn()}
+      />
+    );
 
-    expect(screen.getByText('Already caught: Ponyta.')).toHaveClass('text-orange-600');
+    expect(screen.getByText('Potential duplicate penalty. Already caught: Ponyta.')).toHaveClass('text-orange-600');
+    expect(screen.getByText('Not eligible for unique species bonus: Magmar, Ponyta.')).toHaveClass('text-yellow-500');
+    expect(screen.queryByText('Overlaps another participant’s location or species.')).not.toBeInTheDocument();
   });
 
   it('groups all participants by team in the Team War view', () => {

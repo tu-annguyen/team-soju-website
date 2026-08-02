@@ -172,6 +172,8 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(dashboard.teamTotal).toBe(68);
     expect(dashboard.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
     expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(38);
+    expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').caughtFamilyKeys)
+      .toEqual(['vulpix']);
     expect(dashboard.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);
     expect(dashboard.recentCatches.find((entry) => entry.member_id === 'bidoof-extra'))
       .toMatchObject({ team: 'bidoof', is_official: false });

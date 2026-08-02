@@ -400,6 +400,9 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         points: teamScoring[participant.team].participantTotals[participant.member_id] || 0,
         catches: teamScoring[participant.team].catches
           .filter((entry) => entry.original_trainer === participant.member_id).length,
+        caughtFamilyKeys: [...new Set(teamScoring[participant.team].catches
+          .filter((entry) => entry.original_trainer === participant.member_id)
+          .map((entry) => entry.family_key))],
       })).sort((a, b) => b.points - a.points || a.ign.localeCompare(b.ign)),
       recentCatches,
     };

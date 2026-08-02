@@ -20,6 +20,8 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
   const [busy, setBusy] = useState(false);
   const canManage = hasPermission(authUser, 'shiny_war:manage');
   const ownMemberId = authUser?.membership?.id;
+  const ownCaughtFamilyKeys = dashboard?.standings
+    .find((participant) => participant.member_id === ownMemberId)?.caughtFamilyKeys || [];
 
   const refresh = useCallback(async () => {
     try {
@@ -135,7 +137,8 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
         {tab === 'hunts' && (
           <HuntBoard
             rows={hunts}
-            caughtFamilyKeys={dashboard.uniqueFamilies}
+            playerCaughtFamilyKeys={ownCaughtFamilyKeys}
+            uniqueFamilyKeys={dashboard.uniqueFamilies}
             ownMemberId={ownMemberId}
             busy={busy}
             onSave={saveQueue}
