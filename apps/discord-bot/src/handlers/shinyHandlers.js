@@ -1307,7 +1307,7 @@ async function handleAddShiny(interaction) {
   const pokemon = interaction.options.getString('pokemon');
   const timezone = getTimezoneOption(interaction);
   const catchDate = interaction.options.getString('catch_date') || getDateInTimezone(new Date(), timezone);
-  const catchTime = interaction.options.getString('catch_time');
+  const catchTime = interaction.options.getString('catch_time') || getTimeInTimezone(new Date(), timezone);
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
   const status = interaction.options.getString('status') || 'Owned';
   const isSecret = interaction.options.getBoolean('secret') || false;

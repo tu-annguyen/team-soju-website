@@ -20,6 +20,8 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
   const [busy, setBusy] = useState(false);
   const canManage = hasPermission(authUser, 'shiny_war:manage');
   const ownMemberId = authUser?.membership?.id;
+  const ownCaughtFamilyKeys = dashboard?.standings
+    .find((participant) => participant.member_id === ownMemberId)?.caughtFamilyKeys || [];
 
   const refresh = useCallback(async () => {
     try {
@@ -76,6 +78,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
           method: spot.method,
           horde_size: spot.horde_size,
           is_lure: spot.is_lure,
+          is_special: spot.is_special,
         },
       },
     };
@@ -135,7 +138,8 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
         {tab === 'hunts' && (
           <HuntBoard
             rows={hunts}
-            caughtFamilyKeys={dashboard.uniqueFamilies}
+            playerCaughtFamilyKeys={ownCaughtFamilyKeys}
+            uniqueFamilyKeys={dashboard.uniqueFamilies}
             ownMemberId={ownMemberId}
             busy={busy}
             onSave={saveQueue}
@@ -144,6 +148,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
         {tab === 'finder' && (
           <HuntFinder
             apiBaseUrl={apiBaseUrl}
+            caughtFamilyKeys={ownCaughtFamilyKeys}
             defaultSeason={dashboard.currentSeason || 'Summer'}
             participants={hunts}
             onQueue={queueSpot}

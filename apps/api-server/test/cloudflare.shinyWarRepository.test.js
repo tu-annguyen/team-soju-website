@@ -172,6 +172,8 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(dashboard.teamTotal).toBe(68);
     expect(dashboard.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
     expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(38);
+    expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').caughtFamilyKeys)
+      .toEqual(['vulpix']);
     expect(dashboard.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);
     expect(dashboard.recentCatches.find((entry) => entry.member_id === 'bidoof-extra'))
       .toMatchObject({ team: 'bidoof', is_official: false });
@@ -212,6 +214,43 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].composition.map((entry) => entry.split)).toEqual([0.5, 0.5]);
     expect(result.items[0].averagePoints).toBe(17.5);
     expect(result.items[0].pointsPerHour).toBe(0.7);
+  });
+
+  it('keeps Zorua in Sweet Scent compositions without labeling it as lure-only', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1',
+      parameter: () => '?',
+      runCommand: jest.fn(),
+      runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '4:1', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 3, is_lure: 0,
+          species_name: 'Heracross', slug: 'heracross', family_key: 'heracross',
+          tier: 'Tier 3', points: 30, form: '', min_level: 20, max_level: 21,
+          morning_rate: 2, day_rate: 2, night_rate: 2,
+        },
+        {
+          location_id: '4:1', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 3, is_lure: 1,
+          species_name: 'Zorua', slug: 'zorua', family_key: 'zorua',
+          tier: 'Tier 2', points: 40, form: '', min_level: 20, max_level: 21,
+          morning_rate: null, day_rate: null, night_rate: null,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].is_lure).toBe(false);
+    expect(result.items[0].composition).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'Zorua', is_lure: false, rate_unknown: true, split: 0,
+      }),
+    ]));
   });
 
   it('filters horde locations by species without changing their composition', async () => {
@@ -373,6 +412,129 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].encountersPerHour).toBe(300);
     expect(runSelect.mock.calls[0][0]).toContain('e.horde_size = 0');
     expect(runSelect.mock.calls[0][1]).not.toContain(5);
+  });
+
+  it('labels Special encounters and excludes them from points-per-hour calculations', async () => {
+    const runSelect = jest.fn().mockResolvedValue([
+      {
+        location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
+        method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 0,
+        species_name: 'Drilbur', slug: 'drilbur', family_key: 'drilbur',
+        tier: 'Tier 1', points: 45, form: '', min_level: 36, max_level: 41,
+        morning_rate: null, day_rate: null, night_rate: null,
+      },
+      {
+        location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
+        method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 0,
+        species_name: 'Boldore', slug: 'boldore', family_key: 'roggenrola',
+        tier: 'Tier 7', points: 3, form: '', min_level: 36, max_level: 41,
+        morning_rate: 100, day_rate: 100, night_rate: 100,
+      },
+    ]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', season: 'Summer', time: 'day', profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({ is_lure: false, is_special: true });
+    expect(result.items[0].pointsPerHour).toBeCloseTo(0.03);
+    expect(result.items[0].composition).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Drilbur', is_lure: false, is_special: true, split: 0 }),
+      expect.objectContaining({ name: 'Boldore', is_special: false, split: 1 }),
+    ]));
+  });
+
+  it('separates legacy rustling-grass Special encounters from real Unova lures', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '4:2', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Grass', season: 'Summer', horde_size: 0, is_lure: 0, is_special: 0,
+          species_name: 'Emolga', slug: 'emolga', family_key: 'emolga',
+          tier: 'Tier 1', points: 45, form: '', min_level: 24, max_level: 26,
+          morning_rate: null, day_rate: null, night_rate: null,
+        },
+        {
+          location_id: '4:2', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Grass', season: 'Any', horde_size: 0, is_lure: 1, is_special: 0,
+          species_name: 'Servine', slug: 'servine', family_key: 'snivy',
+          tier: 'Tier 0', points: 50, form: '', min_level: 27, max_level: 27,
+          morning_rate: 5, day_rate: 5, night_rate: 5,
+        },
+        {
+          location_id: '4:2', location_name: 'Lostlorn Forest', region: 'Unova',
+          method: 'Grass', season: 'Summer', horde_size: 0, is_lure: 0, is_special: 0,
+          species_name: 'Cottonee', slug: 'cottonee', family_key: 'cottonee',
+          tier: 'Tier 5', points: 10, form: '', min_level: 22, max_level: 24,
+          morning_rate: 10, day_rate: 10, night_rate: 10,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', season: 'Summer', time: 'day', profile: { eventBoost: false },
+    });
+    const emolga = result.items[0].composition.find((entry) => entry.name === 'Emolga');
+    const servine = result.items[0].composition.find((entry) => entry.name === 'Servine');
+
+    expect(result.items[0]).toMatchObject({ is_special: true, is_lure: true });
+    expect(emolga).toMatchObject({ is_special: true, is_lure: false, split: 0 });
+    expect(servine).toMatchObject({ is_special: false, is_lure: true });
+  });
+
+  it('recognizes legacy Feebas rows as Special without a migrated flag', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([{
+        location_id: '1:1', location_name: 'Route 119', region: 'Hoenn',
+        method: 'Super Rod', season: 'Any', horde_size: 0, is_lure: 1, is_special: 0,
+        species_name: 'Feebas', slug: 'feebas', family_key: 'feebas',
+        tier: 'Tier 2', points: 40, form: '', min_level: 20, max_level: 25,
+        morning_rate: 5, day_rate: 5, night_rate: 5,
+      }]),
+    });
+
+    const result = await repository.listHordeSpots({ method: 'Fishing', time: 'day' });
+
+    expect(result.items[0]).toMatchObject({ is_special: true, is_lure: false, pointsPerHour: 0 });
+    expect(result.items[0].composition[0]).toMatchObject({
+      name: 'Feebas', is_special: true, is_lure: false, split: 0,
+    });
+  });
+
+  it('keeps a useful average for Special-only spots while reporting zero points per hour', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
+          method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 1,
+          species_name: 'Drilbur', slug: 'drilbur', family_key: 'drilbur',
+          tier: 'Tier 1', points: 45, form: '', min_level: 36, max_level: 41,
+          morning_rate: null, day_rate: null, night_rate: null,
+        },
+        {
+          location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
+          method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 1,
+          species_name: 'Lucario', slug: 'lucario', family_key: 'riolu',
+          tier: 'Tier 0', points: 50, form: '', min_level: 36, max_level: 41,
+          morning_rate: null, day_rate: null, night_rate: null,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', season: 'Summer', time: 'day', profile: { eventBoost: false },
+    });
+
+    expect(result.items[0].averagePoints).toBe(47.5);
+    expect(result.items[0].pointsPerHour).toBe(0);
+    expect(result.items[0].composition.every((entry) => entry.split === 0)).toBe(true);
   });
 
   it('includes legacy Any-season Lure encounters such as Togetic in every season', async () => {
