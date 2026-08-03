@@ -112,7 +112,7 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
         <div className="mb-7">
           <p className="text-sm font-semibold uppercase tracking-widest text-primary-600">Team Soju internal tool</p>
           <h1 className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">Shiny Wars 2026 Organizer</h1>
-          <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-300">
+          <p className="mt-2 text-gray-600 dark:text-gray-300">
             Coordinate hunts, compare wild encounter value, and follow catches submitted through the Discord bot.{' '} 
             <a href="https://pokemmo.com/en/shiny_wars/2026/" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300" target="_blank" rel="noopener noreferrer">
               The official leaderboard
