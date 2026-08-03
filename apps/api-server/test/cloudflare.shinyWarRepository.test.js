@@ -111,26 +111,24 @@ describe('Shiny War roster limits', () => {
     member_id: `member-${index}`, team, is_official: isOfficial,
   });
 
-  it('allows three non-official additions after each team reaches 15 official members', () => {
+  it('allows unlimited non-official participants on either internal team', () => {
     const participants = [
       ...Array.from({ length: 15 }, (_, index) => participant(index, 'bidoof', true)),
       ...Array.from({ length: 15 }, (_, index) => participant(index + 15, 'arceus', true)),
-      ...Array.from({ length: 2 }, (_, index) => participant(index + 30, 'bidoof', false)),
+      ...Array.from({ length: 100 }, (_, index) => participant(index + 30, 'bidoof', false)),
     ];
 
-    expect(participantLimitError(participants, 'bidoof', false)).toBeNull();
-    expect(participantLimitError(participants, 'bidoof', true))
+    expect(participantLimitError(participants, false)).toBeNull();
+    expect(participantLimitError(participants, true))
       .toBe('The official roster is limited to 30 participants.');
   });
 
-  it('caps each internal team at 18 participants', () => {
-    const participants = Array.from(
-      { length: 18 },
-      (_, index) => participant(index, 'arceus', index < 15)
-    );
+  it('allows all 30 official participants to be assigned to one internal team', () => {
+    const participants = Array.from({ length: 29 }, (_, index) => participant(index, 'arceus', true));
 
-    expect(participantLimitError(participants, 'arceus', false))
-      .toBe('Each team-war roster is limited to 18 participants.');
+    expect(participantLimitError(participants, true)).toBeNull();
+    expect(participantLimitError([...participants, participant(29, 'arceus', true)], true))
+      .toBe('The official roster is limited to 30 participants.');
   });
 });
 
