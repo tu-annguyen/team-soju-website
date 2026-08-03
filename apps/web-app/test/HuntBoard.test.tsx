@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import HuntBoard from '../src/components/shiny-war/HuntBoard';
 import type { ParticipantHunts } from '../src/components/shiny-war/types';
 
@@ -61,26 +61,37 @@ describe('HuntBoard', () => {
   });
 
   it('separates the player duplicate penalty from the team unique species warning', () => {
+    const duplicateHunt = {
+      position: 0,
+      spot_key: 'route-7',
+      target_family_key: 'magmar',
+      overlap_member_ids: ['other-hunter'],
+      label: 'Route 7',
+      details: {
+        species: [
+          { name: 'Magmar', slug: 'magmar', family_key: 'magby' },
+          { name: 'Ponyta', slug: 'ponyta' },
+        ],
+      },
+    };
     const duplicateRows: ParticipantHunts[] = [{
-      member_id: 'duplicate', ign: 'DuplicateHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
+      member_id: 'own', ign: 'DuplicateHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: true,
       hunts: [{
-        position: 0,
-        spot_key: 'route-7',
-        target_family_key: 'magmar',
-        overlap_member_ids: ['other-hunter'],
-        label: 'Route 7',
-        details: {
-          species: [
-            { name: 'Magmar', slug: 'magmar', family_key: 'magby' },
-            { name: 'Ponyta', slug: 'ponyta' },
-          ],
-        },
+        ...duplicateHunt,
+        id: 'own-hunt',
+      }],
+    }, {
+      member_id: 'other', ign: 'OtherHunter', rank: 'Member', has_app_user: true, team: 'arceus', is_official: true,
+      hunts: [{
+        ...duplicateHunt,
+        id: 'other-hunt',
       }],
     }];
 
     render(
       <HuntBoard
         rows={duplicateRows}
+        ownMemberId="own"
         playerCaughtFamilyKeys={['Ponyta']}
         uniqueFamilyKeys={['Magby', 'Ponyta']}
         busy={false}
@@ -88,8 +99,14 @@ describe('HuntBoard', () => {
       />
     );
 
-    expect(screen.getByText('Potential duplicate penalty. Already caught: Ponyta.')).toHaveClass('text-orange-600');
-    expect(screen.getByText('Not eligible for unique species bonus: Magmar, Ponyta.')).toHaveClass('text-yellow-500');
+    const ownCard = screen.getByRole('heading', { name: 'DuplicateHunter' }).closest('section');
+    const otherCard = screen.getByRole('heading', { name: 'OtherHunter' }).closest('section');
+
+    expect(ownCard).not.toBeNull();
+    expect(otherCard).not.toBeNull();
+    expect(within(ownCard!).getByText('Potential duplicate penalty. Already caught: Ponyta.')).toHaveClass('text-orange-600');
+    expect(within(otherCard!).queryByText('Potential duplicate penalty. Already caught: Ponyta.')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Not eligible for unique species bonus: Magmar, Ponyta.')).toHaveLength(2);
     expect(screen.queryByText('Overlaps another participant’s location or species.')).not.toBeInTheDocument();
   });
 

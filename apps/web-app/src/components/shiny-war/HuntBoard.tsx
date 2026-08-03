@@ -112,7 +112,7 @@ function HuntCard({ busy, isOwn, playerCaughtFamilyKeys, row, uniqueFamilyKeys, 
                     : hunt.target_family_key}.
                 </p>
               ) : null}
-              {playerDuplicates.length > 0 || playerCaughtTarget ? (
+              {isOwn && (playerDuplicates.length > 0 || playerCaughtTarget) ? (
                 <p className="mt-1 text-xs font-medium text-orange-600 dark:text-orange-400">
                   Potential duplicate penalty. Already caught: {playerDuplicates.length > 0
                     ? playerDuplicates.join(', ')
