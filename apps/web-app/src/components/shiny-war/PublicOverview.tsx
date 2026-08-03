@@ -34,7 +34,10 @@ export default function PublicOverview({ apiBaseUrl, showLoginPrompt = false }: 
           <p className="text-sm font-semibold uppercase tracking-widest text-primary-600">Team Soju event</p>
           <h1 className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">Shiny Wars 2026</h1>
           <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-300">
-            Follow Team Soju's points, participant standings, species coverage, and latest catches.
+            Follow Team Soju's points, participant standings, species coverage, and latest catches.{' '} 
+            <a href="https://pokemmo.com/en/shiny_wars/2026/" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300" target="_blank" rel="noopener noreferrer">
+              The official leaderboard
+            </a> remains authoritative.
           </p>
         </div>
         {showLoginPrompt && (
