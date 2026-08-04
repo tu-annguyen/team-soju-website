@@ -93,7 +93,7 @@ describe('HuntBoard', () => {
         rows={duplicateRows}
         ownMemberId="own"
         playerCaughtFamilyKeys={['Ponyta']}
-        uniqueFamilyKeys={['Magby', 'Ponyta']}
+        officialUniqueFamilyKeys={['Magby', 'Ponyta']}
         busy={false}
         onSave={jest.fn()}
       />
@@ -110,7 +110,7 @@ describe('HuntBoard', () => {
     expect(screen.queryByText('Overlaps another participant’s location or species.')).not.toBeInTheDocument();
   });
 
-  it('groups all participants by team in the Team War view', () => {
+  it('hides the opposing team in the Team War view', () => {
     const teamRows: ParticipantHunts[] = [
       ...rows,
       { member_id: 'extra', ign: 'ExtraHunter', rank: 'Member', has_app_user: true, team: 'bidoof', is_official: false, hunts: [] },
@@ -120,8 +120,8 @@ describe('HuntBoard', () => {
     expect(screen.queryByText('ExtraHunter')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Team War' }));
 
-    expect(screen.getByText('ExtraHunter')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Team Bidoof' })).toBeInTheDocument();
+    expect(screen.queryByText('ExtraHunter')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Team Bidoof' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Team Arceus' })).toBeInTheDocument();
   });
 });

@@ -32,25 +32,32 @@ async function memberAuth(context) {
 
 function toPublicDashboard(dashboard) {
   if (!dashboard) return null;
+  const publicCatch = (entry) => ({
+    pokemon: entry.pokemon,
+    ign: entry.ign,
+    team: entry.team,
+    caught_at_utc: entry.caught_at_utc,
+    score: {
+      base: entry.score.base,
+      secretBonus: entry.score.secretBonus,
+      safariBonus: entry.score.safariBonus,
+      uniqueBonus: entry.score.uniqueBonus,
+      total: entry.score.total,
+    },
+  });
+  const publicStandings = (standings) => standings
+    .map(({ ign, team, points, catches }) => ({ ign, team, points, catches }));
   return {
-    teamTotal: dashboard.teamTotal,
-    teamTotals: dashboard.teamTotals,
-    uniqueFamilyCount: dashboard.uniqueFamilyCount,
-    uniqueFamilies: dashboard.uniqueFamilies,
-    standings: dashboard.standings.map(({ ign, team, points, catches }) => ({ ign, team, points, catches })),
-    recentCatches: dashboard.recentCatches.map((entry) => ({
-      pokemon: entry.pokemon,
-      ign: entry.ign,
-      team: entry.team,
-      caught_at_utc: entry.caught_at_utc,
-      score: {
-        base: entry.score.base,
-        secretBonus: entry.score.secretBonus,
-        safariBonus: entry.score.safariBonus,
-        uniqueBonus: entry.score.uniqueBonus,
-        total: entry.score.total,
-      },
-    })),
+    officialWar: {
+      ...dashboard.officialWar,
+      standings: publicStandings(dashboard.officialWar.standings),
+      recentCatches: dashboard.officialWar.recentCatches.map(publicCatch),
+    },
+    teamWar: {
+      ...dashboard.teamWar,
+      standings: publicStandings(dashboard.teamWar.standings),
+      recentCatches: dashboard.teamWar.recentCatches.map(publicCatch),
+    },
   };
 }
 

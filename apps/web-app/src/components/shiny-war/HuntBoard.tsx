@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Hunt, ParticipantHunts } from './types';
+import type { Hunt, ParticipantHunts, ShinyWarTeam } from './types';
 import SpeciesSpriteName from './SpeciesSpriteName';
 import TeamBadge, { TEAM_LABELS } from './TeamBadge';
 
@@ -49,7 +49,8 @@ const huntSpotData = (hunt: Hunt) => {
 type Props = {
   rows: ParticipantHunts[];
   playerCaughtFamilyKeys?: string[];
-  uniqueFamilyKeys?: string[];
+  officialUniqueFamilyKeys?: string[];
+  teamUniqueFamilyKeys?: Record<ShinyWarTeam, string[]>;
   ownMemberId?: string;
   busy: boolean;
   onSave: (queue: Hunt[]) => Promise<void>;
@@ -138,17 +139,21 @@ function HuntCard({ busy, isOwn, playerCaughtFamilyKeys, row, uniqueFamilyKeys, 
 export default function HuntBoard({
   rows,
   playerCaughtFamilyKeys = [],
-  uniqueFamilyKeys = [],
+  officialUniqueFamilyKeys = [],
+  teamUniqueFamilyKeys = { bidoof: [], arceus: [] },
   ownMemberId,
   busy,
   onSave,
 }: Props) {
   const [view, setView] = useState<'official' | 'team'>('official');
   const playerCaughtFamilyKeySet = new Set(playerCaughtFamilyKeys.map(normalizeSpeciesKey));
-  const uniqueFamilyKeySet = new Set(uniqueFamilyKeys.map(normalizeSpeciesKey));
   const own = rows.find((row) => row.member_id === ownMemberId);
   const otherRows = rows.filter((row) => row.member_id !== ownMemberId);
   const officialRows = otherRows.filter((row) => row.is_official);
+  const visibleTeam = own?.team;
+  const uniqueFamilyKeySet = new Set((view === 'official'
+    ? officialUniqueFamilyKeys
+    : visibleTeam ? teamUniqueFamilyKeys[visibleTeam] : []).map(normalizeSpeciesKey));
   const mutate = async (index: number, direction: -1 | 1) => {
     if (!own) return;
     const queue = [...own.hunts].sort((a, b) => a.position - b.position);
@@ -166,7 +171,7 @@ export default function HuntBoard({
 
   return (
     <div className="space-y-4">
-      {own && <HuntCard busy={busy} isOwn playerCaughtFamilyKeys={playerCaughtFamilyKeySet} row={own} uniqueFamilyKeys={uniqueFamilyKeySet} onMove={mutate} onRemove={remove} />}
+      {own && (view === 'team' || own.is_official) && <HuntCard busy={busy} isOwn playerCaughtFamilyKeys={playerCaughtFamilyKeySet} row={own} uniqueFamilyKeys={uniqueFamilyKeySet} onMove={mutate} onRemove={remove} />}
       <div className="flex flex-wrap gap-2" aria-label="Hunt Board view" role="group">
         {([['official', 'Official War'], ['team', 'Team War']] as const).map(([value, label]) => (
           <button
@@ -186,7 +191,7 @@ export default function HuntBoard({
         <HuntCardColumns rows={officialRows} playerCaughtFamilyKeys={playerCaughtFamilyKeySet} uniqueFamilyKeys={uniqueFamilyKeySet} busy={busy} onMove={mutate} onRemove={remove} />
       ) : (
         <div className="space-y-7">
-          {(['bidoof', 'arceus'] as const).map((team) => {
+          {(['bidoof', 'arceus'] as const).filter((team) => !visibleTeam || team === visibleTeam).map((team) => {
             const teamRows = otherRows.filter((row) => row.team === team);
             return (
               <section key={team}>

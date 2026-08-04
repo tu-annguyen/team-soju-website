@@ -1,14 +1,15 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { capitalize } from '../../utils/pokemonName';
 import TeamBadge from './TeamBadge';
-import type { Dashboard, PublicDashboard } from './types';
+import type { DashboardCatch } from './types';
 
-type Catch = Dashboard['recentCatches'][number] | PublicDashboard['recentCatches'][number];
+type Catch = DashboardCatch | Omit<DashboardCatch, 'id' | 'member_id' | 'is_official' | 'war_eligibility_override'>;
 
 type Props = {
   catches: Catch[];
   canManage?: boolean;
   maxHeight?: number;
+  showTeamBadge?: boolean;
   onEligibility?: (id: string, eligible: boolean | null) => Promise<void>;
 };
 
@@ -17,7 +18,7 @@ const PANEL_VERTICAL_PADDING = 40;
 const LIST_TOP_MARGIN = 16;
 const PAGINATION_HEIGHT = 54;
 
-export default function RecentCatches({ catches, canManage, maxHeight, onEligibility }: Props) {
+export default function RecentCatches({ catches, canManage, maxHeight, onEligibility, showTeamBadge = true }: Props) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const tallestCardRef = useRef(0);
@@ -69,7 +70,7 @@ export default function RecentCatches({ catches, canManage, maxHeight, onEligibi
         <>
           <div ref={listRef} className="mt-4 space-y-3">
             {visibleCatches.map((entry) => (
-              <CatchCard key={getCatchKey(entry)} entry={entry} canManage={canManage} onEligibility={onEligibility} />
+              <CatchCard key={getCatchKey(entry)} entry={entry} canManage={canManage} onEligibility={onEligibility} showTeamBadge={showTeamBadge} />
             ))}
           </div>
           {pageCount > 1 && (
@@ -99,12 +100,12 @@ export default function RecentCatches({ catches, canManage, maxHeight, onEligibi
   );
 }
 
-function CatchCard({ entry, canManage, onEligibility }: Pick<Props, 'canManage' | 'onEligibility'> & { entry: Catch }) {
+function CatchCard({ entry, canManage, onEligibility, showTeamBadge }: Pick<Props, 'canManage' | 'onEligibility' | 'showTeamBadge'> & { entry: Catch }) {
   return (
     <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
       <div className="flex justify-between gap-3">
         <p className="flex flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
-          {entry.ign} · {capitalize(entry.pokemon)} <TeamBadge team={entry.team} />
+          {entry.ign} · {capitalize(entry.pokemon)} {showTeamBadge && <TeamBadge team={entry.team} />}
         </p>
         <strong className="text-primary-600">+{entry.score.total}</strong>
       </div>
