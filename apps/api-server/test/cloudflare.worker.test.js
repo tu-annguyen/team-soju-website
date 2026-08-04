@@ -168,16 +168,20 @@ describe('Cloudflare Worker API', () => {
         getDashboard: jest.fn().mockResolvedValue({
           event: { roster_locked: true },
           currentSeason: 'Summer',
-          teamTotal: 38,
-          teamTotals: { bidoof: 20, arceus: 18 },
-          uniqueFamilyCount: 1,
-          uniqueFamilies: ['vulpix'],
-          standings: [{ member_id: 'member-1', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
-          recentCatches: [{
-            id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
-            caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof',
-            score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
-          }],
+          officialWar: {
+            teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
+            standings: [{ member_id: 'member-1', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+            recentCatches: [{
+              id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
+              caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof',
+              score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+            }],
+          },
+          teamWar: {
+            teamTotals: { bidoof: 38, arceus: 0 },
+            uniqueFamilies: { bidoof: ['vulpix'], arceus: [] },
+            standings: [], recentCatches: [],
+          },
         }),
       },
     };
@@ -191,8 +195,8 @@ describe('Cloudflare Worker API', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toContain('public');
-    expect(body.data.standings).toEqual([{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }]);
-    expect(body.data.recentCatches[0]).not.toHaveProperty('id');
+    expect(body.data.officialWar.standings).toEqual([{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }]);
+    expect(body.data.officialWar.recentCatches[0]).not.toHaveProperty('id');
     expect(body.data).not.toHaveProperty('event');
   });
 

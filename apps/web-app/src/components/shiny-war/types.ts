@@ -66,6 +66,24 @@ export type PokemonHuntGroup = {
   spots: HuntSpot[];
 };
 
+export type DashboardCatch = {
+  id: string;
+  pokemon: string;
+  ign: string;
+  member_id: string;
+  team: ShinyWarTeam;
+  is_official: boolean;
+  caught_at_utc: string;
+  score: { base: number; secretBonus: number; safariBonus: number; uniqueBonus: number; total: number };
+  war_eligibility_override?: boolean | null;
+};
+
+export type DashboardStanding = ParticipantHunts & {
+  points: number;
+  catches: number;
+  caughtFamilyKeys: string[];
+};
+
 export type Dashboard = {
   event: {
     name: string;
@@ -76,27 +94,31 @@ export type Dashboard = {
     season_days?: number;
   };
   currentSeason: string | null;
-  teamTotal: number;
-  teamTotals: Record<ShinyWarTeam, number>;
-  uniqueFamilyCount: number;
-  uniqueFamilies: string[];
-  standings: Array<ParticipantHunts & { points: number; catches: number; caughtFamilyKeys: string[] }>;
-  recentCatches: Array<{
-    id: string;
-    pokemon: string;
-    ign: string;
-    member_id: string;
-    team: ShinyWarTeam;
-    is_official: boolean;
-    caught_at_utc: string;
-    score: { base: number; secretBonus: number; safariBonus: number; uniqueBonus: number; total: number };
-    war_eligibility_override?: boolean | null;
-  }>;
+  officialWar: {
+    teamTotal: number;
+    uniqueFamilyCount: number;
+    uniqueFamilies: string[];
+    standings: DashboardStanding[];
+    recentCatches: DashboardCatch[];
+  };
+  teamWar: {
+    teamTotals: Record<ShinyWarTeam, number>;
+    uniqueFamilies: Record<ShinyWarTeam, string[]>;
+    standings: DashboardStanding[];
+    recentCatches: DashboardCatch[];
+  };
 };
 
-export type PublicDashboard = Pick<Dashboard,
-  'teamTotal' | 'teamTotals' | 'uniqueFamilyCount' | 'uniqueFamilies'
-> & {
-  standings: Array<Pick<Dashboard['standings'][number], 'ign' | 'team' | 'points' | 'catches'>>;
-  recentCatches: Array<Omit<Dashboard['recentCatches'][number], 'id' | 'member_id' | 'is_official' | 'war_eligibility_override'>>;
+type PublicStanding = Pick<DashboardStanding, 'ign' | 'team' | 'points' | 'catches'>;
+type PublicCatch = Omit<DashboardCatch, 'id' | 'member_id' | 'is_official' | 'war_eligibility_override'>;
+
+export type PublicDashboard = {
+  officialWar: Omit<Dashboard['officialWar'], 'standings' | 'recentCatches'> & {
+    standings: PublicStanding[];
+    recentCatches: PublicCatch[];
+  };
+  teamWar: Omit<Dashboard['teamWar'], 'standings' | 'recentCatches'> & {
+    standings: PublicStanding[];
+    recentCatches: PublicCatch[];
+  };
 };

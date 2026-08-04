@@ -80,28 +80,36 @@ describe('Shiny War public dashboard', () => {
     const result = toPublicDashboard({
       event: { roster_locked: true },
       currentSeason: 'Summer',
-      teamTotal: 38,
-      teamTotals: { bidoof: 20, arceus: 18 },
-      uniqueFamilyCount: 1,
-      uniqueFamilies: ['vulpix'],
-      standings: [{ member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
-      recentCatches: [{
-        id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
-        caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof', war_eligibility_override: true,
-        score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
-      }],
+      officialWar: {
+        teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
+        standings: [{ member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+        recentCatches: [{
+          id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
+          caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof', war_eligibility_override: true,
+          score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+        }],
+      },
+      teamWar: {
+        teamTotals: { bidoof: 38, arceus: 0 },
+        uniqueFamilies: { bidoof: ['vulpix'], arceus: [] },
+        standings: [], recentCatches: [],
+      },
     });
 
     expect(result).toEqual({
-      teamTotal: 38,
-      teamTotals: { bidoof: 20, arceus: 18 },
-      uniqueFamilyCount: 1,
-      uniqueFamilies: ['vulpix'],
-      standings: [{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
-      recentCatches: [{
-        pokemon: 'Vulpix', ign: 'Hunter', team: 'bidoof', caught_at_utc: '2026-08-01T01:02:00.000Z',
-        score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
-      }],
+      officialWar: {
+        teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
+        standings: [{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+        recentCatches: [{
+          pokemon: 'Vulpix', ign: 'Hunter', team: 'bidoof', caught_at_utc: '2026-08-01T01:02:00.000Z',
+          score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+        }],
+      },
+      teamWar: {
+        teamTotals: { bidoof: 38, arceus: 0 },
+        uniqueFamilies: { bidoof: ['vulpix'], arceus: [] },
+        standings: [], recentCatches: [],
+      },
     });
   });
 });
@@ -167,13 +175,16 @@ describe('Cloudflare Shiny Wars repository', () => {
 
     const dashboard = await repository.getDashboard('2026', new Date('2026-08-02T00:00:00.000Z'));
 
-    expect(dashboard.teamTotal).toBe(68);
-    expect(dashboard.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
-    expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(38);
-    expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').caughtFamilyKeys)
+    expect(dashboard.officialWar.teamTotal).toBe(68);
+    expect(dashboard.teamWar.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
+    expect(dashboard.officialWar.standings).toHaveLength(2);
+    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'bidoof-official').points).toBe(38);
+    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(30);
+    expect(dashboard.teamWar.standings.find((entry) => entry.member_id === 'arceus-official').caughtFamilyKeys)
       .toEqual(['vulpix']);
-    expect(dashboard.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);
-    expect(dashboard.recentCatches.find((entry) => entry.member_id === 'bidoof-extra'))
+    expect(dashboard.teamWar.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);
+    expect(dashboard.officialWar.recentCatches.find((entry) => entry.member_id === 'bidoof-extra')).toBeUndefined();
+    expect(dashboard.teamWar.recentCatches.find((entry) => entry.member_id === 'bidoof-extra'))
       .toMatchObject({ team: 'bidoof', is_official: false });
   });
 
