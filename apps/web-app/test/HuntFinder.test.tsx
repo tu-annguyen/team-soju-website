@@ -105,4 +105,76 @@ describe('HuntFinder', () => {
     fireEvent.change(method, { target: { value: 'Fishing' } });
     expect(nonSafari).toBeEnabled();
   });
+
+  it('defaults to Official unique scoring and keeps the war bonuses mutually exclusive', async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
+
+    render(
+      <HuntFinder
+        apiBaseUrl="https://example.test"
+        defaultSeason="Summer"
+        officialCaughtFamilyKeys={['vulpix']}
+        participants={[]}
+        teamCaughtFamilyKeys={['grimer']}
+        onQueue={jest.fn()}
+      />
+    );
+
+    const officialBonus = screen.getByLabelText('Official unique species +8');
+    const teamBonus = screen.getByLabelText('Team War unique species +8');
+    expect(officialBonus).toBeChecked();
+    expect(teamBonus).not.toBeChecked();
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('officialUniqueBonus=true');
+      expect(latestUrl).toContain('officialCaughtFamilyKeys=vulpix');
+    });
+
+    fireEvent.click(teamBonus);
+    expect(teamBonus).toBeChecked();
+    expect(officialBonus).not.toBeChecked();
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('teamUniqueBonus=true');
+      expect(latestUrl).toContain('teamCaughtFamilyKeys=grimer');
+      expect(latestUrl).toContain('officialUniqueBonus=false');
+    });
+  });
+
+  it('keeps Official and Team War caught-line exclusions mutually exclusive', async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
+
+    render(
+      <HuntFinder
+        apiBaseUrl="https://example.test"
+        defaultSeason="Summer"
+        officialCaughtFamilyKeys={['vulpix']}
+        participants={[]}
+        teamCaughtFamilyKeys={['grimer']}
+        onQueue={jest.fn()}
+      />
+    );
+
+    const officialExclusion = screen.getByLabelText('Exclude Official caught evolution lines');
+    const teamExclusion = screen.getByLabelText('Exclude Team War caught evolution lines');
+    expect(officialExclusion).not.toBeChecked();
+    expect(teamExclusion).not.toBeChecked();
+
+    fireEvent.click(officialExclusion);
+    expect(officialExclusion).toBeChecked();
+    expect(teamExclusion).not.toBeChecked();
+
+    fireEvent.click(teamExclusion);
+    expect(officialExclusion).not.toBeChecked();
+    expect(teamExclusion).toBeChecked();
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('excludeOfficialCaught=false');
+      expect(latestUrl).toContain('excludeTeamCaught=true');
+      expect(latestUrl).toContain('teamCaughtFamilyKeys=grimer');
+    });
+  });
 });

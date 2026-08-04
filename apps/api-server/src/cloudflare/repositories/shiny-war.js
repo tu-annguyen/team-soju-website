@@ -61,6 +61,10 @@ function encounterRatePerHour(row, filters) {
   return 300;
 }
 
+function normalizeFamilyKey(value) {
+  return String(value || '').trim().toLowerCase().replace(/[ .]+/g, '-');
+}
+
 function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
 
@@ -179,6 +183,18 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     const selectedMethod = requestedMethod === 'All' || ENCOUNTER_METHODS[requestedMethod]
       ? requestedMethod
       : 'Sweet Scent';
+    const officialCaughtFamilyKeys = new Set(
+      (filters.officialCaughtFamilyKeys || []).map(normalizeFamilyKey)
+    );
+    const teamCaughtFamilyKeys = new Set(
+      (filters.teamCaughtFamilyKeys || []).map(normalizeFamilyKey)
+    );
+    const bonusCaughtFamilyKeys = new Set(
+      ((filters.teamUniqueBonus
+        ? filters.teamCaughtFamilyKeys
+        : filters.officialCaughtFamilyKeys) || []).map(normalizeFamilyKey)
+    );
+    const applyUniqueBonus = Boolean(filters.officialUniqueBonus || filters.teamUniqueBonus);
     const addFilter = (column, value) => {
       if (!value) return;
       params.push(value);
@@ -261,9 +277,16 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         hordeSize: 1,
       });
       const specialSpecies = species.filter((entry) => entry.is_special);
-      const averagePoints = specialSpecies.length === species.length
+      const baseAveragePoints = specialSpecies.length === species.length
         ? specialSpecies.reduce((sum, entry) => sum + Number(entry.points || 0), 0) / specialSpecies.length
         : metrics.averagePoints;
+      const uniqueBonus = applyUniqueBonus ? metrics.composition.reduce(
+        (sum, entry) => bonusCaughtFamilyKeys.has(normalizeFamilyKey(entry.family_key))
+          ? sum
+          : sum + (8 * entry.split),
+        0
+      ) : 0;
+      const averagePoints = baseAveragePoints + uniqueBonus;
       return {
         spot_key: key,
         region: row.region,
@@ -279,13 +302,23 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         ...metrics,
         averagePoints,
         encountersPerHour,
-        pointsPerHour: encountersPerHour === null ? null : metrics.pointsPerHour,
+        pointsPerHour: encountersPerHour === null
+          ? null
+          : metrics.pointsPerHour + ((uniqueBonus * encountersPerHour) / denominator),
       };
     });
     const speciesFilter = String(filters.species || '').trim().toLowerCase();
-    const splitFilteredSpots = selectedMethod === 'Sweet Scent' && filters.fullSplitOnly
-      ? spots.filter((spot) => spot.composition.some((species) => species.split === 1))
+    const excludedFamilyKeys = filters.excludeTeamCaught
+      ? teamCaughtFamilyKeys
+      : officialCaughtFamilyKeys;
+    const caughtFilteredSpots = (filters.excludeOfficialCaught || filters.excludeTeamCaught)
+      ? spots.filter((spot) => !spot.composition.some(
+        (species) => excludedFamilyKeys.has(normalizeFamilyKey(species.family_key))
+      ))
       : spots;
+    const splitFilteredSpots = selectedMethod === 'Sweet Scent' && filters.fullSplitOnly
+      ? caughtFilteredSpots.filter((spot) => spot.composition.some((species) => species.split === 1))
+      : caughtFilteredSpots;
     const matchingSpots = speciesFilter
       ? splitFilteredSpots.filter((spot) => spot.composition.some(
         (species) => species.name.toLowerCase().includes(speciesFilter)

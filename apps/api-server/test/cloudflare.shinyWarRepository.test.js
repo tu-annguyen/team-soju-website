@@ -225,6 +225,63 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].pointsPerHour).toBe(0.7);
   });
 
+  it('adds the unique-family bonus to expected points and excludes official-caught lines', async () => {
+    const rows = [
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+        tier: 'Tier 3', points: 30, form: '', min_level: 28, max_level: 30,
+        morning_rate: 0, day_rate: 0, night_rate: 2.5,
+      },
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Grimer', slug: 'grimer', family_key: 'grimer',
+        tier: 'Tier 6', points: 5, form: '', min_level: 28, max_level: 30,
+        morning_rate: 0, day_rate: 0, night_rate: 2.5,
+      },
+      {
+        location_id: '1:1', location_name: 'Viridian Forest', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Pikachu', slug: 'pikachu', family_key: 'pichu',
+        tier: 'Tier 4', points: 15, form: '', min_level: 3, max_level: 5,
+        morning_rate: 0, day_rate: 0, night_rate: 5,
+      },
+    ];
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue(rows),
+    });
+
+    const scored = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', hordesPerHour: 240,
+      officialUniqueBonus: true,
+      officialCaughtFamilyKeys: ['vulpix'],
+      profile: { eventBoost: false },
+    });
+    const mansion = scored.items.find((spot) => spot.location === 'Pokemon Mansion');
+    expect(mansion.averagePoints).toBe(21.5);
+    expect(mansion.pointsPerHour).toBe(0.86);
+    expect(mansion.composition.find((species) => species.name === 'Grimer').points).toBe(5);
+
+    const filtered = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', excludeOfficialCaught: true,
+      officialCaughtFamilyKeys: ['vulpix', 'pichu'],
+      profile: { eventBoost: false },
+    });
+    expect(filtered.items).toHaveLength(0);
+
+    const teamFiltered = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', excludeTeamCaught: true,
+      officialCaughtFamilyKeys: ['pichu'],
+      teamCaughtFamilyKeys: ['vulpix'],
+      profile: { eventBoost: false },
+    });
+    expect(teamFiltered.items).toHaveLength(1);
+    expect(teamFiltered.items[0].location).toBe('Viridian Forest');
+  });
+
   it('keeps Zorua in Sweet Scent compositions without labeling it as lure-only', async () => {
     const repository = createShinyWarRepository({
       dialect: 'd1',

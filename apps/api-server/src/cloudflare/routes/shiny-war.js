@@ -122,6 +122,10 @@ async function handleShinyWarRoutes(context) {
         const value = url.searchParams.get(name);
         return value === null ? fallback : value === 'true';
       };
+      const familyKeys = (name) => String(url.searchParams.get(name) || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
       const data = await repositories.shinyWar.listHordeSpots({
         season: url.searchParams.get('season') || undefined,
         region: url.searchParams.get('region') || undefined,
@@ -134,6 +138,12 @@ async function handleShinyWarRoutes(context) {
         fullSplitOnly: bool('fullSplitOnly'),
         chumBucket: bool('chumBucket'),
         nonSafari: bool('nonSafari'),
+        officialUniqueBonus: bool('officialUniqueBonus', true),
+        teamUniqueBonus: bool('teamUniqueBonus'),
+        excludeOfficialCaught: bool('excludeOfficialCaught'),
+        excludeTeamCaught: bool('excludeTeamCaught'),
+        officialCaughtFamilyKeys: familyKeys('officialCaughtFamilyKeys'),
+        teamCaughtFamilyKeys: familyKeys('teamCaughtFamilyKeys'),
         minPointsPerHour: url.searchParams.get('minPointsPerHour') || undefined,
         sort: url.searchParams.get('sort') || undefined,
         page: url.searchParams.get('page') || undefined,

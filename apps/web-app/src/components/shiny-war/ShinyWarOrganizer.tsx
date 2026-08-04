@@ -22,6 +22,11 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
   const ownMemberId = authUser?.membership?.id;
   const ownCaughtFamilyKeys = dashboard?.teamWar.standings
     .find((participant) => participant.member_id === ownMemberId)?.caughtFamilyKeys || [];
+  const ownParticipant = dashboard?.teamWar.standings
+    .find((participant) => participant.member_id === ownMemberId);
+  const teamCaughtFamilyKeys = ownParticipant
+    ? dashboard?.teamWar.uniqueFamilies[ownParticipant.team]
+    : undefined;
 
   const refresh = useCallback(async () => {
     try {
@@ -151,7 +156,9 @@ export default function ShinyWarOrganizer({ apiBaseUrl }: { apiBaseUrl: string }
             apiBaseUrl={apiBaseUrl}
             caughtFamilyKeys={ownCaughtFamilyKeys}
             defaultSeason={dashboard.currentSeason || 'Summer'}
+            officialCaughtFamilyKeys={dashboard.officialWar.uniqueFamilies}
             participants={hunts}
+            teamCaughtFamilyKeys={teamCaughtFamilyKeys}
             onQueue={queueSpot}
           />
         )}
