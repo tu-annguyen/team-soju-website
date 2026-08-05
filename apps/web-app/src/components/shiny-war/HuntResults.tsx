@@ -8,25 +8,21 @@ import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 export type HuntView = 'location' | 'pokemon';
 
 type Props = {
-  expanded: ReadonlySet<string>;
+  /** @deprecated Encounter compositions are always visible while their location is open. */
+  expanded?: ReadonlySet<string>;
   participants: ParticipantHunts[];
   speciesFilter: string;
   spots: HuntSpot[];
   view: HuntView;
   onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
-  onToggle: (spotKey: string) => void;
-  selectedSeason?: string;
-  selectedTime?: string;
-  onSeasonChange?: (season: string) => void;
-  onTimeChange?: (time: string) => void;
+  /** @deprecated Encounter compositions no longer toggle independently. */
+  onToggle?: (spotKey: string) => void;
   collapsedLocations?: ReadonlySet<string>;
   onToggleLocation?: (locationKey: string) => void;
 };
 
 export default function HuntResults({
-  expanded, participants, speciesFilter, spots, view, onQueue, onToggle,
-  selectedSeason, selectedTime, onSeasonChange, onTimeChange,
-  collapsedLocations, onToggleLocation,
+  participants, speciesFilter, spots, view, onQueue, collapsedLocations, onToggleLocation,
 }: Props) {
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
@@ -44,17 +40,11 @@ export default function HuntResults({
       <div className="space-y-3">
         {locationGroups.map((group) => (
           <HuntLocationCard
-            expanded={expanded}
             key={group.key}
             locationOpen={!effectiveCollapsedLocations.has(group.key)}
             participants={participants}
-            selectedSeason={selectedSeason}
-            selectedTime={selectedTime}
             spots={group.spots}
             onQueue={onQueue}
-            onSeasonChange={onSeasonChange}
-            onTimeChange={onTimeChange}
-            onToggle={onToggle}
             onToggleLocation={() => toggleLocation(group.key)}
           />
         ))}
@@ -91,18 +81,12 @@ export default function HuntResults({
           <div className="space-y-3">
             {groupHuntSpotsByLocation(speciesSpots).map((group) => (
               <HuntLocationCard
-                expanded={expanded}
                 key={`${species.slug}-${species.form}-${group.key}`}
                 locationOpen={!effectiveCollapsedLocations.has(group.key)}
                 participants={participants}
-                selectedSeason={selectedSeason}
-                selectedTime={selectedTime}
                 spots={group.spots}
                 targetSpecies={species}
                 onQueue={onQueue}
-                onSeasonChange={onSeasonChange}
-                onTimeChange={onTimeChange}
-                onToggle={onToggle}
                 onToggleLocation={() => toggleLocation(group.key)}
               />
             ))}

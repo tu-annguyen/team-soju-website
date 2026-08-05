@@ -46,10 +46,12 @@ describe('HuntResults', () => {
       />
     );
 
-    expect(screen.getByText('Vulpix')).toBeInTheDocument();
+    expect(screen.getAllByText('Vulpix')).toHaveLength(2);
     expect(screen.getByText('Tier 3')).toBeInTheDocument();
     expect(screen.getByText('30 points')).toBeInTheDocument();
     expect(screen.getByText('Pokemon Mansion 2F')).toBeInTheDocument();
+    expect(screen.getByText('Kanto · 5× Sweet Scent · Summer · Night')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Location season and time filters')).not.toBeInTheDocument();
     expect(screen.getByText('1.333')).toBeInTheDocument();
     expect(screen.getByText('30.00')).toBeInTheDocument();
     expect(screen.getByText('SojuHunter · Current')).toBeInTheDocument();
@@ -127,8 +129,8 @@ describe('HuntResults', () => {
       />
     );
 
-    const uncaughtSection = screen.getByText('Pikachu').closest('section');
-    const caughtSection = screen.getByText('Vulpix').closest('section');
+    const uncaughtSection = screen.getAllByText('Pikachu')[0].closest('section');
+    const caughtSection = screen.getAllByText('Vulpix')[0].closest('section');
     expect(uncaughtSection).not.toBeNull();
     expect(caughtSection).not.toBeNull();
     expect(caughtSection!.compareDocumentPosition(uncaughtSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -232,8 +234,8 @@ describe('HuntResults', () => {
       />
     );
 
-    const zigzagoonSection = screen.getByText('Zigzagoon').closest('section');
-    const surskitSection = screen.getByText('Surskit').closest('section');
+    const zigzagoonSection = screen.getAllByText('Zigzagoon')[0].closest('section');
+    const surskitSection = screen.getAllByText('Surskit')[0].closest('section');
     expect(zigzagoonSection).not.toBeNull();
     expect(surskitSection).not.toBeNull();
     expect(surskitSection!.compareDocumentPosition(zigzagoonSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -339,10 +341,12 @@ describe('HuntResults', () => {
     expect(screen.getByText('1F · Sweet Scent split 1')).toBeInTheDocument();
     expect(screen.getByText('3F · Sweet Scent split 2')).toBeInTheDocument();
     expect(screen.getByText('Altaria')).toBeInTheDocument();
-    expect(screen.getByText((_, element) => element?.textContent === 'Pokémon available · Kanto · 2 encounter splits')).toBeInTheDocument();
+    expect(screen.getByText((_, element) => (
+      element?.tagName === 'SPAN' && element.textContent === 'Kanto · 2 encounter splits'
+    ))).toBeInTheDocument();
   });
 
-  it('labels non-horde splits by encounter method and puts actions after the team queue', () => {
+  it('labels non-horde splits, keeps actions with metrics, and keeps collapse in the location header', () => {
     render(
       <HuntResults
         expanded={new Set()}
@@ -356,9 +360,12 @@ describe('HuntResults', () => {
     );
 
     expect(screen.getByText('Singles Grass')).toBeInTheDocument();
-    const teamQueue = screen.getByText('Team queue').parentElement;
     const queueButton = screen.getByRole('button', { name: 'Queue' });
-    expect(teamQueue?.compareDocumentPosition(queueButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const collapseButton = screen.getByRole('button', { name: 'Collapse Pokemon Mansion 2F' });
+    const metricsGrid = screen.getByText('1.333').parentElement?.parentElement?.parentElement;
+    expect(metricsGrid).toContainElement(queueButton);
+    expect(collapseButton.closest('header')).not.toBeNull();
+    expect(queueButton.closest('header')).toBeNull();
   });
 
   it.each([
@@ -381,8 +388,7 @@ describe('HuntResults', () => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 
-  it('separates collapsing a super-location from showing all of its Pokemon', () => {
-    const onToggle = jest.fn();
+  it('shows every Pokemon until its super-location is collapsed', () => {
     const skyPillarSpots: HuntSpot[] = [
       { ...spot, spot_key: 'sky-1f', location: 'Sky Pillar', location_areas: ['1F'] },
       { ...spot, spot_key: 'sky-3f', location: 'Sky Pillar', location_areas: ['3F'] },
@@ -395,16 +401,53 @@ describe('HuntResults', () => {
         spots={skyPillarSpots}
         view="location"
         onQueue={jest.fn()}
-        onToggle={onToggle}
+        onToggle={jest.fn()}
       />
     );
 
     expect(screen.getByText('1F · Sweet Scent split 1')).toBeInTheDocument();
+    expect(screen.getAllByText('Vulpix')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: /Pokemon/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Collapse Sky Pillar' }));
     expect(screen.queryByText('1F · Sweet Scent split 1')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Show Pokemon' }));
-    expect(onToggle).toHaveBeenCalledWith('sky-1f');
-    expect(onToggle).toHaveBeenCalledWith('sky-3f');
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Sky Pillar' }));
     expect(screen.getByText('1F · Sweet Scent split 1')).toBeInTheDocument();
+    expect(screen.getAllByText('Vulpix')).toHaveLength(2);
+  });
+
+  it('collapses lower points-per-hour splits behind one location-level control', () => {
+    render(
+      <HuntResults
+        participants={[]}
+        speciesFilter=""
+        spots={[
+          { ...spot, spot_key: 'best', pointsPerHour: 1.5 },
+          {
+            ...spot,
+            spot_key: 'lower',
+            pointsPerHour: 0.75,
+            composition: [{ ...vulpix, name: 'Raticate', slug: 'raticate' }],
+          },
+          {
+            ...spot,
+            spot_key: 'unknown',
+            pointsPerHour: null,
+            composition: [{ ...vulpix, name: 'Ditto', slug: 'ditto' }],
+          },
+        ]}
+        view="location"
+        onQueue={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Vulpix')).toBeInTheDocument();
+    expect(screen.queryByText('Raticate')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ditto')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show 2 lower points/hour splits' }));
+
+    expect(screen.getByText('Raticate')).toBeInTheDocument();
+    expect(screen.getByText('Ditto')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide 2 lower points/hour splits' })).toBeInTheDocument();
   });
 });

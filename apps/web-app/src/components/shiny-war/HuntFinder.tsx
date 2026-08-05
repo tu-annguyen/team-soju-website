@@ -49,7 +49,6 @@ export default function HuntFinder({
   const [spots, setSpots] = useState<HuntSpot[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(() => new Set());
   const [view, setView] = useState<HuntView>('location');
   const [error, setError] = useState('');
@@ -96,15 +95,6 @@ export default function HuntFinder({
   const visibleLocationKeys = [...new Set(spots.map(huntLocationKey))];
   const allLocationsOpen = visibleLocationKeys.length > 0
     && visibleLocationKeys.every((locationKey) => !collapsedLocations.has(locationKey));
-
-  const toggleSpot = (spotKey: string) => {
-    setExpanded((current) => {
-      const next = new Set(current);
-      if (next.has(spotKey)) next.delete(spotKey);
-      else next.add(spotKey);
-      return next;
-    });
-  };
 
   const toggleAllLocations = () => {
     setCollapsedLocations(allLocationsOpen ? new Set(visibleLocationKeys) : new Set());
@@ -302,7 +292,6 @@ export default function HuntFinder({
               key={value}
               onClick={() => {
                 setView(value);
-                setExpanded(new Set());
               }}
               type="button"
             >
@@ -316,7 +305,7 @@ export default function HuntFinder({
           onClick={toggleAllLocations}
           type="button"
         >
-          <span aria-hidden="true">{allLocationsOpen ? '-' : '+'}</span>{' '}
+          <span aria-hidden="true">{allLocationsOpen ? '−' : '+'}</span>{' '}
           {allLocationsOpen ? 'Collapse all' : 'Open all'}
         </button>
       </div>
@@ -325,17 +314,11 @@ export default function HuntFinder({
       </p>
       {error && <p role="alert" className="text-rose-600">{error}</p>}
       <HuntResults
-        expanded={expanded}
         participants={participants}
         speciesFilter={filters.species}
         spots={spots}
         view={view}
         onQueue={onQueue}
-        onToggle={toggleSpot}
-        selectedSeason={filters.season}
-        selectedTime={filters.time}
-        onSeasonChange={(season) => update('season', season)}
-        onTimeChange={(time) => update('time', time)}
         collapsedLocations={collapsedLocations}
         onToggleLocation={toggleLocation}
       />
