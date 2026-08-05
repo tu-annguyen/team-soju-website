@@ -143,6 +143,25 @@ describe('HuntFinder', () => {
     });
   });
 
+  it('sends the logged-in player caught lines for duplicate-penalty scoring', async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
+
+    render(
+      <HuntFinder
+        apiBaseUrl="https://example.test"
+        caughtFamilyKeys={['vulpix', 'pichu']}
+        defaultSeason="Summer"
+        participants={[]}
+        onQueue={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('playerCaughtFamilyKeys=vulpix%2Cpichu');
+    });
+  });
+
   it('keeps Official and Team War caught-line exclusions mutually exclusive', async () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 

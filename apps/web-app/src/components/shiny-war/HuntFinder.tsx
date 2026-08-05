@@ -72,6 +72,7 @@ export default function HuntFinder({
         if (filters.teamUniqueBonus || filters.excludeTeamCaught) {
           params.set('teamCaughtFamilyKeys', (teamCaughtFamilyKeys || []).join(','));
         }
+        params.set('playerCaughtFamilyKeys', caughtFamilyKeys.join(','));
         params.set('pageSize', '1000');
         const data = await shinyWarRequest<{ items: HuntSpot[]; total: number; locations: string[] }>(
           apiBaseUrl, `/hordes?${params}`
@@ -84,7 +85,7 @@ export default function HuntFinder({
       }
     }, 200);
     return () => window.clearTimeout(timer);
-  }, [apiBaseUrl, filters, officialCaughtFamilyKeys, teamCaughtFamilyKeys]);
+  }, [apiBaseUrl, caughtFamilyKeys, filters, officialCaughtFamilyKeys, teamCaughtFamilyKeys]);
 
   const update = (key: string, value: string | boolean) => setFilters((current) => ({ ...current, [key]: value }));
   const isSweetScent = filters.method === 'Sweet Scent';
@@ -324,7 +325,6 @@ export default function HuntFinder({
       </p>
       {error && <p role="alert" className="text-rose-600">{error}</p>}
       <HuntResults
-        caughtFamilyKeys={caughtFamilyKeys}
         expanded={expanded}
         participants={participants}
         speciesFilter={filters.species}

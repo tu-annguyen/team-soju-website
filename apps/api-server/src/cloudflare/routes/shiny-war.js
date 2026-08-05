@@ -144,6 +144,7 @@ async function handleShinyWarRoutes(context) {
         excludeTeamCaught: bool('excludeTeamCaught'),
         officialCaughtFamilyKeys: familyKeys('officialCaughtFamilyKeys'),
         teamCaughtFamilyKeys: familyKeys('teamCaughtFamilyKeys'),
+        playerCaughtFamilyKeys: familyKeys('playerCaughtFamilyKeys'),
         minPointsPerHour: url.searchParams.get('minPointsPerHour') || undefined,
         sort: url.searchParams.get('sort') || undefined,
         page: url.searchParams.get('page') || undefined,

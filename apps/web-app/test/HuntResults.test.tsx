@@ -76,10 +76,9 @@ describe('HuntResults', () => {
     expect(screen.getByText('No one hunting or queued')).toBeInTheDocument();
   });
 
-  it('moves locations containing a caught species below uncaught locations', () => {
+  it('keeps location results in their calculated order', () => {
     render(
       <HuntResults
-        caughtFamilyKeys={['vulpix']}
         expanded={new Set()}
         participants={[]}
         speciesFilter=""
@@ -100,13 +99,12 @@ describe('HuntResults', () => {
 
     const uncaughtLocation = screen.getByText('Berry Forest');
     const caughtLocation = screen.getByText('Pokemon Mansion 2F');
-    expect(uncaughtLocation.compareDocumentPosition(caughtLocation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(caughtLocation.compareDocumentPosition(uncaughtLocation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('moves an entire caught Pokémon section below uncaught Pokémon sections', () => {
+  it('ranks Pokémon sections by their calculated points per hour', () => {
     render(
       <HuntResults
-        caughtFamilyKeys={['vulpix']}
         expanded={new Set()}
         participants={[]}
         speciesFilter=""
@@ -133,10 +131,10 @@ describe('HuntResults', () => {
     const caughtSection = screen.getByText('Vulpix').closest('section');
     expect(uncaughtSection).not.toBeNull();
     expect(caughtSection).not.toBeNull();
-    expect(uncaughtSection!.compareDocumentPosition(caughtSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(caughtSection!.compareDocumentPosition(uncaughtSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('moves a Pokémon location down when its encounter split contains another caught species', () => {
+  it('does not specially reorder Pokémon locations based on their composition', () => {
     const surskit = {
       ...vulpix,
       name: 'Surskit',
@@ -152,7 +150,6 @@ describe('HuntResults', () => {
 
     render(
       <HuntResults
-        caughtFamilyKeys={['seviper']}
         expanded={new Set()}
         participants={[]}
         speciesFilter="Surskit"
@@ -178,10 +175,10 @@ describe('HuntResults', () => {
 
     const uncaughtLocation = screen.getByText('Uncaught Pond');
     const caughtSplitLocation = screen.getByText('Route 114');
-    expect(uncaughtLocation.compareDocumentPosition(caughtSplitLocation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(caughtSplitLocation.compareDocumentPosition(uncaughtLocation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('ranks Pokémon by their best non-deprioritized location', () => {
+  it('ranks Pokémon by their best calculated location', () => {
     const surskit = {
       ...vulpix,
       name: 'Surskit',
@@ -203,7 +200,6 @@ describe('HuntResults', () => {
 
     render(
       <HuntResults
-        caughtFamilyKeys={['seviper']}
         expanded={new Set()}
         participants={[]}
         speciesFilter=""
@@ -240,7 +236,7 @@ describe('HuntResults', () => {
     const surskitSection = screen.getByText('Surskit').closest('section');
     expect(zigzagoonSection).not.toBeNull();
     expect(surskitSection).not.toBeNull();
-    expect(zigzagoonSection!.compareDocumentPosition(surskitSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(surskitSection!.compareDocumentPosition(zigzagoonSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('shows an unknown rate for Zorua Illusion horde encounters', () => {

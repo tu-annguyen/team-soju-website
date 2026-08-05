@@ -282,6 +282,38 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(teamFiltered.items[0].location).toBe('Viridian Forest');
   });
 
+  it('calculates the logged-in player\'s duplicate species as one point', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+          species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+          tier: 'Tier 3', points: 30, form: '', min_level: 28, max_level: 30,
+          morning_rate: 0, day_rate: 0, night_rate: 2.5,
+        },
+        {
+          location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+          species_name: 'Grimer', slug: 'grimer', family_key: 'grimer',
+          tier: 'Tier 6', points: 5, form: '', min_level: 28, max_level: 30,
+          morning_rate: 0, day_rate: 0, night_rate: 2.5,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', hordesPerHour: 240,
+      playerCaughtFamilyKeys: ['vulpix'],
+      profile: { eventBoost: false },
+    });
+
+    expect(result.items[0].composition.find((entry) => entry.name === 'Vulpix').points).toBe(1);
+    expect(result.items[0].averagePoints).toBe(3);
+    expect(result.items[0].pointsPerHour).toBe(0.12);
+  });
+
   it('keeps Zorua in Sweet Scent compositions without labeling it as lure-only', async () => {
     const repository = createShinyWarRepository({
       dialect: 'd1',
