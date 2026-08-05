@@ -189,6 +189,9 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     const teamCaughtFamilyKeys = new Set(
       (filters.teamCaughtFamilyKeys || []).map(normalizeFamilyKey)
     );
+    const playerCaughtFamilyKeys = new Set(
+      (filters.playerCaughtFamilyKeys || []).map(normalizeFamilyKey)
+    );
     const bonusCaughtFamilyKeys = new Set(
       ((filters.teamUniqueBonus
         ? filters.teamCaughtFamilyKeys
@@ -270,14 +273,20 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     }
     const denominator = effectiveShinyDenominator(filters.profile);
     const spots = [...groups.values()].map(({ key, row, time, species }) => {
+      const scoredSpecies = species.map((entry) => ({
+        ...entry,
+        points: playerCaughtFamilyKeys.has(normalizeFamilyKey(entry.family_key))
+          ? 1
+          : entry.points,
+      }));
       const encountersPerHour = encounterRatePerHour(row, filters);
-      const metrics = calculateHordeMetrics(species, {
+      const metrics = calculateHordeMetrics(scoredSpecies, {
         hordesPerHour: encountersPerHour || 0,
         denominator,
         hordeSize: 1,
       });
-      const specialSpecies = species.filter((entry) => entry.is_special);
-      const baseAveragePoints = specialSpecies.length === species.length
+      const specialSpecies = scoredSpecies.filter((entry) => entry.is_special);
+      const baseAveragePoints = specialSpecies.length === scoredSpecies.length
         ? specialSpecies.reduce((sum, entry) => sum + Number(entry.points || 0), 0) / specialSpecies.length
         : metrics.averagePoints;
       const uniqueBonus = applyUniqueBonus ? metrics.composition.reduce(
@@ -296,8 +305,8 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         season: row.season,
         time,
         horde_size: row.horde_size,
-        is_lure: species.some((entry) => entry.is_lure),
-        is_special: species.some((entry) => entry.is_special),
+        is_lure: scoredSpecies.some((entry) => entry.is_lure),
+        is_special: scoredSpecies.some((entry) => entry.is_special),
         denominator,
         ...metrics,
         averagePoints,
