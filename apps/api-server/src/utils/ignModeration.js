@@ -3,6 +3,7 @@ const EXACT_IGN_BLACKLIST = [
   'cock',
   'coon',
   'cunt',
+  'darku',
   'dick',
 ];
 

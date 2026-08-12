@@ -831,7 +831,8 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
 
 async function storeCatchEventScreenshots(env, eventId, submissionId, screenshots, requestUrl) {
   if (!screenshots.length) return [];
-  if (!env.CATCH_EVENT_SCREENSHOTS) {
+  const screenshotStorage = env.SCREENSHOT_STORAGE;
+  if (!screenshotStorage) {
     const error = new Error('Catch event screenshot storage is not configured.');
     error.statusCode = 503;
     throw error;
@@ -844,7 +845,7 @@ async function storeCatchEventScreenshots(env, eventId, submissionId, screenshot
     const fileName = sanitizeFileName(screenshot.name);
     const storageKey = `catch-events/${eventId}/${submissionId}/${id}-${fileName}`;
 
-    await env.CATCH_EVENT_SCREENSHOTS.put(storageKey, parsed.bytes, {
+    await screenshotStorage.put(storageKey, parsed.bytes, {
       httpMetadata: {
         contentType: screenshot.contentType || parsed.contentType,
       },

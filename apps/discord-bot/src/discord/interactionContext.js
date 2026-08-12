@@ -130,6 +130,7 @@ class DiscordInteractionContext {
   constructor(interaction, env) {
     this.raw = interaction;
     this.env = env;
+    this.id = interaction.id;
     this.applicationId = interaction.application_id || env.DISCORD_CLIENT_ID;
     this.token = interaction.token;
     this.commandName = interaction.data?.name;

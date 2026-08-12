@@ -184,7 +184,7 @@ const COMMANDS = [
     .addStringOption(option =>
       option.setName('catch_time')
         .setDescription('Local capture time (HH:MM)')
-        .setRequired(true))
+        .setRequired(false))
     .addStringOption(configureTimezoneAutocompleteOption)
     .addStringOption(option =>
       option.setName('status')

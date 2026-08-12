@@ -137,7 +137,6 @@ async function handleCatchEventsRoutes(context) {
     requireUser,
     signInUser,
     issueEmailVerification,
-    maybeProxyLegacyRequest,
     broadcastFeebasBoard,
     createFeebasSocketResponse,
   } = context;
@@ -341,11 +340,12 @@ async function handleCatchEventsRoutes(context) {
         if (!screenshot) {
           return json({ success: false, message: 'Screenshot not found' }, { status: 404 });
         }
-        if (!env.CATCH_EVENT_SCREENSHOTS) {
+        const screenshotStorage = env.SCREENSHOT_STORAGE;
+        if (!screenshotStorage) {
           return json({ success: false, message: 'Screenshot storage is not configured' }, { status: 503 });
         }
 
-        const object = await env.CATCH_EVENT_SCREENSHOTS.get(screenshot.storageKey);
+        const object = await screenshotStorage.get(screenshot.storageKey);
         if (!object) {
           return json({ success: false, message: 'Screenshot not found' }, { status: 404 });
         }

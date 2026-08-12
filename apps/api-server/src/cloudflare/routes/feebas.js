@@ -223,7 +223,6 @@ async function handleFeebasRoutes(context) {
     requireUser,
     signInUser,
     issueEmailVerification,
-    maybeProxyLegacyRequest,
     broadcastFeebasBoard,
     createFeebasSocketResponse,
   } = context;

@@ -11,7 +11,7 @@ This site serves as the central hub for Team SOJU, featuring our shiny showcase,
 /
 ├── apps/
 │   ├── web-app/       # Astro & React frontend
-│   ├── api-server/    # Node.js backend API
+│   ├── api-server/    # Cloudflare Worker API
 │   └── discord-bot/   # Discord bot for team management
 ├── package.json       # Root workspace config
 └── README.md
@@ -20,8 +20,10 @@ This site serves as the central hub for Team SOJU, featuring our shiny showcase,
 ### Apps Overview
 
 - **web-app**: Astro-based frontend with React components for the website
-- **api-server**: Express.js backend API for data management (deprecated in favor of Discord bot)
-- **discord-bot**: Discord bot using direct database access for team member and shiny management
+- **api-server**: Cloudflare Worker API backed by D1, R2, Queues, Workers AI, and Durable Objects
+- **discord-bot**: Cloudflare Worker that receives Discord HTTP interactions and calls the API Worker
+
+Express and Render are deprecated and no longer receive production traffic. The old Node runtime and 14-minute keepalive workaround have been removed.
 
 ---
 
@@ -37,11 +39,9 @@ All commands are run from the root of the project:
 | `npm run dev:bot`         | Starts the Discord bot Worker locally                                 |
 | `npm run dev`             | Concurrently starts local dev servers for web, API Worker, and bot Worker |
 | `npm run dev:staging`     | Starts local dev servers with staging Worker configuration            |
-| `npm run dev:api:express` | Starts the legacy Express API locally                                 |
-| `npm run dev:api:local-ocr` | Starts the local Worker API and proxies OCR routes to Express on port 3001 |
 | `npm run test:web`        | Tests frontend web application                                        |
 | `npm run test:api`        | Tests backend API                                                     |
-| `npm run test:api`        | Tests Discord bot
+| `npm run test:bot`        | Tests Discord bot                                                    |
 | `npm run test`            | Concurrently tests frontend, backend, and bot                         |
 | `npm run build`           | Build the web production site to `./dist/`                            |
 

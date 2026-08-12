@@ -4,7 +4,6 @@
 
 const {
   EmbedBuilder,
-  codeBlock,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -18,6 +17,7 @@ const fetchClient = require('../fetchClient');
 const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, SHINY_STATUS_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
 const { buildShinyTierField, enrichRawShinyEmbed } = require('./shinyEmbedDetails');
+const { handleAddShinyScreenshot } = require('./shinyScreenshotHandler');
 const {
   capitalize,
   getKnownPokemonNames,
@@ -33,16 +33,13 @@ const {
 } = require('@team-soju/utils');
 
 function getApiBaseUrl() {
-  return (process.env.API_BASE_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
+  return (process.env.API_BASE_URL || 'http://localhost:8787/api').replace(/\/+$/, '');
 }
 
 function getPublicApiBaseUrl() {
   return (process.env.PUBLIC_API_BASE_URL || getApiBaseUrl()).replace(/\/+$/, '');
 }
 
-function getScreenshotResultCallbackUrl() {
-  return process.env.SCREENSHOT_RESULT_CALLBACK_URL;
-}
 
 const SHINY_MANAGER_ROLES = ['Soju', 'Elite 4', 'Champion'];
 const SHINY_STAFF_ROLES = ['Elite 4', 'Champion'];
@@ -1454,49 +1451,6 @@ async function handleAddShiny(interaction) {
     await interaction.editReply((await attachVariantSelectorToPayload(payload, shiny)).payload);
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
-  }
-}
-
-async function handleAddShinyScreenshot(interaction) {
-  try {
-    if (!getScreenshotResultCallbackUrl()) {
-      throw new Error('SCREENSHOT_RESULT_CALLBACK_URL is not configured.');
-    }
-
-    const screenshot = interaction.options.getAttachment('screenshot');
-    const screenshotUrl = screenshot.proxyURL || screenshot.url;
-    const response = await fetchClient.post(`${getApiBaseUrl()}/shinies/from-screenshot/async`, {
-      screenshot_url: screenshotUrl,
-      encounter_type: normalizeEncounterType(interaction.options.getString('encounter_type')),
-      is_secret: interaction.options.getBoolean('secret') || false,
-      is_alpha: interaction.options.getBoolean('alpha') || false,
-      command_called_at: new Date(interaction.createdTimestamp || Date.now()).toISOString(),
-      timezone: getTimezoneOption(interaction),
-      discord_user_id: interaction.user.id,
-      member_roles: getMemberRoles(interaction).map(role => role.name),
-      discord_application_id: interaction.applicationId,
-      discord_interaction_token: interaction.token,
-      callback_url: getScreenshotResultCallbackUrl(),
-    }, getAuthHeaders());
-    const jobId = response.data?.data?.job_id;
-
-    await interaction.reply({
-      content: jobId
-        ? `Screenshot received. Processing job \`${jobId}\` now. This message will update when OCR finishes.`
-        : 'Screenshot received. Processing now. This message will update when OCR finishes.',
-    });
-  } catch (error) {
-    const responseDetails = error.response?.data?.details;
-    const validationDetails = Array.isArray(responseDetails)
-      ? responseDetails
-        .map(detail => detail?.message)
-        .filter(Boolean)
-        .join('; ')
-      : '';
-    const details = responseDetails?.ocr_text
-      ? `\nOCR result:\n${codeBlock(responseDetails.ocr_text)}`
-      : validationDetails ? `\n${validationDetails}` : '';
-    await interaction.reply({ content: `Error: ${error.response?.data?.message || error.message}${details}` });
   }
 }
 

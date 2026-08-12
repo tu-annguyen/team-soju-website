@@ -1,147 +1,64 @@
-const {
-  buildShinyFilters,
-  enrichShinyPayloadWithVariants,
-  memberSchema,
-  shinySchema,
-  updateMemberSchema,
-  updateShinySchema,
-  Joi,
-  authenticateBotRequest,
-  clearAuthCookie,
-  generateBotToken,
-  getTokenFromRequest,
-  setAuthCookie,
-  signJwt,
-  signUserToken,
-  verifyJwt,
-  verifyUserToken,
-  createRepositories,
-  buildCorsHeaders,
-  empty,
-  json,
-  readJson,
-  withStandardHeaders,
-  FeebasRuleError,
-  getLocationConfig,
-  isIgnBlacklisted,
-  passwordResetExpiresInMinutes,
-  passwordResetSentMessage,
-  emailVerificationExpiresInMinutes,
-  emailVerificationSentMessage,
-  discordScopes,
-  passwordMigrationMessage,
-  discordHandoffTokenType,
-  discordHandoffExpiresIn,
-  discordHandoffHashParam,
-  updateFeebasTileSchema,
-  feebasActorFingerprintSchema,
-  passwordSchema,
-  forgotPasswordSchema,
-  registerSchema,
-  loginSchema,
-  resetPasswordSchema,
-  changeEmailSchema,
-  changePasswordSchema,
-  verifyEmailSchema,
-  discordStartSchema,
-  discordSessionSchema,
-  catchEventRuleSchema,
-  catchEventCreateSchema,
-  catchEventSubmissionSchema,
-  catchEventOcrSchema,
-  catchEventPublishSchema,
-  catchEventSubmissionsClosedSchema,
-  catchEventAutoCheckSchema,
-  catchEventSubmissionStatusSchema,
-  catchEventSubmissionUpdateSchema,
-  catchEventCollaboratorSchema,
-  pokemonNatures,
-  normalizeCatchEventText,
-  getDateTimePartsInZone,
-  getTimezoneOffsetMs,
-  zonedLocalDateTimeToUtc,
-  calculateCatchEventScore,
-  validateCatchEventSubmissionPayload,
-  getEnvUrl,
-  getWebAppUrl,
-  getApiOrigin,
-  getDiscordRedirectUri,
-  getDiscordConfig,
-  getEmailVerificationUrl,
-  getPasswordResetUrl,
-  buildWebRedirect,
-  buildDiscordHandoffRedirect,
-  redirect,
-  sanitizeReturnTo,
-  getDiscordScopeParam,
-  getBlacklistedIgnMessage,
-  buildState,
-  verifyState,
-  buildDiscordHandoffToken,
-  verifyDiscordHandoffToken,
-  escapeHtml,
-  parseScreenshotDataUrl,
-  sanitizeFileName,
-  extractAiResponseText,
-  parseAiJson,
-  cleanNullableString,
-  inferDateOrderFromLocaleTimezone,
-  normalizeOcrCatchLocal,
-  normalizeCatchEventOcrResult,
-  mergeCatchEventOcrResults,
-  isLocalAiBindingError,
-  getCloudflareAiRestConfig,
-  createLocalAiConfigError,
-  runCloudflareAiRest,
-  runCatchEventOcrModel,
-  extractCatchEventScreenshotFields,
-  storeCatchEventScreenshots,
-  buildPasswordResetMessage,
-  buildEmailVerificationMessage,
-  sendEmail,
-  exchangeDiscordCode,
-  fetchDiscordUser,
-  getCrypto,
-  randomHex,
-  sha256Hex,
-  derivePasswordHash,
-  verifyPassword,
-  isExpired,
-  duplicateAuthMessage,
-  isLocalhost,
-  shouldNormalizeLegacyCookie,
-  normalizeLegacySetCookie,
-  encodeFeebasSocketMessage,
-  createFeebasStreamDurableObjectRequest,
-  isWebSocketUpgrade,
-  webSocketUpgradeRequired,
-  createWebSocketPair,
-  createWebSocketUpgradeResponse,
-  serializeFeebasSocketMetadata,
-  deserializeFeebasSocketMetadata,
-  sendFeebasSocketBoard,
-  getFeebasStreamDurableObject,
-} = require('../services/worker-support');
+const { buildShinyFilters, enrichShinyPayloadWithVariants, shinySchema, updateShinySchema } = require('../contracts');
+const { json, readJson } = require('../http');
+const { enqueueShinyScreenshotJob, getShinyScreenshot } = require('../services/shiny-ocr');
+const { getGreyscaleSprite } = require('../services/shiny-assets');
 
 async function handleShiniesRoutes(context) {
   const {
     request,
     env,
-    ctx,
     url,
     pathname,
     fetchImpl,
     getRepositories,
     requireBotAuth,
-    getAuthenticatedUser,
-    requireUser,
-    signInUser,
-    issueEmailVerification,
-    maybeProxyLegacyRequest,
-    broadcastFeebasBoard,
-    createFeebasSocketResponse,
   } = context;
   let match;
+
+    if (pathname === '/api/shinies/from-screenshot') {
+      return json({ success: false, message: 'The synchronous screenshot OCR endpoint has been retired.' }, { status: 404 });
+    }
+
+    if (request.method === 'POST' && pathname === '/api/shinies/from-screenshot/async') {
+      const unauthorized = await requireBotAuth(request, env);
+      if (unauthorized) return unauthorized;
+      try {
+        const job = await enqueueShinyScreenshotJob({ request, env, fetchImpl, body: await readJson(request) });
+        return json({
+          success: true,
+          data: { job_id: job.id, status: job.status },
+          message: 'Screenshot job queued successfully',
+        }, { status: 202 });
+      } catch (error) {
+        console.error('Error queueing shiny screenshot:', error);
+        return json({
+          success: false,
+          message: error.message || 'Failed to queue shiny screenshot',
+          ...(error.details ? { details: error.details } : {}),
+        }, { status: error.status || 500 });
+      }
+    }
+
+    match = pathname.match(/^\/api\/shinies\/screenshots\/([^/]+)\/([a-f0-9]+)$/);
+    if (request.method === 'GET' && match) {
+      const object = await getShinyScreenshot(env, match[1], match[2]);
+      if (!object) return json({ success: false, message: 'Screenshot not found' }, { status: 404 });
+      return new Response(object.body, { headers: {
+        'content-type': object.httpMetadata?.contentType || 'application/octet-stream',
+        'cache-control': 'private, max-age=3600',
+        'x-content-type-options': 'nosniff',
+      } });
+    }
+
+    match = pathname.match(/^\/api\/shinies\/sprites\/(\d+)\/greyscale(?:\.gif)?$/);
+    if (request.method === 'GET' && match) {
+      const response = await getGreyscaleSprite({
+        nationalNumber: Number(match[1]),
+        variant: url.searchParams.get('variant'),
+        fetchImpl,
+      });
+      return response || json({ success: false, message: 'Sprite not found' }, { status: 404 });
+    }
 
     if (request.method === 'GET' && pathname === '/api/shinies') {
       try {

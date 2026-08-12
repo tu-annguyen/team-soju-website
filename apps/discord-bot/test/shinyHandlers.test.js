@@ -906,6 +906,7 @@ describe('shinyHandlers', () => {
         status: 'Bred',
         secret: false,
         alpha: false,
+        timezone: 'America/Los_Angeles',
         timezone: 'America/Los_Angeles (UTC-7)',
         total_encounters: 1000,
         species_encounters: 100,

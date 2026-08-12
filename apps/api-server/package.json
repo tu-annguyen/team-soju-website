@@ -3,16 +3,12 @@
   "description": "Backend API for Team Soju website",
   "version": "1.0.0",
   "private": true,
-  "main": "src/server.js",
+  "main": "src/cloudflare/worker-entry.mjs",
   "scripts": {
-    "start": "node src/server.js",
-    "start:express": "node src/server.js",
+    "start": "npm run dev:worker",
     "dev": "npm run dev:worker",
-    "dev:express": "nodemon src/server.js",
-    "import:mt-coronet-feebas-tally": "node src/config/import-mt-coronet-feebas-tally.js",
     "export:d1": "node src/scripts/export-postgres-to-d1.js",
     "dev:worker": "wrangler dev --local --config wrangler.jsonc --env-file ../../.env --inspector-port 9230",
-    "dev:worker:local-ocr": "npm run d1:migrate:local && wrangler dev --local --config wrangler.jsonc --env-file ../../.env --var LEGACY_API_BASE_URL:http://localhost:3001 --inspector-port 9230",
     "dev:worker:staging": "wrangler dev --local --config wrangler.jsonc --env staging --env-file ../../.env --inspector-port 9230",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\"",
     "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",
@@ -26,33 +22,17 @@
     "import:shiny-war-dex": "node src/scripts/import-shiny-war-dex.js",
     "tail:cf": "wrangler tail --config wrangler.jsonc --format pretty",
     "tail:cf:staging": "wrangler tail --config wrangler.jsonc --env staging --format pretty",
-    "migrate": "node src/config/migrate.js",
-    "clear-shinies": "node src/config/clear-shinies.js",
-    "seed:feebas-heatmap": "node src/config/seed-feebas-heatmap.js",
-    "seed": "node src/config/seed.js",
     "test": "jest --runInBand --coverage"
   },
   "dependencies": {
     "@team-soju/utils": "^1.0.0",
-    "axios": "^1.13.1",
-    "bcrypt": "^5.1.1",
-    "cors": "^2.8.5",
-    "cron": "^4.4.0",
-    "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "helmet": "^7.1.0",
-    "https": "^1.0.0",
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.3",
-    "sharp": "^0.34.5",
-    "tesseract.js": "^7.0.0"
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "nodemon": "^3.0.2",
-    "supertest": "^6.3.4",
     "wrangler": "^4.75.0"
   }
 }

@@ -14,7 +14,6 @@ This app uses the following structure:
 
 ```
 src/
-├── app.js              # Local dev server entry point
 ├── worker.js           # HTTP interaction handler
 ├── worker.mjs          # Cloudflare Worker module entry
 ├── commands.js         # Slash command definitions
@@ -84,8 +83,6 @@ npm run dev
 
 By default Wrangler listens on `8787`. From the repo root, `npm run dev` runs the bot Worker on `8788` so it can run alongside the API Worker.
 
-For the old Node interaction server, use `npm run dev:express`.
-
 If Discord needs to reach your local Worker endpoint, run `ngrok` separately against the Worker port you are using.
 
 **Register slash commands**:
@@ -109,7 +106,8 @@ Point your Discord Interactions Endpoint URL at the deployed Worker URL.
 - `DISCORD_TOKEN` is required in production because HTTP interactions only include role IDs; the bot uses the token to resolve guild role names before permission checks.
 - Slash commands are executed through stateless HTTP interactions; no Gateway connection or shard lifecycle is used.
 - Interactive shiny lists now encode paging and selection in component `custom_id`s so they work without in-memory collectors.
-- Screenshot OCR is delegated to the API server via `POST /api/shinies/from-screenshot`, keeping `sharp` and `tesseract.js` out of the Worker runtime.
+- Screenshot OCR is durably queued by the API Worker through `POST /api/shinies/from-screenshot/async`. The API stores the attachment in R2, processes it with Workers AI, and signs the callback that updates the original interaction.
+- Express and Render are deprecated and are not part of the bot runtime.
 
 ## Commands
 
@@ -480,9 +478,9 @@ All operations complete well within Discord's 3-second timeout limit.
    # No DISCORD_GUILD_ID (will register globally)
    ```
 
-4. Run with process manager (PM2, systemd, etc.):
+4. Deploy the Worker and register commands:
    ```bash
-   pm2 start apps/discord-bot/src/app.js --name team-soju-bot
+   npm run deploy:cf --workspace=@team-soju/discord-bot
    ```
 
 5. Verify commands appear in Discord (may take up to 1 hour for global registration)
@@ -490,7 +488,6 @@ All operations complete well within Discord's 3-second timeout limit.
 ## Support
 
 For issues or questions:
-- Check Discord.js documentation: https://discord.js.org/
 - See Discord Developer Portal: https://discord.com/developers/docs
 - Review API server documentation: `../../api-server/README.md`
 

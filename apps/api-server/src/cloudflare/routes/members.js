@@ -137,7 +137,6 @@ async function handleMembersRoutes(context) {
     requireUser,
     signInUser,
     issueEmailVerification,
-    maybeProxyLegacyRequest,
     broadcastFeebasBoard,
     createFeebasSocketResponse,
   } = context;
