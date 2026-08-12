@@ -443,6 +443,69 @@ describe('Cloudflare Worker API', () => {
     }));
   });
 
+  it('reads OpenAI-compatible OCR responses and tolerates an empty screenshot result', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn()
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          playerIgn: 'Misc',
+          species: 'Nincada',
+          pokedexNumber: 290,
+          nature: 'Calm',
+          confidence: 0.98,
+          warnings: [],
+        }) } }],
+      })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '' } }] })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          catchLocal: '2026-06-06T19:48:21',
+          location: 'Route 116',
+          confidence: 0.95,
+          warnings: [],
+        }) } }],
+      });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'summary.png', contentType: 'image/png', role: 'nature-ot', dataUrl: 'data:image/png;base64,AAAA' },
+          { name: 'ivs.png', contentType: 'image/png', role: 'ivs', dataUrl: 'data:image/png;base64,BBBB' },
+          { name: 'info.png', contentType: 'image/png', role: 'information', dataUrl: 'data:image/png;base64,CCCC' },
+        ],
+      }),
+    }), createEnv({ AI: { run: aiRun } }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual(expect.objectContaining({
+      playerIgn: 'Misc',
+      species: 'Nincada',
+      pokedexNumber: 290,
+      nature: 'Calm',
+      totalIv: null,
+      catchLocal: '2026-06-06T19:48:21',
+      location: 'Route 116',
+    }));
+    expect(body.data.warnings).toContain('No OCR response was returned for ivs.png.');
+    expect(aiRun).toHaveBeenCalledWith(
+      '@cf/google/gemma-4-26b-a4b-it',
+      expect.objectContaining({
+        max_completion_tokens: 600,
+        chat_template_kwargs: { thinking: false },
+        response_format: { type: 'json_object' },
+      })
+    );
+  });
+
   it('falls back to Workers AI REST when the local AI binding cannot run', async () => {
     const app = createWorkerApp({
       repositories: {
@@ -485,7 +548,7 @@ describe('Cloudflare Worker API', () => {
     expect(response.status).toBe(200);
     expect(aiRun).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
-      'https://api.cloudflare.com/client/v4/accounts/account-id/ai/run/@cf/google/gemma-3-12b-it',
+      'https://api.cloudflare.com/client/v4/accounts/account-id/ai/run/@cf/google/gemma-4-26b-a4b-it',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({

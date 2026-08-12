@@ -361,18 +361,38 @@ function sanitizeFileName(value) {
   return String(value || 'screenshot.png').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 120);
 }
 
+function extractAiContentText(content) {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+
+  return content
+    .map((part) => (typeof part === 'string' ? part : part?.text || ''))
+    .filter(Boolean)
+    .join('\n');
+}
+
 function extractAiResponseText(result) {
   if (!result) return '';
   if (typeof result === 'string') return result;
-  if (typeof result.response === 'string') return result.response;
-  if (typeof result.result === 'string') return result.result;
-  if (typeof result.text === 'string') return result.text;
-  if (Array.isArray(result.content)) {
-    return result.content
-      .map((part) => (typeof part === 'string' ? part : part?.text || ''))
-      .filter(Boolean)
-      .join('\n');
+
+  const directText = [result.response, result.text, result.output_text]
+    .find((value) => typeof value === 'string' && value.trim());
+  if (directText) return directText;
+
+  const contentText = extractAiContentText(result.content);
+  if (contentText) return contentText;
+
+  if (Array.isArray(result.choices)) {
+    for (const choice of result.choices) {
+      const choiceText = extractAiContentText(choice?.message?.content || choice?.text);
+      if (choiceText) return choiceText;
+    }
   }
+
+  if (result.result && typeof result.result === 'object') {
+    return extractAiResponseText(result.result);
+  }
+  if (typeof result.result === 'string') return result.result;
   return '';
 }
 
@@ -720,7 +740,7 @@ async function runCatchEventOcrModel(env, model, payload) {
 
 async function extractCatchEventScreenshotFields(env, screenshots, context = {}) {
   const fallbackDateOrder = inferDateOrderFromLocaleTimezone(context.locale, context.timezone);
-  const model = env.CATCH_EVENT_OCR_MODEL || '@cf/google/gemma-3-12b-it';
+  const model = env.CATCH_EVENT_OCR_MODEL || '@cf/google/gemma-4-26b-a4b-it';
   const results = await Promise.all(screenshots.map(async (screenshot, index) => {
     const roleInstructions = {
       'nature-ot': 'This is the Nature/OT screenshot. Only extract species from "Name:", nature from "Nature:", OT/playerIgn from "OT:", and pokedexNumber from "Pokedex:". Leave IV, date, and location fields null.',
@@ -738,7 +758,7 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
     'totalIv must come only from the left-side "Total:" IV row.',
     'Return JSON only, with this exact shape:',
     '{"playerIgn": string|null, "species": string|null, "pokedexNumber": number|null, "nature": string|null, "totalIv": number|null, "catchLocal": "YYYY-MM-DDTHH:mm:ss"|null, "catchTimeText": string|null, "dateOrder": "mdy"|"dmy"|"ymd"|null, "location": string|null, "confidence": number, "warnings": string[]}',
-    'For the Information tab, location is the text after Hatched/Caught in, before "after" when present.',
+    'For the Information tab, support text such as "Apparently Met at lv. 6 in ROUTE 116 on 6/6/26 7:48:21 PM" as well as Hatched/Caught wording. Extract location after "in" and before "on" or "after", and extract the timestamp after "on".',
     'For numeric dates, use the screenshot/client language or locale cues to decide MM/DD/YY versus DD/MM/YY. Set dateOrder to mdy, dmy, or ymd.',
     fallbackDateOrder
       ? `If a numeric date is ambiguous and no screenshot locale cue is visible, use browser fallback dateOrder ${fallbackDateOrder}.`
@@ -761,10 +781,19 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
         },
       ],
       temperature: 0,
-      max_tokens: 600,
+      max_completion_tokens: 600,
+      chat_template_kwargs: { thinking: false },
+      response_format: { type: 'json_object' },
     });
 
-    return normalizeCatchEventOcrResult(parseAiJson(extractAiResponseText(result)), fallbackDateOrder, context);
+    const responseText = extractAiResponseText(result);
+    if (!responseText.trim()) {
+      return normalizeCatchEventOcrResult({
+        warnings: [`No OCR response was returned for ${screenshot.name || `screenshot ${index + 1}`}.`],
+      }, fallbackDateOrder, context);
+    }
+
+    return normalizeCatchEventOcrResult(parseAiJson(responseText), fallbackDateOrder, context);
   }));
 
   return mergeCatchEventOcrResults(results);
