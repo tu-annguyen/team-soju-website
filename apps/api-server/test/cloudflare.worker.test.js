@@ -499,11 +499,45 @@ describe('Cloudflare Worker API', () => {
     expect(aiRun).toHaveBeenCalledWith(
       '@cf/google/gemma-4-26b-a4b-it',
       expect.objectContaining({
-        max_completion_tokens: 600,
-        chat_template_kwargs: { thinking: false },
+        max_completion_tokens: 4096,
+        reasoning_effort: 'none',
         response_format: { type: 'json_object' },
       })
     );
+  });
+
+  it('retries a transient Workers AI internal error', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn()
+      .mockRejectedValueOnce(new Error('AiError: Internal server error'))
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          species: 'Nincada',
+          confidence: 0.95,
+          warnings: [],
+        }) } }],
+      });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'summary.png', contentType: 'image/png', dataUrl: 'data:image/png;base64,AAAA' },
+        ],
+      }),
+    }), createEnv({ AI: { run: aiRun } }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(aiRun).toHaveBeenCalledTimes(2);
+    expect(body.data.species).toBe('Nincada');
   });
 
   it('falls back to Workers AI REST when the local AI binding cannot run', async () => {
