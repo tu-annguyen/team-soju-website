@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "npm run build --workspace=@team-soju/utils",
     "dev": "NODE_ENV=development astro dev --force",
+    "prebuild": "npm run build --workspace=@team-soju/utils",
     "build": "astro build",
     "build:scripts": "tsc -p tsconfig.scripts.json",
     "preview": "astro preview",

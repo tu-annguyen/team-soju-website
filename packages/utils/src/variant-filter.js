@@ -58,7 +58,7 @@ async function filterEntriesToGenerationV(entries, {
   return filteredEntries.filter(Boolean);
 }
 
-module.exports = {
+export {
   filterEntriesToGenerationV,
   isEntryIntroducedByGenerationV,
   isGenerationVOrEarlierVersionGroup,

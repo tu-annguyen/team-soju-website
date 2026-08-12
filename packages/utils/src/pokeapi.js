@@ -1,8 +1,6 @@
 import PokedexModule from 'pokedex-promise-v2';
-import { buildAnimatedShinySpriteUrl } from './sprite-url.mjs';
-import variantFilter from './variant-filter.cjs';
-
-const { filterEntriesToGenerationV } = variantFilter;
+import { buildAnimatedShinySpriteUrl } from './sprite-url.js';
+import { filterEntriesToGenerationV } from './variant-filter.js';
 
 const Pokedex = PokedexModule.default || PokedexModule;
 let pokedex;
