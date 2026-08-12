@@ -17,6 +17,7 @@ const {
 const fetchClient = require('../fetchClient');
 const { ENCOUNTER_TYPE_CHOICES, NATURE_CHOICES, SHINY_STATUS_CHOICES } = require('../commands');
 const { generateEncountersString, validateSojuTrainerIGN } = require('../utils');
+const { buildShinyTierField, enrichRawShinyEmbed } = require('./shinyEmbedDetails');
 const {
   capitalize,
   getKnownPokemonNames,
@@ -109,6 +110,10 @@ function getCatchTimeFields(shiny) {
     { name: 'Catch Time', value: catchTime, inline: true },
     { name: 'Timezone', value: getShinyCatchTimezone(shiny), inline: true },
   ];
+}
+
+function getFieldByName(fields, name) {
+  return (fields || []).find(field => field?.name === name) || null;
 }
 
 function formatPokemonAutocompleteLabel(name) {
@@ -575,17 +580,22 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
     ...[
       (() => {
         const variantLabel = humanizeVariantLabel(shiny.variants);
-        return variantLabel ? { name: 'Variant', value: variantLabel, inline: true } : null;
+        return {
+          name: 'Pokemon',
+          value: variantLabel || capitalize(shiny.pokemon_name || shiny.pokemon),
+          inline: true,
+        };
       })(),
       { name: 'Status', value: getStatusValue(shiny), inline: true },
       shiny.catch_date ? { name: 'Catch Date', value: shiny.catch_date, inline: true } : null,
       ...getCatchTimeFields(shiny),
+      buildShinyTierField(shiny),
       shiny.encounter_type ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
+      encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
+      shiny.nature ? { name: 'Nature', value: capitalize(shiny.nature), inline: true } : null,
+      buildIvString(shiny) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: buildIvString(shiny).replace(/,/g, '/'), inline: false } : null,
       shiny.is_secret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
       shiny.is_alpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
-      shiny.nature ? { name: 'Nature', value: capitalize(shiny.nature), inline: true } : null,
-      encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
-      buildIvString(shiny) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: buildIvString(shiny).replace(/,/g, '/'), inline: false } : null,
     ].filter(Boolean)
   )
     .setFooter({ text: `Shiny ID: ${shiny.id}` })
@@ -1104,9 +1114,48 @@ async function enhanceAsyncScreenshotPayload(payload) {
 
   try {
     const shiny = await fetchShinyById(shinyId);
-    return (await attachVariantSelectorToPayload(payload, shiny)).payload;
+    let enhanced = { payload, shiny };
+    try {
+      enhanced = await attachVariantSelectorToPayload(payload, shiny);
+    } catch (error) {
+      console.error('Error attaching variant selector to screenshot payload:', error.message);
+    }
+    const spriteUrl = enhanced.shiny.national_number
+      ? await getSpriteUrl(enhanced.shiny.national_number, { variant: enhanced.shiny.variants }).catch(() => null)
+      : null;
+    const rawEmbed = (enhanced.payload.embeds || []).find(
+      embed => embed?.footer?.text === `Shiny ID: ${enhanced.shiny.id}`
+    );
+    const rawFields = rawEmbed?.fields || [];
+    const encountersString = generateEncountersString(
+      enhanced.shiny.total_encounters,
+      enhanced.shiny.species_encounters,
+      enhanced.shiny.pokemon
+    );
+    const orderedFields = [
+      { name: 'Trainer', value: enhanced.shiny.trainer_name, inline: true },
+      getFieldByName(rawFields, 'Pokemon') || {
+        name: 'Pokemon',
+        value: `${capitalize(enhanced.shiny.pokemon_name || enhanced.shiny.pokemon)} (#${enhanced.shiny.national_number})`,
+        inline: true,
+      },
+      { name: 'Status', value: getStatusValue(enhanced.shiny), inline: true },
+      enhanced.shiny.catch_date
+        ? { name: 'Catch Date', value: enhanced.shiny.catch_date, inline: true }
+        : getFieldByName(rawFields, 'Catch Date'),
+      ...getCatchTimeFields(enhanced.shiny),
+      buildShinyTierField(enhanced.shiny),
+      enhanced.shiny.encounter_type
+        ? { name: 'Encounter Type', value: formatEncounterType(enhanced.shiny.encounter_type), inline: true }
+        : getFieldByName(rawFields, 'Encounter Type'),
+      getFieldByName(rawFields, 'Encounters')
+        || (encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null),
+      getFieldByName(rawFields, 'Nature'),
+      getFieldByName(rawFields, 'IVs (HP/Atk/Def/SpA/SpD/Spe)'),
+    ].filter(Boolean);
+    return enrichRawShinyEmbed(enhanced.payload, enhanced.shiny, spriteUrl, orderedFields);
   } catch (error) {
-    console.error('Error attaching variant selector to screenshot payload:', error.message);
+    console.error('Error enriching screenshot success payload:', error.message);
     return payload;
   }
 }
@@ -1376,18 +1425,19 @@ async function handleAddShiny(interaction) {
     if (spriteUrl) embed.setThumbnail(spriteUrl);
 
     embed.addFields(
-      { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
       { name: 'Trainer', value: shiny.trainer_name, inline: true },
+      { name: 'Pokemon', value: `${shiny.pokemon} (#${shiny.national_number})`, inline: true },
+      { name: 'Status', value: shiny.status || status, inline: true },
       { name: 'Catch Date', value: shiny.catch_date, inline: true },
       ...getCatchTimeFields(shiny),
+      buildShinyTierField(shiny),
       ...[
         encounterType ? { name: 'Encounter Type', value: formatEncounterType(shiny.encounter_type), inline: true } : null,
-        status !== 'Owned' ? { name: 'Status', value: shiny.status || status, inline: true } : null,
-        isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
-        isAlpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
         encountersString ? { name: 'Encounters', value: encountersString, inline: true } : null,
         nature ? { name: 'Nature', value: shiny.nature, inline: true } : null,
         buildIvString(shiny) ? { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: buildIvString(shiny).replace(/,/g, '/'), inline: false } : null,
+        isSecret ? { name: 'Secret Shiny', value: '✅', inline: true } : null,
+        isAlpha ? { name: 'Alpha Shiny', value: '✅', inline: true } : null,
         (isSecret || isSafari) ? { name: 'Special', value: isSecret ? 'Secret' : 'Safari', inline: true } : null,
       ].filter(Boolean)
     )

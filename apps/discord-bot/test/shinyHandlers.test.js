@@ -20,6 +20,7 @@ jest.mock('@team-soju/utils', () => ({
   ]),
   getNationalNumber: jest.fn().mockResolvedValue(1),
   getPokemonEvolutionLine: jest.fn().mockResolvedValue(['charmander', 'charmeleon', 'charizard']),
+  getPokemonTier: jest.fn(() => 'Tier 3'),
   getSpriteUrl: jest.fn().mockResolvedValue('https://example.com/sprite.gif'),
   getPokemonVariants: jest.fn(),
   getDateInTimezone: jest.fn(() => '2026-01-15'),
@@ -432,11 +433,17 @@ describe('shinyHandlers', () => {
     expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({
       embeds: [expect.objectContaining({ data: expect.objectContaining({
         fields: expect.arrayContaining([
+          expect.objectContaining({ name: 'Shiny Tier', value: 'Tier 3' }),
           expect.objectContaining({ name: 'Catch Time', value: '12:30' }),
           expect.objectContaining({ name: 'Timezone', value: 'Australia/Melbourne' }),
         ]),
       }) })],
     }));
+    const fields = interaction.editReply.mock.calls[0][0].embeds[0].data.fields;
+    expect(fields.map(field => field.name)).toEqual([
+      'Trainer', 'Pokemon', 'Status', 'Catch Date', 'Catch Time', 'Timezone', 'Shiny Tier',
+      'Encounters',
+    ]);
   });
 
   it('opens the encounter type picker from the edit controls', async () => {
@@ -918,6 +925,8 @@ describe('shinyHandlers', () => {
           national_number: 147,
           trainer_name: 'testtrainer',
           catch_date: '2026-01-15',
+          caught_at_utc: '2026-01-16T04:30:00.000Z',
+          catch_timezone: 'America/Los_Angeles',
           encounter_type: 'x5_horde',
           status: 'Bred',
           total_encounters: 1000,
@@ -963,6 +972,11 @@ describe('shinyHandlers', () => {
         ],
       })
     );
+    const fields = interaction.editReply.mock.calls[0][0].embeds[0].data.fields;
+    expect(fields.map(field => field.name)).toEqual([
+      'Trainer', 'Pokemon', 'Status', 'Catch Date', 'Catch Time', 'Timezone', 'Shiny Tier',
+      'Encounter Type', 'Encounters', 'Nature', 'IVs (HP/Atk/Def/SpA/SpD/Spe)',
+    ]);
   });
 
   it('adds a variant selector after addshiny and defaults to the is_default form', async () => {
@@ -1095,6 +1109,14 @@ describe('shinyHandlers', () => {
           variants: 'basculin',
           national_number: 550,
           trainer_name: 'T1',
+          status: 'Owned',
+          catch_date: '2026-08-11',
+          caught_at_utc: '2026-08-12T02:20:00.000Z',
+          catch_timezone: 'America/Los_Angeles',
+          encounter_type: 'x5_horde',
+          total_encounters: 5619,
+          species_encounters: 361,
+          nature: 'Docile',
         },
       },
     });
@@ -1106,12 +1128,32 @@ describe('shinyHandlers', () => {
           variants: 'basculin-red-striped',
           national_number: 550,
           trainer_name: 'T1',
+          status: 'Owned',
+          catch_date: '2026-08-11',
+          caught_at_utc: '2026-08-12T02:20:00.000Z',
+          catch_timezone: 'America/Los_Angeles',
+          encounter_type: 'x5_horde',
+          total_encounters: 5619,
+          species_encounters: 361,
+          nature: 'Docile',
         },
       },
     });
 
     const payload = await enhanceAsyncScreenshotPayload({
-      embeds: [{ footer: { text: 'Shiny ID: selected-id' } }],
+      embeds: [{
+        footer: { text: 'Shiny ID: selected-id' },
+        fields: [
+          { name: 'Trainer', value: 'T1', inline: true },
+          { name: 'Pokemon', value: 'Basculin (#550)', inline: true },
+          { name: 'Encounter Type', value: '5x Horde', inline: true },
+          { name: 'Catch Date', value: '2026-08-11', inline: true },
+          { name: 'Catch Time', value: '19:20 America/Los_Angeles', inline: true },
+          { name: 'Nature', value: 'Docile', inline: true },
+          { name: 'Encounters', value: '5,619 Total (361 Basculin)' },
+          { name: 'IVs (HP/Atk/Def/SpA/SpD/Spe)', value: '1/2/3/4/5/6', inline: false },
+        ],
+      }],
       components: [
         {
           components: [
@@ -1127,6 +1169,17 @@ describe('shinyHandlers', () => {
       expect.any(Object)
     );
     expect(payload.components[0].components[0].custom_id).toBe('sh:r:v:a:_:1:10:selected-id');
+    expect(payload.embeds[0]).toEqual(expect.objectContaining({
+      thumbnail: { url: 'https://example.com/sprite.gif' },
+      fields: expect.arrayContaining([
+        expect.objectContaining({ name: 'Shiny Tier', value: 'Tier 3' }),
+      ]),
+    }));
+    expect(payload.embeds[0].fields.map(field => field.name)).toEqual([
+      'Trainer', 'Pokemon', 'Status', 'Catch Date', 'Catch Time', 'Timezone', 'Shiny Tier',
+      'Encounter Type', 'Encounters', 'Nature', 'IVs (HP/Atk/Def/SpA/SpD/Spe)',
+    ]);
+    expect(getSpriteUrl).toHaveBeenCalledWith(550, { variant: 'basculin-red-striped' });
   });
 
   it('tells the user the original message will be updated after screenshot OCR finishes', async () => {
@@ -1250,6 +1303,10 @@ describe('shinyHandlers', () => {
         components: [],
       })
     );
+    const deleteFields = interaction.update.mock.calls[0][0].embeds[0].data.fields || [];
+    expect(deleteFields).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Shiny Tier' }),
+    ]));
   });
 
   it('shows a failed confirmation embed with greyscaled sprite', async () => {
@@ -1300,6 +1357,9 @@ describe('shinyHandlers', () => {
     expect(payload.embeds[0].data.title).toBe('Shiny Status Updated');
     expect(payload.embeds[0].data.color).toBe(0x757575);
     expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
+    expect(payload.embeds[0].data.fields).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Shiny Tier' }),
+    ]));
   });
 
   it('updates the shiny variant from the editshiny slash command', async () => {
