@@ -1,7 +1,7 @@
 const {
   filterEntriesToGenerationV,
   isGenerationVOrEarlierVersionGroup,
-} = require('../../../packages/utils/variant-filter.cjs');
+} = require('@team-soju/utils/variant-filter');
 
 describe('variant generation filtering', () => {
   it('filters forms introduced after Generation V even when Gen V sprite fields exist', async () => {

@@ -34,6 +34,7 @@
     "test:web": "npm run test --workspace=@team-soju/web-app -- --runInBand --coverage",
     "test:api": "npm run test --workspace=@team-soju/api-server -- --runInBand --coverage",
     "test:bot": "npm run test --workspace=@team-soju/discord-bot -- --runInBand --coverage",
+    "pretest": "npm run build --workspace=@team-soju/utils",
     "test": "concurrently --kill-others-on-fail -n api,web,bot -c cyan,green,magenta \"npm run test:api\" \"npm run test:web\" \"npm run test:bot\""
   },
   "keywords": [
@@ -44,7 +45,6 @@
     "bot"
   ],
   "devDependencies": {
-    "baseline-browser-mapping": "^2.10.0",
     "concurrently": "^9.2.1"
   },
   "engines": {

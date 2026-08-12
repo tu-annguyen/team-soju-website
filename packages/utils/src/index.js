@@ -1,8 +1,9 @@
 // ESM entrypoint for @team-soju/utils
 // Only export functionality safe for browser/SSR (no sharp, axios, etc.)
 
-import tiers from './pokemon-tiers.json' with { type: 'json' };
-export { buildAnimatedShinySpriteUrl } from './sprite-url.mjs';
+import tiers from '../pokemon-tiers.json' with { type: 'json' };
+import { TIER_POINTS } from './shiny-war.js';
+export { buildAnimatedShinySpriteUrl } from './sprite-url.js';
 export {
   DEFAULT_TIMEZONE,
   getDateInTimezone,
@@ -11,27 +12,17 @@ export {
   getTimezoneOptions,
   normalizeTimezoneInput,
   zonedLocalDateTimeToUtc,
-} from './date-time.mjs';
+} from './date-time.js';
 export {
   SHINY_WAR_2026,
+  TIER_POINTS,
   calculateHordeMetrics,
   effectiveShinyDenominator,
   getCatchBasePoints,
   getShinyWarSeason,
   isEligibleCatch,
   scoreShinyWarCatches,
-} from './shiny-war.mjs';
-
-const TIER_POINTS = {
-  'Tier 0': 50,
-  'Tier 1': 45,
-  'Tier 2': 40,
-  'Tier 3': 30,
-  'Tier 4': 15,
-  'Tier 5': 10,
-  'Tier 6': 5,
-  'Tier 7': 3,
-};
+} from './shiny-war.js';
 
 function normalizePokemonName(pokemon) {
   return String(pokemon || '').trim().toLowerCase();
@@ -93,9 +84,6 @@ export function getKnownPokemonNames() {
 
 export function getPokemonTier(pokemon) {
   const normalized = normalizePokemonName(pokemon);
-  if (pokemon === 'jellicent-male' || pokemon === 'basculin-red-striped' || pokemon === 'wormadam-trash') {
-    console.log('Determining tier for:', normalized);
-  }
 
   for (const [tier, pokemonList] of Object.entries(tiers)) {
     if (pokemonList.includes(normalized)) {

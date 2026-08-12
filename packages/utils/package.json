@@ -2,20 +2,32 @@
   "name": "@team-soju/utils",
   "version": "1.0.0",
   "description": "Utility functions for Team Soju projects",
-  "main": "index.js",
-  "type": "commonjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "prepare": "npm run build"
+  },
   "exports": {
     ".": {
-      "import": "./index.mjs",
-      "require": "./index.js"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
     },
     "./pokeapi": {
-      "import": "./pokeapi.mjs",
-      "require": "./pokeapi.cjs"
+      "import": "./dist/pokeapi.mjs",
+      "require": "./dist/pokeapi.cjs"
+    },
+    "./variant-filter": {
+      "import": "./dist/variant-filter.mjs",
+      "require": "./dist/variant-filter.cjs"
     }
   },
   "dependencies": {
     "gifwrap": "^0.10.1",
     "pokedex-promise-v2": "^4.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12"
   }
 }
