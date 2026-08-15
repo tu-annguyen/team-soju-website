@@ -201,11 +201,21 @@ function isFailedShiny(shiny) {
   return String(shiny?.status || 'Owned').trim() !== 'Owned';
 }
 
-function getGreyscaleSpriteUrl(nationalNumber, variant = null) {
-  if (!nationalNumber || !getPublicApiBaseUrl().startsWith('http')) return null;
-  if (!process.env.PUBLIC_API_BASE_URL && /:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/i.test(getPublicApiBaseUrl())) {
-    return null;
+function isPublicHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    const isPrivateIpv4 = /^(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(hostname);
+    return ['http:', 'https:'].includes(url.protocol)
+      && !['localhost', '127.0.0.1', '::1'].includes(hostname)
+      && !isPrivateIpv4;
+  } catch {
+    return false;
   }
+}
+
+function getGreyscaleSpriteUrl(nationalNumber, variant = null) {
+  if (!nationalNumber || !isPublicHttpUrl(getPublicApiBaseUrl())) return null;
   const params = new URLSearchParams();
   if (variant) {
     params.set('variant', normalizeVariantSlug(variant));
@@ -477,6 +487,7 @@ module.exports = {
   normalizeVariantSlug,
   humanizeVariantLabel,
   isFailedShiny,
+  isPublicHttpUrl,
   getGreyscaleSpriteUrl,
   normalizeEncounterType,
   formatEncounterType,

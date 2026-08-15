@@ -163,6 +163,7 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
     try {
       spriteUrl = isFailedShiny(shiny)
         ? getGreyscaleSpriteUrl(shiny.national_number, shiny.variants)
+          || await getSpriteUrl(shiny.national_number, { variant: shiny.variants })
         : await getSpriteUrl(shiny.national_number, { variant: shiny.variants });
     } catch (error) {
       console.error('Error fetching sprite URL:', error.message);
@@ -215,7 +216,8 @@ async function buildFailedShinyPayload(shiny) {
     .setFooter({ text: `Shiny ID: ${shiny.id}` })
     .setTimestamp();
 
-  const spriteUrl = getGreyscaleSpriteUrl(shiny.national_number, shiny.variants);
+  const spriteUrl = getGreyscaleSpriteUrl(shiny.national_number, shiny.variants)
+    || await getSpriteUrl(shiny.national_number, { variant: shiny.variants }).catch(() => null);
   if (spriteUrl) {
     embed.setThumbnail(spriteUrl);
   }

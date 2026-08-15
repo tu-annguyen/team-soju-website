@@ -91,6 +91,8 @@ By default Wrangler listens on `8787`. From the repo root, `npm run dev` runs th
 
 If Discord needs to reach your local Worker endpoint, run `ngrok` separately against the Worker port you are using.
 
+Failed-shiny thumbnails must also be reachable by Discord. Keep `API_BASE_URL` pointed at the local API for data, but set `PUBLIC_API_BASE_URL` to a deployed API Worker or a separate public tunnel to the API Worker. If it points at localhost or a private address, the bot deliberately uses the original public color sprite instead of emitting a broken thumbnail.
+
 **Register slash commands**:
 ```bash
 npm run register
