@@ -7,12 +7,19 @@ jest.mock('../src/components/shiny-war/api', () => ({
 }));
 
 const dashboard = {
-  teamTotal: 38,
-  teamTotals: { bidoof: 20, arceus: 18 },
-  uniqueFamilyCount: 1,
-  uniqueFamilies: ['vulpix'],
-  standings: [{ ign: 'SojuHunter', team: 'bidoof' as const, points: 38, catches: 1 }],
-  recentCatches: [],
+  officialWar: {
+    teamTotal: 38,
+    uniqueFamilyCount: 1,
+    uniqueFamilies: ['vulpix'],
+    standings: [{ ign: 'SojuHunter', team: 'bidoof' as const, points: 38, catches: 1 }],
+    recentCatches: [],
+  },
+  teamWar: {
+    teamTotals: { bidoof: 20, arceus: 18 },
+    uniqueFamilies: { bidoof: ['vulpix'], arceus: [] },
+    standings: [],
+    recentCatches: [],
+  },
 };
 
 describe('Shiny Wars public overview', () => {

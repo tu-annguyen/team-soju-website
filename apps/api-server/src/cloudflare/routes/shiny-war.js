@@ -32,43 +32,41 @@ async function memberAuth(context) {
 
 function toPublicDashboard(dashboard) {
   if (!dashboard) return null;
+  const publicCatch = (entry) => ({
+    pokemon: entry.pokemon,
+    ign: entry.ign,
+    team: entry.team,
+    caught_at_utc: entry.caught_at_utc,
+    score: {
+      base: entry.score.base,
+      secretBonus: entry.score.secretBonus,
+      safariBonus: entry.score.safariBonus,
+      uniqueBonus: entry.score.uniqueBonus,
+      total: entry.score.total,
+    },
+  });
+  const publicStandings = (standings) => standings
+    .map(({ ign, team, points, catches }) => ({ ign, team, points, catches }));
   return {
-    teamTotal: dashboard.teamTotal,
-    teamTotals: dashboard.teamTotals,
-    uniqueFamilyCount: dashboard.uniqueFamilyCount,
-    uniqueFamilies: dashboard.uniqueFamilies,
-    standings: dashboard.standings.map(({ ign, team, points, catches }) => ({ ign, team, points, catches })),
-    recentCatches: dashboard.recentCatches.map((entry) => ({
-      pokemon: entry.pokemon,
-      ign: entry.ign,
-      team: entry.team,
-      caught_at_utc: entry.caught_at_utc,
-      score: {
-        base: entry.score.base,
-        secretBonus: entry.score.secretBonus,
-        safariBonus: entry.score.safariBonus,
-        uniqueBonus: entry.score.uniqueBonus,
-        total: entry.score.total,
-      },
-    })),
+    officialWar: {
+      ...dashboard.officialWar,
+      standings: publicStandings(dashboard.officialWar.standings),
+      recentCatches: dashboard.officialWar.recentCatches.map(publicCatch),
+    },
+    teamWar: {
+      ...dashboard.teamWar,
+      standings: publicStandings(dashboard.teamWar.standings),
+      recentCatches: dashboard.teamWar.recentCatches.map(publicCatch),
+    },
   };
 }
 
 const VALID_TEAMS = new Set(['bidoof', 'arceus']);
 
-function participantLimitError(participants, team, isOfficial, memberId) {
+function participantLimitError(participants, isOfficial, memberId) {
   const others = participants.filter((participant) => participant.member_id !== memberId);
-  if (others.length >= 36) return 'The team-war roster is limited to 36 participants.';
-  if (others.filter((participant) => participant.team === team).length >= 18) {
-    return `Each team-war roster is limited to 18 participants.`;
-  }
   if (isOfficial && others.filter((participant) => participant.is_official).length >= 30) {
     return 'The official roster is limited to 30 participants.';
-  }
-  if (isOfficial && others.filter(
-    (participant) => participant.team === team && participant.is_official
-  ).length >= 15) {
-    return 'Each team is limited to 15 official participants.';
   }
   return null;
 }
@@ -124,6 +122,10 @@ async function handleShinyWarRoutes(context) {
         const value = url.searchParams.get(name);
         return value === null ? fallback : value === 'true';
       };
+      const familyKeys = (name) => String(url.searchParams.get(name) || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
       const data = await repositories.shinyWar.listHordeSpots({
         season: url.searchParams.get('season') || undefined,
         region: url.searchParams.get('region') || undefined,
@@ -136,6 +138,13 @@ async function handleShinyWarRoutes(context) {
         fullSplitOnly: bool('fullSplitOnly'),
         chumBucket: bool('chumBucket'),
         nonSafari: bool('nonSafari'),
+        officialUniqueBonus: bool('officialUniqueBonus', true),
+        teamUniqueBonus: bool('teamUniqueBonus'),
+        excludeOfficialCaught: bool('excludeOfficialCaught'),
+        excludeTeamCaught: bool('excludeTeamCaught'),
+        officialCaughtFamilyKeys: familyKeys('officialCaughtFamilyKeys'),
+        teamCaughtFamilyKeys: familyKeys('teamCaughtFamilyKeys'),
+        playerCaughtFamilyKeys: familyKeys('playerCaughtFamilyKeys'),
         minPointsPerHour: url.searchParams.get('minPointsPerHour') || undefined,
         sort: url.searchParams.get('sort') || undefined,
         page: url.searchParams.get('page') || undefined,
@@ -203,7 +212,7 @@ async function handleShinyWarRoutes(context) {
         return json({ success: false, message: 'A valid team and official-war status are required.' }, { status: 400 });
       }
       const participants = await repositories.shinyWar.listParticipants(EVENT_ID);
-      const limitError = participantLimitError(participants, team, isOfficial);
+      const limitError = participantLimitError(participants, isOfficial);
       if (limitError) return json({ success: false, message: limitError }, { status: 409 });
       return json({
         success: true,
@@ -227,7 +236,7 @@ async function handleShinyWarRoutes(context) {
       if (!participants.some((participant) => participant.member_id === match[1])) {
         return json({ success: false, message: 'Participant not found.' }, { status: 404 });
       }
-      const limitError = participantLimitError(participants, body.team, body.is_official, match[1]);
+      const limitError = participantLimitError(participants, body.is_official, match[1]);
       if (limitError) return json({ success: false, message: limitError }, { status: 409 });
       return json({
         success: true,

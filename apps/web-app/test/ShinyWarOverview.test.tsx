@@ -10,11 +10,11 @@ const dashboard = {
     seasons: ['Summer', 'Autumn', 'Winter', 'Spring'],
   },
   currentSeason: 'Summer',
-  teamTotal: 38,
-  teamTotals: { bidoof: 20, arceus: 18 },
-  uniqueFamilyCount: 1,
-  uniqueFamilies: ['vulpix'],
-  standings: [{
+  officialWar: {
+    teamTotal: 38,
+    uniqueFamilyCount: 1,
+    uniqueFamilies: ['vulpix'],
+    standings: [{
     member_id: 'member-1',
     ign: 'SojuHunter',
     rank: 'Trainer',
@@ -24,8 +24,8 @@ const dashboard = {
     hunts: [],
     points: 38,
     catches: 1,
-  }],
-  recentCatches: [{
+    }],
+    recentCatches: [{
     id: 'shiny-1',
     pokemon: 'vulpix',
     ign: 'SojuHunter',
@@ -34,7 +34,14 @@ const dashboard = {
     is_official: true,
     caught_at_utc: '2026-08-01T01:02:00.000Z',
     score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
-  }],
+    }],
+  },
+  teamWar: {
+    teamTotals: { bidoof: 20, arceus: 18 },
+    uniqueFamilies: { bidoof: ['vulpix'], arceus: [] },
+    standings: [],
+    recentCatches: [],
+  },
 };
 
 describe('Shiny Wars overview', () => {
@@ -43,14 +50,17 @@ describe('Shiny Wars overview', () => {
     render(<Overview dashboard={dashboard} canManage onEligibility={onEligibility} />);
 
     expect(screen.getByText('38 pts')).toBeInTheDocument();
-    expect(screen.getAllByText('Team Bidoof').length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('img', { name: 'Team Bidoof' })).toHaveLength(3);
-    expect(screen.getByRole('img', { name: 'Team Arceus' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Team Bidoof 20 points, Team Arceus 18 points')).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Team Bidoof' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Team Arceus' })).not.toBeInTheDocument();
     expect(screen.getByText('Vulpix')).toBeInTheDocument();
     expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mark invalid' }));
     expect(onEligibility).toHaveBeenCalledWith('shiny-1', false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Team War' }));
+    expect(screen.getByLabelText('Team Bidoof 20 points, Team Arceus 18 points')).toBeInTheDocument();
+    expect(screen.queryByText('Team points')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unique species')).not.toBeInTheDocument();
   });
 
   it('uses species language and can hide internal event status', () => {
@@ -65,12 +75,15 @@ describe('Shiny Wars overview', () => {
 
   it('paginates catches that do not fit beside the standings', () => {
     const catches = ['vulpix', 'eevee', 'pikachu'].map((pokemon, index) => ({
-      ...dashboard.recentCatches[0],
+      ...dashboard.officialWar.recentCatches[0],
       id: `shiny-${index + 1}`,
       pokemon,
     }));
 
-    render(<Overview dashboard={{ ...dashboard, recentCatches: catches }} />);
+    render(<Overview dashboard={{
+      ...dashboard,
+      officialWar: { ...dashboard.officialWar, recentCatches: catches },
+    }} />);
 
     expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
     expect(screen.queryByText(/SojuHunter · Eevee/)).not.toBeInTheDocument();

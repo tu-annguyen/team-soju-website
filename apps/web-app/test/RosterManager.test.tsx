@@ -34,6 +34,7 @@ describe('Shiny Wars roster manager', () => {
         onChanged={onChanged}
       />
     );
+    expect(screen.getByText('1 participant · 1/30 official · Open')).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('SojuHunter team'), { target: { value: 'arceus' } });
     await waitFor(() => expect(shinyWarRequest).toHaveBeenCalledWith(

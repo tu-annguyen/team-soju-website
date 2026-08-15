@@ -361,25 +361,48 @@ function sanitizeFileName(value) {
   return String(value || 'screenshot.png').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 120);
 }
 
+function extractAiContentText(content) {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+
+  return content
+    .map((part) => (typeof part === 'string' ? part : part?.text || ''))
+    .filter(Boolean)
+    .join('\n');
+}
+
 function extractAiResponseText(result) {
   if (!result) return '';
   if (typeof result === 'string') return result;
-  if (typeof result.response === 'string') return result.response;
-  if (typeof result.result === 'string') return result.result;
-  if (typeof result.text === 'string') return result.text;
-  if (Array.isArray(result.content)) {
-    return result.content
-      .map((part) => (typeof part === 'string' ? part : part?.text || ''))
-      .filter(Boolean)
-      .join('\n');
+
+  const directText = [result.response, result.text, result.output_text]
+    .find((value) => typeof value === 'string' && value.trim());
+  if (directText) return directText;
+
+  const contentText = extractAiContentText(result.content);
+  if (contentText) return contentText;
+
+  if (Array.isArray(result.choices)) {
+    for (const choice of result.choices) {
+      const choiceText = extractAiContentText(choice?.message?.content || choice?.text);
+      if (choiceText) return choiceText;
+    }
   }
+
+  if (result.result && typeof result.result === 'object') {
+    return extractAiResponseText(result.result);
+  }
+  if (typeof result.result === 'string') return result.result;
   return '';
 }
 
 function parseAiJson(text) {
   const trimmed = String(text || '').trim();
   if (!trimmed) {
-    throw new Error('OCR returned an empty response.');
+    const error = new Error('OCR returned an empty response.');
+    error.code = 'AI_RESPONSE_FORMAT';
+    error.retryable = true;
+    throw error;
   }
 
   try {
@@ -387,9 +410,19 @@ function parseAiJson(text) {
   } catch {
     const match = trimmed.match(/\{[\s\S]*\}/);
     if (!match) {
-      throw new Error('OCR response was not JSON.');
+      const error = new Error('OCR response was not JSON.');
+      error.code = 'AI_RESPONSE_FORMAT';
+      error.retryable = true;
+      throw error;
     }
-    return JSON.parse(match[0]);
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      const error = new Error('OCR response contained invalid JSON.');
+      error.code = 'AI_RESPONSE_FORMAT';
+      error.retryable = true;
+      throw error;
+    }
   }
 }
 
@@ -691,14 +724,19 @@ async function runCloudflareAiRest(env, model, payload) {
   if (!response.ok || body?.success === false) {
     const message = body?.errors?.[0]?.message || body?.message || 'Workers AI request failed.';
     const error = new Error(message);
+    const aiCode = Number(body?.errors?.[0]?.code);
     error.statusCode = response.status >= 400 && response.status < 500 ? response.status : 502;
+    error.aiCode = Number.isFinite(aiCode) ? aiCode : null;
+    error.retryable = response.status === 408
+      || (response.status === 429 && error.aiCode !== 3036)
+      || response.status >= 500;
     throw error;
   }
 
   return body?.result ?? body;
 }
 
-async function runCatchEventOcrModel(env, model, payload) {
+async function runCatchEventOcrModelOnce(env, model, payload) {
   if (env.AI && typeof env.AI.run === 'function') {
     try {
       return await env.AI.run(model, payload);
@@ -718,32 +756,46 @@ async function runCatchEventOcrModel(env, model, payload) {
   return runCloudflareAiRest(env, model, payload);
 }
 
+function isRetryableAiError(error) {
+  if (typeof error?.retryable === 'boolean') return error.retryable;
+  if ([408, 429, 500, 502, 504].includes(Number(error?.statusCode))) return true;
+  return /internal server error|out of capacity|temporar(?:y|ily)|network connection lost|daemonDown/i
+    .test(String(error?.message || error || ''));
+}
+
+async function runCatchEventOcrModel(env, model, payload) {
+  const retryDelays = [100, 300];
+
+  for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+    try {
+      return await runCatchEventOcrModelOnce(env, model, payload);
+    } catch (error) {
+      if (!isRetryableAiError(error) || attempt === retryDelays.length) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]));
+    }
+  }
+
+  throw new Error('Workers AI request failed after retries.');
+}
+
 async function extractCatchEventScreenshotFields(env, screenshots, context = {}) {
   const fallbackDateOrder = inferDateOrderFromLocaleTimezone(context.locale, context.timezone);
-  const model = env.CATCH_EVENT_OCR_MODEL || '@cf/google/gemma-3-12b-it';
+  const model = env.CATCH_EVENT_OCR_MODEL || '@cf/google/gemma-4-26b-a4b-it';
   const results = await Promise.all(screenshots.map(async (screenshot, index) => {
     const roleInstructions = {
-      'nature-ot': 'This is the Nature/OT screenshot. Only extract species from "Name:", nature from "Nature:", OT/playerIgn from "OT:", and pokedexNumber from "Pokedex:". Leave IV, date, and location fields null.',
-      ivs: 'This is the IVs screenshot. Only extract totalIv from the "Total:" row. Leave species, nature, OT, date, and location fields null.',
-      information: 'This is the Information screenshot. Only extract location and catchLocal/catchTimeText from the information text. Leave species, nature, OT, and IV fields null.',
+      'nature-ot': 'Extract playerIgn from "OT:", species from "Name:", pokedexNumber from "Pokedex:", and nature from "Nature:" without bracketed stat modifiers.',
+      ivs: 'Extract only totalIv: the first number in the "Total:" row, such as 134 from "134 / 186".',
+      information: 'Extract only location and catch time. In text like "Met ... in ROUTE 116 on 6/6/26 7:48:21 PM", location is ROUTE 116 and the timestamp follows "on".',
     };
     const prompt = [
-    `Read only the left half of this PokeMMO Pokemon Summary screenshot for catch event submission autofill. This is screenshot ${index + 1} of ${screenshots.length}${screenshot.name ? ` named ${screenshot.name}` : ''}.`,
-    roleInstructions[screenshot.role] || 'It may show the summary tab, IV tab, or information tab.',
-    'Ignore the Pokemon art, nickname/level area, held item area, and everything on the right half.',
-    'Extract only visible values. Do not infer missing values.',
-    'playerIgn must come only from the left-side "OT:" field.',
-    'species must come only from the left-side "Name:" field.',
-    'nature must come only from the left-side "Nature:" field. If stat modifiers are shown in brackets, omit them.',
-    'totalIv must come only from the left-side "Total:" IV row.',
-    'Return JSON only, with this exact shape:',
-    '{"playerIgn": string|null, "species": string|null, "pokedexNumber": number|null, "nature": string|null, "totalIv": number|null, "catchLocal": "YYYY-MM-DDTHH:mm:ss"|null, "catchTimeText": string|null, "dateOrder": "mdy"|"dmy"|"ymd"|null, "location": string|null, "confidence": number, "warnings": string[]}',
-    'For the Information tab, location is the text after Hatched/Caught in, before "after" when present.',
-    'For numeric dates, use the screenshot/client language or locale cues to decide MM/DD/YY versus DD/MM/YY. Set dateOrder to mdy, dmy, or ymd.',
-    fallbackDateOrder
-      ? `If a numeric date is ambiguous and no screenshot locale cue is visible, use browser fallback dateOrder ${fallbackDateOrder}.`
-      : 'If a numeric date is ambiguous, such as 4/12/26, and no locale cue is visible, leave catchLocal null, keep the original in catchTimeText, and add a warning.',
-    'If the total is shown as "140 / 186", totalIv is 140.',
+      'OCR the left panel of this PokeMMO summary screenshot. Ignore the right half.',
+      roleInstructions[screenshot.role] || 'Extract only labeled catch-event fields visible in the left panel.',
+      'Do not explain your work. Do not infer absent values. Use null for every unrequested or absent field.',
+      'Return only one JSON object with keys playerIgn, species, pokedexNumber, nature, totalIv, catchLocal, catchTimeText, dateOrder, location, confidence, warnings.',
+      'catchLocal must be YYYY-MM-DDTHH:mm:ss. dateOrder must be mdy, dmy, ymd, or null.',
+      fallbackDateOrder ? `Use ${fallbackDateOrder} for an otherwise ambiguous numeric date.` : '',
     ].join('\n');
     const result = await runCatchEventOcrModel(env, model, {
       messages: [
@@ -761,10 +813,30 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
         },
       ],
       temperature: 0,
-      max_tokens: 600,
+      max_completion_tokens: 4096,
+      reasoning_effort: 'none',
+      response_format: { type: 'json_object' },
     });
 
-    return normalizeCatchEventOcrResult(parseAiJson(extractAiResponseText(result)), fallbackDateOrder, context);
+    console.log('Catch event OCR model output:', JSON.stringify({
+      screenshot: screenshot.name || `screenshot ${index + 1}`,
+      role: screenshot.role || null,
+      model,
+      result,
+    }, null, 2));
+
+    const responseText = extractAiResponseText(result);
+    if (!responseText.trim()) {
+      const finishReason = result?.choices?.[0]?.finish_reason;
+      const warning = finishReason === 'length'
+        ? `OCR reached its completion limit before returning JSON for ${screenshot.name || `screenshot ${index + 1}`}.`
+        : `No OCR response was returned for ${screenshot.name || `screenshot ${index + 1}`}.`;
+      return normalizeCatchEventOcrResult({
+        warnings: [warning],
+      }, fallbackDateOrder, context);
+    }
+
+    return normalizeCatchEventOcrResult(parseAiJson(responseText), fallbackDateOrder, context);
   }));
 
   return mergeCatchEventOcrResults(results);
@@ -772,7 +844,8 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
 
 async function storeCatchEventScreenshots(env, eventId, submissionId, screenshots, requestUrl) {
   if (!screenshots.length) return [];
-  if (!env.CATCH_EVENT_SCREENSHOTS) {
+  const screenshotStorage = env.SCREENSHOT_STORAGE;
+  if (!screenshotStorage) {
     const error = new Error('Catch event screenshot storage is not configured.');
     error.statusCode = 503;
     throw error;
@@ -785,7 +858,7 @@ async function storeCatchEventScreenshots(env, eventId, submissionId, screenshot
     const fileName = sanitizeFileName(screenshot.name);
     const storageKey = `catch-events/${eventId}/${submissionId}/${id}-${fileName}`;
 
-    await env.CATCH_EVENT_SCREENSHOTS.put(storageKey, parsed.bytes, {
+    await screenshotStorage.put(storageKey, parsed.bytes, {
       httpMetadata: {
         contentType: screenshot.contentType || parsed.contentType,
       },

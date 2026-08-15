@@ -1,0 +1,136 @@
+// ESM entrypoint for @team-soju/utils
+// Only export functionality safe for browser/SSR (no sharp, axios, etc.)
+
+import tiers from '../pokemon-tiers.json' with { type: 'json' };
+import { TIER_POINTS } from './shiny-war.js';
+export { buildAnimatedShinySpriteUrl } from './sprite-url.js';
+export {
+  DEFAULT_TIMEZONE,
+  getDateInTimezone,
+  getSupportedTimezones,
+  getTimeInTimezone,
+  getTimezoneOptions,
+  normalizeTimezoneInput,
+  zonedLocalDateTimeToUtc,
+} from './date-time.js';
+export {
+  SHINY_WAR_2026,
+  TIER_POINTS,
+  calculateHordeMetrics,
+  effectiveShinyDenominator,
+  getCatchBasePoints,
+  getShinyWarSeason,
+  isEligibleCatch,
+  scoreShinyWarCatches,
+} from './shiny-war.js';
+
+function normalizePokemonName(pokemon) {
+  return String(pokemon || '').trim().toLowerCase();
+}
+
+const SPECIES_NAME_EXCEPTIONS = new Set([
+  'ho-oh',
+  'mime-jr',
+  'mr-mime',
+  'nidoran-f',
+  'nidoran-m',
+  'porygon-z',
+]);
+
+const VARIANT_PREFIX_TO_SPECIES = new Map([
+  ['basculin-', 'basculin'],
+  ['deerling-', 'deerling'],
+  ['frillish-', 'frillish'],
+  ['gastrodon-', 'gastrodon'],
+  ['jellicent-', 'jellicent'],
+  ['sawsbuck-', 'sawsbuck'],
+  ['shellos-', 'shellos'],
+  ['unfezant-', 'unfezant'],
+  ['wormadam-', 'wormadam'],
+]);
+
+function normalizeKnownPokemonSpeciesName(pokemon) {
+  const normalized = normalizePokemonName(pokemon);
+  if (!normalized || SPECIES_NAME_EXCEPTIONS.has(normalized)) {
+    return normalized;
+  }
+
+  for (const [prefix, species] of VARIANT_PREFIX_TO_SPECIES.entries()) {
+    if (normalized.startsWith(prefix)) {
+      return species;
+    }
+  }
+
+  return normalized;
+}
+
+const KNOWN_POKEMON_NAMES = Object.freeze(
+  [...new Set(
+    Object.values(tiers)
+      .flat()
+      .map(normalizeKnownPokemonSpeciesName)
+      .filter(Boolean)
+  )].sort()
+);
+
+export function capitalize(value) {
+  const normalized = String(value || '').trim();
+  return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase() : normalized;
+}
+
+export function getKnownPokemonNames() {
+  return [...KNOWN_POKEMON_NAMES];
+}
+
+export function getPokemonTier(pokemon) {
+  const normalized = normalizePokemonName(pokemon);
+
+  for (const [tier, pokemonList] of Object.entries(tiers)) {
+    if (pokemonList.includes(normalized)) {
+      return tier;
+    }
+  }
+
+  return 'Unknown';
+}
+
+export function calculateShinyPoints(pokemonName, options = {}) {
+  const encounterType = options.encounter_type || options.encounterType || null;
+  const isAlpha = Boolean(options.is_alpha ?? options.isAlpha);
+  const isSecret = Boolean(options.is_secret ?? options.isSecret);
+  const tier = getPokemonTier(pokemonName);
+  const tierPoints = TIER_POINTS[tier] || 0;
+
+  let basePoints = tierPoints;
+
+  if (encounterType === 'egg') {
+    basePoints = Math.max(basePoints, 35);
+  }
+
+  if (isAlpha) {
+    basePoints = Math.max(basePoints, 75);
+  }
+
+  if (tier === 'Legendary/Mythical') {
+    basePoints = Math.max(basePoints, 200);
+  }
+
+  let bonusPoints = 0;
+
+  if (isSecret) {
+    bonusPoints += 20;
+  }
+
+  if (encounterType === 'safari') {
+    bonusPoints += 10;
+  }
+
+  return basePoints + bonusPoints;
+}
+
+export function formatLocalDate(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};

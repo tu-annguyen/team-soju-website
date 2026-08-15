@@ -12,7 +12,9 @@ type Props = {
   apiBaseUrl: string;
   caughtFamilyKeys?: string[];
   defaultSeason: string;
+  officialCaughtFamilyKeys?: string[];
   participants: ParticipantHunts[];
+  teamCaughtFamilyKeys?: string[];
   onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
 };
 
@@ -21,6 +23,7 @@ const fieldClasses =
 const labelClasses = 'text-sm font-semibold text-gray-800 dark:text-gray-100';
 const checkboxClasses =
   'h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-2 focus:ring-primary-500/30 dark:border-gray-600 dark:bg-gray-950';
+const EMPTY_FAMILY_KEYS: string[] = [];
 const encounterMethods = [
   ['All', 'Every wild encounter method'],
   ['Sweet Scent', 'Sweet Scent (Hordes)'],
@@ -32,18 +35,20 @@ const encounterMethods = [
 ] as const;
 
 export default function HuntFinder({
-  apiBaseUrl, caughtFamilyKeys = [], defaultSeason, participants, onQueue,
+  apiBaseUrl, caughtFamilyKeys = EMPTY_FAMILY_KEYS, defaultSeason,
+  officialCaughtFamilyKeys = EMPTY_FAMILY_KEYS,
+  participants, teamCaughtFamilyKeys, onQueue,
 }: Props) {
   const [filters, setFilters] = useState({
     season: defaultSeason || 'Summer', region: '', location: '', species: '', tier: '', time: '', method: 'All',
     hordeSize: '', hordesPerHour: '240', eventBoost: true, donator: false,
     fullSplitOnly: false, minPointsPerHour: '', personalCharm: false, linkCharm: false,
-    chumBucket: false, nonSafari: false, sort: 'pointsPerHour',
+    chumBucket: false, nonSafari: false, officialUniqueBonus: true, teamUniqueBonus: false,
+    excludeOfficialCaught: false, excludeTeamCaught: false, sort: 'pointsPerHour',
   });
   const [spots, setSpots] = useState<HuntSpot[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(() => new Set());
   const [view, setView] = useState<HuntView>('location');
   const [error, setError] = useState('');
@@ -60,6 +65,13 @@ export default function HuntFinder({
           if (!['Singles', 'Fishing'].includes(filters.method) && key === 'nonSafari') return;
           if (value !== '') params.set(key, String(value));
         });
+        if (filters.officialUniqueBonus || filters.excludeOfficialCaught) {
+          params.set('officialCaughtFamilyKeys', officialCaughtFamilyKeys.join(','));
+        }
+        if (filters.teamUniqueBonus || filters.excludeTeamCaught) {
+          params.set('teamCaughtFamilyKeys', (teamCaughtFamilyKeys || []).join(','));
+        }
+        params.set('playerCaughtFamilyKeys', caughtFamilyKeys.join(','));
         params.set('pageSize', '1000');
         const data = await shinyWarRequest<{ items: HuntSpot[]; total: number; locations: string[] }>(
           apiBaseUrl, `/hordes?${params}`
@@ -72,25 +84,17 @@ export default function HuntFinder({
       }
     }, 200);
     return () => window.clearTimeout(timer);
-  }, [apiBaseUrl, filters]);
+  }, [apiBaseUrl, caughtFamilyKeys, filters, officialCaughtFamilyKeys, teamCaughtFamilyKeys]);
 
   const update = (key: string, value: string | boolean) => setFilters((current) => ({ ...current, [key]: value }));
   const isSweetScent = filters.method === 'Sweet Scent';
   const isFishing = filters.method === 'Fishing';
   const supportsNonSafari = ['Singles', 'Fishing'].includes(filters.method);
+  const teamWarAvailable = teamCaughtFamilyKeys !== undefined;
   const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(filters.method);
   const visibleLocationKeys = [...new Set(spots.map(huntLocationKey))];
   const allLocationsOpen = visibleLocationKeys.length > 0
     && visibleLocationKeys.every((locationKey) => !collapsedLocations.has(locationKey));
-
-  const toggleSpot = (spotKey: string) => {
-    setExpanded((current) => {
-      const next = new Set(current);
-      if (next.has(spotKey)) next.delete(spotKey);
-      else next.add(spotKey);
-      return next;
-    });
-  };
 
   const toggleAllLocations = () => {
     setCollapsedLocations(allLocationsOpen ? new Set(visibleLocationKeys) : new Set());
@@ -189,6 +193,70 @@ export default function HuntFinder({
           <input disabled={!supportsNonSafari} className={checkboxClasses} type="checkbox" checked={filters.nonSafari} onChange={(e) => update('nonSafari', e.target.checked)} />
           Non-Safari only
         </label>
+        <fieldset className="rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 dark:border-gray-700 dark:bg-gray-950">
+          <legend className="px-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Exclude caught evolution lines</legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <input
+                className={checkboxClasses}
+                type="checkbox"
+                checked={filters.excludeOfficialCaught}
+                onChange={(e) => setFilters((current) => ({
+                  ...current,
+                  excludeOfficialCaught: e.target.checked,
+                  excludeTeamCaught: e.target.checked ? false : current.excludeTeamCaught,
+                }))}
+              />
+              From Official War participants
+            </label>
+            <label className={`flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 ${!teamWarAvailable ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <input
+                className={checkboxClasses}
+                type="checkbox"
+                disabled={!teamWarAvailable}
+                checked={filters.excludeTeamCaught}
+                onChange={(e) => setFilters((current) => ({
+                  ...current,
+                  excludeOfficialCaught: e.target.checked ? false : current.excludeOfficialCaught,
+                  excludeTeamCaught: e.target.checked,
+                }))}
+              />
+              From Team War participants
+            </label>
+          </div>
+        </fieldset>
+        <fieldset className="rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 dark:border-gray-700 dark:bg-gray-950">
+          <legend className="px-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Include unique species bonus in calculations</legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <input
+                className={checkboxClasses}
+                type="checkbox"
+                checked={filters.officialUniqueBonus}
+                onChange={(e) => setFilters((current) => ({
+                  ...current,
+                  officialUniqueBonus: e.target.checked,
+                  teamUniqueBonus: e.target.checked ? false : current.teamUniqueBonus,
+                }))}
+              />
+              From Official War participants
+            </label>
+            <label className={`flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 ${!teamWarAvailable ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <input
+                className={checkboxClasses}
+                type="checkbox"
+                disabled={!teamWarAvailable}
+                checked={filters.teamUniqueBonus}
+                onChange={(e) => setFilters((current) => ({
+                  ...current,
+                  officialUniqueBonus: e.target.checked ? false : current.officialUniqueBonus,
+                  teamUniqueBonus: e.target.checked,
+                }))}
+              />
+              From Team War participants
+            </label>
+          </div>
+        </fieldset>
         <fieldset className="rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 lg:col-span-4 dark:border-gray-700 dark:bg-gray-950">
           <legend className="px-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Boosts and charms</legend>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -224,7 +292,6 @@ export default function HuntFinder({
               key={value}
               onClick={() => {
                 setView(value);
-                setExpanded(new Set());
               }}
               type="button"
             >
@@ -238,7 +305,7 @@ export default function HuntFinder({
           onClick={toggleAllLocations}
           type="button"
         >
-          <span aria-hidden="true">{allLocationsOpen ? '-' : '+'}</span>{' '}
+          <span aria-hidden="true">{allLocationsOpen ? '−' : '+'}</span>{' '}
           {allLocationsOpen ? 'Collapse all' : 'Open all'}
         </button>
       </div>
@@ -247,18 +314,11 @@ export default function HuntFinder({
       </p>
       {error && <p role="alert" className="text-rose-600">{error}</p>}
       <HuntResults
-        caughtFamilyKeys={caughtFamilyKeys}
-        expanded={expanded}
         participants={participants}
         speciesFilter={filters.species}
         spots={spots}
         view={view}
         onQueue={onQueue}
-        onToggle={toggleSpot}
-        selectedSeason={filters.season}
-        selectedTime={filters.time}
-        onSeasonChange={(season) => update('season', season)}
-        onTimeChange={(time) => update('time', time)}
         collapsedLocations={collapsedLocations}
         onToggleLocation={toggleLocation}
       />

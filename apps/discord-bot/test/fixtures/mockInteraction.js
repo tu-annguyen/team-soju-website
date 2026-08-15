@@ -31,6 +31,7 @@ function createMockInteraction(overrides = {}) {
   const optionValues = { ...defaultOptions, ...(overrides.options || {}) };
 
   const interaction = {
+    id: overrides.id || 'interaction-123',
     commandName: overrides.commandName || 'test',
     applicationId: overrides.applicationId || 'app-123',
     token: overrides.token || 'interaction-token',

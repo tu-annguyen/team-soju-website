@@ -52,7 +52,7 @@ export default function RosterManager({ apiBaseUrl, participants, locked, onChan
           <div>
             <h2 className="text-xl font-bold text-gray-950 dark:text-white">Team war roster</h2>
             <p className="text-sm text-gray-500">
-              {participants.length}/36 participants · {officialCount}/30 official · {locked ? 'Locked' : 'Open'}
+              {participants.length} participant{participants.length === 1 ? '' : 's'} · {officialCount}/30 official · {locked ? 'Locked' : 'Open'}
             </p>
           </div>
           <button

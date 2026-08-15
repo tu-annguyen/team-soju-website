@@ -168,16 +168,20 @@ describe('Cloudflare Worker API', () => {
         getDashboard: jest.fn().mockResolvedValue({
           event: { roster_locked: true },
           currentSeason: 'Summer',
-          teamTotal: 38,
-          teamTotals: { bidoof: 20, arceus: 18 },
-          uniqueFamilyCount: 1,
-          uniqueFamilies: ['vulpix'],
-          standings: [{ member_id: 'member-1', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
-          recentCatches: [{
-            id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
-            caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof',
-            score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
-          }],
+          officialWar: {
+            teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
+            standings: [{ member_id: 'member-1', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+            recentCatches: [{
+              id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
+              caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof',
+              score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+            }],
+          },
+          teamWar: {
+            teamTotals: { bidoof: 38, arceus: 0 },
+            uniqueFamilies: { bidoof: ['vulpix'], arceus: [] },
+            standings: [], recentCatches: [],
+          },
         }),
       },
     };
@@ -191,8 +195,8 @@ describe('Cloudflare Worker API', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toContain('public');
-    expect(body.data.standings).toEqual([{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }]);
-    expect(body.data.recentCatches[0]).not.toHaveProperty('id');
+    expect(body.data.officialWar.standings).toEqual([{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }]);
+    expect(body.data.officialWar.recentCatches[0]).not.toHaveProperty('id');
     expect(body.data).not.toHaveProperty('event');
   });
 
@@ -261,35 +265,7 @@ describe('Cloudflare Worker API', () => {
     expect(decoded.exp).toBeUndefined();
   });
 
-  it('proxies legacy screenshot endpoints when configured', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), {
-      status: 202,
-      headers: { 'content-type': 'application/json' },
-    }));
-    const app = createWorkerApp({
-      repositories: {
-        members: {},
-        shinies: {},
-      },
-      fetch: fetchMock,
-    });
-    const token = await generateBotToken('test-secret');
-
-    const response = await app.fetch(new Request('https://api.example.com/api/shinies/from-screenshot/async', {
-      method: 'POST',
-      headers: {
-        'authorization': `Bearer ${token}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ screenshot_url: 'https://example.com/screenshot.png' }),
-    }), createEnv({ LEGACY_API_BASE_URL: 'https://legacy.example.com' }));
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0].toString()).toBe('https://legacy.example.com/api/shinies/from-screenshot/async');
-    expect(response.status).toBe(202);
-  });
-
-  it('returns 501 for legacy-only endpoints without a proxy target', async () => {
+  it('returns 404 for the retired synchronous screenshot endpoint', async () => {
     const app = createWorkerApp({
       repositories: {
         members: {},
@@ -300,8 +276,8 @@ describe('Cloudflare Worker API', () => {
     const response = await app.fetch(new Request('https://api.example.com/api/shinies/from-screenshot'), createEnv());
     const body = await response.json();
 
-    expect(response.status).toBe(501);
-    expect(body.message).toContain('legacy Node API');
+    expect(response.status).toBe(404);
+    expect(body.message).toContain('retired');
   });
 
   it('returns a clear error when catch event OCR is not configured', async () => {
@@ -439,6 +415,103 @@ describe('Cloudflare Worker API', () => {
     }));
   });
 
+  it('reads OpenAI-compatible OCR responses and tolerates an empty screenshot result', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn()
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          playerIgn: 'Misc',
+          species: 'Nincada',
+          pokedexNumber: 290,
+          nature: 'Calm',
+          confidence: 0.98,
+          warnings: [],
+        }) } }],
+      })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '' } }] })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          catchLocal: '2026-06-06T19:48:21',
+          location: 'Route 116',
+          confidence: 0.95,
+          warnings: [],
+        }) } }],
+      });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'summary.png', contentType: 'image/png', role: 'nature-ot', dataUrl: 'data:image/png;base64,AAAA' },
+          { name: 'ivs.png', contentType: 'image/png', role: 'ivs', dataUrl: 'data:image/png;base64,BBBB' },
+          { name: 'info.png', contentType: 'image/png', role: 'information', dataUrl: 'data:image/png;base64,CCCC' },
+        ],
+      }),
+    }), createEnv({ AI: { run: aiRun } }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual(expect.objectContaining({
+      playerIgn: 'Misc',
+      species: 'Nincada',
+      pokedexNumber: 290,
+      nature: 'Calm',
+      totalIv: null,
+      catchLocal: '2026-06-06T19:48:21',
+      location: 'Route 116',
+    }));
+    expect(body.data.warnings).toContain('No OCR response was returned for ivs.png.');
+    expect(aiRun).toHaveBeenCalledWith(
+      '@cf/google/gemma-4-26b-a4b-it',
+      expect.objectContaining({
+        max_completion_tokens: 4096,
+        reasoning_effort: 'none',
+        response_format: { type: 'json_object' },
+      })
+    );
+  });
+
+  it('retries a transient Workers AI internal error', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn()
+      .mockRejectedValueOnce(new Error('AiError: Internal server error'))
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          species: 'Nincada',
+          confidence: 0.95,
+          warnings: [],
+        }) } }],
+      });
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'summary.png', contentType: 'image/png', dataUrl: 'data:image/png;base64,AAAA' },
+        ],
+      }),
+    }), createEnv({ AI: { run: aiRun } }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(aiRun).toHaveBeenCalledTimes(2);
+    expect(body.data.species).toBe('Nincada');
+  });
+
   it('falls back to Workers AI REST when the local AI binding cannot run', async () => {
     const app = createWorkerApp({
       repositories: {
@@ -481,7 +554,7 @@ describe('Cloudflare Worker API', () => {
     expect(response.status).toBe(200);
     expect(aiRun).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
-      'https://api.cloudflare.com/client/v4/accounts/account-id/ai/run/@cf/google/gemma-3-12b-it',
+      'https://api.cloudflare.com/client/v4/accounts/account-id/ai/run/@cf/google/gemma-4-26b-a4b-it',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -1117,20 +1190,7 @@ describe('Cloudflare Worker API', () => {
     });
   });
 
-  it('falls back to legacy auth/me locally when D1 does not have the signed-in user yet', async () => {
-    const legacyBody = {
-      success: true,
-      data: {
-        id: 'user-1',
-        email: 'trainer@example.com',
-        ign: 'Trainer',
-        auth_provider: 'password',
-      },
-    };
-    const fetchMock = jest.fn().mockResolvedValue(new Response(JSON.stringify(legacyBody), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    }));
+  it('clears a Worker session whose D1 user no longer exists', async () => {
     const repositories = {
       members: {},
       shinies: {},
@@ -1138,7 +1198,7 @@ describe('Cloudflare Worker API', () => {
         findById: jest.fn().mockResolvedValue(null),
       },
     };
-    const app = createWorkerApp({ repositories, fetch: fetchMock });
+    const app = createWorkerApp({ repositories });
     const token = jwt.sign({
       type: 'web_user',
       sub: 'user-1',
@@ -1150,16 +1210,12 @@ describe('Cloudflare Worker API', () => {
       headers: {
         cookie: `${AUTH_COOKIE_NAME}=${token}`,
       },
-    }), createEnv({
-      LEGACY_API_BASE_URL: 'http://localhost:3001',
-      NODE_ENV: 'development',
-    }));
+    }), createEnv({ NODE_ENV: 'development' }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0].toString()).toBe('http://localhost:3001/api/auth/me');
-    expect(body).toEqual(legacyBody);
+    expect(body).toEqual({ success: true, data: null });
+    expect(response.headers.get('set-cookie')).toContain(`${AUTH_COOKIE_NAME}=`);
   });
 
   it('serves auth update routes from the Worker instead of the legacy proxy', async () => {
@@ -1184,7 +1240,6 @@ describe('Cloudflare Worker API', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: 'trainer@example.com' }),
     }), createEnv({
-      LEGACY_API_BASE_URL: 'https://legacy.example.com',
       NODE_ENV: 'test',
       EMAIL_PROVIDER: 'console',
     }));
@@ -1222,7 +1277,7 @@ describe('Cloudflare Worker API', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: 'trainer@example.com', password: 'hunter42!' }),
-    }), createEnv({ LEGACY_API_BASE_URL: 'https://legacy.example.com' }));
+    }), createEnv());
     const body = await response.json();
 
     expect(response.status).toBe(403);
@@ -1280,7 +1335,6 @@ describe('Cloudflare Worker API', () => {
     });
 
     const response = await app.fetch(new Request('https://api.example.com/api/auth/discord?mode=register&ign=Trainer'), createEnv({
-      LEGACY_API_BASE_URL: 'https://legacy.example.com',
       DISCORD_CLIENT_ID: 'discord-client',
       DISCORD_CLIENT_SECRET: 'discord-secret',
       DISCORD_REDIRECT_URI: 'https://api.example.com/api/auth/discord/callback',
@@ -1578,9 +1632,7 @@ describe('Cloudflare Worker API', () => {
       fetch: fetchMock,
     });
 
-    const response = await app.fetch(createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv({
-      LEGACY_API_BASE_URL: 'https://legacy.example.com',
-    }));
+    const response = await app.fetch(createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv());
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(repositories.feebas.getBoard).not.toHaveBeenCalled();

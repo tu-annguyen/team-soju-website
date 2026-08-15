@@ -1,0 +1,329 @@
+import PokedexModule from 'pokedex-promise-v2';
+import { buildAnimatedShinySpriteUrl } from './sprite-url.js';
+import { filterEntriesToGenerationV } from './variant-filter.js';
+
+const Pokedex = PokedexModule.default || PokedexModule;
+let pokedex;
+
+function getPokedex() {
+  if (!pokedex) {
+    pokedex = new Pokedex();
+  }
+  return pokedex;
+}
+
+function normalizePokemonName(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function extractEvolutionSpecies(chainNode, collected = []) {
+  const speciesName = normalizePokemonName(chainNode?.species?.name);
+  if (speciesName) {
+    collected.push(speciesName);
+  }
+
+  for (const evolvesTo of chainNode?.evolves_to || []) {
+    extractEvolutionSpecies(evolvesTo, collected);
+  }
+
+  return collected;
+}
+
+const NIDORAN_ROUTE_NAMES = new Set(['nidoran-f', 'nidoran-m']);
+function isNidoranRouteName(value) {
+  return NIDORAN_ROUTE_NAMES.has(normalizePokemonName(value));
+}
+
+function buildSingleEntryVariantResult(species, nationalNumber, metadata = {}) {
+  const normalizedSpecies = normalizePokemonName(species);
+  const entry = createVariantEntry({
+    value: normalizedSpecies,
+    label: normalizedSpecies,
+    source: 'species.special-case',
+    isDefault: true,
+  });
+
+  return {
+    species: normalizedSpecies || null,
+    national_number: nationalNumber ?? null,
+    variants: entry ? [entry.value] : [],
+    entries: entry ? [serializeVariantEntry(entry)] : [],
+    metadata: {
+      has_gender_differences: Boolean(metadata.has_gender_differences),
+      forms_switchable: Boolean(metadata.forms_switchable),
+    },
+  };
+}
+
+function createVariantEntry({
+  value,
+  label,
+  source,
+  isDefault = false,
+  spriteCheckName = null,
+  versionGroup = null,
+}) {
+  const normalizedValue = normalizePokemonName(value);
+  if (!normalizedValue) return null;
+
+  return {
+    value: normalizedValue,
+    label: String(label || normalizedValue).trim(),
+    source,
+    is_default: Boolean(isDefault),
+    sprite_check_name: normalizePokemonName(spriteCheckName),
+    introduced_in_version_group: normalizePokemonName(versionGroup),
+  };
+}
+
+function dedupeVariantEntries(entries) {
+  const seen = new Set();
+  const deduped = [];
+
+  for (const entry of entries) {
+    if (!entry?.value || seen.has(entry.value)) continue;
+    seen.add(entry.value);
+    deduped.push(entry);
+  }
+
+  return deduped;
+}
+
+function hasGenerationVAnimatedSprite(pokemonData) {
+  const animatedSprites = pokemonData?.sprites?.versions?.['generation-v']?.['black-white']?.animated;
+  if (!animatedSprites) return false;
+
+  return Object.values(animatedSprites).some(Boolean);
+}
+
+function hasGenerationVAnimatedSpriteForPokemonName(pokemonName) {
+  return getPokedex()
+    .getPokemonByName(pokemonName)
+    .then(hasGenerationVAnimatedSprite)
+    .catch(() => false);
+}
+
+function serializeVariantEntry(entry) {
+  if (!entry) return null;
+
+  return {
+    value: entry.value,
+    label: entry.label,
+    source: entry.source,
+    is_default: entry.is_default,
+  };
+}
+
+function collapseBaseSpeciesEntry(entries, speciesName) {
+  const normalizedSpecies = normalizePokemonName(speciesName);
+  if (!normalizedSpecies) return entries;
+
+  const hasFormSpecificEntries = entries.some(entry =>
+    entry?.value &&
+    entry.value !== normalizedSpecies &&
+    entry.value.startsWith(`${normalizedSpecies}-`)
+  );
+
+  if (!hasFormSpecificEntries) {
+    return entries;
+  }
+
+  return entries.filter(entry => entry?.value !== normalizedSpecies);
+}
+
+async function resolveSpeciesContext(pokemon) {
+  const normalizedPokemon = normalizePokemonName(pokemon);
+  const pokedex = getPokedex();
+
+  try {
+    const species = await pokedex.getPokemonSpeciesByName(normalizedPokemon);
+    return { species, speciesName: normalizePokemonName(species?.name || normalizedPokemon) };
+  } catch (speciesError) {
+    const pokemonData = await pokedex.getPokemonByName(normalizedPokemon);
+    const speciesName = normalizePokemonName(pokemonData?.species?.name || pokemonData?.name || normalizedPokemon);
+    const species = await pokedex.getPokemonSpeciesByName(speciesName);
+    return { species, speciesName };
+  }
+}
+
+async function getFormEntriesForPokemon(pokemonName) {
+  const normalizedPokemon = normalizePokemonName(pokemonName);
+  if (!normalizedPokemon) return [];
+
+  try {
+    const pokemonData = await getPokedex().getPokemonByName(normalizedPokemon);
+    return await Promise.all(
+      (pokemonData?.forms || []).map(async (form) => {
+        try {
+          const formData = await getPokedex().getPokemonFormByName(form.name);
+          return createVariantEntry({
+            value: formData?.name || formData?.pokemon?.name || form?.name || pokemonData?.name,
+            label: formData?.form_name || formData?.pokemon?.name || form?.name || pokemonData?.name,
+            source: 'pokemon.forms',
+            isDefault: formData?.is_default,
+            spriteCheckName: formData?.pokemon?.name || pokemonData?.name || normalizedPokemon,
+            versionGroup: formData?.version_group?.name,
+          });
+        } catch (error) {
+          return createVariantEntry({
+            value: form?.name || pokemonData?.name,
+            label: form?.name || pokemonData?.name,
+            source: 'pokemon.forms',
+            isDefault: form?.name === pokemonData?.name,
+            spriteCheckName: pokemonData?.name || normalizedPokemon,
+          });
+        }
+      })
+    );
+  } catch (error) {
+    return [];
+  }
+}
+
+/** Fetches the national number for a given Pokémon name
+ * @param {string} pokemon - Pokémon name
+ * @returns {number|null} National number or null if not found
+ */
+export async function getNationalNumber(pokemon) {
+  try {
+    const species = await getPokedex().getPokemonSpeciesByName(String(pokemon).trim().toLowerCase());
+    return species?.id ?? null;
+  } catch (err) {
+    console.error(`Error fetching species data for Pokémon "${pokemon}":`, err.message || err);
+    return null;
+  }
+}
+
+export async function getPokemonEvolutionLine(pokemon) {
+  try {
+    const { species } = await resolveSpeciesContext(pokemon);
+    const chainUrl = species?.evolution_chain?.url;
+    if (!chainUrl) {
+      const speciesName = normalizePokemonName(species?.name || pokemon);
+      return speciesName ? [speciesName] : [];
+    }
+
+    const evolutionChain = await getPokedex().resource(chainUrl);
+    return [...new Set(extractEvolutionSpecies(evolutionChain?.chain, []))];
+  } catch (err) {
+    console.error(`Error fetching evolution line for Pokémon "${pokemon}":`, err.message || err);
+    const normalizedPokemon = normalizePokemonName(pokemon);
+    return normalizedPokemon ? [normalizedPokemon] : [];
+  }
+}
+
+/**
+ * @param {*} pokemonId national pokedex number of the pokemon
+ * @returns a URL to the Gen V animated shiny sprite associated with the pokemonId
+ */
+export async function getSpriteUrl(pokemonId, options = {}) {
+  const variant = normalizePokemonName(
+    typeof options === 'string'
+      ? options
+      : options?.variant
+  );
+
+  if (variant) {
+    return buildAnimatedShinySpriteUrl(pokemonId, variant);
+  }
+
+  try {
+    const pokemon = await getPokedex().getPokemonByName(pokemonId);
+    return pokemon.sprites.versions["generation-v"]["black-white"].animated.front_shiny;
+  } catch (err) {
+    console.error(`Error fetching data for Pokémon "${pokemonId}":`, err.message || err);
+    return null;
+  }
+}
+
+/**
+ * Resolves a species' possible variants by combining species-level varieties
+ * with cosmetic form data when the species endpoint alone is not enough.
+ *
+ * @param {string|number} pokemon - Pokémon name or id
+ * @returns {Promise<{
+ *   species: string|null,
+ *   national_number: number|null,
+ *   variants: string[],
+ *   entries: Array<{ value: string, label: string, source: string, is_default: boolean }>,
+ *   metadata: { has_gender_differences: boolean, forms_switchable: boolean }
+ * }>}
+ */
+export async function getPokemonVariants(pokemon) {
+  try {
+    const normalizedPokemon = normalizePokemonName(pokemon);
+    if (normalizedPokemon === 'nidoran') {
+      return buildSingleEntryVariantResult('nidoran', null);
+    }
+
+    const { species, speciesName } = await resolveSpeciesContext(pokemon);
+    if (isNidoranRouteName(normalizedPokemon) || isNidoranRouteName(species?.name) || isNidoranRouteName(speciesName)) {
+      return buildSingleEntryVariantResult('nidoran', species?.id ?? null, {
+        has_gender_differences: species?.has_gender_differences,
+        forms_switchable: species?.forms_switchable,
+      });
+    }
+
+    const varietyEntries = (species?.varieties || [])
+      .map(variety => createVariantEntry({
+        value: variety?.pokemon?.name,
+        label: variety?.pokemon?.name,
+        source: 'species.varieties',
+        isDefault: variety?.is_default,
+      }))
+      .filter(Boolean);
+
+    const formEntriesByVariety = await Promise.all(
+      varietyEntries.map(entry => getFormEntriesForPokemon(entry.value))
+    );
+
+    const fallbackEntries = varietyEntries.length > 0
+      ? []
+      : [createVariantEntry({
+        value: speciesName,
+        label: speciesName,
+        source: 'species.fallback',
+        isDefault: true,
+      })];
+
+    const generationVEntries = await filterEntriesToGenerationV(
+      dedupeVariantEntries([
+        ...formEntriesByVariety.flat().filter(Boolean),
+        ...varietyEntries,
+        ...fallbackEntries.filter(Boolean),
+      ]),
+      {
+        speciesName: species?.name || speciesName,
+        hasGenerationVSpriteForName: hasGenerationVAnimatedSpriteForPokemonName,
+      }
+    );
+
+    const entries = collapseBaseSpeciesEntry(
+      generationVEntries,
+      species?.name || speciesName
+    );
+
+    return {
+      species: species?.name || speciesName || null,
+      national_number: species?.id ?? null,
+      variants: entries.map(entry => entry.value),
+      entries: entries.map(serializeVariantEntry).filter(Boolean),
+      metadata: {
+        has_gender_differences: Boolean(species?.has_gender_differences),
+        forms_switchable: Boolean(species?.forms_switchable),
+      },
+    };
+  } catch (err) {
+    console.error(`Error fetching variant data for Pokémon "${pokemon}":`, err.message || err);
+    return {
+      species: null,
+      national_number: null,
+      variants: [],
+      entries: [],
+      metadata: {
+        has_gender_differences: false,
+        forms_switchable: false,
+      },
+    };
+  }
+}

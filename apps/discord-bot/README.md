@@ -14,7 +14,6 @@ This app uses the following structure:
 
 ```
 src/
-├── app.js              # Local dev server entry point
 ├── worker.js           # HTTP interaction handler
 ├── worker.mjs          # Cloudflare Worker module entry
 ├── commands.js         # Slash command definitions
@@ -22,7 +21,13 @@ src/
 ├── utils.js            # Utility functions and helpers
 └── handlers/
     ├── memberHandlers.js   # Member command logic
-    ├── shinyHandlers.js    # Shiny command logic
+    ├── shinyHandlers.js    # Shiny handler facade
+    ├── shinyCore.js        # Shared shiny parsing and identifiers
+    ├── shinyDisplay.js     # Shiny embeds and detail payloads
+    ├── shinyEditing.js     # Edit controls and updates
+    ├── shinyLists.js       # Paginated shiny lists
+    ├── shinyCommands.js    # Slash command handlers
+    ├── shinyInteractions.js # Components and modals
     └── statsHandlers.js    # Statistics command logic
 ```
 
@@ -56,8 +61,8 @@ src/
    DISCORD_GUILD_ID=your-guild-id  # Optional: for faster command updates
    ```
 
-3. **Ensure database is running**:
-   The bot connects to the same database as the API server. Make sure the database is properly configured with all required tables and migrations applied.
+3. **Start the API Worker**:
+   The bot calls the API Worker over HTTP; it does not connect to D1 directly. Apply API D1 migrations and start the API Worker first.
 
    Generate a JWT Secret at [https://jwtsecrets.com](https://jwtsecrets.com) and add it to `.env`:
    ```env
@@ -84,9 +89,9 @@ npm run dev
 
 By default Wrangler listens on `8787`. From the repo root, `npm run dev` runs the bot Worker on `8788` so it can run alongside the API Worker.
 
-For the old Node interaction server, use `npm run dev:express`.
-
 If Discord needs to reach your local Worker endpoint, run `ngrok` separately against the Worker port you are using.
+
+Failed-shiny thumbnails must also be reachable by Discord. Keep `API_BASE_URL` pointed at the local API for data, but set `PUBLIC_API_BASE_URL` to a deployed API Worker or a separate public tunnel to the API Worker. If it points at localhost or a private address, the bot deliberately uses the original public color sprite instead of emitting a broken thumbnail.
 
 **Register slash commands**:
 ```bash
@@ -109,7 +114,8 @@ Point your Discord Interactions Endpoint URL at the deployed Worker URL.
 - `DISCORD_TOKEN` is required in production because HTTP interactions only include role IDs; the bot uses the token to resolve guild role names before permission checks.
 - Slash commands are executed through stateless HTTP interactions; no Gateway connection or shard lifecycle is used.
 - Interactive shiny lists now encode paging and selection in component `custom_id`s so they work without in-memory collectors.
-- Screenshot OCR is delegated to the API server via `POST /api/shinies/from-screenshot`, keeping `sharp` and `tesseract.js` out of the Worker runtime.
+- Screenshot OCR is durably queued by the API Worker through `POST /api/shinies/from-screenshot/async`. The API stores the attachment in R2, processes it with Workers AI, and signs the callback that updates the original interaction.
+- Express and Render are deprecated and are not part of the bot runtime.
 
 ## Commands
 
@@ -480,9 +486,9 @@ All operations complete well within Discord's 3-second timeout limit.
    # No DISCORD_GUILD_ID (will register globally)
    ```
 
-4. Run with process manager (PM2, systemd, etc.):
+4. Deploy the Worker and register commands:
    ```bash
-   pm2 start apps/discord-bot/src/app.js --name team-soju-bot
+   npm run deploy:cf --workspace=@team-soju/discord-bot
    ```
 
 5. Verify commands appear in Discord (may take up to 1 hour for global registration)
@@ -490,7 +496,6 @@ All operations complete well within Discord's 3-second timeout limit.
 ## Support
 
 For issues or questions:
-- Check Discord.js documentation: https://discord.js.org/
 - See Discord Developer Portal: https://discord.com/developers/docs
 - Review API server documentation: `../../api-server/README.md`
 

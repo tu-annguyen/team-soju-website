@@ -80,28 +80,36 @@ describe('Shiny War public dashboard', () => {
     const result = toPublicDashboard({
       event: { roster_locked: true },
       currentSeason: 'Summer',
-      teamTotal: 38,
-      teamTotals: { bidoof: 20, arceus: 18 },
-      uniqueFamilyCount: 1,
-      uniqueFamilies: ['vulpix'],
-      standings: [{ member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
-      recentCatches: [{
-        id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
-        caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof', war_eligibility_override: true,
-        score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
-      }],
+      officialWar: {
+        teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
+        standings: [{ member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+        recentCatches: [{
+          id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
+          caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof', war_eligibility_override: true,
+          score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+        }],
+      },
+      teamWar: {
+        teamTotals: { bidoof: 38, arceus: 0 },
+        uniqueFamilies: { bidoof: ['vulpix'], arceus: [] },
+        standings: [], recentCatches: [],
+      },
     });
 
     expect(result).toEqual({
-      teamTotal: 38,
-      teamTotals: { bidoof: 20, arceus: 18 },
-      uniqueFamilyCount: 1,
-      uniqueFamilies: ['vulpix'],
-      standings: [{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
-      recentCatches: [{
-        pokemon: 'Vulpix', ign: 'Hunter', team: 'bidoof', caught_at_utc: '2026-08-01T01:02:00.000Z',
-        score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
-      }],
+      officialWar: {
+        teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
+        standings: [{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+        recentCatches: [{
+          pokemon: 'Vulpix', ign: 'Hunter', team: 'bidoof', caught_at_utc: '2026-08-01T01:02:00.000Z',
+          score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
+        }],
+      },
+      teamWar: {
+        teamTotals: { bidoof: 38, arceus: 0 },
+        uniqueFamilies: { bidoof: ['vulpix'], arceus: [] },
+        standings: [], recentCatches: [],
+      },
     });
   });
 });
@@ -111,26 +119,24 @@ describe('Shiny War roster limits', () => {
     member_id: `member-${index}`, team, is_official: isOfficial,
   });
 
-  it('allows three non-official additions after each team reaches 15 official members', () => {
+  it('allows unlimited non-official participants on either internal team', () => {
     const participants = [
       ...Array.from({ length: 15 }, (_, index) => participant(index, 'bidoof', true)),
       ...Array.from({ length: 15 }, (_, index) => participant(index + 15, 'arceus', true)),
-      ...Array.from({ length: 2 }, (_, index) => participant(index + 30, 'bidoof', false)),
+      ...Array.from({ length: 100 }, (_, index) => participant(index + 30, 'bidoof', false)),
     ];
 
-    expect(participantLimitError(participants, 'bidoof', false)).toBeNull();
-    expect(participantLimitError(participants, 'bidoof', true))
+    expect(participantLimitError(participants, false)).toBeNull();
+    expect(participantLimitError(participants, true))
       .toBe('The official roster is limited to 30 participants.');
   });
 
-  it('caps each internal team at 18 participants', () => {
-    const participants = Array.from(
-      { length: 18 },
-      (_, index) => participant(index, 'arceus', index < 15)
-    );
+  it('allows all 30 official participants to be assigned to one internal team', () => {
+    const participants = Array.from({ length: 29 }, (_, index) => participant(index, 'arceus', true));
 
-    expect(participantLimitError(participants, 'arceus', false))
-      .toBe('Each team-war roster is limited to 18 participants.');
+    expect(participantLimitError(participants, true)).toBeNull();
+    expect(participantLimitError([...participants, participant(29, 'arceus', true)], true))
+      .toBe('The official roster is limited to 30 participants.');
   });
 });
 
@@ -169,13 +175,16 @@ describe('Cloudflare Shiny Wars repository', () => {
 
     const dashboard = await repository.getDashboard('2026', new Date('2026-08-02T00:00:00.000Z'));
 
-    expect(dashboard.teamTotal).toBe(68);
-    expect(dashboard.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
-    expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(38);
-    expect(dashboard.standings.find((entry) => entry.member_id === 'arceus-official').caughtFamilyKeys)
+    expect(dashboard.officialWar.teamTotal).toBe(68);
+    expect(dashboard.teamWar.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
+    expect(dashboard.officialWar.standings).toHaveLength(2);
+    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'bidoof-official').points).toBe(38);
+    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(30);
+    expect(dashboard.teamWar.standings.find((entry) => entry.member_id === 'arceus-official').caughtFamilyKeys)
       .toEqual(['vulpix']);
-    expect(dashboard.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);
-    expect(dashboard.recentCatches.find((entry) => entry.member_id === 'bidoof-extra'))
+    expect(dashboard.teamWar.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);
+    expect(dashboard.officialWar.recentCatches.find((entry) => entry.member_id === 'bidoof-extra')).toBeUndefined();
+    expect(dashboard.teamWar.recentCatches.find((entry) => entry.member_id === 'bidoof-extra'))
       .toMatchObject({ team: 'bidoof', is_official: false });
   });
 
@@ -214,6 +223,95 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].composition.map((entry) => entry.split)).toEqual([0.5, 0.5]);
     expect(result.items[0].averagePoints).toBe(17.5);
     expect(result.items[0].pointsPerHour).toBe(0.7);
+  });
+
+  it('adds the unique-family bonus to expected points and excludes official-caught lines', async () => {
+    const rows = [
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+        tier: 'Tier 3', points: 30, form: '', min_level: 28, max_level: 30,
+        morning_rate: 0, day_rate: 0, night_rate: 2.5,
+      },
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Grimer', slug: 'grimer', family_key: 'grimer',
+        tier: 'Tier 6', points: 5, form: '', min_level: 28, max_level: 30,
+        morning_rate: 0, day_rate: 0, night_rate: 2.5,
+      },
+      {
+        location_id: '1:1', location_name: 'Viridian Forest', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Pikachu', slug: 'pikachu', family_key: 'pichu',
+        tier: 'Tier 4', points: 15, form: '', min_level: 3, max_level: 5,
+        morning_rate: 0, day_rate: 0, night_rate: 5,
+      },
+    ];
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue(rows),
+    });
+
+    const scored = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', hordesPerHour: 240,
+      officialUniqueBonus: true,
+      officialCaughtFamilyKeys: ['vulpix'],
+      profile: { eventBoost: false },
+    });
+    const mansion = scored.items.find((spot) => spot.location === 'Pokemon Mansion');
+    expect(mansion.averagePoints).toBe(21.5);
+    expect(mansion.pointsPerHour).toBe(0.86);
+    expect(mansion.composition.find((species) => species.name === 'Grimer').points).toBe(5);
+
+    const filtered = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', excludeOfficialCaught: true,
+      officialCaughtFamilyKeys: ['vulpix', 'pichu'],
+      profile: { eventBoost: false },
+    });
+    expect(filtered.items).toHaveLength(0);
+
+    const teamFiltered = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', excludeTeamCaught: true,
+      officialCaughtFamilyKeys: ['pichu'],
+      teamCaughtFamilyKeys: ['vulpix'],
+      profile: { eventBoost: false },
+    });
+    expect(teamFiltered.items).toHaveLength(1);
+    expect(teamFiltered.items[0].location).toBe('Viridian Forest');
+  });
+
+  it('calculates the logged-in player\'s duplicate species as one point', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([
+        {
+          location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+          species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+          tier: 'Tier 3', points: 30, form: '', min_level: 28, max_level: 30,
+          morning_rate: 0, day_rate: 0, night_rate: 2.5,
+        },
+        {
+          location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+          method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+          species_name: 'Grimer', slug: 'grimer', family_key: 'grimer',
+          tier: 'Tier 6', points: 5, form: '', min_level: 28, max_level: 30,
+          morning_rate: 0, day_rate: 0, night_rate: 2.5,
+        },
+      ]),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', hordesPerHour: 240,
+      playerCaughtFamilyKeys: ['vulpix'],
+      profile: { eventBoost: false },
+    });
+
+    expect(result.items[0].composition.find((entry) => entry.name === 'Vulpix').points).toBe(1);
+    expect(result.items[0].averagePoints).toBe(3);
+    expect(result.items[0].pointsPerHour).toBe(0.12);
   });
 
   it('keeps Zorua in Sweet Scent compositions without labeling it as lure-only', async () => {
