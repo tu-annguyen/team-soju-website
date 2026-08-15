@@ -1,6 +1,19 @@
 const { COMMANDS } = require('../src/commands');
 
 describe('commands', () => {
+  it('places every required option before optional options for Discord registration', () => {
+    for (const command of COMMANDS.map(item => item.toJSON())) {
+      let optionalOptionSeen = false;
+      for (const option of command.options || []) {
+        if (option.required === true) {
+          expect(optionalOptionSeen).toBe(false);
+        } else {
+          optionalOptionSeen = true;
+        }
+      }
+    }
+  });
+
   it('enables autocomplete for the pokemon option on /addshiny', () => {
     const addShiny = COMMANDS.find(command => command.toJSON().name === 'addshiny');
 
