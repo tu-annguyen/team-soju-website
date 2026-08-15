@@ -109,8 +109,6 @@ const {
   isExpired,
   duplicateAuthMessage,
   isLocalhost,
-  shouldNormalizeLegacyCookie,
-  normalizeLegacySetCookie,
   encodeFeebasSocketMessage,
   createFeebasStreamDurableObjectRequest,
   isWebSocketUpgrade,
@@ -127,7 +125,6 @@ async function handleAuthRoutes(context) {
   const {
     request,
     env,
-    ctx,
     url,
     pathname,
     fetchImpl,
@@ -138,7 +135,6 @@ async function handleAuthRoutes(context) {
     getAuthorizedSafeUser,
     signInUser,
     issueEmailVerification,
-    maybeProxyLegacyRequest,
     broadcastFeebasBoard,
     createFeebasSocketResponse,
   } = context;
@@ -448,10 +444,6 @@ async function handleAuthRoutes(context) {
         const user = await getRepositories().users.findById(decoded.sub);
 
         if (!user) {
-          if (env.LEGACY_API_BASE_URL && shouldNormalizeLegacyCookie(request, env)) {
-            return maybeProxyLegacyRequest(request, env, ctx);
-          }
-
           return json({
             success: true,
             data: null,

@@ -8,7 +8,6 @@
     "dev:local": "wrangler dev --local --config wrangler.jsonc --env-file ../../.env --var SCREENSHOT_RESULT_CALLBACK_URL:http://localhost:8788/internal/screenshot-result --port 8788 --inspector-port 9231",
     "dev:staging": "wrangler dev --local --config wrangler.jsonc --env staging --env-file ../../.env --inspector-port 9231",
     "dev:staging:local": "wrangler dev --local --config wrangler.jsonc --env staging --env-file ../../.env --port 8788 --inspector-port 9231",
-    "dev:express": "node --watch src/devServer.js",
     "register": "node -e \"require('./src/worker').registerCommandsIfNeeded({ ...process.env, REGISTER_COMMANDS_ON_START: 'true' })\"",
     "deploy:cf": "wrangler deploy --config wrangler.jsonc --env=\"\" && npm run register",
     "deploy:cf:preview": "wrangler versions upload --config wrangler.jsonc",
@@ -29,13 +28,7 @@
   "license": "MIT",
   "dependencies": {
     "@team-soju/utils": "^1.0.0",
-    "axios": "^1.13.2",
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.3.1",
-    "image-js": "^1.4.0",
-    "pokeapi-js-wrapper": "^1.2.8",
-    "sharp": "^0.34.5",
-    "tesseract.js": "^7.0.0"
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

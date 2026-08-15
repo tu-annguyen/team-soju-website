@@ -4,24 +4,27 @@
 	"main": "src/cloudflare/worker-entry.mjs",
 	"compatibility_date": "2026-04-06",
 	"compatibility_flags": [
-		"nodejs_compat"
+		"nodejs_compat",
+		"global_fetch_strictly_public"
 	],
 	"keep_vars": true,
-	// "vars": {
-	// "DB_BACKEND": "postgres",
-	// "NODE_ENV": "production",
-	// "LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
-	// },
 	"vars": {
 		"DB_BACKEND": "d1",
 		"NODE_ENV": "production",
-		"LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
 	  "DISCORD_CLIENT_ID": "1424533889678053428",
 		"DISCORD_REDIRECT_URI": "https://team-soju-api.tunacore.workers.dev/api/auth/discord/callback",
 		"WEB_APP_URL": "https://teamsoju.com",
 		"API_ORIGIN": "https://team-soju-api.tunacore.workers.dev",
 		"EMAIL_PROVIDER": "resend",
 		"EMAIL_FROM": "Team Soju <no-reply@teamsoju.com>"
+	},
+	"queues": {
+		"producers": [
+			{ "binding": "SHINY_OCR_QUEUE", "queue": "team-soju-shiny-ocr" }
+		],
+		"consumers": [
+			{ "queue": "team-soju-shiny-ocr", "max_batch_size": 1, "max_retries": 3 }
+		]
 	},
 	"d1_databases": [
 		{
@@ -32,7 +35,7 @@
 	],
 	"r2_buckets": [
 		{
-			"binding": "CATCH_EVENT_SCREENSHOTS",
+			"binding": "SCREENSHOT_STORAGE",
 			"bucket_name": "team-soju-catch-event-screenshots"
 		},
 	],
@@ -66,15 +69,9 @@
 		"staging": {
 			"name": "team-soju-api-staging",
 			"workers_dev": true,
-			// "vars": {
-			// "DB_BACKEND": "postgres",
-			// "NODE_ENV": "staging",
-			// "LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
-			// },
 			"vars": {
 				"DB_BACKEND": "d1",
 				"NODE_ENV": "staging",
-				"LEGACY_API_BASE_URL": "https://team-soju-website.onrender.com/",
 				"DISCORD_CLIENT_ID": "1438321934612828232",
 				"DISCORD_REDIRECT_URI": "https://team-soju-api-staging.tunacore.workers.dev/api/auth/discord/callback",
 				"WEB_APP_URL": "https://staging.teamsoju.com",
@@ -83,6 +80,14 @@
 				"AUTH_COOKIE_SECURE": "true",
 				"EMAIL_PROVIDER": "resend",
 				"EMAIL_FROM": "Team Soju <no-reply@teamsoju.com>"
+			},
+			"queues": {
+				"producers": [
+					{ "binding": "SHINY_OCR_QUEUE", "queue": "team-soju-shiny-ocr-staging" }
+				],
+				"consumers": [
+					{ "queue": "team-soju-shiny-ocr-staging", "max_batch_size": 1, "max_retries": 3 }
+				]
 			},
 			"d1_databases": [
 				{
@@ -93,7 +98,7 @@
 			],
 			"r2_buckets": [
 				{
-					"binding": "CATCH_EVENT_SCREENSHOTS",
+					"binding": "SCREENSHOT_STORAGE",
 					"bucket_name": "team-soju-catch-event-screenshots-staging"
 				},
 			],

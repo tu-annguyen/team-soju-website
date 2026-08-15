@@ -181,11 +181,11 @@ const COMMANDS = [
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
         .setRequired(true))
+    .addStringOption(configureTimezoneAutocompleteOption)
     .addStringOption(option =>
       option.setName('catch_time')
         .setDescription('Local capture time (HH:MM)')
-        .setRequired(true))
-    .addStringOption(configureTimezoneAutocompleteOption)
+        .setRequired(false))
     .addStringOption(option =>
       option.setName('status')
         .setDescription('Status of the shiny')

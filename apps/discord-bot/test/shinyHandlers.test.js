@@ -906,6 +906,7 @@ describe('shinyHandlers', () => {
         status: 'Bred',
         secret: false,
         alpha: false,
+        timezone: 'America/Los_Angeles',
         timezone: 'America/Los_Angeles (UTC-7)',
         total_encounters: 1000,
         species_encounters: 100,
@@ -1189,6 +1190,7 @@ describe('shinyHandlers', () => {
       options: {
         screenshot: { url: 'https://example.com/sneasel-mobile.png' },
         encounter_type: '5x Horde',
+        timezone: 'America/Los_Angeles',
         secret: false,
         alpha: false,
       },
@@ -1484,6 +1486,32 @@ describe('shinyHandlers', () => {
     expect(payload.embeds[0].data.color).toBe(0x757575);
     expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
     expect(payload.embeds[0].data.thumbnail.url).toContain('variant=pikachu');
+  });
+
+  it('uses the public color sprite when the grayscale Worker URL is local-only', async () => {
+    const originalPublicApiBaseUrl = process.env.PUBLIC_API_BASE_URL;
+    process.env.PUBLIC_API_BASE_URL = 'http://localhost:8787/api';
+    const interaction = createMockInteraction({
+      commandName: 'shiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { id: 'selected-id' },
+    });
+    fetchClient.get.mockResolvedValue({
+      data: { data: {
+        id: 'selected-id', pokemon: 'pikachu', pokemon_name: 'Pikachu', variants: 'pikachu',
+        trainer_name: 'T1', national_number: 25, status: 'Sold',
+      } },
+    });
+
+    try {
+      await handleGetShiny(interaction);
+    } finally {
+      process.env.PUBLIC_API_BASE_URL = originalPublicApiBaseUrl;
+    }
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.embeds[0].data.thumbnail.url).toBe('https://example.com/sprite.gif');
+    expect(getSpriteUrl).toHaveBeenCalledWith(25, { variant: 'pikachu' });
   });
 
   it('updates status to a non-owned value from edit controls and re-renders with greyscaled thumbnail', async () => {
