@@ -1190,6 +1190,7 @@ describe('shinyHandlers', () => {
       options: {
         screenshot: { url: 'https://example.com/sneasel-mobile.png' },
         encounter_type: '5x Horde',
+        timezone: 'America/Los_Angeles',
         secret: false,
         alpha: false,
       },

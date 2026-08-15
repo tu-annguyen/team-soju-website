@@ -1240,7 +1240,6 @@ describe('Cloudflare Worker API', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: 'trainer@example.com' }),
     }), createEnv({
-      LEGACY_API_BASE_URL: 'https://legacy.example.com',
       NODE_ENV: 'test',
       EMAIL_PROVIDER: 'console',
     }));
@@ -1278,7 +1277,7 @@ describe('Cloudflare Worker API', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: 'trainer@example.com', password: 'hunter42!' }),
-    }), createEnv({ LEGACY_API_BASE_URL: 'https://legacy.example.com' }));
+    }), createEnv());
     const body = await response.json();
 
     expect(response.status).toBe(403);
@@ -1336,7 +1335,6 @@ describe('Cloudflare Worker API', () => {
     });
 
     const response = await app.fetch(new Request('https://api.example.com/api/auth/discord?mode=register&ign=Trainer'), createEnv({
-      LEGACY_API_BASE_URL: 'https://legacy.example.com',
       DISCORD_CLIENT_ID: 'discord-client',
       DISCORD_CLIENT_SECRET: 'discord-secret',
       DISCORD_REDIRECT_URI: 'https://api.example.com/api/auth/discord/callback',
@@ -1634,9 +1632,7 @@ describe('Cloudflare Worker API', () => {
       fetch: fetchMock,
     });
 
-    const response = await app.fetch(createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv({
-      LEGACY_API_BASE_URL: 'https://legacy.example.com',
-    }));
+    const response = await app.fetch(createWebSocketRequest('https://api.example.com/api/feebas/route-119-main/stream?actorFingerprint=client-12345678'), createEnv());
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(repositories.feebas.getBoard).not.toHaveBeenCalled();

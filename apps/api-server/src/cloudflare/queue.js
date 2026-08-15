@@ -16,7 +16,9 @@ async function consumeShinyOcrQueue(batch, env, options = {}) {
       message.ack();
     } catch (error) {
       console.error('Shiny OCR Queue job failed:', { jobId, attempt: message.attempts, error });
-      if (Number(message.attempts || 1) < 3) {
+      const status = Number(error?.status || 0);
+      const isPermanent = status >= 400 && status < 500;
+      if (!isPermanent && Number(message.attempts || 1) < 3) {
         message.retry({ delaySeconds: Math.min(60, 5 * (2 ** (Number(message.attempts || 1) - 1))) });
         return;
       }

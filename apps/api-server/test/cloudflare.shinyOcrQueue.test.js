@@ -38,4 +38,14 @@ describe('shiny OCR Queue consumer', () => {
     expect(failShinyOcrJob).toHaveBeenCalledWith({}, 'ss-1', error, options.fetchImpl);
     expect(item.ack).toHaveBeenCalled();
   });
+
+  it('does not retry permanent input failures', async () => {
+    const error = Object.assign(new Error('invalid screenshot'), { status: 400 });
+    processShinyOcrJob.mockRejectedValueOnce(error);
+    const item = message(1);
+    await consumeShinyOcrQueue({ messages: [item] }, {}, options);
+    expect(item.retry).not.toHaveBeenCalled();
+    expect(failShinyOcrJob).toHaveBeenCalledWith({}, 'ss-1', error, options.fetchImpl);
+    expect(item.ack).toHaveBeenCalled();
+  });
 });

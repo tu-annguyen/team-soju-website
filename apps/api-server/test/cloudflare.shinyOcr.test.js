@@ -6,6 +6,7 @@ jest.mock('@team-soju/utils', () => ({
 const { getPokemonVariants } = require('@team-soju/utils');
 const {
   enqueueShinyScreenshotJob,
+  getShinyScreenshot,
   normalizeOcrResult,
   processShinyOcrJob,
 } = require('../src/cloudflare/services/shiny-ocr');
@@ -149,5 +150,23 @@ describe('Worker shiny screenshot OCR', () => {
     await expect(enqueueShinyScreenshotJob({
       request: new Request('https://api.example.com'), env, fetchImpl, body: validPayload(),
     })).rejects.toMatchObject({ status: 413 });
+  });
+
+  it('serves a successful screenshot while its Discord callback is pending', async () => {
+    const DB = createD1();
+    const SCREENSHOT_STORAGE = createStorage();
+    DB.jobs.set('ss-pending', {
+      id: 'ss-pending', status: 'callback_pending', storage_key: 'shiny-ocr/ss-pending.png',
+      public_token: 'unguessable-token', request_payload: '{}', callback_payload: '{}', attempts: 1,
+    });
+    await SCREENSHOT_STORAGE.put('shiny-ocr/ss-pending.png', new Uint8Array([1, 2, 3]), {
+      httpMetadata: { contentType: 'image/png' },
+    });
+
+    const object = await getShinyScreenshot(
+      { DB, SCREENSHOT_STORAGE }, 'ss-pending', 'unguessable-token'
+    );
+    expect(object).not.toBeNull();
+    expect(new Uint8Array(await object.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
   });
 });

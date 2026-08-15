@@ -254,7 +254,10 @@ async function createShinyFromJob(env, job, repositories) {
   }
   const variant = String(parsed.pokemon).trim().toLowerCase();
   const pokemon = ['nidoran-f', 'nidoran-m'].includes(variant) ? 'nidoran' : (variants.species || variant);
-  const shiny = await repositories.shinies.create({
+  const existingShiny = typeof repositories.shinies.findById === 'function'
+    ? await repositories.shinies.findById(job.id)
+    : null;
+  const shiny = existingShiny || await repositories.shinies.create({
     id: job.id,
     national_number: variants.national_number,
     pokemon,
@@ -330,7 +333,11 @@ async function failShinyOcrJob(env, jobId, error, fetchImpl = fetch) {
 
 async function getShinyScreenshot(env, jobId, token) {
   if (!env.DB || !getStorage(env)) return null;
-  const job = await firstRow(env, 'SELECT storage_key FROM shiny_screenshot_jobs WHERE id = ? AND public_token = ? AND status = ?', [jobId, token, 'completed']);
+  const job = await firstRow(
+    env,
+    "SELECT storage_key FROM shiny_screenshot_jobs WHERE id = ? AND public_token = ? AND status IN ('callback_pending', 'completed')",
+    [jobId, token]
+  );
   if (!job) return null;
   return getStorage(env).get(job.storage_key);
 }

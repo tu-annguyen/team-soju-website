@@ -21,7 +21,13 @@ src/
 ├── utils.js            # Utility functions and helpers
 └── handlers/
     ├── memberHandlers.js   # Member command logic
-    ├── shinyHandlers.js    # Shiny command logic
+    ├── shinyHandlers.js    # Shiny handler facade
+    ├── shinyCore.js        # Shared shiny parsing and identifiers
+    ├── shinyDisplay.js     # Shiny embeds and detail payloads
+    ├── shinyEditing.js     # Edit controls and updates
+    ├── shinyLists.js       # Paginated shiny lists
+    ├── shinyCommands.js    # Slash command handlers
+    ├── shinyInteractions.js # Components and modals
     └── statsHandlers.js    # Statistics command logic
 ```
 
@@ -55,8 +61,8 @@ src/
    DISCORD_GUILD_ID=your-guild-id  # Optional: for faster command updates
    ```
 
-3. **Ensure database is running**:
-   The bot connects to the same database as the API server. Make sure the database is properly configured with all required tables and migrations applied.
+3. **Start the API Worker**:
+   The bot calls the API Worker over HTTP; it does not connect to D1 directly. Apply API D1 migrations and start the API Worker first.
 
    Generate a JWT Secret at [https://jwtsecrets.com](https://jwtsecrets.com) and add it to `.env`:
    ```env
