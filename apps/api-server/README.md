@@ -44,9 +44,19 @@ Configured bindings:
 Set secrets independently for production and staging:
 
 ```bash
+# Production API Worker
 npx wrangler secret put JWT_SECRET --config apps/api-server/wrangler.jsonc
 npx wrangler secret put BOT_API_TOKEN --config apps/api-server/wrangler.jsonc
 npx wrangler secret put SCREENSHOT_RESULT_CALLBACK_SECRET --config apps/api-server/wrangler.jsonc
+
+# Staging API Worker
+npx wrangler secret put JWT_SECRET --config apps/api-server/wrangler.jsonc --env staging
+npx wrangler secret put BOT_API_TOKEN --config apps/api-server/wrangler.jsonc --env staging
+npx wrangler secret put SCREENSHOT_RESULT_CALLBACK_SECRET --config apps/api-server/wrangler.jsonc --env staging
+
+# The same callback secret must also be set on each matching bot Worker.
+npx wrangler secret put SCREENSHOT_RESULT_CALLBACK_SECRET --config apps/discord-bot/wrangler.jsonc
+npx wrangler secret put SCREENSHOT_RESULT_CALLBACK_SECRET --config apps/discord-bot/wrangler.jsonc --env staging
 ```
 
 The callback secret must match the secret on the Discord bot Worker.
@@ -76,12 +86,29 @@ The Worker resolves a canonical PokeAPI sprite and requests an animated `saturat
 
 ## Deployment
 
-Create the Queues once if they do not already exist:
+Wrangler bindings reference Cloudflare resources; deploying a binding does not create a named Queue or R2 bucket. Provision each resource once. From the repository root, inspect the account first:
 
 ```bash
-npx wrangler queues create team-soju-shiny-ocr
-npx wrangler queues create team-soju-shiny-ocr-staging
+npx wrangler queues list --config apps/api-server/wrangler.jsonc
+npx wrangler r2 bucket list --config apps/api-server/wrangler.jsonc
 ```
+
+For staging, create only the resources missing from those lists:
+
+```bash
+npx wrangler queues create team-soju-shiny-ocr-staging --config apps/api-server/wrangler.jsonc
+npx wrangler r2 bucket create team-soju-catch-event-screenshots-staging --config apps/api-server/wrangler.jsonc
+```
+
+Production uses separate resources:
+
+```bash
+npx wrangler queues create team-soju-shiny-ocr --config apps/api-server/wrangler.jsonc
+# The production R2 bucket is normally the existing catch-event bucket:
+npx wrangler r2 bucket create team-soju-catch-event-screenshots --config apps/api-server/wrangler.jsonc
+```
+
+Do not recreate a resource that is already listed. The D1 databases and IDs are already declared in `wrangler.jsonc`; Workers AI only needs the `AI` binding and does not require a separate model resource.
 
 Deploy in this order:
 
