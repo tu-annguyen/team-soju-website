@@ -15,13 +15,28 @@ async function consumeShinyOcrQueue(batch, env, options = {}) {
       await processShinyOcrJob(env, jobId, repositories, fetchImpl);
       message.ack();
     } catch (error) {
-      console.error('Shiny OCR Queue job failed:', { jobId, attempt: message.attempts, error });
+      const attempt = Number(message.attempts || 1);
       const status = Number(error?.status || 0);
       const isPermanent = status >= 400 && status < 500;
-      if (!isPermanent && Number(message.attempts || 1) < 3) {
-        message.retry({ delaySeconds: Math.min(60, 5 * (2 ** (Number(message.attempts || 1) - 1))) });
+      if (!isPermanent && attempt < 3) {
+        const delaySeconds = Math.min(60, 5 * (2 ** (attempt - 1)));
+        console.warn('Shiny OCR Queue delivery failed; retry scheduled:', {
+          jobId,
+          attempt,
+          nextAttempt: attempt + 1,
+          delaySeconds,
+          code: error?.code,
+          message: String(error?.message || error),
+        });
+        message.retry({ delaySeconds });
         return;
       }
+      console.error('Shiny OCR Queue job failed permanently:', {
+        jobId,
+        attempt,
+        code: error?.code,
+        message: String(error?.message || error),
+      });
       try {
         await failShinyOcrJob(env, jobId, error, fetchImpl);
       } catch (callbackError) {

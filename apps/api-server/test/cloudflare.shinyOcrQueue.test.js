@@ -12,8 +12,19 @@ function message(attempts = 1) {
 
 describe('shiny OCR Queue consumer', () => {
   const options = { repositories: {}, fetchImpl: jest.fn() };
+  let errorSpy;
+  let warnSpy;
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 
   it('acknowledges successful jobs', async () => {
     const item = message();
@@ -28,6 +39,11 @@ describe('shiny OCR Queue consumer', () => {
     await consumeShinyOcrQueue({ messages: [item] }, {}, options);
     expect(item.retry).toHaveBeenCalledWith({ delaySeconds: 5 });
     expect(item.ack).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Shiny OCR Queue delivery failed; retry scheduled:',
+      expect.objectContaining({ jobId: 'ss-1', attempt: 1, nextAttempt: 2, delaySeconds: 5 })
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it('records and acknowledges a failure after three deliveries', async () => {
@@ -37,6 +53,10 @@ describe('shiny OCR Queue consumer', () => {
     await consumeShinyOcrQueue({ messages: [item] }, {}, options);
     expect(failShinyOcrJob).toHaveBeenCalledWith({}, 'ss-1', error, options.fetchImpl);
     expect(item.ack).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Shiny OCR Queue job failed permanently:',
+      expect.objectContaining({ jobId: 'ss-1', attempt: 3, message: 'terminal' })
+    );
   });
 
   it('does not retry permanent input failures', async () => {

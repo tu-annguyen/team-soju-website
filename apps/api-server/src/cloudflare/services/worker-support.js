@@ -399,7 +399,10 @@ function extractAiResponseText(result) {
 function parseAiJson(text) {
   const trimmed = String(text || '').trim();
   if (!trimmed) {
-    throw new Error('OCR returned an empty response.');
+    const error = new Error('OCR returned an empty response.');
+    error.code = 'AI_RESPONSE_FORMAT';
+    error.retryable = true;
+    throw error;
   }
 
   try {
@@ -407,9 +410,19 @@ function parseAiJson(text) {
   } catch {
     const match = trimmed.match(/\{[\s\S]*\}/);
     if (!match) {
-      throw new Error('OCR response was not JSON.');
+      const error = new Error('OCR response was not JSON.');
+      error.code = 'AI_RESPONSE_FORMAT';
+      error.retryable = true;
+      throw error;
     }
-    return JSON.parse(match[0]);
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      const error = new Error('OCR response contained invalid JSON.');
+      error.code = 'AI_RESPONSE_FORMAT';
+      error.retryable = true;
+      throw error;
+    }
   }
 }
 

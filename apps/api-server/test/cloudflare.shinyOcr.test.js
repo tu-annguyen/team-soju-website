@@ -4,6 +4,7 @@ jest.mock('@team-soju/utils', () => ({
 }));
 
 const { getPokemonVariants } = require('@team-soju/utils');
+const { parseAiJson } = require('../src/cloudflare/services/worker-support');
 const {
   enqueueShinyScreenshotJob,
   getShinyScreenshot,
@@ -74,6 +75,12 @@ function validPayload() {
 describe('Worker shiny screenshot OCR', () => {
   beforeEach(() => {
     getPokemonVariants.mockResolvedValue({ species: 'pikachu', national_number: 25, variants: ['pikachu'] });
+  });
+
+  it('marks malformed model output as a retryable format error', () => {
+    expect(() => parseAiJson('I could not read the screenshot.')).toThrow(
+      expect.objectContaining({ code: 'AI_RESPONSE_FORMAT', retryable: true })
+    );
   });
 
   it('normalizes ambiguous and future OCR dates without guessing', () => {
