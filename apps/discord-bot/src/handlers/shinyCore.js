@@ -120,8 +120,8 @@ function getFieldByName(fields, name) {
 
 function formatPokemonAutocompleteLabel(name) {
   const normalizedName = String(name || '').trim().toLowerCase();
-  if (normalizedName === 'nidoran-f') return 'Nidoran ♀';
-  if (normalizedName === 'nidoran-m') return 'Nidoran ♂';
+  if (normalizedName === 'nidoran-f') return 'Nidoran Female';
+  if (normalizedName === 'nidoran-m') return 'Nidoran Male';
 
   return String(name || '')
     .trim()
@@ -136,10 +136,10 @@ function getPokemonDisplayName(shiny) {
   const nationalNumber = Number(shiny?.national_number);
 
   if (routeName === 'nidoran-f' || (routeName === 'nidoran' && nationalNumber === 29)) {
-    return 'Nidoran ♀';
+    return 'Nidoran Female';
   }
   if (routeName === 'nidoran-m' || (routeName === 'nidoran' && nationalNumber === 32)) {
-    return 'Nidoran ♂';
+    return 'Nidoran Male';
   }
 
   return capitalize(shiny?.pokemon_name || shiny?.pokemon);
@@ -213,6 +213,10 @@ function humanizeVariantLabel(value) {
     .filter(Boolean)
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function getShinyDisplayName(shiny) {
+  return humanizeVariantLabel(shiny?.variants) || getPokemonDisplayName(shiny);
 }
 
 function isFailedShiny(shiny) {
@@ -505,6 +509,7 @@ module.exports = {
   handleShinyAutocomplete,
   normalizeVariantSlug,
   humanizeVariantLabel,
+  getShinyDisplayName,
   isFailedShiny,
   isPublicHttpUrl,
   getGreyscaleSpriteUrl,

@@ -99,6 +99,60 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('distinguishes female and male Nidoran in the shiny select menu', async () => {
+    const interaction = createMockInteraction({
+      options: { trainer: 'tester', limit: 10 },
+    });
+
+    fetchClient.get
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id' } } })
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id', ign: 'tester' } } })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            { id: 'female', pokemon: 'nidoran', pokemon_name: 'Nidoran', national_number: 29 },
+            { id: 'male', pokemon: 'nidoran', pokemon_name: 'Nidoran', national_number: 32 },
+          ],
+        },
+      });
+
+    await handleGetShinies(interaction);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.components[1].components[0].options).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Nidoran Female', value: 'female' }),
+      expect.objectContaining({ label: 'Nidoran Male', value: 'male' }),
+    ]));
+  });
+
+  it('includes Pokemon variants in shiny select menu labels', async () => {
+    const interaction = createMockInteraction({
+      options: { trainer: 'tester', limit: 10 },
+    });
+
+    fetchClient.get
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id' } } })
+      .mockResolvedValueOnce({ data: { data: { id: 'trainer-id', ign: 'tester' } } })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            { id: 'frillish', pokemon_name: 'Frillish', variants: 'frillish-female' },
+            { id: 'deerling', pokemon_name: 'Deerling', variants: 'deerling-spring' },
+          ],
+        },
+      });
+
+    await handleGetShinies(interaction);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.components[1].components[0].options).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Frillish Female', value: 'frillish' }),
+      expect.objectContaining({ label: 'Deerling Spring', value: 'deerling' }),
+    ]));
+    expect(payload.embeds[0].data.description).toContain('**Frillish Female**');
+    expect(payload.embeds[0].data.description).toContain('**Deerling Spring**');
+  });
+
   it('returns pokemon autocomplete suggestions from the known list', async () => {
     const interaction = createMockInteraction({
       isChatInputCommand: jest.fn().mockReturnValue(false),
@@ -140,14 +194,14 @@ describe('shinyHandlers', () => {
     await handlePokemonAutocomplete(interaction);
 
     expect(interaction.respondAutocomplete).toHaveBeenCalledWith([
-      { name: 'Nidoran ♀', value: 'nidoran-f' },
-      { name: 'Nidoran ♂', value: 'nidoran-m' },
+      { name: 'Nidoran Female', value: 'nidoran-f' },
+      { name: 'Nidoran Male', value: 'nidoran-m' },
     ]);
   });
 
   it.each([
-    [29, 'Nidoran ♀'],
-    [32, 'Nidoran ♂'],
+    [29, 'Nidoran Female'],
+    [32, 'Nidoran Male'],
   ])('distinguishes Nidoran #%i in the shiny display', async (nationalNumber, displayName) => {
     const interaction = createMockInteraction({
       customId: 'sh:a:v:a:_:1:10:selected-id',

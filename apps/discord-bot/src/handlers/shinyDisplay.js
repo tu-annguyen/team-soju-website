@@ -30,7 +30,7 @@ const {
   getTimezoneAutocompleteChoices,
   handleShinyAutocomplete,
   normalizeVariantSlug,
-  humanizeVariantLabel,
+  getShinyDisplayName,
   isFailedShiny,
   getGreyscaleSpriteUrl,
   normalizeEncounterType,
@@ -58,7 +58,7 @@ function buildShiniesEmbed(shinies, page, pageSize, title) {
 
   const description = pageItems.map((shiny, idx) => {
     const number = startIndex + idx + 1;
-    return `${number}. **${getPokemonDisplayName(shiny)}** - ${formatShinySummary(shiny)}`;
+    return `${number}. **${getShinyDisplayName(shiny)}** - ${formatShinySummary(shiny)}`;
   }).join('\n');
 
   return new EmbedBuilder()
@@ -183,10 +183,9 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     ...[
       (() => {
-        const variantLabel = humanizeVariantLabel(shiny.variants);
         return {
           name: 'Pokemon',
-          value: variantLabel || getPokemonDisplayName(shiny),
+          value: getShinyDisplayName(shiny),
           inline: true,
         };
       })(),

@@ -19,7 +19,7 @@ const {
   getTimezoneAutocompleteChoices,
   handleShinyAutocomplete,
   normalizeVariantSlug,
-  humanizeVariantLabel,
+  getShinyDisplayName,
   isFailedShiny,
   getGreyscaleSpriteUrl,
   normalizeEncounterType,
@@ -111,12 +111,14 @@ function buildSelectRow(pageItems, state) {
     .setMaxValues(1)
     .setDisabled(pageItems.length === 0)
     .addOptions(
-      pageItems.slice(0, MAX_SHINY_SELECT_OPTIONS).map(shiny => ({
-        label: capitalize(shiny.pokemon_name || shiny.pokemon).slice(0, 100),
-        description: formatShinySummary(shiny).slice(0, 100),
-        value: shiny.id,
-        default: shiny.id === state.shinyId,
-      }))
+      pageItems.slice(0, MAX_SHINY_SELECT_OPTIONS).map(shiny => {
+        return {
+          label: getShinyDisplayName(shiny).slice(0, 100),
+          description: formatShinySummary(shiny).slice(0, 100),
+          value: shiny.id,
+          default: shiny.id === state.shinyId,
+        };
+      })
     );
 
   return new ActionRowBuilder().addComponents(select);
