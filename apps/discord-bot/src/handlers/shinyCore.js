@@ -119,12 +119,30 @@ function getFieldByName(fields, name) {
 }
 
 function formatPokemonAutocompleteLabel(name) {
+  const normalizedName = String(name || '').trim().toLowerCase();
+  if (normalizedName === 'nidoran-f') return 'Nidoran ♀';
+  if (normalizedName === 'nidoran-m') return 'Nidoran ♂';
+
   return String(name || '')
     .trim()
     .split(/[-_\s]+/)
     .filter(Boolean)
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function getPokemonDisplayName(shiny) {
+  const routeName = String(shiny?.pokemon || shiny?.pokemon_name || '').trim().toLowerCase();
+  const nationalNumber = Number(shiny?.national_number);
+
+  if (routeName === 'nidoran-f' || (routeName === 'nidoran' && nationalNumber === 29)) {
+    return 'Nidoran ♀';
+  }
+  if (routeName === 'nidoran-m' || (routeName === 'nidoran' && nationalNumber === 32)) {
+    return 'Nidoran ♂';
+  }
+
+  return capitalize(shiny?.pokemon_name || shiny?.pokemon);
 }
 
 function getPokemonAutocompleteChoices(query) {
@@ -480,6 +498,7 @@ module.exports = {
   getCatchTimeFields,
   getFieldByName,
   formatPokemonAutocompleteLabel,
+  getPokemonDisplayName,
   getPokemonAutocompleteChoices,
   handlePokemonAutocomplete,
   getTimezoneAutocompleteChoices,

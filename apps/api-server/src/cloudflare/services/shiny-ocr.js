@@ -145,6 +145,16 @@ function normalizeText(value, maxLength) {
   return text && !['null', 'unknown'].includes(text.toLowerCase()) ? text.slice(0, maxLength) : null;
 }
 
+function normalizeOcrPokemonName(value) {
+  const pokemon = normalizeText(value, 50);
+  if (!pokemon) return null;
+
+  const normalized = pokemon.toLowerCase().replace(/\s+/g, '');
+  if (normalized === 'nidoran♀') return 'nidoran-f';
+  if (normalized === 'nidoran♂') return 'nidoran-m';
+  return pokemon;
+}
+
 function normalizeInteger(value, minimum, maximum) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
@@ -160,7 +170,7 @@ function latestToday() {
 function normalizeOcrResult(raw, jobRequest) {
   const ivSource = Array.isArray(raw?.ivs) ? raw.ivs : [raw?.ivHp, raw?.ivAttack, raw?.ivDefense, raw?.ivSpAttack, raw?.ivSpDefense, raw?.ivSpeed];
   const parsed = {
-    pokemon: normalizeText(raw?.pokemon || raw?.name, 50),
+    pokemon: normalizeOcrPokemonName(raw?.pokemon || raw?.name),
     trainer: normalizeText(raw?.trainer || raw?.originalTrainer || raw?.ot, 50),
     catchDate: normalizeText(raw?.catchDate || raw?.date, 10),
     catchTime: normalizeText(raw?.catchTime || raw?.time, 5),

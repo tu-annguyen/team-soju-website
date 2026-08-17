@@ -21,6 +21,7 @@ const {
   getCatchTimeFields,
   getFieldByName,
   formatPokemonAutocompleteLabel,
+  getPokemonDisplayName,
   getPokemonAutocompleteChoices,
   handlePokemonAutocomplete,
   getTimezoneAutocompleteChoices,
@@ -302,7 +303,7 @@ function buildAdvancedFieldButtonCustomId(field, state) {
 async function buildEditControlsPayload(interaction, state, content = null) {
   const shiny = await fetchShinyById(state.shinyId);
   const variantSelection = await getVariantSelectionConfig(shiny.pokemon || shiny.pokemon_name);
-  const payload = await buildShinyDisplayPayload(shiny, `Edit ${capitalize(shiny.pokemon_name || shiny.pokemon)}`);
+  const payload = await buildShinyDisplayPayload(shiny, `Edit ${getPokemonDisplayName(shiny)}`);
   payload.content = content || 'Choose a field to edit.';
   payload.components = [
     new ActionRowBuilder().addComponents(
@@ -346,7 +347,7 @@ async function buildPokemonPickerPayload(state, content = null) {
   }
 
   return {
-    content: content || `Choose a Pokemon from the ${capitalize(shiny.pokemon_name || shiny.pokemon)} evolution line.`,
+    content: content || `Choose a Pokemon from the ${getPokemonDisplayName(shiny)} evolution line.`,
     embeds: (await buildShinyDisplayPayload(shiny, 'Choose Pokemon')).embeds,
     components: [
       new ActionRowBuilder().addComponents(
@@ -508,9 +509,9 @@ async function enhanceAsyncScreenshotPayload(payload) {
     );
     const orderedFields = [
       { name: 'Trainer', value: enhanced.shiny.trainer_name, inline: true },
-      getFieldByName(rawFields, 'Pokemon') || {
+      {
         name: 'Pokemon',
-        value: `${capitalize(enhanced.shiny.pokemon_name || enhanced.shiny.pokemon)} (#${enhanced.shiny.national_number})`,
+        value: getPokemonDisplayName(enhanced.shiny),
         inline: true,
       },
       { name: 'Status', value: getStatusValue(enhanced.shiny), inline: true },

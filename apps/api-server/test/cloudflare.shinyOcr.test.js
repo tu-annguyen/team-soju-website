@@ -97,6 +97,21 @@ describe('Worker shiny screenshot OCR', () => {
     expect(future.notes.join(' ')).toContain('future');
   });
 
+  it.each([
+    ['Nidoran ♀', 'nidoran-f'],
+    ['Nidoran♂', 'nidoran-m'],
+  ])('normalizes OCR Pokemon gender symbols in %s', (pokemon, expected) => {
+    const result = normalizeOcrResult({
+      pokemon,
+      trainer: 'Trainer',
+      catchDate: '2026-08-11',
+      catchTime: '20:30',
+      ivs: [],
+    }, validPayload());
+
+    expect(result.parsed.pokemon).toBe(expected);
+  });
+
   it('uploads once, queues a small idempotent job, creates one shiny, and delivers the callback', async () => {
     const DB = createD1();
     const SCREENSHOT_STORAGE = createStorage();

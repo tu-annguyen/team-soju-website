@@ -123,6 +123,61 @@ describe('shinyHandlers', () => {
     ]);
   });
 
+  it('distinguishes female and male Nidoran in pokemon autocomplete', async () => {
+    const interaction = createMockInteraction({
+      isChatInputCommand: jest.fn().mockReturnValue(false),
+      isAutocomplete: jest.fn().mockReturnValue(true),
+      respondAutocomplete: jest.fn().mockResolvedValue(undefined),
+    });
+
+    interaction.options.getFocused = jest.fn().mockReturnValue('nidoran');
+    interaction.options.getFocusedOption = jest.fn().mockReturnValue({
+      name: 'pokemon',
+      value: 'nidoran',
+      focused: true,
+    });
+
+    await handlePokemonAutocomplete(interaction);
+
+    expect(interaction.respondAutocomplete).toHaveBeenCalledWith([
+      { name: 'Nidoran ♀', value: 'nidoran-f' },
+      { name: 'Nidoran ♂', value: 'nidoran-m' },
+    ]);
+  });
+
+  it.each([
+    [29, 'Nidoran ♀'],
+    [32, 'Nidoran ♂'],
+  ])('distinguishes Nidoran #%i in the shiny display', async (nationalNumber, displayName) => {
+    const interaction = createMockInteraction({
+      customId: 'sh:a:v:a:_:1:10:selected-id',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+    });
+
+    fetchClient.get.mockResolvedValue({
+      data: { data: {
+        id: 'selected-id',
+        pokemon: 'nidoran',
+        pokemon_name: 'Nidoran',
+        variants: 'nidoran',
+        national_number: nationalNumber,
+        trainer_name: 'T1',
+        status: 'Owned',
+        catch_date: '2026-08-17',
+        encounter_type: 'x5_horde',
+      } },
+    });
+
+    await handleShinyComponent(interaction);
+
+    const embed = interaction.update.mock.calls[0][0].embeds[0].toJSON();
+    expect(embed.title).toBe(`${displayName} (#${nationalNumber})`);
+    expect(embed.fields).toContainEqual(expect.objectContaining({
+      name: 'Pokemon',
+      value: displayName,
+    }));
+  });
+
   it('returns filtered timezone autocomplete suggestions', async () => {
     const interaction = createMockInteraction({
       isChatInputCommand: jest.fn().mockReturnValue(false),
