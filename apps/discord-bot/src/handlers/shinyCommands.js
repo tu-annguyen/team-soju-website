@@ -55,7 +55,7 @@ const {
   buildShinyDisplayPayload,
   buildFailedShinyPayload,
   buildStandaloneActionRow,
-  sendShinyDetails,
+  buildShinyDetailsPayload,
   requireOwnedShiny,
   parseIvInput,
   parseEncounterInput,
@@ -90,6 +90,7 @@ const {
   buildListPayload,
   buildDetailPayload,
 } = Object.assign({}, require('./shinyCore'), require('./shinyDisplay'), require('./shinyEditing'), require('./shinyLists'));
+const { prependShinyCommandDeprecationWarning } = require('./shinyDeprecationWarnings');
 
 async function handleAddShiny(interaction) {
   await interaction.deferReply();
@@ -253,6 +254,15 @@ async function handleEditShiny(interaction) {
       const existingLocalTime = getTimeInTimezone(existingShiny.caught_at_utc, timezone);
       updates.caught_at_utc = combineLocalDateTime(catchDate, existingLocalTime, timezone);
       updates.catch_timezone = timezone;
+    } else if (timezoneOption) {
+      updates.catch_timezone = timezone;
+      if (existingShiny.caught_at_utc && existingShiny.catch_date) {
+        const existingLocalTime = getTimeInTimezone(
+          existingShiny.caught_at_utc,
+          getShinyCatchTimezone(existingShiny)
+        );
+        updates.caught_at_utc = combineLocalDateTime(existingShiny.catch_date, existingLocalTime, timezone);
+      }
     }
     if (encounterType) updates.encounter_type = encounterType;
     if (status) updates.status = status;
@@ -276,7 +286,7 @@ async function handleEditShiny(interaction) {
 
     const shiny = await updateShinyRecord(shinyId, updates);
     const payload = await buildShinyDisplayPayload(shiny, 'Shiny Updated Successfully');
-    await interaction.editReply(payload);
+    await interaction.editReply(prependShinyCommandDeprecationWarning(payload, 'editshiny'));
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
   }
@@ -292,7 +302,7 @@ async function handleFailShiny(interaction) {
     await requireOwnedShiny(interaction, shinyId);
     const shiny = await failShinyRecord(shinyId, status);
     const payload = await buildFailedShinyPayload(shiny);
-    await interaction.editReply(payload);
+    await interaction.editReply(prependShinyCommandDeprecationWarning(payload, 'failshiny'));
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
   }
@@ -306,7 +316,10 @@ async function handleDeleteShiny(interaction) {
   try {
     const shiny = await requireOwnedShiny(interaction, shinyId);
     await deleteShinyRecord(shinyId);
-    await interaction.editReply({ embeds: [buildDeleteSuccessEmbed(shiny)] });
+    await interaction.editReply(prependShinyCommandDeprecationWarning(
+      { embeds: [buildDeleteSuccessEmbed(shiny)] },
+      'deleteshiny'
+    ));
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
   }
@@ -318,7 +331,8 @@ async function handleGetShiny(interaction) {
   const shinyId = interaction.options.getString('id');
 
   try {
-    await sendShinyDetails(interaction, shinyId);
+    const payload = await buildShinyDetailsPayload(interaction, shinyId);
+    await interaction.editReply(prependShinyCommandDeprecationWarning(payload, 'shiny'));
   } catch (error) {
     await interaction.editReply({ content: `Error: ${error.message}` });
   }

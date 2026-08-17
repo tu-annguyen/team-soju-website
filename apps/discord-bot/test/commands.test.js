@@ -1,6 +1,19 @@
 const { COMMANDS } = require('../src/commands');
 
 describe('commands', () => {
+  it.each([
+    ['editshiny', 'edit'],
+    ['failshiny', 'fail'],
+    ['deleteshiny', 'delete'],
+    ['shiny', 'get'],
+  ])('marks /%s as deprecated and directs users to /myshinies', (commandName, action) => {
+    const command = COMMANDS.find(item => item.toJSON().name === commandName).toJSON();
+
+    expect(command.description).toContain('[Deprecated]');
+    expect(command.description).toContain('/myshinies');
+    expect(command.description).toContain(action);
+  });
+
   it('places every required option before optional options for Discord registration', () => {
     for (const command of COMMANDS.map(item => item.toJSON())) {
       let optionalOptionSeen = false;

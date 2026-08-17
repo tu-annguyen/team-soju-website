@@ -40,6 +40,7 @@ const {
   enhanceAsyncScreenshotPayload,
   handleAddShiny,
   handleAddShinyScreenshot,
+  handleDeleteShiny,
   handleEditShiny,
   handleFailShiny,
   handleGetShiny,
@@ -540,15 +541,17 @@ describe('shinyHandlers', () => {
     await handleGetShiny(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({
-      embeds: [expect.objectContaining({ data: expect.objectContaining({
-        fields: expect.arrayContaining([
-          expect.objectContaining({ name: 'Shiny Tier', value: 'Tier 3' }),
-          expect.objectContaining({ name: 'Catch Time', value: '12:30' }),
-          expect.objectContaining({ name: 'Timezone', value: 'Australia/Melbourne' }),
-        ]),
-      }) })],
+      embeds: expect.arrayContaining([
+        expect.objectContaining({ data: expect.objectContaining({
+          fields: expect.arrayContaining([
+            expect.objectContaining({ name: 'Shiny Tier', value: 'Tier 3' }),
+            expect.objectContaining({ name: 'Catch Time', value: '12:30' }),
+            expect.objectContaining({ name: 'Timezone', value: 'Australia/Melbourne' }),
+          ]),
+        }) }),
+      ]),
     }));
-    const fields = interaction.editReply.mock.calls[0][0].embeds[0].data.fields;
+    const fields = interaction.editReply.mock.calls[0][0].embeds[1].data.fields;
     expect(fields.map(field => field.name)).toEqual([
       'Trainer', 'Pokemon', 'Status', 'Catch Date', 'Catch Time', 'Timezone', 'Shiny Tier',
       'Encounters',
@@ -1420,6 +1423,31 @@ describe('shinyHandlers', () => {
     ]));
   });
 
+  it('prepends a /myshinies deprecation warning to /deleteshiny', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'deleteshiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: { shiny_id: 'selected-id' },
+    });
+    fetchClient.get.mockResolvedValue({
+      data: { data: {
+        id: 'selected-id', pokemon: 'pikachu', national_number: 25, trainer_name: 'T1',
+      } },
+    });
+    fetchClient.delete.mockResolvedValue({ data: { data: {} } });
+
+    await handleDeleteShiny(interaction);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.embeds).toHaveLength(2);
+    expect(payload.embeds[0].data).toEqual(expect.objectContaining({
+      color: 0xFFB300,
+      title: 'Deprecated Command Warning',
+      description: expect.stringContaining('Use `/myshinies` to delete your shinies'),
+    }));
+    expect(payload.embeds[1].data.title).toBe('Shiny Deleted Successfully');
+  });
+
   it('shows a failed confirmation embed with greyscaled sprite', async () => {
     const interaction = createMockInteraction({
       commandName: 'failshiny',
@@ -1465,10 +1493,15 @@ describe('shinyHandlers', () => {
       expect.objectContaining({ status: 'Died' }),
       expect.any(Object)
     );
-    expect(payload.embeds[0].data.title).toBe('Shiny Status Updated');
-    expect(payload.embeds[0].data.color).toBe(0x757575);
-    expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
-    expect(payload.embeds[0].data.fields).not.toEqual(expect.arrayContaining([
+    expect(payload.embeds[0].data).toEqual(expect.objectContaining({
+      color: 0xFFB300,
+      title: 'Deprecated Command Warning',
+      description: expect.stringContaining('Use `/myshinies` to fail your shinies'),
+    }));
+    expect(payload.embeds[1].data.title).toBe('Shiny Status Updated');
+    expect(payload.embeds[1].data.color).toBe(0x757575);
+    expect(payload.embeds[1].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
+    expect(payload.embeds[1].data.fields).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ name: 'Shiny Tier' }),
     ]));
   });
@@ -1518,7 +1551,13 @@ describe('shinyHandlers', () => {
     );
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
-        embeds: [expect.objectContaining({ data: expect.objectContaining({ title: 'Shiny Updated Successfully' }) })],
+        embeds: [
+          expect.objectContaining({ data: expect.objectContaining({
+            title: 'Deprecated Command Warning',
+            description: expect.stringContaining('Use `/myshinies` to edit your shinies'),
+          }) }),
+          expect.objectContaining({ data: expect.objectContaining({ title: 'Shiny Updated Successfully' }) }),
+        ],
       })
     );
   });
@@ -1557,6 +1596,51 @@ describe('shinyHandlers', () => {
       }),
       expect.any(Object)
     );
+  });
+
+  it('updates the timezone when it is the only editshiny option provided', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'editshiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: {
+        shiny_id: 'selected-id',
+        pokemon: null,
+        catch_date: null,
+        catch_time: null,
+        timezone: 'America/Los_Angeles',
+        encounter_type: null,
+        secret: null,
+        total_encounters: null,
+        species_encounters: null,
+        nature: null,
+        ivs: null,
+      },
+    });
+    const shiny = {
+      id: 'selected-id',
+      pokemon: 'dratini',
+      pokemon_name: 'Dratini',
+      national_number: 147,
+      trainer_name: 'T1',
+      catch_date: '2026-01-15',
+      caught_at_utc: '2026-01-15T20:30:00.000Z',
+      catch_timezone: 'UTC',
+      encounter_type: 'horde',
+    };
+    fetchClient.get.mockResolvedValue({ data: { data: shiny } });
+    fetchClient.put.mockResolvedValue({ data: { data: { ...shiny, catch_timezone: 'America/Los_Angeles' } } });
+
+    await handleEditShiny(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      {
+        catch_timezone: 'America/Los_Angeles',
+        caught_at_utc: '2026-01-15T12:30:00[America/Los_Angeles]',
+      },
+      expect.any(Object)
+    );
+    expect(interaction.editReply).not.toHaveBeenCalledWith({ content: 'No updates provided' });
   });
 
   it('collapses nidoran route slugs when updating a shiny variant from the slash command', async () => {
@@ -1628,9 +1712,10 @@ describe('shinyHandlers', () => {
     await handleGetShiny(interaction);
 
     const payload = interaction.editReply.mock.calls[0][0];
-    expect(payload.embeds[0].data.color).toBe(0x757575);
-    expect(payload.embeds[0].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
-    expect(payload.embeds[0].data.thumbnail.url).toContain('variant=pikachu');
+    expect(payload.embeds[0].data.description).toContain('Use `/myshinies` to get your shinies');
+    expect(payload.embeds[1].data.color).toBe(0x757575);
+    expect(payload.embeds[1].data.thumbnail.url).toContain('/shinies/sprites/25/greyscale');
+    expect(payload.embeds[1].data.thumbnail.url).toContain('variant=pikachu');
   });
 
   it('uses the public color sprite when the grayscale Worker URL is local-only', async () => {
@@ -1655,7 +1740,7 @@ describe('shinyHandlers', () => {
     }
 
     const payload = interaction.editReply.mock.calls[0][0];
-    expect(payload.embeds[0].data.thumbnail.url).toBe('https://example.com/sprite.gif');
+    expect(payload.embeds[1].data.thumbnail.url).toBe('https://example.com/sprite.gif');
     expect(getSpriteUrl).toHaveBeenCalledWith(25, { variant: 'pikachu' });
   });
 

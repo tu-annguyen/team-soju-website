@@ -273,7 +273,7 @@ function buildStandaloneActionRow(shinyId, {
     : [];
 }
 
-async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply', titleOverride) {
+async function buildShinyDetailsPayload(interaction, shinyId, titleOverride) {
   const shiny = await fetchShinyById(shinyId);
   const payload = await buildShinyDisplayPayload(shiny, titleOverride);
   if (hasAnyRole(interaction, SHINY_MANAGER_ROLES)) {
@@ -282,6 +282,11 @@ async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply',
       includeDelete: true,
     });
   }
+  return payload;
+}
+
+async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply', titleOverride) {
+  const payload = await buildShinyDetailsPayload(interaction, shinyId, titleOverride);
   await interaction[replyMethod](payload);
 }
 
@@ -309,6 +314,7 @@ module.exports = {
   buildShinyDisplayPayload,
   buildFailedShinyPayload,
   buildStandaloneActionRow,
+  buildShinyDetailsPayload,
   sendShinyDetails,
   requireOwnedShiny,
 };

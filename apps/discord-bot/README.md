@@ -195,8 +195,8 @@ Record a new shiny Pokemon catch with an uploaded screenshot.
 /addshinyscreenshot screenshot:image.png encounter_type:Horde timezone:America/Los_Angeles secret:False
 ```
 
-#### `/editshiny` (⚠️Deprecated) 
-> Warning: this command is deprecated. Use `/myshinies` to edit your shinies, instead.
+#### `/editshiny` (⚠️ Deprecated)
+> Warning: this command is deprecated and now displays a deprecation warning. Use `/myshinies` to edit your shinies instead.
 Update an existing shiny entry.
 
 **Options:**
@@ -212,8 +212,8 @@ Update an existing shiny entry.
 /editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 timezone:America/Los_Angeles variant:deerling-winter total_encounters:2000 secret:true
 ```
 
-#### `/failshiny` (⚠️Deprecated)
-> Warning: this command is deprecated. Use `/myshinies` to fail your shinies, instead.
+#### `/failshiny` (⚠️ Deprecated)
+> Warning: this command is deprecated and now displays a deprecation warning. Use `/myshinies` to fail your shinies instead.
 Mark a shiny entry with a non-owned status.
 
 **Options:**
@@ -225,8 +225,8 @@ Mark a shiny entry with a non-owned status.
 /failshiny shiny_id:060df408-f200-48b6-addc-f4b8fa98b25a status:Fled
 ```
 
-#### `/deleteshiny` (⚠️Deprecated)
-> Warning: this command is deprecated. Use `/myshinies` to delete your shinies, instead.
+#### `/deleteshiny` (⚠️ Deprecated)
+> Warning: this command is deprecated and now displays a deprecation warning. Use `/myshinies` to delete your shinies instead.
 Delete a shiny entry.
 
 **Options:**
@@ -237,8 +237,8 @@ Delete a shiny entry.
 /deleteshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817
 ```
 
-#### `/shiny` (⚠️Deprecated)
-> Warning: this command is deprecated. Use `/myshinies` to view your shinies, instead.
+#### `/shiny` (⚠️ Deprecated)
+> Warning: this command is deprecated and now displays a deprecation warning. Use `/myshinies` to get your shinies instead.
 View details about a specific shiny.
 
 **Options:**
