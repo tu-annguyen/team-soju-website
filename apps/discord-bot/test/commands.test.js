@@ -70,7 +70,7 @@ describe('commands', () => {
     expect(pokemonOption.choices).toBeUndefined();
   });
 
-  it.each(['addshiny', 'addshinyscreenshot', 'editshiny'])(
+  it.each(['addshiny', 'addshinyscreenshot'])(
     'requires timezone autocomplete on /%s',
     (commandName) => {
       const command = COMMANDS.find(item => item.toJSON().name === commandName);
@@ -84,6 +84,18 @@ describe('commands', () => {
       expect(timezoneOption.choices).toBeUndefined();
     }
   );
+
+  it('makes timezone autocomplete optional on /editshiny', () => {
+    const editShiny = COMMANDS.find(command => command.toJSON().name === 'editshiny');
+    const timezoneOption = editShiny.toJSON().options.find(option => option.name === 'timezone');
+
+    expect(timezoneOption).toEqual(expect.objectContaining({
+      type: 3,
+      required: false,
+      autocomplete: true,
+    }));
+    expect(timezoneOption.choices).toBeUndefined();
+  });
 
   it.each(['addshiny', 'addshinyscreenshot', 'editshiny'])(
     'removes catch_time_utc from /%s',

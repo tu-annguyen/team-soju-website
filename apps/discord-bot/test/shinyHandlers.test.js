@@ -1523,6 +1523,42 @@ describe('shinyHandlers', () => {
     );
   });
 
+  it('uses the stored timezone when editing catch time without a timezone option', async () => {
+    const interaction = createMockInteraction({
+      commandName: 'editshiny',
+      member: { roles: { cache: [{ name: 'Champion' }] } },
+      options: {
+        shiny_id: 'selected-id',
+        catch_date: null,
+        catch_time: '20:30',
+        timezone: null,
+      },
+    });
+    const shiny = {
+      id: 'selected-id',
+      pokemon: 'dratini',
+      pokemon_name: 'Dratini',
+      national_number: 147,
+      trainer_name: 'T1',
+      catch_date: '2026-01-15',
+      catch_timezone: 'America/Los_Angeles',
+      encounter_type: 'horde',
+    };
+    fetchClient.get.mockResolvedValue({ data: { data: shiny } });
+    fetchClient.put.mockResolvedValue({ data: { data: shiny } });
+
+    await handleEditShiny(interaction);
+
+    expect(fetchClient.put).toHaveBeenCalledWith(
+      expect.stringContaining('/shinies/selected-id'),
+      expect.objectContaining({
+        caught_at_utc: '2026-01-15T20:30:00[America/Los_Angeles]',
+        catch_timezone: 'America/Los_Angeles',
+      }),
+      expect.any(Object)
+    );
+  });
+
   it('collapses nidoran route slugs when updating a shiny variant from the slash command', async () => {
     const interaction = createMockInteraction({
       commandName: 'editshiny',

@@ -78,11 +78,11 @@ function configurePokemonAutocompleteOption(option, description, required) {
     .setAutocomplete(true);
 }
 
-function configureTimezoneAutocompleteOption(option) {
+function configureTimezoneAutocompleteOption(option, required = true) {
   return option
     .setName('timezone')
     .setDescription('Timezone where the shiny was caught')
-    .setRequired(true)
+    .setRequired(required)
     .setAutocomplete(true);
 }
 
@@ -246,7 +246,7 @@ const COMMANDS = [
       option.setName('shiny_id')
         .setDescription('ID of the shiny to edit')
         .setRequired(true))
-    .addStringOption(configureTimezoneAutocompleteOption)
+    .addStringOption(option => configureTimezoneAutocompleteOption(option, false))
     .addStringOption(option => configurePokemonAutocompleteOption(option, 'Pokemon name', false))
     .addStringOption(option =>
       option.setName('variant')

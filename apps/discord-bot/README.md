@@ -201,7 +201,7 @@ Update an existing shiny entry.
 
 **Options:**
 - `shiny_id` (required): ID of shiny to edit
-- `timezone` (required): IANA timezone where the shiny was caught (autocomplete)
+- `timezone` (optional): IANA timezone where the shiny was caught (autocomplete). Defaults to the shiny's stored timezone when changing its catch date or time.
 - All other options are optional for updating
 - `catch_time` (optional): Correct local catch time (HH:MM)
 - `variant` (optional): Pokemon form slug. This must be a valid name from PokeAPI's `pokemon-form` route, such as `deerling-winter` or `basculin-blue-striped`.

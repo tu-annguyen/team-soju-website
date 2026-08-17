@@ -213,7 +213,7 @@ async function handleEditShiny(interaction) {
   const variant = interaction.options.getString('variant');
   const catchDate = interaction.options.getString('catch_date');
   const catchTime = interaction.options.getString('catch_time');
-  const timezone = getTimezoneOption(interaction);
+  const timezoneOption = getTimezoneOption(interaction);
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
   const status = interaction.options.getString('status');
   const isSecret = interaction.options.getBoolean('secret');
@@ -231,6 +231,7 @@ async function handleEditShiny(interaction) {
 
   try {
     const existingShiny = await requireOwnedShiny(interaction, shinyId);
+    const timezone = timezoneOption || getShinyCatchTimezone(existingShiny);
 
     const updates = {};
     if (pokemon) {
