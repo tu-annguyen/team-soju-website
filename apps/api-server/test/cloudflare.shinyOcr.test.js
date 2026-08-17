@@ -136,12 +136,60 @@ describe('Worker shiny screenshot OCR', () => {
     };
     await processShinyOcrJob(env, first.id, repositories, fetchImpl);
     await processShinyOcrJob(env, first.id, repositories, fetchImpl);
+    expect(env.AI.run).toHaveBeenCalledWith(
+      '@cf/google/gemma-4-26b-a4b-it',
+      expect.objectContaining({
+        max_completion_tokens: 4096,
+        chat_template_kwargs: { enable_thinking: false },
+        response_format: { type: 'json_object' },
+      })
+    );
     expect(repositories.shinies.create).toHaveBeenCalledTimes(1);
     expect(repositories.shinies.create).toHaveBeenCalledWith(expect.objectContaining({
       id: 'ss-123456', caught_at_utc: '2026-08-12T03:30:00.000Z', screenshot_url: expect.stringContaining('/api/shinies/screenshots/'),
     }));
     expect(callbackBodies).toHaveLength(1);
     expect(DB.jobs.get(first.id).status).toBe('completed');
+  });
+
+  it('logs safe model metadata when Workers AI returns no OCR text', async () => {
+    const DB = createD1();
+    const SCREENSHOT_STORAGE = createStorage();
+    const result = {
+      choices: [{ finish_reason: 'length', message: { content: null } }],
+      usage: { prompt_tokens: 100, completion_tokens: 4096, total_tokens: 4196 },
+    };
+    const env = {
+      DB,
+      SCREENSHOT_STORAGE,
+      SHINY_OCR_QUEUE: { send: jest.fn() },
+      AI: { run: jest.fn().mockResolvedValue(result) },
+    };
+    const fetchImpl = jest.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      headers: { 'content-type': 'image/png', 'content-length': '3' },
+    }));
+    const job = await enqueueShinyScreenshotJob({
+      request: new Request('https://api.example.com/api/shinies/from-screenshot/async'),
+      env,
+      fetchImpl,
+      body: validPayload(),
+    });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      await expect(processShinyOcrJob(env, job.id, {}, fetchImpl)).rejects.toThrow(
+        'Workers AI returned an empty OCR response.'
+      );
+      expect(warnSpy).toHaveBeenCalledWith('Empty shiny OCR response:', {
+        model: '@cf/google/gemma-4-26b-a4b-it',
+        finishReason: 'length',
+        usage: result.usage,
+        responseType: 'undefined',
+        responseKeys: ['choices', 'usage'],
+      });
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('rejects non-Discord and oversized screenshot sources before queueing', async () => {

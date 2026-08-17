@@ -210,12 +210,21 @@ async function extractScreenshotFields(env, object, request) {
       { type: 'image_url', image_url: { url: `data:${contentType};base64,${base64}` } },
     ] }],
     temperature: 0,
-    max_completion_tokens: 2048,
-    reasoning_effort: 'none',
+    max_completion_tokens: 4096,
+    chat_template_kwargs: { enable_thinking: false },
     response_format: { type: 'json_object' },
   });
   const responseText = extractAiResponseText(result);
-  if (!responseText) throw new Error('Workers AI returned an empty OCR response.');
+  if (!responseText) {
+    console.warn('Empty shiny OCR response:', {
+      model,
+      finishReason: result?.choices?.[0]?.finish_reason,
+      usage: result?.usage,
+      responseType: typeof result?.response,
+      responseKeys: result && typeof result === 'object' ? Object.keys(result) : [],
+    });
+    throw new Error('Workers AI returned an empty OCR response.');
+  }
   return normalizeOcrResult(parseAiJson(responseText), request);
 }
 
