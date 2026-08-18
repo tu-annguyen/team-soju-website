@@ -369,7 +369,7 @@ const catchEventManager = {
     "Exeggcute": "蛋蛋",
     "Exeggutor": "椰蛋树",
     "Exploud": "爆音怪",
-    "Farfetchd": "大葱鸭",
+    "Farfetch'd": "大葱鸭",
     "Fearow": "大嘴雀",
     "Feebas": "丑丑鱼",
     "Feraligatr": "大力鳄",

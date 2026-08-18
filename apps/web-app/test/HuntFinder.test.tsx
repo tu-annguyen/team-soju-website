@@ -26,6 +26,22 @@ const makeSpot = (spotKey: string, location: string): HuntSpot => ({
 });
 
 describe('HuntFinder', () => {
+  it("uses Farfetch'd as the species filter value", async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+
+    const speciesFilter = screen.getByLabelText('Species');
+    fireEvent.change(speciesFilter, { target: { value: 'Farfetch' } });
+    fireEvent.mouseDown(await screen.findByRole('option', { name: "Farfetch'd" }));
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('species=Farfetch%27d');
+      expect(latestUrl).not.toContain('species=Farfetchd');
+    });
+  });
+
   it('uses Any labels and lets card chips update season and time filters', async () => {
     const spot = makeSpot('mirage', 'Mirage Tower');
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [spot], locations: ['Mirage Tower'], total: 1 });
