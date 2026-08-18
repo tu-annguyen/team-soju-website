@@ -112,6 +112,18 @@ describe('Worker shiny screenshot OCR', () => {
     expect(result.parsed.pokemon).toBe(expected);
   });
 
+  it('removes blacklisted exclamation marks from OCR trainer IGNs', () => {
+    const result = normalizeOcrResult({
+      pokemon: 'Jynx',
+      trainer: 'cassandraa!',
+      catchDate: '2026-08-18',
+      catchTime: '04:05',
+      ivs: [],
+    }, validPayload());
+
+    expect(result.parsed.trainer).toBe('cassandraa');
+  });
+
   it('uploads once, queues a small idempotent job, creates one shiny, and delivers the callback', async () => {
     const DB = createD1();
     const SCREENSHOT_STORAGE = createStorage();

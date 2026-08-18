@@ -12,6 +12,7 @@ const MAX_SCREENSHOT_BYTES = 10 * 1024 * 1024;
 const ALLOWED_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const ALLOWED_DISCORD_HOSTS = new Set(['cdn.discordapp.com', 'media.discordapp.net']);
 const EARLIEST_TRACKER_DATE = '2025-07-11';
+const OCR_TRAINER_BLACKLISTED_CHARACTERS = /!/g;
 
 function getStorage(env) {
   return env.SCREENSHOT_STORAGE;
@@ -155,6 +156,12 @@ function normalizeOcrPokemonName(value) {
   return pokemon;
 }
 
+function normalizeOcrTrainer(value) {
+  const trainer = normalizeText(value, 50);
+  if (!trainer) return null;
+  return trainer.replace(OCR_TRAINER_BLACKLISTED_CHARACTERS, '').trim() || null;
+}
+
 function normalizeInteger(value, minimum, maximum) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
@@ -171,7 +178,7 @@ function normalizeOcrResult(raw, jobRequest) {
   const ivSource = Array.isArray(raw?.ivs) ? raw.ivs : [raw?.ivHp, raw?.ivAttack, raw?.ivDefense, raw?.ivSpAttack, raw?.ivSpDefense, raw?.ivSpeed];
   const parsed = {
     pokemon: normalizeOcrPokemonName(raw?.pokemon || raw?.name),
-    trainer: normalizeText(raw?.trainer || raw?.originalTrainer || raw?.ot, 50),
+    trainer: normalizeOcrTrainer(raw?.trainer || raw?.originalTrainer || raw?.ot),
     catchDate: normalizeText(raw?.catchDate || raw?.date, 10),
     catchTime: normalizeText(raw?.catchTime || raw?.time, 5),
     dateAmbiguous: Boolean(raw?.dateAmbiguous),
