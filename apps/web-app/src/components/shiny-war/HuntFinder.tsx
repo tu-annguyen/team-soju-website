@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CATCH_EVENT_REGIONS } from '../../utils/catchEventLocations';
 import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
+import NumberSpinner from '../NumberSpinner';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
 import HuntResults from './HuntResults';
@@ -188,21 +189,24 @@ export default function HuntFinder({
             {encounterMethods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
-        <label className={labelClasses}>
-          Minimum Tier
-          <input
-            type="number"
-            min="0"
-            max="7"
-            step="1"
-            value={filters.minTier}
-            onChange={(e) => {
-              if (/^\d*$/.test(e.target.value)) update('minTier', e.target.value);
-            }}
+        <div className={labelClasses}>
+          <span>Minimum Tier</span>
+          <NumberSpinner
+            aria-label="Minimum Tier"
+            className={`${fieldClasses} !mt-0`}
+            clearOnDecrementAtMax
+            decrementLabel="Decrease minimum tier"
+            incrementLabel="Increase minimum tier"
+            max={7}
+            min={0}
+            onValueChange={(value) => update('minTier', value)}
             placeholder="No minimum"
-            className={fieldClasses}
+            reverse
+            step={1}
+            value={filters.minTier}
+            wrapperClassName="mt-2"
           />
-        </label>
+        </div>
         <label className={labelClasses}>
           Time
           <select value={filters.time} onChange={(e) => update('time', e.target.value)} className={fieldClasses}>
@@ -212,20 +216,39 @@ export default function HuntFinder({
             <option value="night">Night</option>
           </select>
         </label>
-        <label className={labelClasses}>
-          Minimum points/hour
-          <input disabled={!hasHourlyData} type="number" min="0" step="0.001" value={filters.minPointsPerHour} onChange={(e) => update('minPointsPerHour', e.target.value)} placeholder={hasHourlyData ? 'No minimum' : 'Hourly data unavailable'} className={`${fieldClasses} disabled:cursor-not-allowed disabled:opacity-50`} />
-        </label>
+        <div className={labelClasses}>
+          <span>Minimum points/hour</span>
+          <NumberSpinner
+            aria-label="Minimum points/hour"
+            className={`${fieldClasses} !mt-0 disabled:cursor-not-allowed disabled:opacity-50`}
+            disabled={!hasHourlyData}
+            min={0}
+            onValueChange={(value) => update('minPointsPerHour', value)}
+            placeholder={hasHourlyData ? 'No minimum' : 'Hourly data unavailable'}
+            step={0.001}
+            value={filters.minPointsPerHour}
+            wrapperClassName="mt-2"
+          />
+        </div>
         <label className={labelClasses}>
           Horde size
           <select disabled={!supportsSweetScentFilters} value={filters.hordeSize} onChange={(e) => update('hordeSize', e.target.value)} className={`${fieldClasses} disabled:cursor-not-allowed disabled:opacity-50`}>
             <option value="">3× and 5×</option><option value="3">3× only</option><option value="5">5× only</option>
           </select>
         </label>
-        <label className={labelClasses}>
-          Hordes/hour
-          <input disabled={!supportsSweetScentFilters} type="number" min="1" max="1000" value={filters.hordesPerHour} onChange={(e) => update('hordesPerHour', e.target.value)} className={`${fieldClasses} disabled:cursor-not-allowed disabled:opacity-50`} />
-        </label>
+        <div className={labelClasses}>
+          <span>Hordes/hour</span>
+          <NumberSpinner
+            aria-label="Hordes/hour"
+            className={`${fieldClasses} !mt-0 disabled:cursor-not-allowed disabled:opacity-50`}
+            disabled={!supportsSweetScentFilters}
+            max={1000}
+            min={1}
+            onValueChange={(value) => update('hordesPerHour', value)}
+            value={filters.hordesPerHour}
+            wrapperClassName="mt-2"
+          />
+        </div>
         <label className={`flex items-center gap-2 self-end rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 ${!supportsSweetScentFilters ? 'cursor-not-allowed opacity-50' : ''}`}>
           <input disabled={!supportsSweetScentFilters} className={checkboxClasses} type="checkbox" checked={filters.fullSplitOnly} onChange={(e) => update('fullSplitOnly', e.target.checked)} />
           100% split hordes only

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { FormEvent } from 'react';
+import NumberSpinner from '../NumberSpinner';
 import { POKEMON_NATURES } from '../../utils/catchEventScoring';
 import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
 import type { Locale } from '../../i18n';
@@ -138,22 +139,17 @@ function RuleEditor({
                 />
               )}
             </label>
-            <label className={labelClasses}>
-              {tr('Points')}
-              <input
-                className={fieldClasses}
-                inputMode="numeric"
-                pattern="-?[0-9]*"
+            <div className={labelClasses}>
+              <span>{tr('Points')}</span>
+              <NumberSpinner
+                aria-label={tr('Points')}
+                className={`${fieldClasses} !mt-0`}
+                onValueChange={(points) => updateRuleRow(row.id, { points })}
+                step={1}
                 value={row.points}
-                onChange={(event) => {
-                  const nextValue = event.target.value;
-
-                  if (/^-?\d*$/.test(nextValue)) {
-                    updateRuleRow(row.id, { points: nextValue });
-                  }
-                }}
+                wrapperClassName="mt-2"
               />
-            </label>
+            </div>
             <button
               type="button"
               className={`${smallButtonClasses} self-end`}
@@ -268,10 +264,19 @@ export function EventCreateForm({
             getOptionLabel={translateLocation}
           />
         </label>
-        <label className={labelClasses}>
-          {tr('Number of winners')}
-          <input className={fieldClasses} min={1} max={10} type="number" value={eventForm.winnerCount} onChange={(event) => setEventForm({ ...eventForm, winnerCount: event.target.value })} required />
-        </label>
+        <div className={labelClasses}>
+          <span>{tr('Number of winners')}</span>
+          <NumberSpinner
+            aria-label={tr('Number of winners')}
+            className={`${fieldClasses} !mt-0`}
+            max={10}
+            min={1}
+            onValueChange={(winnerCount) => setEventForm({ ...eventForm, winnerCount })}
+            required
+            value={eventForm.winnerCount}
+            wrapperClassName="mt-2"
+          />
+        </div>
       </div>
       <RuleEditor
         title={tr('Target Pokemon And Species Points')}

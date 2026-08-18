@@ -1,5 +1,6 @@
 import React from 'react';
 import type { FormEvent } from 'react';
+import NumberSpinner from '../NumberSpinner';
 import {
   POKEMON_NATURES,
   calculateCatchEventScore,
@@ -192,10 +193,19 @@ export function EventSubmissionPanel({
                 getOptionLabel={translateNatureDisplay}
               />
             </label>
-            <label className={labelClasses}>
-              {tr('Total IV')} <span className="text-rose-600">*</span>
-              <input className={fieldClasses} min={0} max={186} type="number" value={submissionForm.totalIv} onChange={(event) => setSubmissionForm({ ...submissionForm, totalIv: Number(event.target.value) })} required />
-            </label>
+            <div className={labelClasses}>
+              <span>{tr('Total IV')} <span className="text-rose-600">*</span></span>
+              <NumberSpinner
+                aria-label={tr('Total IV')}
+                className={`${fieldClasses} !mt-0`}
+                max={186}
+                min={0}
+                onValueChange={(totalIv) => setSubmissionForm({ ...submissionForm, totalIv: Number(totalIv) })}
+                required
+                value={submissionForm.totalIv}
+                wrapperClassName="mt-2"
+              />
+            </div>
             <label className={labelClasses}>
               {tr('Catch date/time')} <span className="text-rose-600">*</span>
               <CatchEventDateTimeInput value={submissionForm.catchLocal} locale={locale} onChange={(catchLocal) => setSubmissionForm({ ...submissionForm, catchLocal })} required ariaLabel={tr('Catch date/time')} />

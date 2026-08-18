@@ -47,6 +47,15 @@ describe('HuntFinder', () => {
       expect(latestUrl).toContain('minTier=3');
       expect(latestUrl).not.toContain('tier=');
     });
+
+    fireEvent.change(minimumTier, { target: { value: '7' } });
+    fireEvent.keyDown(minimumTier, { key: 'ArrowDown' });
+    expect(minimumTier).toHaveValue(null);
+
+    fireEvent.keyDown(minimumTier, { key: 'ArrowUp' });
+    expect(minimumTier).toHaveValue(7);
+    fireEvent.click(screen.getByRole('button', { name: 'Increase minimum tier' }));
+    expect(minimumTier).toHaveValue(6);
   });
 
   it("uses Farfetch'd as the species filter value", async () => {

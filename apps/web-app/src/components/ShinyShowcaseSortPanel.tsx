@@ -1,4 +1,5 @@
 import React from 'react';
+import NumberSpinner from './NumberSpinner';
 
 export interface ShowcaseSort {
   sortBy: 'number_ot' | 'points' | 'points_per_num_ot';
@@ -43,17 +44,18 @@ const ShinyShowcaseSortPanel = ({
         </select>
       </label>
       {draftSort.sortBy === 'points_per_num_ot' && (
-        <label className="text-sm text-gray-700 dark:text-gray-300">
-          Minimum OT shinies
-          <input
-            type="number"
-            min="0"
-            step="1"
+        <div className="text-sm text-gray-700 dark:text-gray-300">
+          <span>Minimum OT shinies</span>
+          <NumberSpinner
+            aria-label="Minimum OT shinies"
+            className={`${inputClassName} !mt-0`}
+            min={0}
+            onValueChange={(value) => onChange({ ...draftSort, minNumOT: value })}
+            step={1}
             value={draftSort.minNumOT}
-            onChange={(event) => onChange({ ...draftSort, minNumOT: event.target.value })}
-            className={inputClassName}
+            wrapperClassName="mt-1"
           />
-        </label>
+        </div>
       )}
       <label className="text-sm text-gray-700 dark:text-gray-300">
         Order

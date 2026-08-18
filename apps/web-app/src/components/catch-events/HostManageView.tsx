@@ -1,4 +1,5 @@
 import React from 'react';
+import NumberSpinner from '../NumberSpinner';
 import { selectPrizeRelevantSubmissions } from '../../utils/catchEventScoring';
 import type {
   CatchEventConfig,
@@ -381,7 +382,15 @@ export function HostManageView({
                           onChange={(nature) => setSubmissionEditForm({ ...submissionEditForm, nature })}
                           getOptionLabel={translateNatureDisplay}
                         />
-                        <input className={fieldClasses} min={0} max={186} type="number" value={submissionEditForm.totalIv} onChange={(event) => setSubmissionEditForm({ ...submissionEditForm, totalIv: event.target.value })} />
+                        <NumberSpinner
+                          aria-label={tr('Total IV')}
+                          className={`${fieldClasses} !mt-0`}
+                          max={186}
+                          min={0}
+                          onValueChange={(totalIv) => setSubmissionEditForm({ ...submissionEditForm, totalIv })}
+                          value={submissionEditForm.totalIv}
+                          wrapperClassName="mt-2"
+                        />
                       </div>
                     ) : (
                       <>

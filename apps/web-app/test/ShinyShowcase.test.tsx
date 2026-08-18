@@ -163,6 +163,9 @@ describe('ShinyShowcase', () => {
     fireEvent.change(screen.getByLabelText(/^order$/i), {
       target: { value: 'desc' },
     });
+    fireEvent.change(screen.getByLabelText(/minimum ot shinies/i), {
+      target: { value: '0' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     await waitFor(() => {

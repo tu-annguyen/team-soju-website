@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import NumberSpinner from './NumberSpinner';
 import ShinyShowcaseResults from './ShinyShowcaseResults';
 import ShinyShowcaseSortPanel, { type ShowcaseSort } from './ShinyShowcaseSortPanel';
 import type { ShinyFromAPI, Trainer } from './ShinyShowcaseTypes';
@@ -411,26 +412,28 @@ const ShinyShowcase = ({
                       className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   </label>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">
-                    Minimum Points
-                    <input
-                      type="number"
-                      min="0"
+                  <div className="text-sm text-gray-700 dark:text-gray-300">
+                    <span>Minimum Points</span>
+                    <NumberSpinner
+                      aria-label="Minimum Points"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                      min={0}
+                      onValueChange={(value) => setDraftFilters({ ...draftFilters, minPoints: value })}
                       value={draftFilters.minPoints}
-                      onChange={(e) => setDraftFilters({ ...draftFilters, minPoints: e.target.value })}
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      wrapperClassName="mt-1"
                     />
-                  </label>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">
-                    Maximum Points
-                    <input
-                      type="number"
-                      min="0"
+                  </div>
+                  <div className="text-sm text-gray-700 dark:text-gray-300">
+                    <span>Maximum Points</span>
+                    <NumberSpinner
+                      aria-label="Maximum Points"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                      min={0}
+                      onValueChange={(value) => setDraftFilters({ ...draftFilters, maxPoints: value })}
                       value={draftFilters.maxPoints}
-                      onChange={(e) => setDraftFilters({ ...draftFilters, maxPoints: e.target.value })}
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      wrapperClassName="mt-1"
                     />
-                  </label>
+                  </div>
                   <label className="text-sm text-gray-700 dark:text-gray-300">
                     Encounter type
                     <select
