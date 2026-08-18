@@ -141,6 +141,18 @@ describe('Shiny War roster limits', () => {
 });
 
 describe('Cloudflare Shiny Wars repository', () => {
+  it('filters hunt results at the requested minimum numeric tier', async () => {
+    const runSelect = jest.fn().mockResolvedValue([]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    await repository.listHordeSpots({ minTier: '3' });
+
+    expect(runSelect.mock.calls[0][0]).toContain('ELSE NULL END <= ?');
+    expect(runSelect.mock.calls[0][1]).toContain(3);
+  });
+
   it('scores the official roster together and the internal teams independently', async () => {
     const participants = [
       { event_id: '2026', member_id: 'bidoof-official', ign: 'BidoofOne', rank: 'Member', team: 'bidoof', is_official: 1, has_app_user: 1 },

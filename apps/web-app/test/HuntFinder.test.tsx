@@ -26,6 +26,29 @@ const makeSpot = (spotKey: string, location: string): HuntSpot => ({
 });
 
 describe('HuntFinder', () => {
+  it('uses an integer-only minimum tier filter', async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+
+    const minimumTier = screen.getByLabelText('Minimum Tier');
+    expect(minimumTier).toHaveAttribute('type', 'number');
+    expect(minimumTier).toHaveAttribute('min', '0');
+    expect(minimumTier).toHaveAttribute('max', '7');
+    expect(minimumTier).toHaveAttribute('step', '1');
+
+    fireEvent.change(minimumTier, { target: { value: '3.5' } });
+    expect(minimumTier).toHaveValue(null);
+    fireEvent.change(minimumTier, { target: { value: '3' } });
+    expect(minimumTier).toHaveValue(3);
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('minTier=3');
+      expect(latestUrl).not.toContain('tier=');
+    });
+  });
+
   it("uses Farfetch'd as the species filter value", async () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 
@@ -90,6 +113,46 @@ describe('HuntFinder', () => {
     expect(screen.getByRole('button', { name: 'Collapse Pokemon Mansion 2F' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: 'Collapse Route 7' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: 'Collapse all' })).toHaveTextContent('- Collapse all');
+  });
+
+  it('opens only the top location per Pokemon and keeps collapse state independent by view', async () => {
+    const vulpixA = makeSpot('vulpix-a', 'Location A');
+    const vulpixB = makeSpot('vulpix-b', 'Location B');
+    const pikachuB = {
+      ...makeSpot('pikachu-b', 'Location B'),
+      composition: [{
+        name: 'Pikachu', slug: 'pikachu', family_key: 'pichu', tier: 'Tier 2',
+        points: 20, split: 1, form: '', min_level: 20, max_level: 22,
+      }],
+    };
+    const pikachuA = { ...pikachuB, spot_key: 'pikachu-a', location: 'Location A' };
+    const spots = [vulpixA, vulpixB, pikachuB, pikachuA];
+    (shinyWarRequest as jest.Mock).mockResolvedValue({
+      items: spots,
+      locations: ['Location A', 'Location B'],
+      total: spots.length,
+    });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+
+    await screen.findByText('Location A');
+    fireEvent.click(screen.getByRole('button', { name: 'Pokémon' }));
+
+    expect(screen.getAllByRole('button', { name: 'Collapse Location A' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Expand Location A' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Collapse Location B' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Expand Location B' })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Location B' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Location' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Location A' }));
+
+    expect(screen.getByRole('button', { name: 'Expand Location A' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Collapse Location B' })).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pokémon' }));
+    expect(screen.getAllByRole('button', { name: 'Collapse Location B' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Expand Location A' })).toHaveLength(1);
   });
 
   it('enables every filter when every encounter method is selected', async () => {

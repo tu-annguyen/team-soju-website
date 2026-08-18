@@ -5,6 +5,7 @@ import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { shinyWarRequest } from './api';
 import HuntResults from './HuntResults';
 import { huntLocationKey } from './huntLocationGroups';
+import { groupHuntSpotsByPokemonLocation } from './huntPokemonLocationGroups';
 import type { HuntView } from './HuntResults';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
@@ -40,7 +41,7 @@ export default function HuntFinder({
   participants, teamCaughtFamilyKeys, onQueue,
 }: Props) {
   const [filters, setFilters] = useState({
-    season: defaultSeason || 'Summer', region: '', location: '', species: '', tier: '', time: '', method: 'All',
+    season: defaultSeason || 'Summer', region: '', location: '', species: '', minTier: '', time: '', method: 'All',
     hordeSize: '', hordesPerHour: '240', eventBoost: true, donator: false,
     fullSplitOnly: false, minPointsPerHour: '', personalCharm: false, linkCharm: false,
     chumBucket: false, nonSafari: false, officialUniqueBonus: true, teamUniqueBonus: false,
@@ -49,7 +50,8 @@ export default function HuntFinder({
   const [spots, setSpots] = useState<HuntSpot[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
-  const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(() => new Set());
+  const [collapsedLocationViewLocations, setCollapsedLocationViewLocations] = useState<Set<string>>(() => new Set());
+  const [pokemonLocationOverrides, setPokemonLocationOverrides] = useState<Map<string, boolean>>(() => new Map());
   const [view, setView] = useState<HuntView>('location');
   const [error, setError] = useState('');
 
@@ -93,19 +95,49 @@ export default function HuntFinder({
   const supportsNonSafari = ['All', 'Singles', 'Fishing'].includes(filters.method);
   const teamWarAvailable = teamCaughtFamilyKeys !== undefined;
   const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(filters.method);
-  const visibleLocationKeys = [...new Set(spots.map(huntLocationKey))];
+  const locationViewKeys = [...new Set(spots.map(huntLocationKey))];
+  const pokemonLocationGroups = groupHuntSpotsByPokemonLocation(spots, filters.species);
+  const pokemonLocationDefaults = new Map(
+    pokemonLocationGroups.flatMap(({ locations: groupedLocations }) => (
+      groupedLocations.map(({ key }, index) => [key, index > 0] as const)
+    ))
+  );
+  const pokemonViewKeys = [...pokemonLocationDefaults.keys()];
+  const collapsedPokemonViewLocations = new Set(
+    pokemonViewKeys.filter((key) => pokemonLocationOverrides.get(key) ?? pokemonLocationDefaults.get(key))
+  );
+  const visibleLocationKeys = view === 'location' ? locationViewKeys : pokemonViewKeys;
+  const collapsedLocations = view === 'location'
+    ? collapsedLocationViewLocations
+    : collapsedPokemonViewLocations;
   const allLocationsOpen = visibleLocationKeys.length > 0
     && visibleLocationKeys.every((locationKey) => !collapsedLocations.has(locationKey));
 
   const toggleAllLocations = () => {
-    setCollapsedLocations(allLocationsOpen ? new Set(visibleLocationKeys) : new Set());
+    if (view === 'location') {
+      setCollapsedLocationViewLocations(allLocationsOpen ? new Set(visibleLocationKeys) : new Set());
+      return;
+    }
+    setPokemonLocationOverrides((current) => {
+      const next = new Map(current);
+      visibleLocationKeys.forEach((key) => next.set(key, allLocationsOpen));
+      return next;
+    });
   };
 
   const toggleLocation = (locationKey: string) => {
-    setCollapsedLocations((current) => {
-      const next = new Set(current);
-      if (next.has(locationKey)) next.delete(locationKey);
-      else next.add(locationKey);
+    if (view === 'location') {
+      setCollapsedLocationViewLocations((current) => {
+        const next = new Set(current);
+        if (next.has(locationKey)) next.delete(locationKey);
+        else next.add(locationKey);
+        return next;
+      });
+      return;
+    }
+    setPokemonLocationOverrides((current) => {
+      const next = new Map(current);
+      next.set(locationKey, !collapsedPokemonViewLocations.has(locationKey));
       return next;
     });
   };
@@ -157,11 +189,19 @@ export default function HuntFinder({
           </select>
         </label>
         <label className={labelClasses}>
-          Tier
-          <select value={filters.tier} onChange={(e) => update('tier', e.target.value)} className={fieldClasses}>
-            <option value="">Every tier</option>
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((tier) => <option key={tier}>Tier {tier}</option>)}
-          </select>
+          Minimum Tier
+          <input
+            type="number"
+            min="0"
+            max="7"
+            step="1"
+            value={filters.minTier}
+            onChange={(e) => {
+              if (/^\d*$/.test(e.target.value)) update('minTier', e.target.value);
+            }}
+            placeholder="No minimum"
+            className={fieldClasses}
+          />
         </label>
         <label className={labelClasses}>
           Time

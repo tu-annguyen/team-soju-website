@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { groupHuntSpotsByPokemon } from './huntGroups';
 import HuntLocationCard from './HuntLocationCard';
 import SpeciesSpriteName from './SpeciesSpriteName';
 import { groupHuntSpotsByLocation } from './huntLocationGroups';
+import { groupHuntSpotsByPokemonLocation } from './huntPokemonLocationGroups';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 
 export type HuntView = 'location' | 'pokemon';
@@ -52,11 +52,11 @@ export default function HuntResults({
     );
   }
 
-  const groups = groupHuntSpotsByPokemon(spots, speciesFilter);
+  const groups = groupHuntSpotsByPokemonLocation(spots, speciesFilter);
 
   return (
     <div className="space-y-4">
-      {groups.map(({ species, spots: speciesSpots }) => (
+      {groups.map(({ species, spots: speciesSpots, locations }) => (
         <section
           className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950"
           key={`${species.slug}-${species.form}`}
@@ -79,7 +79,7 @@ export default function HuntResults({
             </p>
           </div>
           <div className="space-y-3">
-            {groupHuntSpotsByLocation(speciesSpots).map((group) => (
+            {locations.map((group) => (
               <HuntLocationCard
                 key={`${species.slug}-${species.form}-${group.key}`}
                 locationOpen={!effectiveCollapsedLocations.has(group.key)}

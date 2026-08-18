@@ -132,7 +132,7 @@ async function handleShinyWarRoutes(context) {
         location: url.searchParams.get('location') || undefined,
         method: url.searchParams.get('method') || undefined,
         hordeSize: url.searchParams.get('hordeSize') || undefined,
-        tier: url.searchParams.get('tier') || undefined,
+        minTier: url.searchParams.get('minTier') || undefined,
         species: url.searchParams.get('species') || undefined,
         time: url.searchParams.get('time') || undefined,
         fullSplitOnly: bool('fullSplitOnly'),
