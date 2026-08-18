@@ -431,6 +431,7 @@ describe('Cloudflare Shiny Wars repository', () => {
     });
 
     const result = await repository.listHordeSpots({
+      method: 'All',
       season: 'Summer',
       time: 'night',
       fullSplitOnly: true,
@@ -702,7 +703,7 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(runSelect.mock.calls[1][1]).toEqual(expect.arrayContaining(['Rock Smash', 'Rocks']));
   });
 
-  it.each(['Singles', 'Fishing'])('can exclude Safari encounters from %s', async (method) => {
+  it.each(['All', 'Singles', 'Fishing'])('can exclude Safari encounters from %s', async (method) => {
     const runSelect = jest.fn().mockResolvedValue([]);
     const repository = createShinyWarRepository({
       dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
@@ -712,6 +713,18 @@ describe('Cloudflare Shiny Wars repository', () => {
 
     expect(runSelect.mock.calls[0][0]).toContain("LOWER(l.name) NOT LIKE '%safari%'");
     expect(runSelect.mock.calls[0][0]).toContain("LOWER(l.name) NOT LIKE '%great marsh%'");
+  });
+
+  it('can filter horde size across every encounter method', async () => {
+    const runSelect = jest.fn().mockResolvedValue([]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    await repository.listHordeSpots({ method: 'All', hordeSize: '5' });
+
+    expect(runSelect.mock.calls[0][0]).toContain('e.horde_size = ?');
+    expect(runSelect.mock.calls[0][1]).toContain(5);
   });
 
   it('ignores the non-Safari filter for other encounter methods', async () => {

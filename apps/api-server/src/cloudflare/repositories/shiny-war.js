@@ -221,10 +221,10 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       where.push(`e.method IN (${placeholders.join(', ')})`);
       if (selectedMethod !== 'All') where.push('e.horde_size = 0');
     }
-    if (selectedMethod === 'Sweet Scent' && filters.hordeSize) {
+    if (['All', 'Sweet Scent'].includes(selectedMethod) && filters.hordeSize) {
       addFilter('e.horde_size', Number(filters.hordeSize));
     }
-    if (filters.nonSafari && ['Singles', 'Fishing'].includes(selectedMethod)) {
+    if (filters.nonSafari && ['All', 'Singles', 'Fishing'].includes(selectedMethod)) {
       where.push("LOWER(l.name) NOT LIKE '%safari%' AND LOWER(l.name) NOT LIKE '%great marsh%'");
     }
     if (filters.tier) addFilter('s.tier', filters.tier);
@@ -325,8 +325,11 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (species) => excludedFamilyKeys.has(normalizeFamilyKey(species.family_key))
       ))
       : spots;
-    const splitFilteredSpots = selectedMethod === 'Sweet Scent' && filters.fullSplitOnly
-      ? caughtFilteredSpots.filter((spot) => spot.composition.some((species) => species.split === 1))
+    const splitFilteredSpots = ['All', 'Sweet Scent'].includes(selectedMethod) && filters.fullSplitOnly
+      ? caughtFilteredSpots.filter(
+        (spot) => Number(spot.horde_size) > 0
+          && spot.composition.some((species) => species.split === 1)
+      )
       : caughtFilteredSpots;
     const matchingSpots = speciesFilter
       ? splitFilteredSpots.filter((spot) => spot.composition.some(

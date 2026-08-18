@@ -92,18 +92,40 @@ describe('HuntFinder', () => {
     expect(screen.getByRole('button', { name: 'Collapse all' })).toHaveTextContent('- Collapse all');
   });
 
-  it('only enables the non-Safari filter for Singles and Fishing', async () => {
+  it('enables every filter when every encounter method is selected', async () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
 
     const method = screen.getByLabelText('Encounter method');
     const nonSafari = screen.getByLabelText('Non-Safari only');
-    expect(nonSafari).toBeDisabled();
+    const hordeSize = screen.getByLabelText('Horde size');
+    const hordesPerHour = screen.getByLabelText('Hordes/hour');
+    const fullSplitOnly = screen.getByLabelText('100% split hordes only');
+    const chumBucket = screen.getByLabelText('Chum bucket');
+    expect(nonSafari).toBeEnabled();
+    expect(hordeSize).toBeEnabled();
+    expect(hordesPerHour).toBeEnabled();
+    expect(fullSplitOnly).toBeEnabled();
+    expect(chumBucket).toBeEnabled();
+
+    fireEvent.change(hordeSize, { target: { value: '5' } });
+    fireEvent.click(fullSplitOnly);
+    fireEvent.click(nonSafari);
+    fireEvent.click(chumBucket);
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('method=All');
+      expect(latestUrl).toContain('hordeSize=5');
+      expect(latestUrl).toContain('hordesPerHour=240');
+      expect(latestUrl).toContain('fullSplitOnly=true');
+      expect(latestUrl).toContain('nonSafari=true');
+      expect(latestUrl).toContain('chumBucket=true');
+    });
 
     fireEvent.change(method, { target: { value: 'Singles' } });
     expect(nonSafari).toBeEnabled();
-    fireEvent.click(nonSafari);
 
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
