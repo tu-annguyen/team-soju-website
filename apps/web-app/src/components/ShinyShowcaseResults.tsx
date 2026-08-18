@@ -1,41 +1,12 @@
 import React from 'react';
 import ShinyCard from './ShinyCard';
+import type { Trainer } from './ShinyShowcaseTypes';
 
 interface ShinyShowcaseResultsProps {
   searchTerm: string;
   shinyData: Trainer[];
   loading: boolean;
   error: string | null;
-}
-
-export interface ShinyPokemon {
-  name: string;
-  variantName: string | null;
-  status: string | null;
-  imageUrl: string;
-  isFailed: boolean;
-  isSecret: boolean;
-  isAlpha: boolean;
-  encounterType: string;
-  tier: string;
-  pointValue: number;
-  catchDate: string | null;
-  totalEncounters: number | null;
-  speciesEncounters: number | null;
-  nature: string | null;
-  ivHp: number | null;
-  ivAttack: number | null;
-  ivDefense: number | null;
-  ivSpAttack: number | null;
-  ivSpDefense: number | null;
-  ivSpeed: number | null;
-}
-
-interface Trainer {
-  name: string;
-  numOT: number;
-  totalPoints: number;
-  shinies: ShinyPokemon[];
 }
 
 const LoadingPlaceholder = ({ className }: { className: string }) => (
