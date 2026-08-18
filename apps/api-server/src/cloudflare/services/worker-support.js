@@ -756,6 +756,35 @@ async function runCatchEventOcrModelOnce(env, model, payload) {
   return runCloudflareAiRest(env, model, payload);
 }
 
+function getCatchEventOcrTimeoutMs(env) {
+  const configuredTimeout = Number(env.CATCH_EVENT_OCR_TIMEOUT_MS);
+  return Number.isFinite(configuredTimeout) && configuredTimeout > 0
+    ? configuredTimeout
+    : 30000;
+}
+
+async function runCatchEventOcrModelWithTimeout(env, model, payload) {
+  const timeoutMs = getCatchEventOcrTimeoutMs(env);
+  let timeoutId;
+  const timeout = new Promise((resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      const error = new Error(`Workers AI OCR request timed out after ${timeoutMs}ms.`);
+      error.statusCode = 504;
+      error.retryable = false;
+      reject(error);
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      runCatchEventOcrModelOnce(env, model, payload),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function isRetryableAiError(error) {
   if (typeof error?.retryable === 'boolean') return error.retryable;
   if ([408, 429, 500, 502, 504].includes(Number(error?.statusCode))) return true;
@@ -768,7 +797,7 @@ async function runCatchEventOcrModel(env, model, payload) {
 
   for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
     try {
-      return await runCatchEventOcrModelOnce(env, model, payload);
+      return await runCatchEventOcrModelWithTimeout(env, model, payload);
     } catch (error) {
       if (!isRetryableAiError(error) || attempt === retryDelays.length) {
         throw error;
@@ -815,6 +844,7 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
       temperature: 0,
       max_completion_tokens: 4096,
       reasoning_effort: 'none',
+      chat_template_kwargs: { thinking: false },
       response_format: { type: 'json_object' },
     });
 
