@@ -85,6 +85,27 @@ describe('Shiny Wars overview', () => {
     expect(screen.queryByText(/bonus pts/)).not.toBeInTheDocument();
   });
 
+  it('sorts standings from most to least base points', () => {
+    const lowerBaseStanding = {
+      ...dashboard.officialWar.standings[0],
+      member_id: 'member-2',
+      ign: 'LowerBase',
+      points: 28,
+      basePoints: 20,
+    };
+    render(<Overview dashboard={{
+      ...dashboard,
+      officialWar: {
+        ...dashboard.officialWar,
+        standings: [lowerBaseStanding, ...dashboard.officialWar.standings],
+      },
+    }} />);
+
+    const participantNames = screen.getAllByText(/^(SojuHunter|LowerBase)$/)
+      .map((element) => element.textContent?.trim());
+    expect(participantNames).toEqual(['SojuHunter', 'LowerBase']);
+  });
+
   it('uses species language and can hide internal event status', () => {
     render(<Overview dashboard={dashboard} showEventStatus={false} />);
 

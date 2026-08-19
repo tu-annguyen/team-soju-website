@@ -93,6 +93,9 @@ function WarContent({ catches, canManage, children, onEligibility, showTeamBadge
 }) {
   const standingsRef = useRef<HTMLElement>(null);
   const [standingsHeight, setStandingsHeight] = useState<number>();
+  const sortedStandings = [...standings].sort(
+    (left, right) => right.basePoints - left.basePoints || left.ign.localeCompare(right.ign)
+  );
 
   useLayoutEffect(() => {
     const standingsElement = standingsRef.current;
@@ -122,7 +125,7 @@ function WarContent({ catches, canManage, children, onEligibility, showTeamBadge
         <section ref={standingsRef} className="min-h-64 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="text-xl font-bold text-gray-950 dark:text-white">Participant standings</h2>
           <div className="mt-4 divide-y divide-gray-100 dark:divide-gray-800">
-            {standings.map((row, index) => (
+            {sortedStandings.map((row, index) => (
               <div key={'member_id' in row ? row.member_id : `${row.ign}-${index}`} className="flex items-center gap-3 py-3">
                 <span className="w-7 text-gray-500">{index + 1}</span>
                 <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
