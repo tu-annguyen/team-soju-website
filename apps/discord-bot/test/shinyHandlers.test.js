@@ -1162,6 +1162,7 @@ describe('shinyHandlers', () => {
   it('queues addshinyscreenshot work and replies with a processing message', async () => {
     const interaction = createMockInteraction({
       commandName: 'addshinyscreenshot',
+      locale: 'en-GB',
       member: { roles: { cache: [{ name: 'Champion' }] } },
       options: {
         screenshot: {
@@ -1172,6 +1173,7 @@ describe('shinyHandlers', () => {
         secret: false,
         alpha: false,
         timezone: 'America/Los_Angeles (UTC-7)',
+        date_order: 'auto',
       },
     });
 
@@ -1195,6 +1197,8 @@ describe('shinyHandlers', () => {
         discord_interaction_token: 'interaction-token',
         callback_url: 'https://example.com/internal/screenshot-result',
         timezone: 'America/Los_Angeles',
+        locale: 'en-GB',
+        date_order: 'auto',
       }),
       expect.any(Object)
     );

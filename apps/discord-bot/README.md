@@ -182,13 +182,14 @@ Record a new shiny Pokemon catch with an uploaded screenshot.
 - `screenshot` (required): Screenshot of the shiny Pokemon's share page
 - `encounter_type` (required): How it was encountered
 - `timezone` (required): IANA timezone where the shiny was caught (autocomplete)
+- `date_order` (optional): Auto, MDY, DMY, or YMD (defaults to Auto using Discord locale)
 - `secret` (optional): Is this a secret shiny?
 - `alpha` (optional): Is this an alpha shiny?
 
 **Date handling:**
 - The bot auto-detects screenshot dates when the format is unambiguous, including common forms like `MM/DD/YY`, `DD/MM/YYYY`, and `YYYY-MM-DD`.
 - The bot reads the local catch time from the screenshot and converts it to UTC using the selected timezone for Shiny War eligibility.
-- If the screenshot date is ambiguous, such as `03/04/26`, the OCR flow does not guess. It uses the date the command was called instead and adds an `ambiguous date` note before the success embed.
+- If the screenshot date supports multiple orders, such as `03/04/26`, `date_order` can explicitly select MDY, DMY, or YMD. Auto uses the invoking user's Discord locale; if that does not identify a usable order, the command date is used instead.
 
 **Example:**
 ```

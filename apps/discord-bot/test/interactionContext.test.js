@@ -16,6 +16,19 @@ describe('DiscordInteractionContext', () => {
     delete global.fetch;
   });
 
+  it('exposes the invoking user locale', () => {
+    const interaction = new DiscordInteractionContext({
+      application_id: 'app-123',
+      token: 'interaction-token',
+      type: 2,
+      locale: 'en-GB',
+      data: { name: 'addshinyscreenshot' },
+      member: { user: { id: 'user-1' }, roles: [] },
+    }, { DISCORD_CLIENT_ID: 'env-app-id' });
+
+    expect(interaction.locale).toBe('en-GB');
+  });
+
   it('edits the original response when replying after a deferred chat command', async () => {
     const interaction = new DiscordInteractionContext({
       application_id: 'app-123',

@@ -5,7 +5,9 @@ const {
   parseAiJson,
   runCatchEventOcrModel,
 } = require('./worker-support');
+const { inferDateOrderFromLocale } = require('./date-order');
 const { buildErrorPayload, buildExtractedFields, buildSuccessPayload } = require('./shiny-ocr-format');
+const { parseShinyOcrDate } = require('./shiny-ocr-date');
 const { getFallbackLocalDate, localCatchDateTimeToUtc } = require('../../utils/shinyCatchTime');
 
 const MAX_SCREENSHOT_BYTES = 10 * 1024 * 1024;
@@ -176,19 +178,30 @@ function latestToday() {
 
 function normalizeOcrResult(raw, jobRequest) {
   const ivSource = Array.isArray(raw?.ivs) ? raw.ivs : [raw?.ivHp, raw?.ivAttack, raw?.ivDefense, raw?.ivSpAttack, raw?.ivSpDefense, raw?.ivSpeed];
+  const rawCatchDate = normalizeText(raw?.rawCatchDate || raw?.catchDateText, 20);
+  const requestedDateOrder = jobRequest.date_order || 'auto';
+  const preferredDateOrder = requestedDateOrder === 'auto'
+    ? inferDateOrderFromLocale(jobRequest.locale)
+    : requestedDateOrder;
+  const normalizedDate = parseShinyOcrDate(rawCatchDate || raw?.catchDate || raw?.date, preferredDateOrder);
   const parsed = {
     pokemon: normalizeOcrPokemonName(raw?.pokemon || raw?.name),
     trainer: normalizeOcrTrainer(raw?.trainer || raw?.originalTrainer || raw?.ot),
-    catchDate: normalizeText(raw?.catchDate || raw?.date, 10),
+    catchDate: normalizedDate.catchDate,
     catchTime: normalizeText(raw?.catchTime || raw?.time, 5),
-    dateAmbiguous: Boolean(raw?.dateAmbiguous),
+    dateAmbiguous: normalizedDate.dateAmbiguous,
     nature: normalizeText(raw?.nature, 20),
     totalEncounters: normalizeInteger(raw?.totalEncounters, 0, Number.MAX_SAFE_INTEGER),
     speciesEncounters: normalizeInteger(raw?.speciesEncounters, 0, Number.MAX_SAFE_INTEGER),
     ivs: ivSource.map((value) => normalizeInteger(value, 0, 31)),
   };
   const notes = Array.isArray(raw?.warnings) ? raw.warnings.map((item) => normalizeText(item, 300)).filter(Boolean) : [];
-  if (parsed.dateAmbiguous) {
+  if (normalizedDate.usedPreferredOrder) {
+    const basis = requestedDateOrder === 'auto'
+      ? `Discord locale (${jobRequest.locale})`
+      : `the requested ${requestedDateOrder.toUpperCase()} date order`;
+    notes.push(`The screenshot date "${rawCatchDate}" can use multiple date orders. It was interpreted as ${normalizedDate.dateOrder.toUpperCase()} using ${basis}.`);
+  } else if (parsed.dateAmbiguous || (!rawCatchDate && raw?.dateAmbiguous)) {
     parsed.catchDate = getFallbackLocalDate(jobRequest.command_called_at, jobRequest.timezone);
     notes.push(`Ambiguous date was found in screenshot. The caught date was set to today's date (${parsed.catchDate}), instead. Select **Edit** > **Catch Date** to change.`);
   }
@@ -206,6 +219,7 @@ function normalizeOcrResult(raw, jobRequest) {
     error.ocrText = JSON.stringify(raw);
     throw error;
   }
+  if (notes.length) console.log('Shiny OCR output with warnings:', JSON.stringify(raw));
   return { parsed, notes };
 }
 
@@ -217,9 +231,9 @@ async function extractScreenshotFields(env, object, request) {
   const prompt = [
     'Read this PokeMMO shiny Encounter Tracker screenshot.',
     'Extract the shiny Pokemon name, trainer/OT, catch date, local catch time, nature, six IVs in HP/Atk/Def/SpA/SpD/Spe order, total encounters, and species encounters.',
-    'Do not infer absent values. Set dateAmbiguous=true when a numeric date can validly be both month/day and day/month.',
-    'Return only JSON with keys pokemon, trainer, catchDate, catchTime, dateAmbiguous, nature, ivs, totalEncounters, speciesEncounters, warnings.',
-    'catchDate is YYYY-MM-DD when unambiguous; catchTime is 24-hour HH:mm.',
+    'Do not infer absent values. Return rawCatchDate as only the visible date token (for example, 8/18/26), preserving its order and separators but excluding the following comma and time.',
+    'Return only JSON with keys pokemon, trainer, rawCatchDate, catchTime, nature, ivs, totalEncounters, speciesEncounters, warnings.',
+    'catchTime is 24-hour HH:mm. Code will validate and interpret rawCatchDate.',
   ].join('\n');
   const result = await runCatchEventOcrModel(env, model, {
     messages: [{ role: 'user', content: [

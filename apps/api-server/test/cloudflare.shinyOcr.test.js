@@ -97,6 +97,50 @@ describe('Worker shiny screenshot OCR', () => {
     expect(future.notes.join(' ')).toContain('future');
   });
 
+  it('overrides an incorrect model ambiguity flag using the raw screenshot date', () => {
+    const result = normalizeOcrResult({
+      pokemon: 'Wingull', trainer: 'Scotty', rawCatchDate: '8/18/26', catchDate: '2026-08-18',
+      catchTime: '00:57', dateAmbiguous: true, ivs: [31, 13, 18, 17, 10, 27], warnings: [],
+    }, { ...validPayload(), timezone: 'Africa/Abidjan' });
+
+    expect(result.parsed.catchDate).toBe('2026-08-18');
+    expect(result.parsed.dateAmbiguous).toBe(false);
+    expect(result.notes).toEqual([]);
+  });
+
+  it('uses Discord locale date order for genuinely ambiguous raw screenshot dates in Auto mode', () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      const result = normalizeOcrResult({
+        pokemon: 'Wingull', trainer: 'Scotty', rawCatchDate: '3/4/26', catchTime: '00:57',
+        ivs: [], warnings: [],
+      }, { ...validPayload(), locale: 'en-GB', date_order: 'auto' });
+
+      expect(result.parsed.catchDate).toBe('2026-04-03');
+      expect(result.notes.join(' ')).toContain('interpreted as DMY');
+      expect(result.notes.join(' ')).toContain('Discord locale (en-GB)');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('uses an explicit date order instead of the Discord locale', () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      const result = normalizeOcrResult({
+        pokemon: 'Wingull', trainer: 'Scotty', rawCatchDate: '3/4/26', catchTime: '00:57',
+        ivs: [], warnings: [],
+      }, { ...validPayload(), locale: 'en-GB', date_order: 'mdy' });
+
+      expect(result.parsed.catchDate).toBe('2026-03-04');
+      expect(result.notes.join(' ')).toContain('requested MDY date order');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it.each([
     ['Nidoran ♀', 'nidoran-f'],
     ['Nidoran♂', 'nidoran-m'],
@@ -122,6 +166,21 @@ describe('Worker shiny screenshot OCR', () => {
     }, validPayload());
 
     expect(result.parsed.trainer).toBe('cassandraa');
+  });
+
+  it('logs the OCR output when screenshot parsing produces warnings', () => {
+    const rawOcr = {
+      pokemon: 'Pikachu', trainer: 'Trainer', catchDate: '2026-08-11', catchTime: '20:30',
+      ivs: [], warnings: ['Double-check the encounter count.'],
+    };
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      normalizeOcrResult(rawOcr, validPayload());
+      expect(logSpy).toHaveBeenCalledWith('Shiny OCR output with warnings:', JSON.stringify(rawOcr));
+    } finally {
+      logSpy.mockRestore();
+    }
   });
 
   it('uploads once, queues a small idempotent job, creates one shiny, and delivers the callback', async () => {

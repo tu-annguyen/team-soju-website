@@ -39,6 +39,8 @@ async function handleAddShinyScreenshot(interaction) {
       is_alpha: interaction.options.getBoolean('alpha') || false,
       command_called_at: new Date(interaction.createdTimestamp || Date.now()).toISOString(),
       timezone: getTimezoneOption(interaction),
+      locale: interaction.locale || interaction.raw?.locale || null,
+      date_order: interaction.options.getString('date_order') || 'auto',
       discord_user_id: interaction.user.id,
       member_roles: getMemberRoles(interaction).map((role) => role.name),
       discord_interaction_id: interaction.id,
