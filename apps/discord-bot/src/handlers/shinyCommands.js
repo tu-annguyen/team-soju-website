@@ -239,7 +239,10 @@ async function handleEditShiny(interaction) {
       updates.pokemon = pokemon;
       const nationalNumber = await getNationalNumber(pokemon);
       if (!nationalNumber) {
-        await interaction.editReply({ content: `Error: Could not find national number for Pokemon "${pokemon}"` });
+        await interaction.editReply(prependShinyCommandDeprecationWarning(
+          { content: `Error: Could not find national number for Pokemon "${pokemon}"` },
+          'editshiny'
+        ));
         return;
       }
       updates.national_number = nationalNumber;
@@ -280,7 +283,10 @@ async function handleEditShiny(interaction) {
     if (ivSpeed !== null) updates.iv_speed = ivSpeed;
 
     if (Object.keys(updates).length === 0) {
-      await interaction.editReply({ content: 'No updates provided' });
+      await interaction.editReply(prependShinyCommandDeprecationWarning(
+        { content: 'No updates provided' },
+        'editshiny'
+      ));
       return;
     }
 
@@ -288,7 +294,10 @@ async function handleEditShiny(interaction) {
     const payload = await buildShinyDisplayPayload(shiny, 'Shiny Updated Successfully');
     await interaction.editReply(prependShinyCommandDeprecationWarning(payload, 'editshiny'));
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}` });
+    await interaction.editReply(prependShinyCommandDeprecationWarning(
+      { content: `Error: ${error.message}` },
+      'editshiny'
+    ));
   }
 }
 
@@ -304,7 +313,10 @@ async function handleFailShiny(interaction) {
     const payload = await buildFailedShinyPayload(shiny);
     await interaction.editReply(prependShinyCommandDeprecationWarning(payload, 'failshiny'));
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}` });
+    await interaction.editReply(prependShinyCommandDeprecationWarning(
+      { content: `Error: ${error.message}` },
+      'failshiny'
+    ));
   }
 }
 
@@ -321,7 +333,10 @@ async function handleDeleteShiny(interaction) {
       'deleteshiny'
     ));
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}` });
+    await interaction.editReply(prependShinyCommandDeprecationWarning(
+      { content: `Error: ${error.message}` },
+      'deleteshiny'
+    ));
   }
 }
 
@@ -334,7 +349,10 @@ async function handleGetShiny(interaction) {
     const payload = await buildShinyDetailsPayload(interaction, shinyId);
     await interaction.editReply(prependShinyCommandDeprecationWarning(payload, 'shiny'));
   } catch (error) {
-    await interaction.editReply({ content: `Error: ${error.message}` });
+    await interaction.editReply(prependShinyCommandDeprecationWarning(
+      { content: `Error: ${error.message}` },
+      'shiny'
+    ));
   }
 }
 

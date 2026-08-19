@@ -1448,6 +1448,31 @@ describe('shinyHandlers', () => {
     expect(payload.embeds[1].data.title).toBe('Shiny Deleted Successfully');
   });
 
+  it.each([
+    ['editshiny', handleEditShiny, { shiny_id: 'missing-id' }],
+    ['failshiny', handleFailShiny, { shiny_id: 'missing-id', status: 'Fled' }],
+    ['deleteshiny', handleDeleteShiny, { shiny_id: 'missing-id' }],
+    ['shiny', handleGetShiny, { id: 'missing-id' }],
+  ])('includes the deprecation warning when /%s returns an error', async (
+    commandName,
+    handler,
+    options
+  ) => {
+    const interaction = createMockInteraction({ commandName, options });
+    fetchClient.get.mockRejectedValue(new Error('Shiny not found'));
+
+    await handler(interaction);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.content).toBe('Error: Shiny not found');
+    expect(payload.embeds).toHaveLength(1);
+    expect(payload.embeds[0].data).toEqual(expect.objectContaining({
+      color: 0xFFB300,
+      title: 'Deprecated Command Warning',
+      description: expect.stringContaining(`/myshinies`),
+    }));
+  });
+
   it('shows a failed confirmation embed with greyscaled sprite', async () => {
     const interaction = createMockInteraction({
       commandName: 'failshiny',
