@@ -46,7 +46,9 @@ function toPublicDashboard(dashboard) {
     },
   });
   const publicStandings = (standings) => standings
-    .map(({ ign, team, points, catches }) => ({ ign, team, points, catches }));
+    .map(({ ign, team, points, basePoints, bonusPoints, catches }) => ({
+      ign, team, points, basePoints, bonusPoints, catches,
+    }));
   return {
     officialWar: {
       ...dashboard.officialWar,

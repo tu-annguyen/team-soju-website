@@ -82,7 +82,10 @@ describe('Shiny War public dashboard', () => {
       currentSeason: 'Summer',
       officialWar: {
         teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
-        standings: [{ member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+        standings: [{
+          member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof',
+          points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+        }],
         recentCatches: [{
           id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
           caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof', war_eligibility_override: true,
@@ -99,7 +102,9 @@ describe('Shiny War public dashboard', () => {
     expect(result).toEqual({
       officialWar: {
         teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
-        standings: [{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+        standings: [{
+          ign: 'Hunter', team: 'bidoof', points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+        }],
         recentCatches: [{
           pokemon: 'Vulpix', ign: 'Hunter', team: 'bidoof', caught_at_utc: '2026-08-01T01:02:00.000Z',
           score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
@@ -190,8 +195,10 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(dashboard.officialWar.teamTotal).toBe(68);
     expect(dashboard.teamWar.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
     expect(dashboard.officialWar.standings).toHaveLength(2);
-    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'bidoof-official').points).toBe(38);
-    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(30);
+    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'bidoof-official'))
+      .toMatchObject({ points: 38, basePoints: 30, bonusPoints: 8 });
+    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'arceus-official'))
+      .toMatchObject({ points: 30, basePoints: 30, bonusPoints: 0 });
     expect(dashboard.teamWar.standings.find((entry) => entry.member_id === 'arceus-official').caughtFamilyKeys)
       .toEqual(['vulpix']);
     expect(dashboard.teamWar.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);

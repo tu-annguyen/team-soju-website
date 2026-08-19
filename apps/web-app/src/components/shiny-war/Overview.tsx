@@ -129,7 +129,16 @@ function WarContent({ catches, canManage, children, onEligibility, showTeamBadge
                   {row.ign} {showTeamBadges && <TeamBadge team={row.team} />}
                 </span>
                 <span className="text-sm text-gray-500">{row.catches} catches</span>
-                <strong className="text-primary-600 dark:text-primary-400">{row.points} pts</strong>
+                <span className="flex shrink-0 flex-row items-end gap-1 text-sm leading-tight">
+                  {row.bonusPoints !== 0 && (
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {row.bonusPoints.toLocaleString()} bonus pts +
+                    </span>
+                  )}
+                  <strong className="text-primary-600 dark:text-primary-400">
+                    {row.basePoints.toLocaleString()} pts
+                  </strong>
+                </span>
               </div>
             ))}
           </div>

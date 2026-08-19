@@ -468,14 +468,24 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         };
       });
     };
-    const standingsFor = (scoring, selectedParticipants) => selectedParticipants.map((participant) => ({
-      ...participant,
-      points: scoring.participantTotals[participant.member_id] || 0,
-      catches: scoring.catches.filter((entry) => entry.original_trainer === participant.member_id).length,
-      caughtFamilyKeys: [...new Set(scoring.catches
-        .filter((entry) => entry.original_trainer === participant.member_id)
-        .map((entry) => entry.family_key))],
-    })).sort((a, b) => b.points - a.points || a.ign.localeCompare(b.ign));
+    const standingsFor = (scoring, selectedParticipants) => selectedParticipants.map((participant) => {
+      const participantCatches = scoring.catches
+        .filter((entry) => entry.original_trainer === participant.member_id);
+      const basePoints = participantCatches
+        .reduce((sum, entry) => sum + entry.score.base, 0);
+      const bonusPoints = participantCatches.reduce(
+        (sum, entry) => sum + entry.score.secretBonus + entry.score.safariBonus + entry.score.uniqueBonus,
+        0
+      );
+      return {
+        ...participant,
+        points: basePoints + bonusPoints,
+        basePoints,
+        bonusPoints,
+        catches: participantCatches.length,
+        caughtFamilyKeys: [...new Set(participantCatches.map((entry) => entry.family_key))],
+      };
+    }).sort((a, b) => b.points - a.points || a.ign.localeCompare(b.ign));
     const teamCatches = Object.values(teamScoring).flatMap((scoring) => scoring.catches);
     return {
       event,
