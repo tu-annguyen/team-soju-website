@@ -1,9 +1,22 @@
 const {
+  inferDateOrderFromLocale,
   normalizeCatchEventOcrResult,
 } = require('../src/cloudflare/services/worker-support');
 
 describe('catch event OCR date normalization', () => {
-  it('uses MM/DD fallback from locale and timezone', () => {
+  it.each([
+    ['en-US', 'mdy'],
+    ['en-GB', 'dmy'],
+    ['ja', 'ymd'],
+  ])('infers date order for locale %s through Intl', (locale, expected) => {
+    expect(inferDateOrderFromLocale(locale)).toBe(expected);
+  });
+
+  it('does not infer date order without a locale', () => {
+    expect(inferDateOrderFromLocale(null)).toBeNull();
+  });
+
+  it('uses a provided MM/DD fallback', () => {
     const result = normalizeCatchEventOcrResult(
       { catchLocal: '7/6/26 10:40:05 AM', confidence: 0.7, warnings: [] },
       'mdy',
@@ -15,7 +28,7 @@ describe('catch event OCR date normalization', () => {
     expect(result.warnings).toContain('Date order inferred from browser settings as MDY.');
   });
 
-  it('uses DD/MM fallback from locale and timezone', () => {
+  it('uses a provided DD/MM fallback', () => {
     const result = normalizeCatchEventOcrResult(
       { catchLocal: '7/6/26 10:40:05 AM', confidence: 0.7, warnings: [] },
       'dmy',

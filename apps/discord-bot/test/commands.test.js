@@ -110,6 +110,22 @@ describe('commands', () => {
     expect(timezoneOption.choices).toBeUndefined();
   });
 
+  it('offers Auto, MDY, DMY, and YMD date orders on /addshinyscreenshot', () => {
+    const command = COMMANDS.find(item => item.toJSON().name === 'addshinyscreenshot').toJSON();
+    const dateOrderOption = command.options.find(option => option.name === 'date_order');
+
+    expect(dateOrderOption).toEqual(expect.objectContaining({
+      type: 3,
+      required: false,
+      choices: [
+        { name: 'Auto', value: 'auto' },
+        { name: 'MDY', value: 'mdy' },
+        { name: 'DMY', value: 'dmy' },
+        { name: 'YMD', value: 'ymd' },
+      ],
+    }));
+  });
+
   it.each(['addshiny', 'addshinyscreenshot', 'editshiny'])(
     'removes catch_time_utc from /%s',
     (commandName) => {

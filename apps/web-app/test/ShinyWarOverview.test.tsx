@@ -24,6 +24,8 @@ const dashboard = {
     is_official: true,
     hunts: [],
     points: 38,
+    basePoints: 30,
+    bonusPoints: 8,
     catches: 1,
     }],
     recentCatches: [{
@@ -50,7 +52,10 @@ describe('Shiny Wars overview', () => {
     const onEligibility = jest.fn().mockResolvedValue(undefined);
     render(<Overview dashboard={dashboard} canManage onEligibility={onEligibility} />);
 
-    expect(screen.getByText('38 pts')).toBeInTheDocument();
+    expect(screen.getByText('30 pts')).toBeInTheDocument();
+    const pointsBreakdown = screen.getByText(/8 bonus pts/).parentElement;
+    expect(pointsBreakdown).toHaveTextContent('8 bonus pts +30 pts');
+    expect(pointsBreakdown).toHaveClass('gap-1');
     expect(screen.queryByRole('img', { name: 'Team Bidoof' })).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'Team Arceus' })).not.toBeInTheDocument();
     expect(screen.getByText('Vulpix/Ninetales')).toBeInTheDocument();
@@ -62,6 +67,44 @@ describe('Shiny Wars overview', () => {
     expect(screen.getByLabelText('Team Bidoof 20 points, Team Arceus 18 points')).toBeInTheDocument();
     expect(screen.queryByText('Team points')).not.toBeInTheDocument();
     expect(screen.queryByText('Unique species')).not.toBeInTheDocument();
+  });
+
+  it('hides zero bonus points', () => {
+    render(<Overview dashboard={{
+      ...dashboard,
+      officialWar: {
+        ...dashboard.officialWar,
+        standings: dashboard.officialWar.standings.map((standing) => ({
+          ...standing,
+          points: standing.basePoints,
+          bonusPoints: 0,
+        })),
+      },
+    }} />);
+
+    expect(screen.getByText('30 pts')).toBeInTheDocument();
+    expect(screen.queryByText(/bonus pts/)).not.toBeInTheDocument();
+  });
+
+  it('sorts standings from most to least base points', () => {
+    const lowerBaseStanding = {
+      ...dashboard.officialWar.standings[0],
+      member_id: 'member-2',
+      ign: 'LowerBase',
+      points: 28,
+      basePoints: 20,
+    };
+    render(<Overview dashboard={{
+      ...dashboard,
+      officialWar: {
+        ...dashboard.officialWar,
+        standings: [lowerBaseStanding, ...dashboard.officialWar.standings],
+      },
+    }} />);
+
+    const participantNames = screen.getAllByText(/^(SojuHunter|LowerBase)$/)
+      .map((element) => element.textContent?.trim());
+    expect(participantNames).toEqual(['SojuHunter', 'LowerBase']);
   });
 
   it('uses species language and can hide internal event status', () => {

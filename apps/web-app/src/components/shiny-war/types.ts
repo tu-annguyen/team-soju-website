@@ -80,6 +80,8 @@ export type DashboardCatch = {
 
 export type DashboardStanding = ParticipantHunts & {
   points: number;
+  basePoints: number;
+  bonusPoints: number;
   catches: number;
   caughtFamilyKeys: string[];
 };
@@ -110,7 +112,10 @@ export type Dashboard = {
   };
 };
 
-type PublicStanding = Pick<DashboardStanding, 'ign' | 'team' | 'points' | 'catches'>;
+type PublicStanding = Pick<
+  DashboardStanding,
+  'ign' | 'team' | 'points' | 'basePoints' | 'bonusPoints' | 'catches'
+>;
 type PublicCatch = Omit<DashboardCatch, 'id' | 'member_id' | 'is_official' | 'war_eligibility_override'>;
 
 export type PublicDashboard = {

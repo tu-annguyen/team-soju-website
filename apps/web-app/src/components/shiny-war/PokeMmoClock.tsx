@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getPokeMmoClockState, type ShinyWarClockEvent } from './pokeMmoClock';
+import { getPokeMmoClockState, type ShinyWarClockEvent } from './pokeMmoClockState';
 
 type Props = {
   event: ShinyWarClockEvent;

@@ -170,7 +170,10 @@ describe('Cloudflare Worker API', () => {
           currentSeason: 'Summer',
           officialWar: {
             teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
-            standings: [{ member_id: 'member-1', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+            standings: [{
+              member_id: 'member-1', ign: 'Hunter', team: 'bidoof',
+              points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+            }],
             recentCatches: [{
               id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
               caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof',
@@ -195,7 +198,9 @@ describe('Cloudflare Worker API', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toContain('public');
-    expect(body.data.officialWar.standings).toEqual([{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }]);
+    expect(body.data.officialWar.standings).toEqual([{
+      ign: 'Hunter', team: 'bidoof', points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+    }]);
     expect(body.data.officialWar.recentCatches[0]).not.toHaveProperty('id');
     expect(body.data).not.toHaveProperty('event');
   });

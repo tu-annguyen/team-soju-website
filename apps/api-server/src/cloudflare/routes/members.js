@@ -85,7 +85,7 @@ const {
   extractAiResponseText,
   parseAiJson,
   cleanNullableString,
-  inferDateOrderFromLocaleTimezone,
+  inferDateOrderFromLocale,
   normalizeOcrCatchLocal,
   normalizeCatchEventOcrResult,
   mergeCatchEventOcrResults,

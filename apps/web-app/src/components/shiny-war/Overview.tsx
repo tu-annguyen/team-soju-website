@@ -105,6 +105,9 @@ function WarContent({ bottomContent, catches, canManage, onEligibility, showTeam
 }) {
   const standingsRef = useRef<HTMLElement>(null);
   const [standingsHeight, setStandingsHeight] = useState<number>();
+  const sortedStandings = [...standings].sort(
+    (left, right) => right.basePoints - left.basePoints || left.ign.localeCompare(right.ign)
+  );
 
   useLayoutEffect(() => {
     const standingsElement = standingsRef.current;
@@ -134,14 +137,23 @@ function WarContent({ bottomContent, catches, canManage, onEligibility, showTeam
         <section ref={standingsRef} className="min-h-64 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="text-xl font-bold text-gray-950 dark:text-white">Participant standings</h2>
           <div className="mt-4 divide-y divide-gray-100 dark:divide-gray-800">
-            {standings.map((row, index) => (
+            {sortedStandings.map((row, index) => (
               <div key={'member_id' in row ? row.member_id : `${row.ign}-${index}`} className="flex items-center gap-3 py-3">
                 <span className="w-7 text-gray-500">{index + 1}</span>
                 <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
                   {row.ign} {showTeamBadges && <TeamBadge team={row.team} />}
                 </span>
                 <span className="text-sm text-gray-500">{row.catches} catches</span>
-                <strong className="text-primary-600 dark:text-primary-400">{row.points} pts</strong>
+                <span className="flex shrink-0 flex-row items-end gap-1 text-sm leading-tight">
+                  {row.bonusPoints !== 0 && (
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {row.bonusPoints.toLocaleString()} bonus pts +
+                    </span>
+                  )}
+                  <strong className="text-primary-600 dark:text-primary-400">
+                    {row.basePoints.toLocaleString()} pts
+                  </strong>
+                </span>
               </div>
             ))}
           </div>

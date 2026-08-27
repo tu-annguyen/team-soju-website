@@ -68,6 +68,13 @@ const SHINY_STATUS_CHOICES = [
   { name: 'Bred', value: 'Bred' },
 ];
 
+const DATE_ORDER_CHOICES = [
+  { name: 'Auto', value: 'auto' },
+  { name: 'MDY', value: 'mdy' },
+  { name: 'DMY', value: 'dmy' },
+  { name: 'YMD', value: 'ymd' },
+];
+
 const FAILED_SHINY_STATUS_CHOICES = SHINY_STATUS_CHOICES.filter(({ value }) => value !== 'Owned');
 
 function configurePokemonAutocompleteOption(option, description, required) {
@@ -230,6 +237,11 @@ const COMMANDS = [
         .setRequired(true)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
     .addStringOption(option => configureTimezoneAutocompleteOption(option, true))
+    .addStringOption(option =>
+      option.setName('date_order')
+        .setDescription('Date order shown in the screenshot')
+        .setRequired(false)
+        .addChoices(...DATE_ORDER_CHOICES))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')

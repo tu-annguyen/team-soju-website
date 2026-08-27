@@ -1162,6 +1162,7 @@ describe('shinyHandlers', () => {
   it('queues addshinyscreenshot work and replies with a processing message', async () => {
     const interaction = createMockInteraction({
       commandName: 'addshinyscreenshot',
+      locale: 'en-GB',
       member: { roles: { cache: [{ name: 'Champion' }] } },
       options: {
         screenshot: {
@@ -1172,6 +1173,7 @@ describe('shinyHandlers', () => {
         secret: false,
         alpha: false,
         timezone: 'America/Los_Angeles (UTC-7)',
+        date_order: 'auto',
       },
     });
 
@@ -1195,6 +1197,8 @@ describe('shinyHandlers', () => {
         discord_interaction_token: 'interaction-token',
         callback_url: 'https://example.com/internal/screenshot-result',
         timezone: 'America/Los_Angeles',
+        locale: 'en-GB',
+        date_order: 'auto',
       }),
       expect.any(Object)
     );
@@ -1446,6 +1450,31 @@ describe('shinyHandlers', () => {
       description: expect.stringContaining('Use `/myshinies` to delete your shinies'),
     }));
     expect(payload.embeds[1].data.title).toBe('Shiny Deleted Successfully');
+  });
+
+  it.each([
+    ['editshiny', handleEditShiny, { shiny_id: 'missing-id' }],
+    ['failshiny', handleFailShiny, { shiny_id: 'missing-id', status: 'Fled' }],
+    ['deleteshiny', handleDeleteShiny, { shiny_id: 'missing-id' }],
+    ['shiny', handleGetShiny, { id: 'missing-id' }],
+  ])('includes the deprecation warning when /%s returns an error', async (
+    commandName,
+    handler,
+    options
+  ) => {
+    const interaction = createMockInteraction({ commandName, options });
+    fetchClient.get.mockRejectedValue(new Error('Shiny not found'));
+
+    await handler(interaction);
+
+    const payload = interaction.editReply.mock.calls[0][0];
+    expect(payload.content).toBe('Error: Shiny not found');
+    expect(payload.embeds).toHaveLength(1);
+    expect(payload.embeds[0].data).toEqual(expect.objectContaining({
+      color: 0xFFB300,
+      title: 'Deprecated Command Warning',
+      description: expect.stringContaining(`/myshinies`),
+    }));
   });
 
   it('shows a failed confirmation embed with greyscaled sprite', async () => {
