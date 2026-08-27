@@ -7,6 +7,7 @@ jest.mock('../src/components/shiny-war/api', () => ({
 }));
 
 const dashboard = {
+  familySpecies: { vulpix: ['Vulpix', 'Ninetales'] },
   officialWar: {
     teamTotal: 38,
     uniqueFamilyCount: 1,

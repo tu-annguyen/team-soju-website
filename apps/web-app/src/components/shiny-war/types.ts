@@ -85,6 +85,7 @@ export type DashboardStanding = ParticipantHunts & {
 };
 
 export type Dashboard = {
+  familySpecies: Record<string, string[]>;
   event: {
     name: string;
     starts_at: string;
@@ -113,6 +114,7 @@ type PublicStanding = Pick<DashboardStanding, 'ign' | 'team' | 'points' | 'catch
 type PublicCatch = Omit<DashboardCatch, 'id' | 'member_id' | 'is_official' | 'war_eligibility_override'>;
 
 export type PublicDashboard = {
+  familySpecies: Dashboard['familySpecies'];
   officialWar: Omit<Dashboard['officialWar'], 'standings' | 'recentCatches'> & {
     standings: PublicStanding[];
     recentCatches: PublicCatch[];

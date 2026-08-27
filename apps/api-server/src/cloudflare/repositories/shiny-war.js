@@ -443,6 +443,24 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         scoringEvent
       ),
     ]));
+    const coveredFamilyKeys = [...new Set([
+      ...officialScoring.uniqueFamilies,
+      ...teamScoring.bidoof.uniqueFamilies,
+      ...teamScoring.arceus.uniqueFamilies,
+    ])];
+    const familySpeciesRows = coveredFamilyKeys.length
+      ? await runSelect(`
+        SELECT name, family_key
+        FROM pokedex_species
+        WHERE family_key IN (${coveredFamilyKeys.map((_, index) => parameter(index + 1)).join(', ')})
+        ORDER BY id
+      `, coveredFamilyKeys)
+      : [];
+    const familySpecies = (familySpeciesRows || []).reduce((families, species) => {
+      if (!families[species.family_key]) families[species.family_key] = [];
+      families[species.family_key].push(species.name);
+      return families;
+    }, {});
     const participantById = new Map(participants.map((participant) => [participant.member_id, participant]));
     const startsAt = new Date(scoringEvent.startsAt).getTime();
     const endsAt = new Date(scoringEvent.endsAt).getTime();
@@ -480,6 +498,7 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     return {
       event,
       currentSeason: getShinyWarSeason(at, scoringEvent),
+      familySpecies,
       officialWar: {
         teamTotal: officialScoring.teamTotal,
         uniqueFamilyCount: officialScoring.uniqueFamilies.length,

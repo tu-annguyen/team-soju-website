@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import Overview from '../src/components/shiny-war/Overview';
 
 const dashboard = {
+  familySpecies: { vulpix: ['Vulpix', 'Ninetales'] },
   event: {
     name: 'PokeMMO Shiny Wars 2026',
     starts_at: '2026-08-01T00:00:00.000Z',
@@ -52,7 +53,7 @@ describe('Shiny Wars overview', () => {
     expect(screen.getByText('38 pts')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'Team Bidoof' })).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'Team Arceus' })).not.toBeInTheDocument();
-    expect(screen.getByText('Vulpix')).toBeInTheDocument();
+    expect(screen.getByText('Vulpix/Ninetales')).toBeInTheDocument();
     expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mark invalid' }));
     expect(onEligibility).toHaveBeenCalledWith('shiny-1', false);
@@ -68,6 +69,9 @@ describe('Shiny Wars overview', () => {
 
     expect(screen.getByText('Unique species')).toBeInTheDocument();
     expect(screen.getByText('Species coverage')).toBeInTheDocument();
+    const coverage = screen.getByRole('heading', { name: 'Species coverage' }).closest('section');
+    const standings = screen.getByRole('heading', { name: 'Participant standings' }).closest('section');
+    expect(standings?.compareDocumentPosition(coverage as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText(/first species \+8/)).toBeInTheDocument();
     expect(screen.queryByText('Current season')).not.toBeInTheDocument();
     expect(screen.queryByText('Schedule')).not.toBeInTheDocument();

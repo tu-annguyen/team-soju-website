@@ -80,6 +80,7 @@ describe('Shiny War public dashboard', () => {
     const result = toPublicDashboard({
       event: { roster_locked: true },
       currentSeason: 'Summer',
+      familySpecies: { vulpix: ['Vulpix', 'Ninetales'] },
       officialWar: {
         teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
         standings: [{ member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
@@ -97,6 +98,7 @@ describe('Shiny War public dashboard', () => {
     });
 
     expect(result).toEqual({
+      familySpecies: { vulpix: ['Vulpix', 'Ninetales'] },
       officialWar: {
         teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
         standings: [{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
@@ -182,12 +184,17 @@ describe('Cloudflare Shiny Wars repository', () => {
       }),
       runSelect: jest.fn()
         .mockResolvedValueOnce(participants)
-        .mockResolvedValueOnce(catches),
+        .mockResolvedValueOnce(catches)
+        .mockResolvedValueOnce([
+          { name: 'Vulpix', family_key: 'vulpix' },
+          { name: 'Ninetales', family_key: 'vulpix' },
+        ]),
     });
 
     const dashboard = await repository.getDashboard('2026', new Date('2026-08-02T00:00:00.000Z'));
 
     expect(dashboard.officialWar.teamTotal).toBe(68);
+    expect(dashboard.familySpecies).toEqual({ vulpix: ['Vulpix', 'Ninetales'] });
     expect(dashboard.teamWar.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
     expect(dashboard.officialWar.standings).toHaveLength(2);
     expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'bidoof-official').points).toBe(38);

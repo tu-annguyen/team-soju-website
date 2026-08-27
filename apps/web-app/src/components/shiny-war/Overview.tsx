@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { Dashboard, DashboardCatch, DashboardStanding, PublicDashboard, ShinyWarTeam } from './types';
-import { capitalize } from '../../utils/pokemonName';
+import { formatPokemonSpeciesName } from '../../utils/pokemonSpecies';
 import RecentCatches from './RecentCatches';
 import TeamBadge, { TEAM_LABELS } from './TeamBadge';
 
@@ -17,6 +17,7 @@ type Catch = DashboardCatch | PublicDashboard['officialWar']['recentCatches'][nu
 
 export default function Overview({ dashboard, showEventStatus = true, canManage, onEligibility }: Props) {
   const [view, setView] = useState<View>('official');
+  const familySpecies = dashboard.familySpecies || {};
   const fullDashboard = 'event' in dashboard ? dashboard : null;
   const eventStats = fullDashboard && showEventStatus ? [
     ['Current season', fullDashboard.currentSeason || 'Outside event window'],
@@ -38,9 +39,13 @@ export default function Overview({ dashboard, showEventStatus = true, canManage,
             ['Unique species', dashboard.officialWar.uniqueFamilyCount.toLocaleString()],
             ...eventStats,
           ]}
-        >
-          <SpeciesCoverage species={dashboard.officialWar.uniqueFamilies} />
-        </WarContent>
+          bottomContent={(
+            <SpeciesCoverage
+              familySpecies={familySpecies}
+              species={dashboard.officialWar.uniqueFamilies}
+            />
+          )}
+        />
       ) : (
         <WarContent
           catches={dashboard.teamWar.recentCatches}
@@ -49,14 +54,20 @@ export default function Overview({ dashboard, showEventStatus = true, canManage,
           showTeamBadges
           standings={dashboard.teamWar.standings}
           stats={eventStats}
-        >
-          <TeamScoreBar totals={dashboard.teamWar.teamTotals} />
-          <div className="grid gap-6 lg:grid-cols-2">
-            {(['bidoof', 'arceus'] as const).map((team) => (
-              <SpeciesCoverage key={team} species={dashboard.teamWar.uniqueFamilies[team]} team={team} />
-            ))}
-          </div>
-        </WarContent>
+          topContent={<TeamScoreBar totals={dashboard.teamWar.teamTotals} />}
+          bottomContent={(
+            <div className="grid gap-6 lg:grid-cols-2">
+              {(['bidoof', 'arceus'] as const).map((team) => (
+                <SpeciesCoverage
+                  familySpecies={familySpecies}
+                  key={team}
+                  species={dashboard.teamWar.uniqueFamilies[team]}
+                  team={team}
+                />
+              ))}
+            </div>
+          )}
+        />
       )}
     </div>
   );
@@ -82,14 +93,15 @@ function ViewChips({ view, onChange }: { view: View; onChange: (view: View) => v
   );
 }
 
-function WarContent({ catches, canManage, children, onEligibility, showTeamBadges, standings, stats }: {
+function WarContent({ bottomContent, catches, canManage, onEligibility, showTeamBadges, standings, stats, topContent }: {
+  bottomContent?: React.ReactNode;
   catches: Catch[];
   canManage?: boolean;
-  children: React.ReactNode;
   onEligibility?: Props['onEligibility'];
   showTeamBadges: boolean;
   standings: Standing[];
   stats: string[][];
+  topContent?: React.ReactNode;
 }) {
   const standingsRef = useRef<HTMLElement>(null);
   const [standingsHeight, setStandingsHeight] = useState<number>();
@@ -117,7 +129,7 @@ function WarContent({ catches, canManage, children, onEligibility, showTeamBadge
           ))}
         </div>
       )}
-      {children}
+      {topContent}
       <div className="grid gap-6 lg:grid-cols-2">
         <section ref={standingsRef} className="min-h-64 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="text-xl font-bold text-gray-950 dark:text-white">Participant standings</h2>
@@ -144,6 +156,7 @@ function WarContent({ catches, canManage, children, onEligibility, showTeamBadge
           />
         </div>
       </div>
+      {bottomContent}
     </div>
   );
 }
@@ -171,7 +184,11 @@ function TeamScoreBar({ totals }: { totals: Record<ShinyWarTeam, number> }) {
   );
 }
 
-function SpeciesCoverage({ species, team }: { species: string[]; team?: ShinyWarTeam }) {
+function SpeciesCoverage({ familySpecies, species, team }: {
+  familySpecies: Record<string, string[]>;
+  species: string[];
+  team?: ShinyWarTeam;
+}) {
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
       <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950 dark:text-white">
@@ -181,7 +198,7 @@ function SpeciesCoverage({ species, team }: { species: string[]; team?: ShinyWar
         {species.length === 0 && <p className="text-gray-500">No species covered yet.</p>}
         {species.map((family) => (
           <span key={family} className="rounded-full bg-primary-50 px-3 py-1 text-sm text-primary-700 dark:bg-primary-950 dark:text-primary-200">
-            {capitalize(family)}
+            {(familySpecies[family] || [family]).map(formatPokemonSpeciesName).join('/')}
           </span>
         ))}
       </div>

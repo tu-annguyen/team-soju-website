@@ -48,6 +48,7 @@ function toPublicDashboard(dashboard) {
   const publicStandings = (standings) => standings
     .map(({ ign, team, points, catches }) => ({ ign, team, points, catches }));
   return {
+    familySpecies: dashboard.familySpecies || {},
     officialWar: {
       ...dashboard.officialWar,
       standings: publicStandings(dashboard.officialWar.standings),
