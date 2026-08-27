@@ -2,14 +2,20 @@ import type { HuntSpot, PokemonHuntGroup } from './types';
 
 export function groupHuntSpotsByPokemon(
   spots: HuntSpot[],
-  speciesFilter = ''
+  speciesFilter = '',
+  minimumTier = ''
 ): PokemonHuntGroup[] {
   const groups = new Map<string, PokemonHuntGroup>();
   const normalizedFilter = speciesFilter.trim().toLowerCase();
+  const parsedMinimumTier = Number(minimumTier);
+  const hasMinimumTier = minimumTier !== ''
+    && Number.isInteger(parsedMinimumTier) && parsedMinimumTier >= 0 && parsedMinimumTier <= 7;
 
   spots.forEach((spot) => {
     spot.composition.forEach((species) => {
       if (normalizedFilter && !species.name.toLowerCase().includes(normalizedFilter)) return;
+      const speciesTier = Number(species.tier.match(/^Tier ([0-7])$/)?.[1]);
+      if (hasMinimumTier && (!Number.isInteger(speciesTier) || speciesTier > parsedMinimumTier)) return;
 
       const key = `${species.slug}|${species.form || ''}`;
       const group = groups.get(key);

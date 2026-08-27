@@ -65,6 +65,11 @@ function normalizeFamilyKey(value) {
   return String(value || '').trim().toLowerCase().replace(/[ .]+/g, '-');
 }
 
+function meetsMinimumTier(species, minTier) {
+  const tier = Number(String(species.tier || '').match(/^Tier ([0-7])$/)?.[1]);
+  return Number.isInteger(tier) && tier <= minTier;
+}
+
 function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
 
@@ -228,14 +233,8 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       where.push("LOWER(l.name) NOT LIKE '%safari%' AND LOWER(l.name) NOT LIKE '%great marsh%'");
     }
     const minTier = Number(filters.minTier);
-    if (filters.minTier !== undefined && Number.isInteger(minTier) && minTier >= 0 && minTier <= 7) {
-      params.push(minTier);
-      where.push(`CASE s.tier
-        WHEN 'Tier 0' THEN 0 WHEN 'Tier 1' THEN 1 WHEN 'Tier 2' THEN 2
-        WHEN 'Tier 3' THEN 3 WHEN 'Tier 4' THEN 4 WHEN 'Tier 5' THEN 5
-        WHEN 'Tier 6' THEN 6 WHEN 'Tier 7' THEN 7
-        ELSE NULL END <= ${parameter(params.length)}`);
-    }
+    const hasMinimumTier = filters.minTier !== undefined
+      && Number.isInteger(minTier) && minTier >= 0 && minTier <= 7;
     const rows = await runSelect(`
       SELECT e.*, l.region, l.name AS location_name, s.name AS species_name,
              s.slug, s.family_key, s.tier, s.points
@@ -324,15 +323,20 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
           : metrics.pointsPerHour + ((uniqueBonus * encountersPerHour) / denominator),
       };
     });
+    const tierFilteredSpots = hasMinimumTier
+      ? spots.filter((spot) => spot.composition.some(
+        (species) => meetsMinimumTier(species, minTier)
+      ))
+      : spots;
     const speciesFilter = String(filters.species || '').trim().toLowerCase();
     const excludedFamilyKeys = filters.excludeTeamCaught
       ? teamCaughtFamilyKeys
       : officialCaughtFamilyKeys;
     const caughtFilteredSpots = (filters.excludeOfficialCaught || filters.excludeTeamCaught)
-      ? spots.filter((spot) => !spot.composition.some(
+      ? tierFilteredSpots.filter((spot) => !spot.composition.some(
         (species) => excludedFamilyKeys.has(normalizeFamilyKey(species.family_key))
       ))
-      : spots;
+      : tierFilteredSpots;
     const splitFilteredSpots = ['All', 'Sweet Scent'].includes(selectedMethod) && filters.fullSplitOnly
       ? caughtFilteredSpots.filter(
         (spot) => Number(spot.horde_size) > 0

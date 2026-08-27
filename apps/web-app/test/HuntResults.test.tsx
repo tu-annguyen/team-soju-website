@@ -31,6 +31,34 @@ const participants: ParticipantHunts[] = [{
 }];
 
 describe('HuntResults', () => {
+  it('omits below-minimum species sections while retaining the complete split composition', () => {
+    const mixedSpot = {
+      ...spot,
+      composition: [
+        { ...vulpix, split: 0.5 },
+        {
+          ...vulpix, name: 'Grimer', slug: 'grimer', family_key: 'grimer',
+          tier: 'Tier 6', points: 5, split: 0.5,
+        },
+      ],
+    };
+
+    render(
+      <HuntResults
+        minimumTier="3"
+        participants={[]}
+        speciesFilter=""
+        spots={[mixedSpot]}
+        view="pokemon"
+        onQueue={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: /Vulpix/ })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Grimer/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Grimer')).toBeInTheDocument();
+  });
+
   it('shows Pokémon groups with each location-level metric and queues the grouped species', () => {
     const onQueue = jest.fn();
 

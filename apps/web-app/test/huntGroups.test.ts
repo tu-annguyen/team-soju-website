@@ -47,6 +47,22 @@ describe('groupHuntSpotsByPokemon', () => {
     expect(groups[0].spots[0].composition).toHaveLength(2);
   });
 
+  it('excludes Pokémon groups below the minimum tier without changing split compositions', () => {
+    const mixedSpot = makeSpot('mansion', 'Pokemon Mansion 2F');
+    mixedSpot.composition = [
+      { ...species, split: 0.5 },
+      {
+        ...species, name: 'Grimer', slug: 'grimer', family_key: 'grimer',
+        tier: 'Tier 6', points: 5, split: 0.5,
+      },
+    ];
+
+    const groups = groupHuntSpotsByPokemon([mixedSpot], '', '3');
+
+    expect(groups.map(({ species: entry }) => entry.name)).toEqual(['Vulpix']);
+    expect(groups[0].spots[0].composition.map((entry) => entry.name)).toEqual(['Vulpix', 'Grimer']);
+  });
+
   it('sorts Pokémon by their best points/hour location, then by name', () => {
     const bestVulpixSpot = makeSpot('mansion', 'Pokemon Mansion 2F');
     bestVulpixSpot.pointsPerHour = 1.2;

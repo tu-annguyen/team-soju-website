@@ -19,9 +19,10 @@ function pokemonLocationKey(species: HuntSpecies, locationKey: string) {
 
 export function groupHuntSpotsByPokemonLocation(
   spots: HuntSpot[],
-  speciesFilter = ''
+  speciesFilter = '',
+  minimumTier = ''
 ): HuntPokemonLocationSection[] {
-  return groupHuntSpotsByPokemon(spots, speciesFilter).map(({ species, spots: speciesSpots }) => ({
+  return groupHuntSpotsByPokemon(spots, speciesFilter, minimumTier).map(({ species, spots: speciesSpots }) => ({
     species,
     spots: speciesSpots,
     locations: groupHuntSpotsByLocation(speciesSpots).map((location) => ({

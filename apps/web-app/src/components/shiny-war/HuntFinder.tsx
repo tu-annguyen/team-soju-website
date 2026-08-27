@@ -97,7 +97,7 @@ export default function HuntFinder({
   const teamWarAvailable = teamCaughtFamilyKeys !== undefined;
   const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(filters.method);
   const locationViewKeys = [...new Set(spots.map(huntLocationKey))];
-  const pokemonLocationGroups = groupHuntSpotsByPokemonLocation(spots, filters.species);
+  const pokemonLocationGroups = groupHuntSpotsByPokemonLocation(spots, filters.species, filters.minTier);
   const pokemonLocationDefaults = new Map(
     pokemonLocationGroups.flatMap(({ locations: groupedLocations }) => (
       groupedLocations.map(({ key }, index) => [key, index > 0] as const)
@@ -378,6 +378,7 @@ export default function HuntFinder({
       </p>
       {error && <p role="alert" className="text-rose-600">{error}</p>}
       <HuntResults
+        minimumTier={filters.minTier}
         participants={participants}
         speciesFilter={filters.species}
         spots={spots}

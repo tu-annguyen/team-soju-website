@@ -11,6 +11,7 @@ type Props = {
   /** @deprecated Encounter compositions are always visible while their location is open. */
   expanded?: ReadonlySet<string>;
   participants: ParticipantHunts[];
+  minimumTier?: string;
   speciesFilter: string;
   spots: HuntSpot[];
   view: HuntView;
@@ -22,7 +23,8 @@ type Props = {
 };
 
 export default function HuntResults({
-  participants, speciesFilter, spots, view, onQueue, collapsedLocations, onToggleLocation,
+  participants, minimumTier = '', speciesFilter, spots, view, onQueue,
+  collapsedLocations, onToggleLocation,
 }: Props) {
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
@@ -52,7 +54,7 @@ export default function HuntResults({
     );
   }
 
-  const groups = groupHuntSpotsByPokemonLocation(spots, speciesFilter);
+  const groups = groupHuntSpotsByPokemonLocation(spots, speciesFilter, minimumTier);
 
   return (
     <div className="space-y-4">

@@ -143,16 +143,44 @@ describe('Shiny War roster limits', () => {
 });
 
 describe('Cloudflare Shiny Wars repository', () => {
-  it('filters hunt results at the requested minimum numeric tier', async () => {
-    const runSelect = jest.fn().mockResolvedValue([]);
+  it('keeps complete compositions only for splits that meet the minimum tier', async () => {
+    const rows = [
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+        tier: 'Tier 3', points: 30, form: '', min_level: 28, max_level: 30,
+        morning_rate: 0, day_rate: 0, night_rate: 2.5,
+      },
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Grimer', slug: 'grimer', family_key: 'grimer',
+        tier: 'Tier 6', points: 5, form: '', min_level: 28, max_level: 30,
+        morning_rate: 0, day_rate: 0, night_rate: 2.5,
+      },
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 3,
+        species_name: 'Pikachu', slug: 'pikachu', family_key: 'pichu',
+        tier: 'Tier 4', points: 15, form: '', min_level: 3, max_level: 5,
+        morning_rate: 0, day_rate: 0, night_rate: 3,
+      },
+    ];
+    const runSelect = jest.fn().mockResolvedValue(rows);
     const repository = createShinyWarRepository({
       dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
     });
 
-    await repository.listHordeSpots({ minTier: '3' });
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', minTier: '3', profile: { eventBoost: false },
+    });
 
-    expect(runSelect.mock.calls[0][0]).toContain('ELSE NULL END <= ?');
-    expect(runSelect.mock.calls[0][1]).toContain(3);
+    expect(runSelect.mock.calls[0][0]).not.toContain('CASE s.tier');
+    expect(result.total).toBe(1);
+    expect(result.items[0].location).toBe('Pokemon Mansion');
+    expect(result.items[0].composition.map((species) => species.name)).toEqual(['Vulpix', 'Grimer']);
+    expect(result.items[0].composition.map((species) => species.split)).toEqual([0.5, 0.5]);
   });
 
   it('scores the official roster together and the internal teams independently', async () => {
