@@ -42,6 +42,14 @@ const staffData = [
     avatar: '/images/megu-pfp.png',
     discord: 'https://discordapp.com/users/406270938079035393',
     forum: 'https://forums.pokemmo.com/index.php?/profile/497080-xmegux/'
+  },
+  {
+    id: 6,
+    name: 'SsjBlueCrill',
+    role: 'Team Recruiter',
+    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_03/Img_2025_01_26_15_58_57.jpeg.985a0111a3dcdc373d94bdd7ea0377cd.jpeg',
+    discord: 'https://discordapp.com/users/507450215096254464',
+    forum: 'https://forums.pokemmo.com/index.php?/profile/531427-ssjbluecrill/'
   }
 ];
 
