@@ -3,10 +3,12 @@ import LocationQueueStatus from './LocationQueueStatus';
 import HuntFilterChips from './HuntFilterChips';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { HuntFinderContext, HuntSort } from '../hunt-finder/types';
+import { getHuntFinderMessages } from '../hunt-finder/messages';
 
 type Props = {
   spot: HuntSpot;
   participants: ParticipantHunts[];
+  locale?: string;
   context?: HuntFinderContext;
   targetSpecies?: HuntSpecies;
   onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
@@ -19,7 +21,7 @@ type Props = {
 };
 
 export default function HuntSpotCard({
-  spot, participants, targetSpecies, onQueue, title, context = 'shinyWar', sort = 'pointsPerHour',
+  spot, participants, locale, targetSpecies, onQueue, title, context = 'shinyWar', sort = 'pointsPerHour',
   selectedSeason = '', selectedTime = '', onSeasonChange, onTimeChange,
 }: Props) {
   const availableTimes = spot.time === 'Any' ? [] : (spot.times?.length ? spot.times : [spot.time]);
@@ -28,6 +30,7 @@ export default function HuntSpotCard({
     ...availableTimes.map((time) => time.charAt(0).toUpperCase() + time.slice(1)),
   ].filter(Boolean).join(' · ');
   const showingExp = sort === 'expPerHour';
+  const messages = getHuntFinderMessages(locale).results;
   const evLabels = (species: HuntSpecies) => ([
     ['HP', species.ev_hp], ['Atk', species.ev_attack], ['Def', species.ev_defense],
     ['Sp. Atk', species.ev_sp_attack], ['Sp. Def', species.ev_sp_defense], ['Speed', species.ev_speed],
@@ -42,8 +45,8 @@ export default function HuntSpotCard({
             <p className="truncate whitespace-nowrap text-xs text-gray-500">
               {spot.region} · {spot.horde_size ? `${spot.horde_size}× Sweet Scent` : spot.method}
               {availability && <> · {availability}</>}
-              {spot.is_lure && <span className="font-semibold text-amber-600 dark:text-amber-400"> · Includes Lure-only encounters</span>}
-              {spot.is_special && <span className="font-semibold text-sky-600 dark:text-sky-400"> · Includes Special encounters</span>}
+              {spot.is_lure && <span className="font-semibold text-amber-600 dark:text-amber-400"> · {messages.includesLure}</span>}
+              {spot.is_special && <span className="font-semibold text-sky-600 dark:text-sky-400"> · {messages.includesSpecial}</span>}
             </p>
           </div>
           {(onSeasonChange || onTimeChange) && (
@@ -69,13 +72,13 @@ export default function HuntSpotCard({
           </div>
           <div className="text-right">
             <strong>{showingExp ? Math.round(spot.averageExp || 0).toLocaleString() : spot.averagePoints.toFixed(2)}</strong>
-            <p className="text-xs text-gray-500">{showingExp ? 'average EXP/encounter' : 'average/shiny'}</p>
+            <p className="text-xs text-gray-500">{showingExp ? messages.averageExp : messages.averageShiny}</p>
           </div>
         </div>
         {context === 'shinyWar' && onQueue && (
           <div className="col-span-full flex items-center justify-end gap-2 lg:col-span-1">
-            <button className="btn btn-secondary whitespace-nowrap px-4 py-2 text-sm" onClick={() => onQueue(spot, false, targetSpecies, title)}>Queue</button>
-            <button className="btn btn-primary whitespace-nowrap px-4 py-2 text-sm" onClick={() => onQueue(spot, true, targetSpecies, title)}>Hunt now</button>
+            <button className="btn btn-secondary whitespace-nowrap px-4 py-2 text-sm" onClick={() => onQueue(spot, false, targetSpecies, title)}>{messages.queue}</button>
+            <button className="btn btn-primary whitespace-nowrap px-4 py-2 text-sm" onClick={() => onQueue(spot, true, targetSpecies, title)}>{messages.huntNow}</button>
           </div>
         )}
       </div>
@@ -93,17 +96,17 @@ export default function HuntSpotCard({
               {species.rate_unknown
                 ? <span aria-label="Unknown encounter rate">???</span>
                 : species.is_special
-                  ? <span className="font-semibold text-sky-600 dark:text-sky-400">Special</span>
+                  ? <span className="font-semibold text-sky-600 dark:text-sky-400">{messages.special}</span>
                 : `${(species.split * 100).toFixed(2)}%`} · {species.tier} · Lv. {species.min_level}–{species.max_level}
               {evLabels(species) && <span className="ml-1 text-emerald-700 dark:text-emerald-300">· {evLabels(species)} EV</span>}
-              {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· Lure only</span>}
+              {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· {messages.lureOnly}</span>}
             </span>
           </p>
         ))}
         <p className="text-xs text-gray-500 sm:col-span-2 lg:col-span-3 2xl:col-span-4">
           {spot.encountersPerHour === null
-            ? 'No reliable encounters/hour data'
-            : `${spot.encountersPerHour.toLocaleString()} encounters/hour · 1/${spot.denominator.toLocaleString()} effective odds`}
+            ? messages.noHourly
+            : `${spot.encountersPerHour.toLocaleString()} ${messages.encountersHour} · 1/${spot.denominator.toLocaleString()} ${messages.effectiveOdds}`}
         </p>
       </div>
       {context === 'shinyWar' && <LocationQueueStatus participants={participants} spot={spot} />}

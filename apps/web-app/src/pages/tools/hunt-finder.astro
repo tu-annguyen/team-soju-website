@@ -1,26 +1,33 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import HuntFinder from '../../components/shiny-war/HuntFinder';
+import PokeMmoClock from '../../components/shiny-war/PokeMmoClock';
+import { getHuntFinderMessages } from '../../components/hunt-finder/messages';
+import { resolveLocale } from '../../i18n';
 
 const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8787/api';
+const locale = resolveLocale(Astro.url.searchParams.get('lang'));
+const messages = getHuntFinderMessages(locale).page;
 ---
 
 <Layout
-  title="PokeMMO Hunt Finder - Team Soju"
-  description="Compare PokeMMO encounter locations by shiny points, experience, levels, and EV yields."
+  title={messages.title}
+  description={messages.description}
+  locale={locale}
 >
   <section class="bg-gradient-to-br from-primary-50 to-secondary-50 py-14 dark:from-gray-900 dark:to-gray-800">
     <div class="container">
-      <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary-700 dark:text-primary-300">Public PokeMMO Tool</p>
-      <h1 class="mt-3 text-4xl font-bold text-gray-950 dark:text-white md:text-5xl">Hunt Finder</h1>
+      <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary-700 dark:text-primary-300">{messages.eyebrow}</p>
+      <h1 class="mt-3 text-4xl font-bold text-gray-950 dark:text-white md:text-5xl">{messages.heading}</h1>
       <p class="mt-4 max-w-3xl text-gray-700 dark:text-gray-300">
-        Find and compare wild encounters by location, species, level, EV yield, shiny points, or estimated EXP per hour.
+        {messages.intro}
       </p>
     </div>
   </section>
   <section class="py-10">
     <div class="container">
-      <HuntFinder client:load apiBaseUrl={apiBaseUrl} context="public" />
+      <PokeMmoClock client:load locale={locale} />
+      <HuntFinder client:load apiBaseUrl={apiBaseUrl} context="public" locale={locale} />
     </div>
   </section>
 </Layout>

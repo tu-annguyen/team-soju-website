@@ -168,6 +168,7 @@ describe('HuntFinder', () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
 
     const method = screen.getByLabelText('Encounter method');
     const nonSafari = screen.getByLabelText('Non-Safari only');
@@ -311,6 +312,9 @@ describe('HuntFinder', () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
 
+    expect(screen.getByLabelText('Sort by')).toHaveValue('alphabetical');
+    expect(screen.queryByLabelText('Event +10%')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
     expect(screen.getByLabelText('Event +10%')).not.toBeChecked();
     fireEvent.change(screen.getByLabelText('Encounter method'), { target: { value: 'Sweet Scent' } });
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
@@ -327,8 +331,8 @@ describe('HuntFinder', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Encounter method'), { target: { value: 'Singles' } });
-    expect(screen.getByLabelText('Sort by')).toHaveValue('pointsPerHour');
-    expect(screen.getByRole('group', { name: 'Boosts and charms' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Sort by')).toHaveValue('alphabetical');
+    expect(screen.queryByRole('group', { name: 'Boosts and charms' })).not.toBeInTheDocument();
   });
 
   it('sends minimum-level and multi-select EV filters', async () => {
@@ -336,6 +340,7 @@ describe('HuntFinder', () => {
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
 
     fireEvent.change(screen.getByLabelText('Minimum level'), { target: { value: '30' } });
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
     fireEvent.click(screen.getByLabelText('Attack'));
     fireEvent.click(screen.getByLabelText('Speed'));
     fireEvent.click(screen.getByLabelText('+1 EV'));
@@ -345,7 +350,8 @@ describe('HuntFinder', () => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
       expect(latestUrl).toContain('minLevel=30');
       expect(latestUrl).toContain('evStats=attack%2Cspeed');
-      expect(latestUrl).toContain('evAmounts=1%2C2');
+      expect(latestUrl).toContain('evAmounts=2');
+      expect(latestUrl).not.toContain('evAmounts=1%2C2');
     });
   });
 
@@ -365,7 +371,8 @@ describe('HuntFinder', () => {
     await screen.findByText('Route 1');
     const requestUrl = String(fetchMock.mock.calls.at(-1)?.[0]);
     expect(requestUrl).toContain('/api/hunt-finder/spots?');
-    expect(requestUrl).not.toContain('season=');
+    expect(requestUrl).toContain('season=');
+    expect(requestUrl).toContain('sort=alphabetical');
     expect(requestUrl).not.toContain('officialUniqueBonus');
     expect(screen.queryByRole('group', { name: 'Exclude caught evolution lines' })).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Include unique species bonus in calculations' })).not.toBeInTheDocument();

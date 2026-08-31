@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import { getHuntFinderMessages } from '../hunt-finder/messages';
 import { getPokeMmoClockState, type ShinyWarClockEvent } from './pokeMmoClockState';
 
 type Props = {
-  event: ShinyWarClockEvent;
+  event?: ShinyWarClockEvent;
+  locale?: string;
 };
 
-export default function PokeMmoClock({ event }: Props) {
+export default function PokeMmoClock({ event, locale }: Props) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -14,17 +16,20 @@ export default function PokeMmoClock({ event }: Props) {
   }, []);
 
   const clock = getPokeMmoClockState(now, event);
+  const huntMessages = getHuntFinderMessages(locale);
+  const messages = huntMessages.clock;
+  const localizeCalendar = (value: string) => huntMessages.calendar[value as keyof typeof huntMessages.calendar] || value;
   const values = [
-    ['In-game time', clock.time],
-    ['Season', clock.season],
-    ['Time of day', clock.timeOfDay],
-    ['Day of week', clock.weekday],
+    [messages.time, clock.time],
+    [messages.season, localizeCalendar(clock.season)],
+    [messages.timeOfDay, localizeCalendar(clock.timeOfDay)],
+    [messages.weekday, localizeCalendar(clock.weekday)],
   ];
 
   return (
     <section
       className="mb-5 rounded-2xl border border-primary-200 bg-primary-50/70 px-4 py-3 dark:border-primary-800 dark:bg-primary-950/30"
-      aria-label="Current PokeMMO time"
+      aria-label={messages.label}
     >
       <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
         {values.map(([label, value]) => (

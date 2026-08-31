@@ -16,8 +16,9 @@ function listParam(searchParams, name) {
 function huntFinderFilters(url, { includeWarFilters = false } = {}) {
   const { searchParams } = url;
   const method = searchParams.get('method') || undefined;
-  const requestedSort = searchParams.get('sort') || 'pointsPerHour';
-  const sort = SORTS.has(requestedSort) ? requestedSort : 'pointsPerHour';
+  const requestedSort = searchParams.get('sort') || 'alphabetical';
+  const sort = SORTS.has(requestedSort) ? requestedSort : 'alphabetical';
+  const evAmounts = listParam(searchParams, 'evAmounts').filter((amount) => amount === '1' || amount === '2');
   const filters = {
     season: searchParams.get('season') || undefined,
     region: searchParams.get('region') || undefined,
@@ -33,12 +34,12 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
     nonSafari: boolParam(searchParams, 'nonSafari'),
     minPointsPerHour: searchParams.get('minPointsPerHour') || undefined,
     evStats: listParam(searchParams, 'evStats').filter((stat) => EV_STATS.has(stat)),
-    evAmounts: listParam(searchParams, 'evAmounts').filter((amount) => amount === '1' || amount === '2'),
+    evAmounts: evAmounts.slice(0, 1),
     expCharm: ['0.25', '0.5', '1'].includes(searchParams.get('expCharm'))
       ? Number(searchParams.get('expCharm'))
       : 0,
-    sort: sort === 'expPerHour' && method !== 'Sweet Scent' ? 'pointsPerHour' : sort,
-    sortDirection: searchParams.get('sortDirection') === 'asc' ? 'asc' : 'desc',
+    sort: sort === 'expPerHour' && ![undefined, 'All', 'Sweet Scent'].includes(method) ? 'alphabetical' : sort,
+    sortDirection: searchParams.get('sortDirection') === 'desc' ? 'desc' : 'asc',
     page: searchParams.get('page') || undefined,
     pageSize: searchParams.get('pageSize') || undefined,
     hordesPerHour: Number(searchParams.get('hordesPerHour')) || 240,

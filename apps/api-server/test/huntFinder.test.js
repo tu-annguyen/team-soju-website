@@ -50,7 +50,7 @@ describe('Hunt Finder public API', () => {
 
     expect(filters).toMatchObject({
       method: 'Sweet Scent', minLevel: '30', evStats: ['attack', 'speed'],
-      evAmounts: ['1', '2'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
+      evAmounts: ['1'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
       profile: { eventBoost: true },
     });
     expect(filters.officialUniqueBonus).toBeUndefined();
@@ -69,7 +69,7 @@ describe('Hunt Finder public API', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toContain('public');
     expect(listHordeSpots).toHaveBeenCalledWith(expect.objectContaining({
-      sort: 'pointsPerHour', sortDirection: 'desc', profile: expect.objectContaining({ eventBoost: false }),
+      sort: 'alphabetical', sortDirection: 'asc', profile: expect.objectContaining({ eventBoost: false }),
     }));
   });
 });

@@ -86,7 +86,7 @@ const ToolsIndexContent = ({ locale, apiBaseUrl }: Props) => {
                 className="group rounded-3xl border border-violet-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-violet-900 dark:bg-gray-900"
               >
                 <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-violet-700 dark:text-violet-300">
-                  {messages.tools.index.categories.liveCoordination}
+                  {messages.tools.index.categories.pokedexSearch}
                 </p>
                 <h3 className="text-2xl font-bold text-gray-900 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
                   {messages.tools.index.huntFinderCard.title}

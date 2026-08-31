@@ -14,6 +14,7 @@ type Props = {
   participants: ParticipantHunts[];
   context?: HuntFinderContext;
   minimumTier?: string;
+  locale?: string;
   speciesFilter: string;
   spots: HuntSpot[];
   view: HuntView;
@@ -31,7 +32,7 @@ type Props = {
 };
 
 export default function HuntResults({
-  participants, minimumTier = '', speciesFilter, spots, view, onQueue,
+  participants, minimumTier = '', locale, speciesFilter, spots, view, onQueue,
   collapsedLocations, onToggleLocation, context = 'shinyWar',
   sort = 'pointsPerHour', sortDirection = 'desc',
   selectedSeason = '', selectedTime = '', onSeasonChange, onTimeChange,
@@ -55,6 +56,7 @@ export default function HuntResults({
             key={group.key}
             locationOpen={!effectiveCollapsedLocations.has(group.key)}
             participants={participants}
+            locale={locale}
             spots={group.spots}
             context={context}
             sort={sort}
@@ -105,6 +107,7 @@ export default function HuntResults({
                 key={`${species.slug}-${species.form}-${group.key}`}
                 locationOpen={!effectiveCollapsedLocations.has(group.key)}
                 participants={participants}
+                locale={locale}
                 spots={group.spots}
                 context={context}
                 sort={sort}

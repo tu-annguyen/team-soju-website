@@ -84,8 +84,8 @@ function compareNullable(left, right, direction) {
 function sortHuntSpots(spots, filters, hasHourlyData) {
   const direction = filters.sortDirection === 'asc' ? 1 : -1;
   const requestedSort = filters.sort || 'pointsPerHour';
-  const sort = requestedSort === 'expPerHour' && filters.method !== 'Sweet Scent'
-    ? 'pointsPerHour'
+  const sort = requestedSort === 'expPerHour' && ![undefined, 'All', 'Sweet Scent'].includes(filters.method)
+    ? 'alphabetical'
     : requestedSort;
   spots.sort((left, right) => {
     if (sort === 'alphabetical') {

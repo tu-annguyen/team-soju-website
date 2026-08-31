@@ -119,6 +119,7 @@ const en = {
       categories: {
         eventOps: 'Event Operations',
         liveCoordination: 'Live Coordination',
+        pokedexSearch: 'Pokédex Search',
       },
       catchEventsCard: {
         title: 'Catch Event Manager',
@@ -131,7 +132,7 @@ const en = {
           'Coordinate Feebas tile checks in real time with a shared tile board for checked, found, or confirmed calls. Each call has a translucent color so the board behaves like a live heatmap of group opinion.',
       },
       huntFinderCard: {
-        title: 'PokeMMO Hunt Finder',
+        title: 'Hunt Finder',
         description: 'Compare wild encounters by location, species, level, EV yield, shiny points, and estimated EXP per hour.',
       },
       shinyWarCard: {

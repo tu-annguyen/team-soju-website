@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import HuntFinderControls from '../hunt-finder/HuntFinderControls';
 import type { HuntFinderContext, HuntFinderFilters } from '../hunt-finder/types';
+import { getHuntFinderMessages } from '../hunt-finder/messages';
+import { getPokeMmoClockState } from './pokeMmoClockState';
 import { shinyWarRequest } from './api';
 import HuntResults, { type HuntView } from './HuntResults';
 import { huntLocationKey } from './huntLocationGroups';
@@ -12,6 +14,7 @@ type Props = {
   context?: HuntFinderContext;
   caughtFamilyKeys?: string[];
   defaultSeason?: string;
+  locale?: string;
   officialCaughtFamilyKeys?: string[];
   participants?: ParticipantHunts[];
   teamCaughtFamilyKeys?: string[];
@@ -23,7 +26,7 @@ const EMPTY_FAMILY_KEYS: string[] = [];
 
 function initialFilters(context: HuntFinderContext, defaultSeason: string): HuntFinderFilters {
   return {
-    season: context === 'public' ? '' : (defaultSeason || 'Summer'),
+    season: defaultSeason || getPokeMmoClockState(new Date()).season,
     region: '', location: '', species: '', minTier: '', minLevel: '', time: '', method: 'All',
     hordeSize: '', hordesPerHour: '240', eventBoost: false, donator: false,
     fullSplitOnly: false, minPointsPerHour: '', personalCharm: false, linkCharm: false,
@@ -31,7 +34,7 @@ function initialFilters(context: HuntFinderContext, defaultSeason: string): Hunt
     officialUniqueBonus: context === 'shinyWar', teamUniqueBonus: false,
     excludeOfficialCaught: false, excludeTeamCaught: false,
     evStats: [], evAmounts: [], expCharm: '',
-    sort: 'pointsPerHour', sortDirection: 'desc',
+    sort: 'alphabetical', sortDirection: 'asc',
   };
 }
 
@@ -86,6 +89,7 @@ export default function HuntFinder({
   context = 'shinyWar',
   caughtFamilyKeys = EMPTY_FAMILY_KEYS,
   defaultSeason = '',
+  locale,
   officialCaughtFamilyKeys = EMPTY_FAMILY_KEYS,
   participants = [],
   teamCaughtFamilyKeys,
@@ -99,6 +103,7 @@ export default function HuntFinder({
   const [pokemonLocationOverrides, setPokemonLocationOverrides] = useState<Map<string, boolean>>(() => new Map());
   const [view, setView] = useState<HuntView>('location');
   const [error, setError] = useState('');
+  const messages = getHuntFinderMessages(locale);
 
   useEffect(() => {
     const timer = window.setTimeout(async () => {
@@ -115,11 +120,11 @@ export default function HuntFinder({
         setTotal(data.total);
         setLocations(data.locations || []);
       } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Could not load hunts.');
+        setError(fetchError instanceof Error ? fetchError.message : messages.results.couldNotLoad);
       }
     }, 200);
     return () => window.clearTimeout(timer);
-  }, [apiBaseUrl, caughtFamilyKeys, context, filters, officialCaughtFamilyKeys, teamCaughtFamilyKeys]);
+  }, [apiBaseUrl, caughtFamilyKeys, context, filters, messages.results.couldNotLoad, officialCaughtFamilyKeys, teamCaughtFamilyKeys]);
 
   const locationViewKeys = [...new Set(spots.map(huntLocationKey))];
   const pokemonLocationGroups = groupHuntSpotsByPokemonLocation(
@@ -170,23 +175,24 @@ export default function HuntFinder({
 
   return (
     <div className="space-y-5">
-      <HuntFinderControls context={context} filters={filters} locations={locations} setFilters={setFilters} teamWarAvailable={teamCaughtFamilyKeys !== undefined} />
+      <HuntFinderControls context={context} filters={filters} locale={locale} locations={locations} setFilters={setFilters} teamWarAvailable={teamCaughtFamilyKeys !== undefined} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2" aria-label="Group hunt results by" role="group">
-          {([['location', 'Location'], ['pokemon', 'Pokémon']] as const).map(([value, label]) => (
+          {([['location', messages.results.location], ['pokemon', messages.results.pokemon]] as const).map(([value, label]) => (
             <button aria-pressed={view === value} className={`rounded-full px-4 py-2 text-sm font-semibold ${view === value ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'}`} key={value} onClick={() => setView(value)} type="button">{label}</button>
           ))}
         </div>
         <button className="rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" disabled={visibleLocationKeys.length === 0} onClick={toggleAllLocations} type="button">
-          <span aria-hidden="true">{allLocationsOpen ? '-' : '+'}</span>{' '}{allLocationsOpen ? 'Collapse all' : 'Open all'}
+          <span aria-hidden="true">{allLocationsOpen ? '-' : '+'}</span>{' '}{allLocationsOpen ? messages.results.collapseAll : messages.results.openAll}
         </button>
       </div>
-      <p className="text-sm text-gray-500">{total} matching encounter groups. Rates are normalized within each location/time group.</p>
+      <p className="text-sm text-gray-500">{total} {messages.results.matching}</p>
       {error && <p role="alert" className="text-rose-600">{error}</p>}
       <HuntResults
         collapsedLocations={collapsedLocations}
         context={context}
         minimumTier={filters.minTier}
+        locale={locale}
         onQueue={onQueue}
         onToggleLocation={toggleLocation}
         participants={participants}

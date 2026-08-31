@@ -2,9 +2,11 @@ import { useState } from 'react';
 import HuntSpotCard from './HuntSpotCard';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
+import { getHuntFinderMessages } from '../hunt-finder/messages';
 
 type Props = {
   participants: ParticipantHunts[];
+  locale?: string;
   context?: HuntFinderContext;
   spots: HuntSpot[];
   targetSpecies?: HuntSpecies;
@@ -51,11 +53,12 @@ function splitTitles(spots: HuntSpot[]) {
 }
 
 export default function HuntLocationCard({
-  locationOpen, participants, spots, targetSpecies, onQueue, onToggleLocation,
+  locationOpen, participants, locale, spots, targetSpecies, onQueue, onToggleLocation,
   context = 'shinyWar', sort = 'pointsPerHour', sortDirection = 'desc',
   selectedSeason = '', selectedTime = '', onSeasonChange, onTimeChange,
 }: Props) {
   const [lowerRateOpen, setLowerRateOpen] = useState(false);
+  const messages = getHuntFinderMessages(locale).results;
   const titles = splitTitles(spots);
   const titledSpots = spots.map((spot, index) => ({ spot, title: titles[index] }));
   const direction = sortDirection === 'asc' ? 1 : -1;
@@ -70,18 +73,19 @@ export default function HuntLocationCard({
   });
   const firstRanked = rankedSpots[0];
   const bestSpots = sort === 'alphabetical'
-    ? rankedSpots.slice(0, 1)
+    ? rankedSpots
     : rankedSpots.filter(({ spot }) => spot[metric] === firstRanked?.spot[metric]);
   const lowerRateSpots = rankedSpots.filter((entry) => !bestSpots.includes(entry));
   const firstSpot = bestSpots[0]?.spot || spots[0];
   const secondaryLabel = sort === 'pointsPerHour' && sortDirection === 'desc'
-    ? 'lower points/hour'
-    : `additional ${sort === 'expPerHour' ? 'EXP/hour' : sort === 'alphabetical' ? 'alphabetical' : 'points/hour'}`;
+    ? messages.lowerPoints
+    : sort === 'expPerHour' ? messages.additionalExp : messages.lowerPoints;
 
   const renderSpot = ({ spot, title }: typeof titledSpots[number]) => (
     <HuntSpotCard
       key={spot.spot_key}
       participants={participants}
+      locale={locale}
       context={context}
       spot={spot}
       sort={sort}
@@ -106,12 +110,12 @@ export default function HuntLocationCard({
         >
           <span className="block text-lg font-bold leading-tight text-gray-950 dark:text-white">{firstSpot.location}</span>
           <span className="mt-0.5 block text-xs font-semibold text-primary-600 dark:text-primary-300">
-            {firstSpot.region} · {spots.length} encounter {spots.length === 1 ? 'split' : 'splits'}
+            {firstSpot.region} · {spots.length} {messages.encounter} {spots.length === 1 ? messages.split : messages.splits}
           </span>
         </button>
         <button
           aria-expanded={locationOpen}
-          aria-label={`${locationOpen ? 'Collapse' : 'Expand'} ${firstSpot.location}`}
+          aria-label={`${locationOpen ? messages.collapse : messages.expand} ${firstSpot.location}`}
           className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-bold text-primary-700 transition-colors hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-primary-950 dark:text-primary-200 dark:hover:bg-primary-900"
           onClick={onToggleLocation}
           type="button"
@@ -131,7 +135,7 @@ export default function HuntLocationCard({
                 type="button"
               >
                 <span>
-                  {lowerRateOpen ? 'Hide' : 'Show'} {lowerRateSpots.length} {secondaryLabel} {lowerRateSpots.length === 1 ? 'split' : 'splits'}
+                  {lowerRateOpen ? messages.hide : messages.show} {lowerRateSpots.length} {secondaryLabel} {lowerRateSpots.length === 1 ? messages.split : messages.splits}
                 </span>
                 <span aria-hidden="true" className="text-base text-primary-600 dark:text-primary-300">
                   {lowerRateOpen ? '−' : '+'}
