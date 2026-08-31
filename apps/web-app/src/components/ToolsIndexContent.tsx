@@ -15,6 +15,7 @@ const ToolsIndexContent = ({ locale, apiBaseUrl }: Props) => {
   const messages = getTranslations(activeLocale);
   const feebasHref = getLocaleParamPath('/feebas-tile-checker', activeLocale);
   const catchEventsHref = getLocaleParamPath('/tools/catch-events', activeLocale);
+  const huntFinderHref = getLocaleParamPath('/tools/hunt-finder', activeLocale);
   const visibleToolHrefs = new Set(
     toolsLinks
       .filter((link) => canAccessToolLink(authUser, link))
@@ -75,6 +76,23 @@ const ToolsIndexContent = ({ locale, apiBaseUrl }: Props) => {
                 </h3>
                 <p className="mt-4 text-gray-700 dark:text-gray-300">
                   {messages.tools.index.feebasCard.description}
+                </p>
+                <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary-600 dark:text-primary-400">
+                  {messages.tools.index.openTool}
+                </span>
+              </a>}
+              {visibleToolHrefs.has('/tools/hunt-finder') && <a
+                href={huntFinderHref}
+                className="group rounded-3xl border border-violet-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-violet-900 dark:bg-gray-900"
+              >
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-violet-700 dark:text-violet-300">
+                  {messages.tools.index.categories.liveCoordination}
+                </p>
+                <h3 className="text-2xl font-bold text-gray-900 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
+                  {messages.tools.index.huntFinderCard.title}
+                </h3>
+                <p className="mt-4 text-gray-700 dark:text-gray-300">
+                  {messages.tools.index.huntFinderCard.description}
                 </p>
                 <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary-600 dark:text-primary-400">
                   {messages.tools.index.openTool}

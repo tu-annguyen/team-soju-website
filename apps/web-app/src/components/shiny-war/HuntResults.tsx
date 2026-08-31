@@ -4,6 +4,7 @@ import SpeciesSpriteName from './SpeciesSpriteName';
 import { groupHuntSpotsByLocation } from './huntLocationGroups';
 import { groupHuntSpotsByPokemonLocation } from './huntPokemonLocationGroups';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
+import type { HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
 
 export type HuntView = 'location' | 'pokemon';
 
@@ -11,11 +12,18 @@ type Props = {
   /** @deprecated Encounter compositions are always visible while their location is open. */
   expanded?: ReadonlySet<string>;
   participants: ParticipantHunts[];
+  context?: HuntFinderContext;
   minimumTier?: string;
   speciesFilter: string;
   spots: HuntSpot[];
   view: HuntView;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
+  onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
+  sort?: HuntSort;
+  sortDirection?: SortDirection;
+  selectedSeason?: string;
+  selectedTime?: string;
+  onSeasonChange?: (season: string) => void;
+  onTimeChange?: (time: string) => void;
   /** @deprecated Encounter compositions no longer toggle independently. */
   onToggle?: (spotKey: string) => void;
   collapsedLocations?: ReadonlySet<string>;
@@ -24,7 +32,9 @@ type Props = {
 
 export default function HuntResults({
   participants, minimumTier = '', speciesFilter, spots, view, onQueue,
-  collapsedLocations, onToggleLocation,
+  collapsedLocations, onToggleLocation, context = 'shinyWar',
+  sort = 'pointsPerHour', sortDirection = 'desc',
+  selectedSeason = '', selectedTime = '', onSeasonChange, onTimeChange,
 }: Props) {
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
@@ -46,7 +56,14 @@ export default function HuntResults({
             locationOpen={!effectiveCollapsedLocations.has(group.key)}
             participants={participants}
             spots={group.spots}
+            context={context}
+            sort={sort}
+            sortDirection={sortDirection}
+            selectedSeason={selectedSeason}
+            selectedTime={selectedTime}
             onQueue={onQueue}
+            onSeasonChange={onSeasonChange}
+            onTimeChange={onTimeChange}
             onToggleLocation={() => toggleLocation(group.key)}
           />
         ))}
@@ -54,7 +71,9 @@ export default function HuntResults({
     );
   }
 
-  const groups = groupHuntSpotsByPokemonLocation(spots, speciesFilter, minimumTier);
+  const groups = groupHuntSpotsByPokemonLocation(
+    spots, speciesFilter, minimumTier, sort, sortDirection
+  );
 
   return (
     <div className="space-y-4">
@@ -87,8 +106,15 @@ export default function HuntResults({
                 locationOpen={!effectiveCollapsedLocations.has(group.key)}
                 participants={participants}
                 spots={group.spots}
+                context={context}
+                sort={sort}
+                sortDirection={sortDirection}
+                selectedSeason={selectedSeason}
+                selectedTime={selectedTime}
                 targetSpecies={species}
                 onQueue={onQueue}
+                onSeasonChange={onSeasonChange}
+                onTimeChange={onTimeChange}
                 onToggleLocation={() => toggleLocation(group.key)}
               />
             ))}

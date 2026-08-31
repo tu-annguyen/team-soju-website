@@ -37,6 +37,13 @@ export type HuntSpecies = {
   form?: string;
   min_level: number;
   max_level: number;
+  base_exp?: number;
+  ev_hp?: number;
+  ev_attack?: number;
+  ev_defense?: number;
+  ev_sp_attack?: number;
+  ev_sp_defense?: number;
+  ev_speed?: number;
   is_lure?: boolean;
   is_special?: boolean;
 };
@@ -56,8 +63,10 @@ export type HuntSpot = {
   is_special?: boolean;
   denominator: number;
   averagePoints: number;
+  averageExp?: number;
   encountersPerHour: number | null;
   pointsPerHour: number | null;
+  expPerHour?: number | null;
   composition: HuntSpecies[];
 };
 

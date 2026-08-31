@@ -130,6 +130,10 @@ const en = {
         description:
           'Coordinate Feebas tile checks in real time with a shared tile board for checked, found, or confirmed calls. Each call has a translucent color so the board behaves like a live heatmap of group opinion.',
       },
+      huntFinderCard: {
+        title: 'PokeMMO Hunt Finder',
+        description: 'Compare wild encounters by location, species, level, EV yield, shiny points, and estimated EXP per hour.',
+      },
       shinyWarCard: {
         title: 'Shiny Wars Dashboard',
         description: 'Follow Team Soju standings and Shiny Wars progress.',

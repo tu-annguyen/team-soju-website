@@ -4,7 +4,7 @@ import type { AuthUser } from '../auth/types';
 
 export type ToolLink = {
   href: string;
-  labelKey: 'catchEventsCard' | 'feebasCard' | 'shinyWarCard';
+  labelKey: 'catchEventsCard' | 'feebasCard' | 'huntFinderCard' | 'shinyWarCard';
   requiresTeamMembership?: boolean;
   requiredPermission?: string;
 };
@@ -17,6 +17,10 @@ export const toolsLinks: ToolLink[] = [
   {
     href: '/feebas-tile-checker',
     labelKey: 'feebasCard',
+  },
+  {
+    href: '/tools/hunt-finder',
+    labelKey: 'huntFinderCard',
   },
   {
     href: '/events/2026/shiny-war',

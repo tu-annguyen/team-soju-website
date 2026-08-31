@@ -308,7 +308,14 @@ CREATE TABLE IF NOT EXISTS pokedex_species (
   family_key TEXT NOT NULL,
   tier TEXT NOT NULL,
   points INTEGER NOT NULL,
-  catch_rate INTEGER
+  catch_rate INTEGER,
+  base_exp INTEGER NOT NULL DEFAULT 0 CHECK (base_exp >= 0),
+  ev_hp INTEGER NOT NULL DEFAULT 0 CHECK (ev_hp BETWEEN 0 AND 3),
+  ev_attack INTEGER NOT NULL DEFAULT 0 CHECK (ev_attack BETWEEN 0 AND 3),
+  ev_defense INTEGER NOT NULL DEFAULT 0 CHECK (ev_defense BETWEEN 0 AND 3),
+  ev_sp_attack INTEGER NOT NULL DEFAULT 0 CHECK (ev_sp_attack BETWEEN 0 AND 3),
+  ev_sp_defense INTEGER NOT NULL DEFAULT 0 CHECK (ev_sp_defense BETWEEN 0 AND 3),
+  ev_speed INTEGER NOT NULL DEFAULT 0 CHECK (ev_speed BETWEEN 0 AND 3)
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_pokedex_species_family

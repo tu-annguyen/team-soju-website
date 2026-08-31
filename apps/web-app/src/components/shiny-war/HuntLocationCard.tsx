@@ -1,14 +1,22 @@
 import { useState } from 'react';
 import HuntSpotCard from './HuntSpotCard';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
+import type { HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
 
 type Props = {
   participants: ParticipantHunts[];
+  context?: HuntFinderContext;
   spots: HuntSpot[];
   targetSpecies?: HuntSpecies;
   locationOpen: boolean;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
+  onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   onToggleLocation: () => void;
+  sort?: HuntSort;
+  sortDirection?: SortDirection;
+  selectedSeason?: string;
+  selectedTime?: string;
+  onSeasonChange?: (season: string) => void;
+  onTimeChange?: (time: string) => void;
 };
 
 const SINGLE_METHODS = new Set(['Grass', 'Cave', 'Water', 'Inside', 'Dark Grass', 'Dust Cloud', 'Shadow']);
@@ -44,23 +52,46 @@ function splitTitles(spots: HuntSpot[]) {
 
 export default function HuntLocationCard({
   locationOpen, participants, spots, targetSpecies, onQueue, onToggleLocation,
+  context = 'shinyWar', sort = 'pointsPerHour', sortDirection = 'desc',
+  selectedSeason = '', selectedTime = '', onSeasonChange, onTimeChange,
 }: Props) {
   const [lowerRateOpen, setLowerRateOpen] = useState(false);
   const titles = splitTitles(spots);
   const titledSpots = spots.map((spot, index) => ({ spot, title: titles[index] }));
-  const bestPointsPerHour = Math.max(...spots.map((spot) => spot.pointsPerHour ?? Number.NEGATIVE_INFINITY));
-  const bestSpots = titledSpots.filter(({ spot }) => (spot.pointsPerHour ?? Number.NEGATIVE_INFINITY) === bestPointsPerHour);
-  const lowerRateSpots = titledSpots.filter(({ spot }) => (spot.pointsPerHour ?? Number.NEGATIVE_INFINITY) < bestPointsPerHour);
+  const direction = sortDirection === 'asc' ? 1 : -1;
+  const metric = sort === 'expPerHour' ? 'expPerHour' : 'pointsPerHour';
+  const rankedSpots = [...titledSpots].sort((left, right) => {
+    if (sort === 'alphabetical') return direction * left.title.localeCompare(right.title);
+    const leftValue = left.spot[metric];
+    const rightValue = right.spot[metric];
+    if (leftValue == null) return rightValue == null ? 0 : 1;
+    if (rightValue == null) return -1;
+    return direction * (leftValue - rightValue);
+  });
+  const firstRanked = rankedSpots[0];
+  const bestSpots = sort === 'alphabetical'
+    ? rankedSpots.slice(0, 1)
+    : rankedSpots.filter(({ spot }) => spot[metric] === firstRanked?.spot[metric]);
+  const lowerRateSpots = rankedSpots.filter((entry) => !bestSpots.includes(entry));
   const firstSpot = bestSpots[0]?.spot || spots[0];
+  const secondaryLabel = sort === 'pointsPerHour' && sortDirection === 'desc'
+    ? 'lower points/hour'
+    : `additional ${sort === 'expPerHour' ? 'EXP/hour' : sort === 'alphabetical' ? 'alphabetical' : 'points/hour'}`;
 
   const renderSpot = ({ spot, title }: typeof titledSpots[number]) => (
     <HuntSpotCard
       key={spot.spot_key}
       participants={participants}
+      context={context}
       spot={spot}
+      sort={sort}
+      selectedSeason={selectedSeason}
+      selectedTime={selectedTime}
       targetSpecies={targetSpecies}
       title={title}
       onQueue={onQueue}
+      onSeasonChange={onSeasonChange}
+      onTimeChange={onTimeChange}
     />
   );
 
@@ -100,7 +131,7 @@ export default function HuntLocationCard({
                 type="button"
               >
                 <span>
-                  {lowerRateOpen ? 'Hide' : 'Show'} {lowerRateSpots.length} lower points/hour {lowerRateSpots.length === 1 ? 'split' : 'splits'}
+                  {lowerRateOpen ? 'Hide' : 'Show'} {lowerRateSpots.length} {secondaryLabel} {lowerRateSpots.length === 1 ? 'split' : 'splits'}
                 </span>
                 <span aria-hidden="true" className="text-base text-primary-600 dark:text-primary-300">
                   {lowerRateOpen ? '−' : '+'}

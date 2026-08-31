@@ -5,9 +5,9 @@ const { getPokemonTier, TIER_POINTS } = require('@team-soju/utils');
 
 const EXPECTED_2026_COUNTS = Object.freeze({
   species: 720,
-  locations: 630,
-  encounters: 33231,
-  hordeEncounters: 4994,
+  locations: 629,
+  encounters: 33405,
+  hordeEncounters: 4982,
 });
 
 const KNOWN_METHODS = [
@@ -200,6 +200,13 @@ function normalizePokedex(monsters) {
       tier,
       points,
       catchRate: Number.isFinite(Number(monster.catch_rate)) ? Number(monster.catch_rate) : null,
+      baseExp: Math.max(0, Number(monster.yields?.exp) || 0),
+      evHp: Math.max(0, Number(monster.yields?.ev_hp) || 0),
+      evAttack: Math.max(0, Number(monster.yields?.ev_attack) || 0),
+      evDefense: Math.max(0, Number(monster.yields?.ev_defense) || 0),
+      evSpAttack: Math.max(0, Number(monster.yields?.ev_sp_attack) || 0),
+      evSpDefense: Math.max(0, Number(monster.yields?.ev_sp_defense) || 0),
+      evSpeed: Math.max(0, Number(monster.yields?.ev_speed) || 0),
     });
 
     (monster.locations || []).forEach((rawLocation) => {
@@ -272,8 +279,10 @@ function toSql(data) {
   ];
 
   data.species.forEach((row) => lines.push(
-    `INSERT INTO pokedex_species (id,name,slug,family_key,tier,points,catch_rate) VALUES (${[
+    `INSERT INTO pokedex_species (id,name,slug,family_key,tier,points,catch_rate,base_exp,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed) VALUES (${[
       row.id, row.name, row.slug, row.familyKey, row.tier, row.points, row.catchRate,
+      row.baseExp, row.evHp, row.evAttack, row.evDefense,
+      row.evSpAttack, row.evSpDefense, row.evSpeed,
     ].map(sqlValue).join(',')});`
   ));
   data.locations.forEach((row) => lines.push(

@@ -39,6 +39,7 @@ const { handleShiniesRoutes } = require('./routes/shinies');
 const { handleCatchEventsRoutes } = require('./routes/catch-events');
 const { handleFeebasRoutes } = require('./routes/feebas');
 const { handleShinyWarRoutes } = require('./routes/shiny-war');
+const { handleHuntFinderRoutes } = require('./routes/hunt-finder');
 const { createCloudflareAuthorization } = require('./authorization');
 const {
   FeebasBoardStreamDurableObject,
@@ -359,6 +360,7 @@ function createWorkerApp(options = {}) {
       handleShiniesRoutes,
       handleCatchEventsRoutes,
       handleFeebasRoutes,
+      handleHuntFinderRoutes,
       handleShinyWarRoutes,
     ];
 

@@ -13,6 +13,10 @@ describe('Shiny Wars Pokedex importer', () => {
       id: 19,
       name: 'Rattata',
       catch_rate: 255,
+      yields: {
+        exp: 51, ev_hp: 0, ev_attack: 0, ev_defense: 0,
+        ev_sp_attack: 0, ev_sp_defense: 0, ev_speed: 1,
+      },
       evolutions: [{ id: 20, name: 'Raticate' }],
       locations: [{
         form: '',
@@ -42,11 +46,24 @@ describe('Shiny Wars Pokedex importer', () => {
   it('normalizes methods, families, locations, and rates', () => {
     const data = normalizePokedex(monsters);
     expect(cleanMethod('ꀀSuper Rod')).toBe('Super Rod');
-    expect(data.species[0]).toMatchObject({ slug: 'rattata', familyKey: 'rattata', points: 3 });
+    expect(data.species[0]).toMatchObject({
+      slug: 'rattata', familyKey: 'rattata', points: 3,
+      baseExp: 51, evSpeed: 1, evAttack: 0,
+    });
     expect(data.species[1].familyKey).toBe('rattata');
     expect(data.locations[0]).toMatchObject({ id: '0:1', region: 'Kanto' });
     expect(data.encounters[0]).toMatchObject({ hordeSize: 3, morningRate: 2.5 });
     expect(toSql(data)).toContain('INSERT INTO pokedex_encounters');
+    expect(toSql(data)).toContain('base_exp,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed');
+  });
+
+  it('defaults missing EXP and EV yields to zero', () => {
+    const data = normalizePokedex([{ ...monsters[1], yields: undefined }]);
+
+    expect(data.species[0]).toMatchObject({
+      baseExp: 0, evHp: 0, evAttack: 0, evDefense: 0,
+      evSpAttack: 0, evSpDefense: 0, evSpeed: 0,
+    });
   });
 
   it('preserves lure-only encounters and assigns their standard 5% rate', () => {
