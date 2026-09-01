@@ -15,6 +15,8 @@ const shinyScreenshotJobSchema = Joi.object({
   timezone: Joi.string().trim().max(80).required().custom((value, helpers) => (
     isValidTimezone(value) ? normalizeTimezoneInput(value) : helpers.error('any.invalid')
   )),
+  locale: Joi.string().trim().max(35).allow(null).default(null),
+  date_order: Joi.string().valid('auto', 'mdy', 'dmy', 'ymd').default('auto'),
   discord_user_id: Joi.string().max(32).required(),
   member_roles: Joi.array().items(Joi.string().max(100)).max(100).default([]),
   discord_interaction_id: Joi.string().max(32).required(),

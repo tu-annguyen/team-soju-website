@@ -135,6 +135,7 @@ class DiscordInteractionContext {
     this.token = interaction.token;
     this.commandName = interaction.data?.name;
     this.customId = interaction.data?.custom_id;
+    this.locale = interaction.locale || null;
     this.user = interaction.member?.user || interaction.user;
     this.member = {
       ...interaction.member,

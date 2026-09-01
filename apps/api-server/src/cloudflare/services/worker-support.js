@@ -31,6 +31,7 @@ const {
   validateCatchEventSubmissionPayload,
   zonedLocalDateTimeToUtc,
 } = require('../models/catch-event');
+const { inferDateOrderFromLocale } = require('./date-order');
 
 const passwordResetExpiresInMinutes = 60;
 const passwordResetSentMessage = 'If an account uses that email, a reset link has been sent.';
@@ -434,35 +435,6 @@ function cleanNullableString(value, maxLength = 160) {
   return text.slice(0, maxLength);
 }
 
-function inferDateOrderFromLocaleTimezone(locale, timezone) {
-  const normalizedLocale = String(locale || '').toLowerCase();
-  const normalizedTimezone = String(timezone || '').toLowerCase();
-
-  if (/^(en-us|en-ph)\b/.test(normalizedLocale)) return 'mdy';
-  if (/^(ja|ko|zh)\b/.test(normalizedLocale)) return 'ymd';
-  if (/^(en-gb|en-au|en-nz|en-ie|fr|de|es|it|pt|nl|ru|pl)\b/.test(normalizedLocale)) return 'dmy';
-
-  if (normalizedTimezone.startsWith('america/')) return 'mdy';
-  if (
-    normalizedTimezone.startsWith('europe/')
-    || normalizedTimezone.startsWith('africa/')
-    || normalizedTimezone.startsWith('australia/')
-  ) {
-    return 'dmy';
-  }
-  if (
-    normalizedTimezone === 'asia/tokyo'
-    || normalizedTimezone === 'asia/seoul'
-    || normalizedTimezone === 'asia/shanghai'
-    || normalizedTimezone === 'asia/hong_kong'
-    || normalizedTimezone === 'asia/taipei'
-  ) {
-    return 'ymd';
-  }
-
-  return null;
-}
-
 function padDateTimePart(value, size = 2) {
   return String(value).padStart(size, '0');
 }
@@ -756,6 +728,35 @@ async function runCatchEventOcrModelOnce(env, model, payload) {
   return runCloudflareAiRest(env, model, payload);
 }
 
+function getCatchEventOcrTimeoutMs(env) {
+  const configuredTimeout = Number(env.CATCH_EVENT_OCR_TIMEOUT_MS);
+  return Number.isFinite(configuredTimeout) && configuredTimeout > 0
+    ? configuredTimeout
+    : 30000;
+}
+
+async function runCatchEventOcrModelWithTimeout(env, model, payload) {
+  const timeoutMs = getCatchEventOcrTimeoutMs(env);
+  let timeoutId;
+  const timeout = new Promise((resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      const error = new Error(`Workers AI OCR request timed out after ${timeoutMs}ms.`);
+      error.statusCode = 504;
+      error.retryable = false;
+      reject(error);
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      runCatchEventOcrModelOnce(env, model, payload),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function isRetryableAiError(error) {
   if (typeof error?.retryable === 'boolean') return error.retryable;
   if ([408, 429, 500, 502, 504].includes(Number(error?.statusCode))) return true;
@@ -768,7 +769,7 @@ async function runCatchEventOcrModel(env, model, payload) {
 
   for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
     try {
-      return await runCatchEventOcrModelOnce(env, model, payload);
+      return await runCatchEventOcrModelWithTimeout(env, model, payload);
     } catch (error) {
       if (!isRetryableAiError(error) || attempt === retryDelays.length) {
         throw error;
@@ -781,7 +782,7 @@ async function runCatchEventOcrModel(env, model, payload) {
 }
 
 async function extractCatchEventScreenshotFields(env, screenshots, context = {}) {
-  const fallbackDateOrder = inferDateOrderFromLocaleTimezone(context.locale, context.timezone);
+  const fallbackDateOrder = inferDateOrderFromLocale(context.locale);
   const model = env.CATCH_EVENT_OCR_MODEL || '@cf/google/gemma-4-26b-a4b-it';
   const results = await Promise.all(screenshots.map(async (screenshot, index) => {
     const roleInstructions = {
@@ -815,6 +816,7 @@ async function extractCatchEventScreenshotFields(env, screenshots, context = {})
       temperature: 0,
       max_completion_tokens: 4096,
       reasoning_effort: 'none',
+      chat_template_kwargs: { thinking: false },
       response_format: { type: 'json_object' },
     });
 
@@ -1322,7 +1324,7 @@ module.exports = {
   extractAiResponseText,
   parseAiJson,
   cleanNullableString,
-  inferDateOrderFromLocaleTimezone,
+  inferDateOrderFromLocale,
   normalizeOcrCatchLocal,
   normalizeCatchEventOcrResult,
   mergeCatchEventOcrResults,

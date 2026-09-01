@@ -9,6 +9,16 @@ const {
   TIER_POINTS,
 } = require('@team-soju/utils');
 const { groupEquivalentHuntSpots, parentLocationName } = require('./hunt-spot-groups');
+const {
+  ENCOUNTER_METHODS,
+  calculateExperienceMetrics,
+  encounterRatePerHour,
+  isSpecialEncounterRow,
+  matchesEvYield,
+  meetsMinimumTier,
+  normalizeFamilyKey,
+  sortHuntSpots,
+} = require('./hunt-finder');
 
 function parseJson(value, fallback) {
   try {
@@ -16,53 +26,6 @@ function parseJson(value, fallback) {
   } catch {
     return fallback;
   }
-}
-
-const ENCOUNTER_METHODS = Object.freeze({
-  'Sweet Scent': ['Sweet Scent'],
-  Singles: ['Grass', 'Cave', 'Water', 'Inside', 'Dark Grass', 'Dust Cloud', 'Shadow'],
-  Fishing: ['Super Rod', 'Good Rod', 'Old Rod', 'Fishing'],
-  'Honey Trees': ['Honey Tree'],
-  Headbutt: ['Headbutt'],
-  'Rock Smash': ['Rock Smash', 'Rocks'],
-});
-
-const FISHING_METHODS = new Set(ENCOUNTER_METHODS.Fishing);
-const METHODS_WITHOUT_HOURLY_DATA = new Set(['Headbutt', 'Rock Smash', 'Rocks']);
-
-function isSpecialEncounterRow(row) {
-  if (Number(row.horde_size) > 0) return false;
-  if (row.is_special === true || Number(row.is_special) === 1) return true;
-  const hasNoRecordedRates = ['morning', 'day', 'night'].every(
-    (time) => row[`${time}_rate`] === null || row[`${time}_rate`] === undefined
-  );
-  const hasLegacySpecialRate = hasNoRecordedRates
-    || row.is_lure === true
-    || Number(row.is_lure) === 1;
-  if (!hasLegacySpecialRate) return false;
-
-  // Migration 0002 converted every null-rate row to a lure. In the source data,
-  // real lures are Any-season records; Unova's seasonal null-rate records are
-  // phenomena. The remaining Any-season exceptions are identifiable directly.
-  return (row.region === 'Unova' && row.season !== 'Any')
-    || ['Dust Cloud', 'Shadow'].includes(row.method)
-    || row.slug === 'feebas'
-    || (row.region === 'Unova' && row.location_name === 'Marvelous Bridge' && row.slug === 'swanna');
-}
-
-function encounterRatePerHour(row, filters) {
-  if (Number(row.horde_size) > 0) {
-    return (Number(filters.hordesPerHour) || 240) * Number(row.horde_size);
-  }
-  if (row.method === 'Dark Grass') return 400;
-  if (FISHING_METHODS.has(row.method)) return filters.chumBucket ? 400 : 200;
-  if (row.method === 'Honey Tree') return 50;
-  if (METHODS_WITHOUT_HOURLY_DATA.has(row.method)) return null;
-  return 300;
-}
-
-function normalizeFamilyKey(value) {
-  return String(value || '').trim().toLowerCase().replace(/[ .]+/g, '-');
 }
 
 function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
@@ -221,16 +184,19 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       where.push(`e.method IN (${placeholders.join(', ')})`);
       if (selectedMethod !== 'All') where.push('e.horde_size = 0');
     }
-    if (selectedMethod === 'Sweet Scent' && filters.hordeSize) {
+    if (['All', 'Sweet Scent'].includes(selectedMethod) && filters.hordeSize) {
       addFilter('e.horde_size', Number(filters.hordeSize));
     }
-    if (filters.nonSafari && ['Singles', 'Fishing'].includes(selectedMethod)) {
+    if (filters.nonSafari && ['All', 'Singles', 'Fishing'].includes(selectedMethod)) {
       where.push("LOWER(l.name) NOT LIKE '%safari%' AND LOWER(l.name) NOT LIKE '%great marsh%'");
     }
-    if (filters.tier) addFilter('s.tier', filters.tier);
+    const minTier = Number(filters.minTier);
+    const hasMinimumTier = filters.minTier !== undefined
+      && Number.isInteger(minTier) && minTier >= 0 && minTier <= 7;
     const rows = await runSelect(`
       SELECT e.*, l.region, l.name AS location_name, s.name AS species_name,
-             s.slug, s.family_key, s.tier, s.points
+             s.slug, s.family_key, s.tier, s.points, s.base_exp,
+             s.ev_hp, s.ev_attack, s.ev_defense, s.ev_sp_attack, s.ev_sp_defense, s.ev_speed
       FROM pokedex_encounters e
       JOIN pokedex_locations l ON l.id = e.location_id
       JOIN pokedex_species s ON s.id = e.species_id
@@ -267,6 +233,13 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
               && (Boolean(row.is_lure) || legacyLureEncounter),
             is_special: isSpecialEncounter,
             form: row.form, min_level: row.min_level, max_level: row.max_level,
+            base_exp: Number(row.base_exp) || 0,
+            ev_hp: Number(row.ev_hp) || 0,
+            ev_attack: Number(row.ev_attack) || 0,
+            ev_defense: Number(row.ev_defense) || 0,
+            ev_sp_attack: Number(row.ev_sp_attack) || 0,
+            ev_sp_defense: Number(row.ev_sp_defense) || 0,
+            ev_speed: Number(row.ev_speed) || 0,
           });
         }
       }
@@ -296,6 +269,13 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         0
       ) : 0;
       const averagePoints = baseAveragePoints + uniqueBonus;
+      const experience = calculateExperienceMetrics(
+        metrics.composition, encountersPerHour, filters.expCharm, {
+          expReamplifier: filters.expReamplifier,
+          expDonator: filters.expDonator,
+          tradeBonus: filters.tradeBonus,
+        }
+      );
       return {
         spot_key: key,
         region: row.region,
@@ -309,6 +289,7 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         is_special: scoredSpecies.some((entry) => entry.is_special),
         denominator,
         ...metrics,
+        ...experience,
         averagePoints,
         encountersPerHour,
         pointsPerHour: encountersPerHour === null
@@ -316,46 +297,61 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
           : metrics.pointsPerHour + ((uniqueBonus * encountersPerHour) / denominator),
       };
     });
+    const tierFilteredSpots = hasMinimumTier
+      ? spots.filter((spot) => spot.composition.some(
+        (species) => meetsMinimumTier(species, minTier)
+      ))
+      : spots;
+    const minimumLevel = Math.max(0, Number(filters.minLevel) || 0);
+    const levelFilteredSpots = minimumLevel
+      ? tierFilteredSpots.filter((spot) => spot.composition.every(
+        (species) => Number(species.min_level) >= minimumLevel
+      ))
+      : tierFilteredSpots;
     const speciesFilter = String(filters.species || '').trim().toLowerCase();
     const excludedFamilyKeys = filters.excludeTeamCaught
       ? teamCaughtFamilyKeys
       : officialCaughtFamilyKeys;
     const caughtFilteredSpots = (filters.excludeOfficialCaught || filters.excludeTeamCaught)
-      ? spots.filter((spot) => !spot.composition.some(
+      ? levelFilteredSpots.filter((spot) => !spot.composition.some(
         (species) => excludedFamilyKeys.has(normalizeFamilyKey(species.family_key))
       ))
-      : spots;
-    const splitFilteredSpots = selectedMethod === 'Sweet Scent' && filters.fullSplitOnly
-      ? caughtFilteredSpots.filter((spot) => spot.composition.some((species) => species.split === 1))
+      : levelFilteredSpots;
+    const splitFilteredSpots = ['All', 'Sweet Scent'].includes(selectedMethod) && filters.fullSplitOnly
+      ? caughtFilteredSpots.filter(
+        (spot) => Number(spot.horde_size) > 0
+          && spot.composition.some((species) => species.split === 1)
+      )
       : caughtFilteredSpots;
     const matchingSpots = speciesFilter
       ? splitFilteredSpots.filter((spot) => spot.composition.some(
         (species) => species.name.toLowerCase().includes(speciesFilter)
       ))
       : splitFilteredSpots;
-    const locations = [...new Set(matchingSpots.map((spot) => parentLocationName(spot.location)))]
+    const evFilteredSpots = matchingSpots.filter(
+      (spot) => matchesEvYield(spot, filters.evStats, filters.evAmounts)
+    );
+    const locations = [...new Set(evFilteredSpots.map((spot) => parentLocationName(spot.location)))]
       .sort((left, right) => left.localeCompare(right));
     const locationFilter = String(filters.location || '').trim().toLowerCase();
     const locationFilteredSpots = locationFilter
-      ? matchingSpots.filter((spot) => parentLocationName(spot.location).toLowerCase().includes(locationFilter))
-      : matchingSpots;
+      ? evFilteredSpots.filter((spot) => parentLocationName(spot.location).toLowerCase().includes(locationFilter))
+      : evFilteredSpots;
     const minimumPointsPerHour = Math.max(0, Number(filters.minPointsPerHour) || 0);
+    const minimumExpPerHour = Math.max(0, Number(filters.minExpPerHour) || 0);
     const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(selectedMethod);
     const pointsFilteredSpots = minimumPointsPerHour && hasHourlyData
       ? locationFilteredSpots.filter(
         (spot) => spot.pointsPerHour !== null && spot.pointsPerHour >= minimumPointsPerHour
       )
       : locationFilteredSpots;
-    const groupedSpots = groupEquivalentHuntSpots(pointsFilteredSpots);
-    const sortByAverage = filters.sort === 'averagePoints' || !hasHourlyData;
-    groupedSpots.sort((a, b) => {
-      if (sortByAverage) return b.averagePoints - a.averagePoints || a.location.localeCompare(b.location);
-      if (a.pointsPerHour === null) return b.pointsPerHour === null
-        ? b.averagePoints - a.averagePoints || a.location.localeCompare(b.location)
-        : 1;
-      if (b.pointsPerHour === null) return -1;
-      return b.pointsPerHour - a.pointsPerHour || a.location.localeCompare(b.location);
-    });
+    const expFilteredSpots = minimumExpPerHour && hasHourlyData
+      ? pointsFilteredSpots.filter(
+        (spot) => spot.expPerHour !== null && spot.expPerHour >= minimumExpPerHour
+      )
+      : pointsFilteredSpots;
+    const groupedSpots = groupEquivalentHuntSpots(expFilteredSpots);
+    sortHuntSpots(groupedSpots, { ...filters, method: selectedMethod }, hasHourlyData);
     const page = Math.max(1, Number(filters.page) || 1);
     const pageSize = Math.min(1000, Math.max(1, Number(filters.pageSize) || 30));
     return {
@@ -432,6 +428,24 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         scoringEvent
       ),
     ]));
+    const coveredFamilyKeys = [...new Set([
+      ...officialScoring.uniqueFamilies,
+      ...teamScoring.bidoof.uniqueFamilies,
+      ...teamScoring.arceus.uniqueFamilies,
+    ])];
+    const familySpeciesRows = coveredFamilyKeys.length
+      ? await runSelect(`
+        SELECT name, family_key
+        FROM pokedex_species
+        WHERE family_key IN (${coveredFamilyKeys.map((_, index) => parameter(index + 1)).join(', ')})
+        ORDER BY id
+      `, coveredFamilyKeys)
+      : [];
+    const familySpecies = (familySpeciesRows || []).reduce((families, species) => {
+      if (!families[species.family_key]) families[species.family_key] = [];
+      families[species.family_key].push(species.name);
+      return families;
+    }, {});
     const participantById = new Map(participants.map((participant) => [participant.member_id, participant]));
     const startsAt = new Date(scoringEvent.startsAt).getTime();
     const endsAt = new Date(scoringEvent.endsAt).getTime();
@@ -457,18 +471,29 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         };
       });
     };
-    const standingsFor = (scoring, selectedParticipants) => selectedParticipants.map((participant) => ({
-      ...participant,
-      points: scoring.participantTotals[participant.member_id] || 0,
-      catches: scoring.catches.filter((entry) => entry.original_trainer === participant.member_id).length,
-      caughtFamilyKeys: [...new Set(scoring.catches
-        .filter((entry) => entry.original_trainer === participant.member_id)
-        .map((entry) => entry.family_key))],
-    })).sort((a, b) => b.points - a.points || a.ign.localeCompare(b.ign));
+    const standingsFor = (scoring, selectedParticipants) => selectedParticipants.map((participant) => {
+      const participantCatches = scoring.catches
+        .filter((entry) => entry.original_trainer === participant.member_id);
+      const basePoints = participantCatches
+        .reduce((sum, entry) => sum + entry.score.base, 0);
+      const bonusPoints = participantCatches.reduce(
+        (sum, entry) => sum + entry.score.secretBonus + entry.score.safariBonus + entry.score.uniqueBonus,
+        0
+      );
+      return {
+        ...participant,
+        points: basePoints + bonusPoints,
+        basePoints,
+        bonusPoints,
+        catches: participantCatches.length,
+        caughtFamilyKeys: [...new Set(participantCatches.map((entry) => entry.family_key))],
+      };
+    }).sort((a, b) => b.points - a.points || a.ign.localeCompare(b.ign));
     const teamCatches = Object.values(teamScoring).flatMap((scoring) => scoring.catches);
     return {
       event,
       currentSeason: getShinyWarSeason(at, scoringEvent),
+      familySpecies,
       officialWar: {
         teamTotal: officialScoring.teamTotal,
         uniqueFamilyCount: officialScoring.uniqueFamilies.length,

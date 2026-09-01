@@ -80,9 +80,13 @@ describe('Shiny War public dashboard', () => {
     const result = toPublicDashboard({
       event: { roster_locked: true },
       currentSeason: 'Summer',
+      familySpecies: { vulpix: ['Vulpix', 'Ninetales'] },
       officialWar: {
         teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
-        standings: [{ member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+        standings: [{
+          member_id: 'member-1', discord_id: 'secret', ign: 'Hunter', team: 'bidoof',
+          points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+        }],
         recentCatches: [{
           id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
           caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof', war_eligibility_override: true,
@@ -97,9 +101,12 @@ describe('Shiny War public dashboard', () => {
     });
 
     expect(result).toEqual({
+      familySpecies: { vulpix: ['Vulpix', 'Ninetales'] },
       officialWar: {
         teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
-        standings: [{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+        standings: [{
+          ign: 'Hunter', team: 'bidoof', points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+        }],
         recentCatches: [{
           pokemon: 'Vulpix', ign: 'Hunter', team: 'bidoof', caught_at_utc: '2026-08-01T01:02:00.000Z',
           score: { base: 30, secretBonus: 0, safariBonus: 0, uniqueBonus: 8, total: 38 },
@@ -141,6 +148,79 @@ describe('Shiny War roster limits', () => {
 });
 
 describe('Cloudflare Shiny Wars repository', () => {
+  it('keeps complete compositions only for splits that meet the minimum tier', async () => {
+    const rows = [
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+        tier: 'Tier 3', points: 30, form: '', min_level: 28, max_level: 30,
+        morning_rate: 0, day_rate: 0, night_rate: 2.5,
+      },
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+        species_name: 'Grimer', slug: 'grimer', family_key: 'grimer',
+        tier: 'Tier 6', points: 5, form: '', min_level: 28, max_level: 30,
+        morning_rate: 0, day_rate: 0, night_rate: 2.5,
+      },
+      {
+        location_id: '1:77', location_name: 'Pokemon Mansion 2F', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 3,
+        species_name: 'Pikachu', slug: 'pikachu', family_key: 'pichu',
+        tier: 'Tier 4', points: 15, form: '', min_level: 3, max_level: 5,
+        morning_rate: 0, day_rate: 0, night_rate: 3,
+      },
+    ];
+    const runSelect = jest.fn().mockResolvedValue(rows);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'night', minTier: '3', profile: { eventBoost: false },
+    });
+
+    expect(runSelect.mock.calls[0][0]).not.toContain('CASE s.tier');
+    expect(result.total).toBe(1);
+    expect(result.items[0].location).toBe('Pokemon Mansion');
+    expect(result.items[0].composition.map((species) => species.name)).toEqual(['Vulpix', 'Grimer']);
+    expect(result.items[0].composition.map((species) => species.split)).toEqual([0.5, 0.5]);
+  });
+
+  it('requires every species to meet minimum level and OR-matches EV yields', async () => {
+    const base = {
+      region: 'Kanto', method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+      tier: 'Tier 5', points: 10, form: '', morning_rate: 5, day_rate: 5, night_rate: 5,
+      base_exp: 70, ev_hp: 0, ev_attack: 0, ev_defense: 0,
+      ev_sp_attack: 0, ev_sp_defense: 0, ev_speed: 0,
+    };
+    const rows = [
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Rattata', slug: 'rattata', family_key: 'rattata', min_level: 30, max_level: 32, ev_speed: 2 },
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Pidgey', slug: 'pidgey', family_key: 'pidgey', min_level: 29, max_level: 31, ev_speed: 1 },
+      { ...base, location_id: '1:2', location_name: 'Route 2', species_name: 'Spearow', slug: 'spearow', family_key: 'spearow', min_level: 30, max_level: 32, ev_attack: 1 },
+    ];
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue(rows),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', minLevel: 30,
+      evStats: ['speed', 'attack'], evAmounts: ['1'], profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].location).toBe('Route 2');
+    expect(result.items[0].expPerHour).toBeGreaterThan(0);
+
+    const aboveMaximum = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', minExpPerHour: 1_000_000_000,
+      profile: { eventBoost: false },
+    });
+    expect(aboveMaximum.items).toHaveLength(0);
+  });
+
   it('scores the official roster together and the internal teams independently', async () => {
     const participants = [
       { event_id: '2026', member_id: 'bidoof-official', ign: 'BidoofOne', rank: 'Member', team: 'bidoof', is_official: 1, has_app_user: 1 },
@@ -170,16 +250,23 @@ describe('Cloudflare Shiny Wars repository', () => {
       }),
       runSelect: jest.fn()
         .mockResolvedValueOnce(participants)
-        .mockResolvedValueOnce(catches),
+        .mockResolvedValueOnce(catches)
+        .mockResolvedValueOnce([
+          { name: 'Vulpix', family_key: 'vulpix' },
+          { name: 'Ninetales', family_key: 'vulpix' },
+        ]),
     });
 
     const dashboard = await repository.getDashboard('2026', new Date('2026-08-02T00:00:00.000Z'));
 
     expect(dashboard.officialWar.teamTotal).toBe(68);
+    expect(dashboard.familySpecies).toEqual({ vulpix: ['Vulpix', 'Ninetales'] });
     expect(dashboard.teamWar.teamTotals).toEqual({ bidoof: 68, arceus: 38 });
     expect(dashboard.officialWar.standings).toHaveLength(2);
-    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'bidoof-official').points).toBe(38);
-    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'arceus-official').points).toBe(30);
+    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'bidoof-official'))
+      .toMatchObject({ points: 38, basePoints: 30, bonusPoints: 8 });
+    expect(dashboard.officialWar.standings.find((entry) => entry.member_id === 'arceus-official'))
+      .toMatchObject({ points: 30, basePoints: 30, bonusPoints: 0 });
     expect(dashboard.teamWar.standings.find((entry) => entry.member_id === 'arceus-official').caughtFamilyKeys)
       .toEqual(['vulpix']);
     expect(dashboard.teamWar.standings.find((entry) => entry.member_id === 'bidoof-extra').is_official).toBe(false);
@@ -431,6 +518,7 @@ describe('Cloudflare Shiny Wars repository', () => {
     });
 
     const result = await repository.listHordeSpots({
+      method: 'All',
       season: 'Summer',
       time: 'night',
       fullSplitOnly: true,
@@ -702,7 +790,7 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(runSelect.mock.calls[1][1]).toEqual(expect.arrayContaining(['Rock Smash', 'Rocks']));
   });
 
-  it.each(['Singles', 'Fishing'])('can exclude Safari encounters from %s', async (method) => {
+  it.each(['All', 'Singles', 'Fishing'])('can exclude Safari encounters from %s', async (method) => {
     const runSelect = jest.fn().mockResolvedValue([]);
     const repository = createShinyWarRepository({
       dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
@@ -712,6 +800,18 @@ describe('Cloudflare Shiny Wars repository', () => {
 
     expect(runSelect.mock.calls[0][0]).toContain("LOWER(l.name) NOT LIKE '%safari%'");
     expect(runSelect.mock.calls[0][0]).toContain("LOWER(l.name) NOT LIKE '%great marsh%'");
+  });
+
+  it('can filter horde size across every encounter method', async () => {
+    const runSelect = jest.fn().mockResolvedValue([]);
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(), runSelect,
+    });
+
+    await repository.listHordeSpots({ method: 'All', hordeSize: '5' });
+
+    expect(runSelect.mock.calls[0][0]).toContain('e.horde_size = ?');
+    expect(runSelect.mock.calls[0][1]).toContain(5);
   });
 
   it('ignores the non-Safari filter for other encounter methods', async () => {

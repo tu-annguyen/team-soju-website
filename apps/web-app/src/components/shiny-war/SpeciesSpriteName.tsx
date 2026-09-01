@@ -3,6 +3,7 @@ type Props = {
   slug?: string;
   form?: string;
   className?: string;
+  displayName?: string;
 };
 
 const spriteSlug = (name: string, slug?: string, form?: string) => {
@@ -20,7 +21,7 @@ const spriteSlug = (name: string, slug?: string, form?: string) => {
   return base;
 };
 
-export default function SpeciesSpriteName({ name, slug, form, className = '' }: Props) {
+export default function SpeciesSpriteName({ name, slug, form, className = '', displayName }: Props) {
   const imageSlug = spriteSlug(name, slug, form);
 
   return (
@@ -33,7 +34,7 @@ export default function SpeciesSpriteName({ name, slug, form, className = '' }: 
         onError={(event) => { event.currentTarget.style.display = 'none'; }}
         src={`https://img.pokemondb.net/sprites/black-white/anim/shiny/${imageSlug}.gif`}
       />
-      <span>{name}</span>
+      <span>{displayName || name}</span>
     </span>
   );
 }

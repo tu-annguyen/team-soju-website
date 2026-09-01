@@ -182,26 +182,27 @@ Record a new shiny Pokemon catch with an uploaded screenshot.
 - `screenshot` (required): Screenshot of the shiny Pokemon's share page
 - `encounter_type` (required): How it was encountered
 - `timezone` (required): IANA timezone where the shiny was caught (autocomplete)
+- `date_order` (optional): Auto, MDY, DMY, or YMD (defaults to Auto using Discord locale)
 - `secret` (optional): Is this a secret shiny?
 - `alpha` (optional): Is this an alpha shiny?
 
 **Date handling:**
 - The bot auto-detects screenshot dates when the format is unambiguous, including common forms like `MM/DD/YY`, `DD/MM/YYYY`, and `YYYY-MM-DD`.
 - The bot reads the local catch time from the screenshot and converts it to UTC using the selected timezone for Shiny War eligibility.
-- If the screenshot date is ambiguous, such as `03/04/26`, the OCR flow does not guess. It uses the date the command was called instead and adds an `ambiguous date` note before the success embed.
+- If the screenshot date supports multiple orders, such as `03/04/26`, `date_order` can explicitly select MDY, DMY, or YMD. Auto uses the invoking user's Discord locale; if that does not identify a usable order, the command date is used instead.
 
 **Example:**
 ```
 /addshinyscreenshot screenshot:image.png encounter_type:Horde timezone:America/Los_Angeles secret:False
 ```
 
-#### `/editshiny` (⚠️Deprecated) 
-> Warning: this command is deprecated. Use `/myshinies` to edit your shinies, instead.
+#### `/editshiny` (⚠️ Deprecated)
+> Warning: this command is deprecated and now displays a deprecation warning. Use `/myshinies` to edit your shinies instead.
 Update an existing shiny entry.
 
 **Options:**
 - `shiny_id` (required): ID of shiny to edit
-- `timezone` (required): IANA timezone where the shiny was caught (autocomplete)
+- `timezone` (optional): IANA timezone where the shiny was caught (autocomplete). Defaults to the shiny's stored timezone when changing its catch date or time.
 - All other options are optional for updating
 - `catch_time` (optional): Correct local catch time (HH:MM)
 - `variant` (optional): Pokemon form slug. This must be a valid name from PokeAPI's `pokemon-form` route, such as `deerling-winter` or `basculin-blue-striped`.
@@ -212,8 +213,8 @@ Update an existing shiny entry.
 /editshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817 timezone:America/Los_Angeles variant:deerling-winter total_encounters:2000 secret:true
 ```
 
-#### `/failshiny` (⚠️Deprecated)
-> Warning: this command is deprecated. Use `/myshinies` to fail your shinies, instead.
+#### `/failshiny` (⚠️ Deprecated)
+> Warning: this command is deprecated and now displays a deprecation warning. Use `/myshinies` to fail your shinies instead.
 Mark a shiny entry with a non-owned status.
 
 **Options:**
@@ -225,8 +226,8 @@ Mark a shiny entry with a non-owned status.
 /failshiny shiny_id:060df408-f200-48b6-addc-f4b8fa98b25a status:Fled
 ```
 
-#### `/deleteshiny` (⚠️Deprecated)
-> Warning: this command is deprecated. Use `/myshinies` to delete your shinies, instead.
+#### `/deleteshiny` (⚠️ Deprecated)
+> Warning: this command is deprecated and now displays a deprecation warning. Use `/myshinies` to delete your shinies instead.
 Delete a shiny entry.
 
 **Options:**
@@ -237,8 +238,8 @@ Delete a shiny entry.
 /deleteshiny shiny_id:4f645599-a184-4f17-97f5-a8ccd18f2817
 ```
 
-#### `/shiny` (⚠️Deprecated)
-> Warning: this command is deprecated. Use `/myshinies` to view your shinies, instead.
+#### `/shiny` (⚠️ Deprecated)
+> Warning: this command is deprecated and now displays a deprecation warning. Use `/myshinies` to get your shinies instead.
 View details about a specific shiny.
 
 **Options:**

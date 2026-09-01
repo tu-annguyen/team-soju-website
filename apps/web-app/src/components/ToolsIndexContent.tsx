@@ -15,6 +15,7 @@ const ToolsIndexContent = ({ locale, apiBaseUrl }: Props) => {
   const messages = getTranslations(activeLocale);
   const feebasHref = getLocaleParamPath('/feebas-tile-checker', activeLocale);
   const catchEventsHref = getLocaleParamPath('/tools/catch-events', activeLocale);
+  const huntFinderHref = getLocaleParamPath('/tools/hunt-finder', activeLocale);
   const visibleToolHrefs = new Set(
     toolsLinks
       .filter((link) => canAccessToolLink(authUser, link))
@@ -46,11 +47,28 @@ const ToolsIndexContent = ({ locale, apiBaseUrl }: Props) => {
               {messages.tools.index.availableDescription}
             </p>
             <div className="grid gap-6 md:grid-cols-2">
+              {visibleToolHrefs.has('/tools/hunt-finder') && <a
+                href={huntFinderHref}
+                className="group rounded-3xl border border-primary-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-primary-900 dark:bg-gray-900"
+              >
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-primary-700 dark:text-primary-300">
+                  {messages.tools.index.categories.pokedexSearch}
+                </p>
+                <h3 className="text-2xl font-bold text-gray-900 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
+                  {messages.tools.index.huntFinderCard.title}
+                </h3>
+                <p className="mt-4 text-gray-700 dark:text-gray-300">
+                  {messages.tools.index.huntFinderCard.description}
+                </p>
+                <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary-600 dark:text-primary-400">
+                  {messages.tools.index.openTool}
+                </span>
+              </a>}
               {visibleToolHrefs.has('/tools/catch-events') && <a
                 href={catchEventsHref}
-                className="group rounded-3xl border border-emerald-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-emerald-900 dark:bg-gray-900"
+                className="group rounded-3xl border border-secondary-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-secondary-900 dark:bg-gray-900"
               >
-                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-emerald-700 dark:text-emerald-300">
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-secondary-700 dark:text-secondary-300">
                   {messages.tools.index.categories.eventOps}
                 </p>
                 <h3 className="text-2xl font-bold text-gray-900 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
@@ -65,9 +83,9 @@ const ToolsIndexContent = ({ locale, apiBaseUrl }: Props) => {
               </a>}
               {visibleToolHrefs.has('/feebas-tile-checker') && <a
                 href={feebasHref}
-                className="group rounded-3xl border border-cyan-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-cyan-900 dark:bg-gray-900"
+                className="group rounded-3xl border border-accent-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-accent-900 dark:bg-gray-900"
               >
-                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-sky-700 dark:text-sky-300">
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-accent-700 dark:text-accent-300">
                   {messages.tools.index.categories.liveCoordination}
                 </p>
                 <h3 className="text-2xl font-bold text-gray-900 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">

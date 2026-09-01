@@ -24,12 +24,13 @@ const {
   getCatchTimeFields,
   getFieldByName,
   formatPokemonAutocompleteLabel,
+  getPokemonDisplayName,
   getPokemonAutocompleteChoices,
   handlePokemonAutocomplete,
   getTimezoneAutocompleteChoices,
   handleShinyAutocomplete,
   normalizeVariantSlug,
-  humanizeVariantLabel,
+  getShinyDisplayName,
   isFailedShiny,
   getGreyscaleSpriteUrl,
   normalizeEncounterType,
@@ -57,7 +58,7 @@ function buildShiniesEmbed(shinies, page, pageSize, title) {
 
   const description = pageItems.map((shiny, idx) => {
     const number = startIndex + idx + 1;
-    return `${number}. **${capitalize(shiny.pokemon_name || shiny.pokemon)}** - ${formatShinySummary(shiny)}`;
+    return `${number}. **${getShinyDisplayName(shiny)}** - ${formatShinySummary(shiny)}`;
   }).join('\n');
 
   return new EmbedBuilder()
@@ -173,7 +174,7 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
   const encountersString = generateEncountersString(shiny.total_encounters, shiny.species_encounters, shiny.pokemon);
   const embed = new EmbedBuilder()
     .setColor(isFailedShiny(shiny) ? 0x757575 : (shiny.is_secret || shiny.is_alpha ? 0xFFD700 : 0x4CAF50))
-    .setTitle(titleOverride || `${capitalize(shiny.pokemon_name || shiny.pokemon)} (#${shiny.national_number})`);
+    .setTitle(titleOverride || `${getPokemonDisplayName(shiny)} (#${shiny.national_number})`);
 
   if (spriteUrl) embed.setThumbnail(spriteUrl);
   if (shiny.screenshot_url) embed.setImage(shiny.screenshot_url);
@@ -182,10 +183,9 @@ async function buildShinyDisplayPayload(shiny, titleOverride) {
     { name: 'Trainer', value: shiny.trainer_name, inline: true },
     ...[
       (() => {
-        const variantLabel = humanizeVariantLabel(shiny.variants);
         return {
           name: 'Pokemon',
-          value: variantLabel || capitalize(shiny.pokemon_name || shiny.pokemon),
+          value: getShinyDisplayName(shiny),
           inline: true,
         };
       })(),
@@ -212,7 +212,7 @@ async function buildFailedShinyPayload(shiny) {
   const embed = new EmbedBuilder()
     .setColor(0x757575)
     .setTitle('Shiny Status Updated')
-    .setDescription(`${capitalize(shiny.pokemon_name || shiny.pokemon)} (#${shiny.national_number}) status set to ${status}`)
+    .setDescription(`${getPokemonDisplayName(shiny)} (#${shiny.national_number}) status set to ${status}`)
     .setFooter({ text: `Shiny ID: ${shiny.id}` })
     .setTimestamp();
 
@@ -273,7 +273,7 @@ function buildStandaloneActionRow(shinyId, {
     : [];
 }
 
-async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply', titleOverride) {
+async function buildShinyDetailsPayload(interaction, shinyId, titleOverride) {
   const shiny = await fetchShinyById(shinyId);
   const payload = await buildShinyDisplayPayload(shiny, titleOverride);
   if (hasAnyRole(interaction, SHINY_MANAGER_ROLES)) {
@@ -282,6 +282,11 @@ async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply',
       includeDelete: true,
     });
   }
+  return payload;
+}
+
+async function sendShinyDetails(interaction, shinyId, replyMethod = 'editReply', titleOverride) {
+  const payload = await buildShinyDetailsPayload(interaction, shinyId, titleOverride);
   await interaction[replyMethod](payload);
 }
 
@@ -309,6 +314,7 @@ module.exports = {
   buildShinyDisplayPayload,
   buildFailedShinyPayload,
   buildStandaloneActionRow,
+  buildShinyDetailsPayload,
   sendShinyDetails,
   requireOwnedShiny,
 };

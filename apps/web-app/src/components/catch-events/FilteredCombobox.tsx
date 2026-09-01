@@ -29,6 +29,7 @@ export function FilteredCombobox({
   const [isOpen, setIsOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const searchValue = normalizeSearchValue(value);
+  const inputValue = options.includes(value) ? getOptionLabel(value) : value;
 
   const filteredOptions = React.useMemo(() => {
     const matches = searchValue
@@ -92,7 +93,7 @@ export function FilteredCombobox({
         placeholder={placeholder}
         required={required}
         role="combobox"
-        value={value}
+        value={inputValue}
       />
       {isOpen && filteredOptions.length > 0 && (
         <ul

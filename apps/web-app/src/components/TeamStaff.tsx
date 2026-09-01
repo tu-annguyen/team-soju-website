@@ -29,20 +29,28 @@ const staffData = [
   },
   {
     id: 4,
-    name: 'pikachutiyaL',
-    role: 'Event Coordinator',
-    avatar: '/images/pika-pfp.png',
-    discord: 'https://discordapp.com/users/668402074295468062',
-    forum: 'https://forums.pokemmo.com/index.php?/profile/529856-pikachu1250/'
-  },
-  {
-    id: 5,
     name: 'Pokio',
     role: 'Artist',
     avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_04/IMG_96975.png.88a810cafe3782e0c82926dd2fe97e98.png',
     discord: 'https://discordapp.com/users/701127393326399558',
     forum: 'https://forums.pokemmo.com/index.php?/profile/241159-pokio/'
   },
+  {
+    id: 5,
+    name: 'Megu',
+    role: 'Event Coordinator',
+    avatar: '/images/megu-pfp.png',
+    discord: 'https://discordapp.com/users/406270938079035393',
+    forum: 'https://forums.pokemmo.com/index.php?/profile/497080-xmegux/'
+  },
+  {
+    id: 6,
+    name: 'SsjBlueCrill',
+    role: 'Team Recruiter',
+    avatar: 'https://forums.pokemmo.com/uploads/monthly_2025_03/Img_2025_01_26_15_58_57.jpeg.985a0111a3dcdc373d94bdd7ea0377cd.jpeg',
+    discord: 'https://discordapp.com/users/507450215096254464',
+    forum: 'https://forums.pokemmo.com/index.php?/profile/531427-ssjbluecrill/'
+  }
 ];
 
 const TeamStaff = () => {

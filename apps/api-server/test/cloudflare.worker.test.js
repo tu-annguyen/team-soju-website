@@ -170,7 +170,10 @@ describe('Cloudflare Worker API', () => {
           currentSeason: 'Summer',
           officialWar: {
             teamTotal: 38, uniqueFamilyCount: 1, uniqueFamilies: ['vulpix'],
-            standings: [{ member_id: 'member-1', ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }],
+            standings: [{
+              member_id: 'member-1', ign: 'Hunter', team: 'bidoof',
+              points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+            }],
             recentCatches: [{
               id: 'shiny-1', original_trainer: 'member-1', pokemon: 'Vulpix', ign: 'Hunter',
               caught_at_utc: '2026-08-01T01:02:00.000Z', team: 'bidoof',
@@ -195,7 +198,9 @@ describe('Cloudflare Worker API', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toContain('public');
-    expect(body.data.officialWar.standings).toEqual([{ ign: 'Hunter', team: 'bidoof', points: 38, catches: 1 }]);
+    expect(body.data.officialWar.standings).toEqual([{
+      ign: 'Hunter', team: 'bidoof', points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+    }]);
     expect(body.data.officialWar.recentCatches[0]).not.toHaveProperty('id');
     expect(body.data).not.toHaveProperty('event');
   });
@@ -473,9 +478,39 @@ describe('Cloudflare Worker API', () => {
       expect.objectContaining({
         max_completion_tokens: 4096,
         reasoning_effort: 'none',
+        chat_template_kwargs: { thinking: false },
         response_format: { type: 'json_object' },
       })
     );
+  });
+
+  it('times out a catch event OCR model call that never settles', async () => {
+    const app = createWorkerApp({
+      repositories: {
+        members: {},
+        shinies: {},
+        catchEvents: {},
+      },
+    });
+    const aiRun = jest.fn().mockReturnValue(new Promise(() => {}));
+
+    const response = await app.fetch(new Request('https://api.example.com/api/catch-events/ocr', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        screenshots: [
+          { name: 'ivs.png', contentType: 'image/png', role: 'ivs', dataUrl: 'data:image/png;base64,AAAA' },
+        ],
+      }),
+    }), createEnv({
+      AI: { run: aiRun },
+      CATCH_EVENT_OCR_TIMEOUT_MS: '5',
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(504);
+    expect(body.message).toBe('Workers AI OCR request timed out after 5ms.');
+    expect(aiRun).toHaveBeenCalledTimes(1);
   });
 
   it('retries a transient Workers AI internal error', async () => {

@@ -115,6 +115,7 @@ const zh = {
       categories: {
         eventOps: '活动管理',
         liveCoordination: '实时协作',
+        pokedexSearch: '图鉴搜索',
       },
       catchEventsCard: {
         title: '限时抓宠管理器',
@@ -125,6 +126,10 @@ const zh = {
         title: '丑丑鱼格子追踪器',
         description:
           '通过共享棋盘实时协调 丑丑鱼 格子检查，可标记为已检查、发现或已确认。每次标记都会叠加半透明颜色，让棋盘像团队判断的实时热力图。',
+      },
+      huntFinderCard: {
+        title: '狩猎查找器',
+        description: '按地点、宝可梦、等级、EV 产出、闪光积分和每小时预估经验比较野外遭遇。',
       },
       shinyWarCard: {
         title: '闪光大战数据面板',

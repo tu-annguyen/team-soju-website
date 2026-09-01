@@ -68,6 +68,13 @@ const SHINY_STATUS_CHOICES = [
   { name: 'Bred', value: 'Bred' },
 ];
 
+const DATE_ORDER_CHOICES = [
+  { name: 'Auto', value: 'auto' },
+  { name: 'MDY', value: 'mdy' },
+  { name: 'DMY', value: 'dmy' },
+  { name: 'YMD', value: 'ymd' },
+];
+
 const FAILED_SHINY_STATUS_CHOICES = SHINY_STATUS_CHOICES.filter(({ value }) => value !== 'Owned');
 
 function configurePokemonAutocompleteOption(option, description, required) {
@@ -78,11 +85,11 @@ function configurePokemonAutocompleteOption(option, description, required) {
     .setAutocomplete(true);
 }
 
-function configureTimezoneAutocompleteOption(option) {
+function configureTimezoneAutocompleteOption(option, required) {
   return option
     .setName('timezone')
     .setDescription('Timezone where the shiny was caught')
-    .setRequired(true)
+    .setRequired(required)
     .setAutocomplete(true);
 }
 
@@ -181,7 +188,7 @@ const COMMANDS = [
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
         .setRequired(true))
-    .addStringOption(configureTimezoneAutocompleteOption)
+    .addStringOption(option => configureTimezoneAutocompleteOption(option, true))
     .addStringOption(option =>
       option.setName('catch_time')
         .setDescription('Local capture time (HH:MM)')
@@ -229,7 +236,12 @@ const COMMANDS = [
         .setDescription('How was it encountered?')
         .setRequired(true)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
-    .addStringOption(configureTimezoneAutocompleteOption)
+    .addStringOption(option => configureTimezoneAutocompleteOption(option, true))
+    .addStringOption(option =>
+      option.setName('date_order')
+        .setDescription('Date order shown in the screenshot')
+        .setRequired(false)
+        .addChoices(...DATE_ORDER_CHOICES))
     .addBooleanOption(option =>
       option.setName('secret')
         .setDescription('Is this a secret shiny?')
@@ -241,12 +253,12 @@ const COMMANDS = [
 
   new SlashCommandBuilder()
     .setName('editshiny')
-    .setDescription('Edit an existing shiny entry')
+    .setDescription('[Deprecated] Use /myshinies to edit shinies')
     .addStringOption(option =>
       option.setName('shiny_id')
         .setDescription('ID of the shiny to edit')
         .setRequired(true))
-    .addStringOption(configureTimezoneAutocompleteOption)
+    .addStringOption(option => configureTimezoneAutocompleteOption(option, false))
     .addStringOption(option => configurePokemonAutocompleteOption(option, 'Pokemon name', false))
     .addStringOption(option =>
       option.setName('variant')
@@ -322,7 +334,7 @@ const COMMANDS = [
 
   new SlashCommandBuilder()
     .setName('failshiny')
-    .setDescription('Mark a shiny with a non-owned status')
+    .setDescription('[Deprecated] Use /myshinies to fail shinies')
     .addStringOption(option =>
       option.setName('shiny_id')
         .setDescription('ID of the shiny to update')
@@ -335,7 +347,7 @@ const COMMANDS = [
 
   new SlashCommandBuilder()
     .setName('deleteshiny')
-    .setDescription('Delete a shiny entry')
+    .setDescription('[Deprecated] Use /myshinies to delete shinies')
     .addStringOption(option =>
       option.setName('shiny_id')
         .setDescription('ID of the shiny to delete')
@@ -351,7 +363,7 @@ const COMMANDS = [
 
   new SlashCommandBuilder()
     .setName('shiny')
-    .setDescription('Get specific shiny information')
+    .setDescription('[Deprecated] Use /myshinies to get shinies')
     .addStringOption(option =>
       option.setName('id')
         .setDescription('Shiny ID')

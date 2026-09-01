@@ -85,7 +85,7 @@ const {
   extractAiResponseText,
   parseAiJson,
   cleanNullableString,
-  inferDateOrderFromLocaleTimezone,
+  inferDateOrderFromLocale,
   normalizeOcrCatchLocal,
   normalizeCatchEventOcrResult,
   mergeCatchEventOcrResults,
@@ -326,7 +326,7 @@ async function handleCatchEventsRoutes(context) {
         }
         return json({
           success: false,
-          message: error.statusCode === 503
+          message: [503, 504].includes(error.statusCode)
             ? error.message
             : 'Failed to read screenshots',
         }, { status: error.statusCode || 500 });

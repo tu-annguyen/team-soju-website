@@ -1,65 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import NumberSpinner from './NumberSpinner';
 import ShinyShowcaseResults from './ShinyShowcaseResults';
+import ShinyShowcaseSortPanel, { type ShowcaseSort } from './ShinyShowcaseSortPanel';
+import type { ShinyFromAPI, Trainer } from './ShinyShowcaseTypes';
 import { calculateShinyPoints, getPokemonTier } from '@team-soju/utils';
 import { capitalize } from '../utils/pokemonName';
 import { getShinySpriteUrl } from '../utils/pokemonSprite';
 
-export interface ShinyPokemon {
-  id: string;
-  name: string;
-  variantName: string | null;
-  status: string | null;
-  imageUrl: string;
-  isFailed: boolean;
-  isSecret: boolean;
-  isAlpha: boolean;
-  encounterType: string;
-  tier: string;
-  pointValue: number;
-  catchDate: string | null;
-  totalEncounters: number | null;
-  speciesEncounters: number | null;
-  nature: string | null;
-  ivHp: number | null;
-  ivAttack: number | null;
-  ivDefense: number | null;
-  ivSpAttack: number | null;
-  ivSpDefense: number | null;
-  ivSpeed: number | null;
-}
-
-interface Trainer {
-  name: string;
-  numOT: number;
-  totalPoints: number;
-  shinies: ShinyPokemon[];
-}
-
 interface ShinyShowcaseProps {
   apiBaseUrl?: string;
-}
-
-interface ShinyFromAPI {
-  id: string;
-  national_number?: number | null;
-  pokemon_name: string;
-  variants?: string | null;
-  trainer_name: string;
-  encounter_type: string | null;
-  is_secret: boolean;
-  is_alpha: boolean;
-  status: string | null;
-  notes: string | null;
-  catch_date: string | null;
-  total_encounters: number | null;
-  species_encounters: number | null;
-  nature: string | null;
-  iv_hp: number | null;
-  iv_attack: number | null;
-  iv_defense: number | null;
-  iv_sp_attack: number | null;
-  iv_sp_defense: number | null;
-  iv_speed: number | null;
 }
 
 type BooleanFilter = 'any' | 'true' | 'false';
@@ -74,11 +23,6 @@ interface ShowcaseFilters {
   isAlpha: BooleanFilter;
   catchDateAfter: string;
   catchDateBefore: string;
-}
-
-interface ShowcaseSort {
-  sortBy: 'number_ot' | 'points' | 'points_per_num_ot';
-  sortOrder: 'asc' | 'desc';
 }
 
 const ENCOUNTER_TYPE_CHOICES = [
@@ -115,6 +59,7 @@ const defaultFilters: ShowcaseFilters = {
 const defaultSort: ShowcaseSort = {
   sortBy: 'number_ot',
   sortOrder: 'desc',
+  minNumOT: '5',
 };
 
 const boolFilterToParam = (value: BooleanFilter): string | null => {
@@ -258,6 +203,7 @@ const applyTrainerFiltersAndSort = (
   const trainerNameFilter = filters.trainerName.trim().toLowerCase();
   const minPoints = Number(filters.minPoints);
   const maxPoints = Number(filters.maxPoints);
+  const minNumOT = Number(sort.minNumOT);
 
   const filtered = trainers.filter((trainer) => {
     const matchesTrainerName = trainerNameFilter
@@ -269,8 +215,13 @@ const applyTrainerFiltersAndSort = (
     const matchesMaxPoints = Number.isFinite(maxPoints) && filters.maxPoints.trim() !== ''
       ? trainer.totalPoints <= maxPoints
       : true;
+    const matchesMinNumOT = sort.sortBy === 'points_per_num_ot'
+      && Number.isFinite(minNumOT)
+      && sort.minNumOT.trim() !== ''
+      ? trainer.numOT >= minNumOT
+      : true;
 
-    return matchesTrainerName && matchesMinPoints && matchesMaxPoints;
+    return matchesTrainerName && matchesMinPoints && matchesMaxPoints && matchesMinNumOT;
   });
 
   return sortTrainers(filtered, sort.sortBy, sort.sortOrder);
@@ -461,26 +412,28 @@ const ShinyShowcase = ({
                       className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   </label>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">
-                    Minimum Points
-                    <input
-                      type="number"
-                      min="0"
+                  <div className="text-sm text-gray-700 dark:text-gray-300">
+                    <span>Minimum Points</span>
+                    <NumberSpinner
+                      aria-label="Minimum Points"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                      min={0}
+                      onValueChange={(value) => setDraftFilters({ ...draftFilters, minPoints: value })}
                       value={draftFilters.minPoints}
-                      onChange={(e) => setDraftFilters({ ...draftFilters, minPoints: e.target.value })}
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      wrapperClassName="mt-1"
                     />
-                  </label>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">
-                    Maximum Points
-                    <input
-                      type="number"
-                      min="0"
+                  </div>
+                  <div className="text-sm text-gray-700 dark:text-gray-300">
+                    <span>Maximum Points</span>
+                    <NumberSpinner
+                      aria-label="Maximum Points"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                      min={0}
+                      onValueChange={(value) => setDraftFilters({ ...draftFilters, maxPoints: value })}
                       value={draftFilters.maxPoints}
-                      onChange={(e) => setDraftFilters({ ...draftFilters, maxPoints: e.target.value })}
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      wrapperClassName="mt-1"
                     />
-                  </label>
+                  </div>
                   <label className="text-sm text-gray-700 dark:text-gray-300">
                     Encounter type
                     <select
@@ -566,64 +519,19 @@ const ShinyShowcase = ({
             )}
 
             {openPanel === 'sort' && (
-              <div
-                role="dialog"
-                aria-label="Sort shinies"
-                className="absolute top-full left-1/2 -translate-x-1/2 z-20 mt-2 w-[min(92vw,24rem)] rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-5 md:left-auto md:right-0 md:translate-x-0 md:w-full md:max-w-sm"
-              >
-                <div className="grid grid-cols-1 gap-4">
-                  <label className="text-sm text-gray-700 dark:text-gray-300">
-                    Sort by
-                    <select
-                      value={draftSort.sortBy}
-                      onChange={(e) => setDraftSort({
-                        ...draftSort,
-                        sortBy: e.target.value as ShowcaseSort['sortBy']
-                      })}
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    >
-                      <option value="number_ot">Number OT</option>
-                      <option value="points">Points</option>
-                      <option value="points_per_num_ot">Average Points/Shiny</option>
-                    </select>
-                  </label>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">
-                    Order
-                    <select
-                      value={draftSort.sortOrder}
-                      onChange={(e) => setDraftSort({ ...draftSort, sortOrder: e.target.value as ShowcaseSort['sortOrder'] })}
-                      className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    >
-                      <option value="asc">Ascending</option>
-                      <option value="desc">Descending</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div className="mt-5 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDraftSort(defaultSort);
-                      setSort(defaultSort);
-                      setOpenPanel(null);
-                    }}
-                    className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSort(draftSort);
-                      setOpenPanel(null);
-                    }}
-                    className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
+              <ShinyShowcaseSortPanel
+                draftSort={draftSort}
+                onChange={setDraftSort}
+                onReset={() => {
+                  setDraftSort(defaultSort);
+                  setSort(defaultSort);
+                  setOpenPanel(null);
+                }}
+                onApply={() => {
+                  setSort(draftSort);
+                  setOpenPanel(null);
+                }}
+              />
             )}
           </div>
         </div>

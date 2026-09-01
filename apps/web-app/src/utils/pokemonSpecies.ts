@@ -9,6 +9,7 @@ function titleCaseToken(value: string) {
 
 export function formatPokemonSpeciesName(value: string) {
   return titleCaseToken(value)
+    .replace(/\bFarfetchd\b/g, "Farfetch'd")
     .replace(/\bMr Mime\b/g, 'Mr. Mime')
     .replace(/\bMime Jr\b/g, 'Mime Jr.')
     .replace(/\bNidoran F\b/g, 'Nidoran-F')

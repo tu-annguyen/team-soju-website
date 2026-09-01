@@ -52,7 +52,8 @@ All commands are run from the root of the project:
 The Discord bot provides slash commands for managing team members and tracking shiny Pokemon:
 
 - **Member Management**: `/addmember`, `/editmember`, `/deletemember`, `/member`
-- **Shiny Management**: `/addshiny`, `/editshiny`, `/deleteshiny`, `/shiny`, `/shinies`
+- **Shiny Management**: `/addshiny`, `/addshinyscreenshot`, `/myshinies`, `/shinies`
+- **Deprecated Shiny Commands**: `/editshiny`, `/failshiny`, `/deleteshiny`, `/shiny` (use `/myshinies` instead)
 - **Statistics**: `/leaderboard`, `/stats`
 
 ### Setting up the Discord Bot

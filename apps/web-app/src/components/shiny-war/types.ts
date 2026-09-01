@@ -37,6 +37,13 @@ export type HuntSpecies = {
   form?: string;
   min_level: number;
   max_level: number;
+  base_exp?: number;
+  ev_hp?: number;
+  ev_attack?: number;
+  ev_defense?: number;
+  ev_sp_attack?: number;
+  ev_sp_defense?: number;
+  ev_speed?: number;
   is_lure?: boolean;
   is_special?: boolean;
 };
@@ -56,8 +63,10 @@ export type HuntSpot = {
   is_special?: boolean;
   denominator: number;
   averagePoints: number;
+  averageExp?: number | null;
   encountersPerHour: number | null;
   pointsPerHour: number | null;
+  expPerHour?: number | null;
   composition: HuntSpecies[];
 };
 
@@ -80,11 +89,14 @@ export type DashboardCatch = {
 
 export type DashboardStanding = ParticipantHunts & {
   points: number;
+  basePoints: number;
+  bonusPoints: number;
   catches: number;
   caughtFamilyKeys: string[];
 };
 
 export type Dashboard = {
+  familySpecies: Record<string, string[]>;
   event: {
     name: string;
     starts_at: string;
@@ -109,10 +121,14 @@ export type Dashboard = {
   };
 };
 
-type PublicStanding = Pick<DashboardStanding, 'ign' | 'team' | 'points' | 'catches'>;
+type PublicStanding = Pick<
+  DashboardStanding,
+  'ign' | 'team' | 'points' | 'basePoints' | 'bonusPoints' | 'catches'
+>;
 type PublicCatch = Omit<DashboardCatch, 'id' | 'member_id' | 'is_official' | 'war_eligibility_override'>;
 
 export type PublicDashboard = {
+  familySpecies: Dashboard['familySpecies'];
   officialWar: Omit<Dashboard['officialWar'], 'standings' | 'recentCatches'> & {
     standings: PublicStanding[];
     recentCatches: PublicCatch[];

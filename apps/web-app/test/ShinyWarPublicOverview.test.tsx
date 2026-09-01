@@ -7,11 +7,14 @@ jest.mock('../src/components/shiny-war/api', () => ({
 }));
 
 const dashboard = {
+  familySpecies: { vulpix: ['Vulpix', 'Ninetales'] },
   officialWar: {
     teamTotal: 38,
     uniqueFamilyCount: 1,
     uniqueFamilies: ['vulpix'],
-    standings: [{ ign: 'SojuHunter', team: 'bidoof' as const, points: 38, catches: 1 }],
+    standings: [{
+      ign: 'SojuHunter', team: 'bidoof' as const, points: 38, basePoints: 30, bonusPoints: 8, catches: 1,
+    }],
     recentCatches: [],
   },
   teamWar: {

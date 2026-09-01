@@ -1,6 +1,19 @@
 const { COMMANDS } = require('../src/commands');
 
 describe('commands', () => {
+  it.each([
+    ['editshiny', 'edit'],
+    ['failshiny', 'fail'],
+    ['deleteshiny', 'delete'],
+    ['shiny', 'get'],
+  ])('marks /%s as deprecated and directs users to /myshinies', (commandName, action) => {
+    const command = COMMANDS.find(item => item.toJSON().name === commandName).toJSON();
+
+    expect(command.description).toContain('[Deprecated]');
+    expect(command.description).toContain('/myshinies');
+    expect(command.description).toContain(action);
+  });
+
   it('places every required option before optional options for Discord registration', () => {
     for (const command of COMMANDS.map(item => item.toJSON())) {
       let optionalOptionSeen = false;
@@ -70,7 +83,7 @@ describe('commands', () => {
     expect(pokemonOption.choices).toBeUndefined();
   });
 
-  it.each(['addshiny', 'addshinyscreenshot', 'editshiny'])(
+  it.each(['addshiny', 'addshinyscreenshot'])(
     'requires timezone autocomplete on /%s',
     (commandName) => {
       const command = COMMANDS.find(item => item.toJSON().name === commandName);
@@ -84,6 +97,34 @@ describe('commands', () => {
       expect(timezoneOption.choices).toBeUndefined();
     }
   );
+
+  it('makes timezone autocomplete optional on /editshiny', () => {
+    const editShiny = COMMANDS.find(command => command.toJSON().name === 'editshiny');
+    const timezoneOption = editShiny.toJSON().options.find(option => option.name === 'timezone');
+
+    expect(timezoneOption).toEqual(expect.objectContaining({
+      type: 3,
+      required: false,
+      autocomplete: true,
+    }));
+    expect(timezoneOption.choices).toBeUndefined();
+  });
+
+  it('offers Auto, MDY, DMY, and YMD date orders on /addshinyscreenshot', () => {
+    const command = COMMANDS.find(item => item.toJSON().name === 'addshinyscreenshot').toJSON();
+    const dateOrderOption = command.options.find(option => option.name === 'date_order');
+
+    expect(dateOrderOption).toEqual(expect.objectContaining({
+      type: 3,
+      required: false,
+      choices: [
+        { name: 'Auto', value: 'auto' },
+        { name: 'MDY', value: 'mdy' },
+        { name: 'DMY', value: 'dmy' },
+        { name: 'YMD', value: 'ymd' },
+      ],
+    }));
+  });
 
   it.each(['addshiny', 'addshinyscreenshot', 'editshiny'])(
     'removes catch_time_utc from /%s',

@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { groupHuntSpotsByPokemon } from './huntGroups';
 import HuntLocationCard from './HuntLocationCard';
 import SpeciesSpriteName from './SpeciesSpriteName';
 import { groupHuntSpotsByLocation } from './huntLocationGroups';
+import { groupHuntSpotsByPokemonLocation } from './huntPokemonLocationGroups';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
+import type { HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
+import { getHuntFinderMessages } from '../hunt-finder/messages';
+import { getGameTranslations } from '../../utils/gameTranslations';
 
 export type HuntView = 'location' | 'pokemon';
 
@@ -11,10 +14,15 @@ type Props = {
   /** @deprecated Encounter compositions are always visible while their location is open. */
   expanded?: ReadonlySet<string>;
   participants: ParticipantHunts[];
+  context?: HuntFinderContext;
+  minimumTier?: string;
+  locale?: string;
   speciesFilter: string;
   spots: HuntSpot[];
   view: HuntView;
-  onQueue: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
+  onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
+  sort?: HuntSort;
+  sortDirection?: SortDirection;
   /** @deprecated Encounter compositions no longer toggle independently. */
   onToggle?: (spotKey: string) => void;
   collapsedLocations?: ReadonlySet<string>;
@@ -22,9 +30,13 @@ type Props = {
 };
 
 export default function HuntResults({
-  participants, speciesFilter, spots, view, onQueue, collapsedLocations, onToggleLocation,
+  participants, minimumTier = '', locale, speciesFilter, spots, view, onQueue,
+  collapsedLocations, onToggleLocation, context = 'shinyWar',
+  sort = 'pointsPerHour', sortDirection = 'desc',
 }: Props) {
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
+  const messages = getHuntFinderMessages(locale).results;
+  const game = getGameTranslations(locale);
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
   const toggleLocation = onToggleLocation || ((locationKey: string) => {
     setInternalCollapsedLocations((current) => {
@@ -43,7 +55,11 @@ export default function HuntResults({
             key={group.key}
             locationOpen={!effectiveCollapsedLocations.has(group.key)}
             participants={participants}
+            locale={locale}
             spots={group.spots}
+            context={context}
+            sort={sort}
+            sortDirection={sortDirection}
             onQueue={onQueue}
             onToggleLocation={() => toggleLocation(group.key)}
           />
@@ -52,11 +68,13 @@ export default function HuntResults({
     );
   }
 
-  const groups = groupHuntSpotsByPokemon(spots, speciesFilter);
+  const groups = groupHuntSpotsByPokemonLocation(
+    spots, speciesFilter, minimumTier, sort, sortDirection
+  );
 
   return (
     <div className="space-y-4">
-      {groups.map(({ species, spots: speciesSpots }) => (
+      {groups.map(({ species, spots: speciesSpots, locations }) => (
         <section
           className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950"
           key={`${species.slug}-${species.form}`}
@@ -64,27 +82,31 @@ export default function HuntResults({
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg leading-none font-bold text-gray-950 dark:text-white">
-                <SpeciesSpriteName form={species.form} name={species.name} slug={species.slug} />
+                <SpeciesSpriteName displayName={game.species(species.name)} form={species.form} name={species.name} slug={species.slug} />
               </h2>
               <span className="rounded-full bg-primary-100 px-2.5 py-1 text-xs font-semibold text-primary-800 dark:bg-primary-950 dark:text-primary-200">
-                {species.tier}
+                {game.tier(species.tier)}
               </span>
               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                {species.points} {species.points === 1 ? 'point' : 'points'}
+                {species.points} {species.points === 1 ? messages.point : messages.points}
               </span>
             </div>
             <p className="text-sm text-gray-500">
               {new Set(speciesSpots.map((spot) => `${spot.region}|${spot.location}`)).size}{' '}
-              {new Set(speciesSpots.map((spot) => `${spot.region}|${spot.location}`)).size === 1 ? 'wild location' : 'wild locations'}
+              {new Set(speciesSpots.map((spot) => `${spot.region}|${spot.location}`)).size === 1 ? messages.wildLocation : messages.wildLocations}
             </p>
           </div>
           <div className="space-y-3">
-            {groupHuntSpotsByLocation(speciesSpots).map((group) => (
+            {locations.map((group) => (
               <HuntLocationCard
                 key={`${species.slug}-${species.form}-${group.key}`}
                 locationOpen={!effectiveCollapsedLocations.has(group.key)}
                 participants={participants}
+                locale={locale}
                 spots={group.spots}
+                context={context}
+                sort={sort}
+                sortDirection={sortDirection}
                 targetSpecies={species}
                 onQueue={onQueue}
                 onToggleLocation={() => toggleLocation(group.key)}

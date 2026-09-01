@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import Overview from '../src/components/shiny-war/Overview';
 
 const dashboard = {
+  familySpecies: { vulpix: ['Vulpix', 'Ninetales'] },
   event: {
     name: 'PokeMMO Shiny Wars 2026',
     starts_at: '2026-08-01T00:00:00.000Z',
@@ -23,6 +24,8 @@ const dashboard = {
     is_official: true,
     hunts: [],
     points: 38,
+    basePoints: 30,
+    bonusPoints: 8,
     catches: 1,
     }],
     recentCatches: [{
@@ -49,10 +52,13 @@ describe('Shiny Wars overview', () => {
     const onEligibility = jest.fn().mockResolvedValue(undefined);
     render(<Overview dashboard={dashboard} canManage onEligibility={onEligibility} />);
 
-    expect(screen.getByText('38 pts')).toBeInTheDocument();
+    expect(screen.getByText('30 pts')).toBeInTheDocument();
+    const pointsBreakdown = screen.getByText(/8 bonus pts/).parentElement;
+    expect(pointsBreakdown).toHaveTextContent('8 bonus pts +30 pts');
+    expect(pointsBreakdown).toHaveClass('gap-1');
     expect(screen.queryByRole('img', { name: 'Team Bidoof' })).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'Team Arceus' })).not.toBeInTheDocument();
-    expect(screen.getByText('Vulpix')).toBeInTheDocument();
+    expect(screen.getByText('Vulpix/Ninetales')).toBeInTheDocument();
     expect(screen.getByText(/SojuHunter · Vulpix/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mark invalid' }));
     expect(onEligibility).toHaveBeenCalledWith('shiny-1', false);
@@ -63,11 +69,52 @@ describe('Shiny Wars overview', () => {
     expect(screen.queryByText('Unique species')).not.toBeInTheDocument();
   });
 
+  it('hides zero bonus points', () => {
+    render(<Overview dashboard={{
+      ...dashboard,
+      officialWar: {
+        ...dashboard.officialWar,
+        standings: dashboard.officialWar.standings.map((standing) => ({
+          ...standing,
+          points: standing.basePoints,
+          bonusPoints: 0,
+        })),
+      },
+    }} />);
+
+    expect(screen.getByText('30 pts')).toBeInTheDocument();
+    expect(screen.queryByText(/bonus pts/)).not.toBeInTheDocument();
+  });
+
+  it('sorts standings from most to least base points', () => {
+    const lowerBaseStanding = {
+      ...dashboard.officialWar.standings[0],
+      member_id: 'member-2',
+      ign: 'LowerBase',
+      points: 28,
+      basePoints: 20,
+    };
+    render(<Overview dashboard={{
+      ...dashboard,
+      officialWar: {
+        ...dashboard.officialWar,
+        standings: [lowerBaseStanding, ...dashboard.officialWar.standings],
+      },
+    }} />);
+
+    const participantNames = screen.getAllByText(/^(SojuHunter|LowerBase)$/)
+      .map((element) => element.textContent?.trim());
+    expect(participantNames).toEqual(['SojuHunter', 'LowerBase']);
+  });
+
   it('uses species language and can hide internal event status', () => {
     render(<Overview dashboard={dashboard} showEventStatus={false} />);
 
     expect(screen.getByText('Unique species')).toBeInTheDocument();
     expect(screen.getByText('Species coverage')).toBeInTheDocument();
+    const coverage = screen.getByRole('heading', { name: 'Species coverage' }).closest('section');
+    const standings = screen.getByRole('heading', { name: 'Participant standings' }).closest('section');
+    expect(standings?.compareDocumentPosition(coverage as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText(/first species \+8/)).toBeInTheDocument();
     expect(screen.queryByText('Current season')).not.toBeInTheDocument();
     expect(screen.queryByText('Schedule')).not.toBeInTheDocument();

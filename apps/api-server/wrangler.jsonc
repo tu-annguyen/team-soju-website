@@ -4,7 +4,8 @@
 	"main": "src/cloudflare/worker-entry.mjs",
 	"compatibility_date": "2026-04-06",
 	"compatibility_flags": [
-		"nodejs_compat"
+		"nodejs_compat",
+		"global_fetch_strictly_public"
 	],
 	"keep_vars": true,
 	"vars": {

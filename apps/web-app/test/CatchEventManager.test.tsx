@@ -266,7 +266,7 @@ describe('CatchEventManager', () => {
 
     await screen.findByRole('heading', { name: 'Edit Event' });
     expect(screen.getByLabelText('Pokemon species')).toHaveValue('Tropius');
-    expect(screen.getByLabelText('Points')).toHaveValue('0');
+    expect(screen.getByLabelText('Points')).toHaveValue(0);
   });
 
   it('saves edits with PUT instead of creating a duplicate event', async () => {
