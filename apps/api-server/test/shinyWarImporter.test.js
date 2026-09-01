@@ -69,6 +69,15 @@ describe('Shiny Wars Pokedex importer', () => {
     });
   });
 
+  it('uses PokeMMO egg-group names and keeps breedable Genderless species', () => {
+    const data = normalizePokedex([{
+      ...monsters[1],
+      egg_groups: ['Grass', 'Amorphous', 'Genderless', 'Ditto', 'Cannot Breed'],
+    }]);
+
+    expect(data.species[0].eggGroups).toEqual(['Plant', 'Chaos', 'Genderless']);
+  });
+
   it('preserves lure-only encounters and assigns their standard 5% rate', () => {
     const lureLocation = {
       ...monsters[0].locations[0],

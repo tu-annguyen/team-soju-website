@@ -230,8 +230,8 @@ describe('Cloudflare Shiny Wars repository', () => {
       ev_sp_attack: 0, ev_sp_defense: 0, ev_speed: 0,
     };
     const rows = [
-      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Rattata', slug: 'rattata', family_key: 'rattata', min_level: 20, max_level: 20, egg_groups_json: '["Field"]' },
-      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Pidgey', slug: 'pidgey', family_key: 'pidgey', min_level: 20, max_level: 20, egg_groups_json: '["Flying"]' },
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Rattata', slug: 'rattata', family_key: 'rattata', min_level: 20, max_level: 20, egg_groups_json: '["Grass"]' },
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Pidgey', slug: 'pidgey', family_key: 'pidgey', min_level: 20, max_level: 20, egg_groups_json: '["Amorphous"]' },
       { ...base, location_id: '1:2', location_name: 'Route 2', species_name: 'Clefairy', slug: 'clefairy', family_key: 'clefairy', min_level: 20, max_level: 20, egg_groups_json: '["Fairy"]' },
     ];
     const repository = createShinyWarRepository({
@@ -240,12 +240,12 @@ describe('Cloudflare Shiny Wars repository', () => {
     });
 
     const result = await repository.listHordeSpots({
-      season: 'Summer', time: 'day', eggGroups: ['field', 'Dragon'], profile: { eventBoost: false },
+      season: 'Summer', time: 'day', eggGroups: ['Plant', 'Chaos'], profile: { eventBoost: false },
     });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].composition.map((entry) => entry.name)).toEqual(['Rattata', 'Pidgey']);
-    expect(result.items[0].composition[0].egg_groups).toEqual(['Field']);
+    expect(result.items[0].composition.map((entry) => entry.egg_groups)).toEqual([['Plant'], ['Chaos']]);
   });
 
   it('scores the official roster together and the internal teams independently', async () => {

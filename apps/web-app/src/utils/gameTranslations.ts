@@ -27,13 +27,13 @@ const EGG_GROUP_LABELS: Record<Locale, Record<string, string>> = {
   en: {},
   es: {
     Monster: 'Monstruo', 'Water A': 'Agua A', Bug: 'Bicho', Flying: 'Volador', Field: 'Campo',
-    Fairy: 'Hada', Grass: 'Planta', Humanoid: 'Humanoide', 'Water C': 'Agua C', Mineral: 'Mineral',
-    Amorphous: 'Amorfo', 'Water B': 'Agua B', Dragon: 'Dragón',
+    Fairy: 'Hada', Plant: 'Planta', Humanoid: 'Humanoide', Mineral: 'Mineral', 'Water C': 'Agua C',
+    Chaos: 'Caos', 'Water B': 'Agua B', Dragon: 'Dragón', Genderless: 'Sin género',
   },
   zh: {
     Monster: '怪兽', 'Water A': '水中 A', Bug: '虫', Flying: '飞行', Field: '陆上', Fairy: '妖精',
-    Grass: '植物', Humanoid: '人形', 'Water C': '水中 C', Mineral: '矿物', Amorphous: '不定形',
-    'Water B': '水中 B', Dragon: '龙',
+    Plant: '植物', Humanoid: '人形', Mineral: '矿物', 'Water C': '水中 C', Chaos: '混沌',
+    'Water B': '水中 B', Dragon: '龙', Genderless: '无性别',
   },
 };
 

@@ -9,6 +9,7 @@ const {
   TIER_POINTS,
 } = require('@team-soju/utils');
 const { groupEquivalentHuntSpots, parentLocationName } = require('./hunt-spot-groups');
+const { normalizeEggGroups } = require('../../utils/egg-groups');
 const {
   ENCOUNTER_METHODS,
   calculateExperienceMetrics,
@@ -242,7 +243,7 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
             ev_sp_attack: Number(row.ev_sp_attack) || 0,
             ev_sp_defense: Number(row.ev_sp_defense) || 0,
             ev_speed: Number(row.ev_speed) || 0,
-            egg_groups: parseJson(row.egg_groups_json, []),
+            egg_groups: normalizeEggGroups(parseJson(row.egg_groups_json, [])),
           });
         }
       }

@@ -1,16 +1,17 @@
 const EGG_GROUPS = Object.freeze([
-  'Monster', 'Water A', 'Bug', 'Flying', 'Field', 'Fairy', 'Grass',
-  'Humanoid', 'Water C', 'Mineral', 'Amorphous', 'Water B', 'Dragon',
+  'Monster', 'Water A', 'Bug', 'Flying', 'Field', 'Fairy', 'Plant',
+  'Humanoid', 'Mineral', 'Water C', 'Chaos', 'Water B', 'Dragon', 'Genderless',
 ]);
 
 const EGG_GROUP_ALIASES = new Map([
   ['monster', 'Monster'], ['water a', 'Water A'], ['water 1', 'Water A'],
   ['bug', 'Bug'], ['flying', 'Flying'], ['field', 'Field'], ['ground', 'Field'],
-  ['fairy', 'Fairy'], ['grass', 'Grass'], ['plant', 'Grass'],
+  ['fairy', 'Fairy'], ['grass', 'Plant'], ['plant', 'Plant'],
   ['humanoid', 'Humanoid'], ['human like', 'Humanoid'], ['humanshape', 'Humanoid'],
-  ['water c', 'Water C'], ['water 3', 'Water C'], ['mineral', 'Mineral'],
-  ['amorphous', 'Amorphous'], ['indeterminate', 'Amorphous'],
+  ['mineral', 'Mineral'], ['water c', 'Water C'], ['water 3', 'Water C'],
+  ['chaos', 'Chaos'], ['amorphous', 'Chaos'], ['indeterminate', 'Chaos'],
   ['water b', 'Water B'], ['water 2', 'Water B'], ['dragon', 'Dragon'],
+  ['genderless', 'Genderless'],
 ]);
 
 function eggGroupName(value) {

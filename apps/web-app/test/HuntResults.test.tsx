@@ -135,7 +135,7 @@ describe('HuntResults', () => {
             ...vulpix,
             split: 0.5,
             ev_speed: 1,
-            egg_groups: ['Field', 'Dragon'],
+            egg_groups: ['Plant', 'Chaos'],
             is_lure: true,
           }],
         }]}
@@ -145,9 +145,9 @@ describe('HuntResults', () => {
 
     const summary = screen.getByText(/50.00%/);
     expect(summary).toHaveTextContent('50.00% · Lure · Tier 3');
-    const details = screen.getByText(/Field, Dragon/).parentElement;
+    const details = screen.getByText(/Plant, Chaos/).parentElement;
     expect(details).toHaveTextContent('Speed +1 EV');
-    expect(details).toHaveTextContent('Field, Dragon');
+    expect(details).toHaveTextContent('Plant, Chaos');
     expect(details).not.toHaveTextContent('Egg groups:');
     expect(screen.getByText(/Includes Lure encounters/)).toBeInTheDocument();
   });

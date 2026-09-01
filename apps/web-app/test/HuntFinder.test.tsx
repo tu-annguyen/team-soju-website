@@ -69,6 +69,11 @@ describe('HuntFinder', () => {
     expect(screen.getByLabelText('Minimum EXP/hour')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'EV yield' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Egg groups' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Plant')).toBeInTheDocument();
+    expect(screen.getByLabelText('Chaos')).toBeInTheDocument();
+    expect(screen.getByLabelText('Genderless')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Grass')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Amorphous')).not.toBeInTheDocument();
     expect(screen.getByLabelText('+1 EV')).toBeDisabled();
     expect(screen.getByLabelText('+2 EV')).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Minimum tier'), { target: { value: '3' } });
