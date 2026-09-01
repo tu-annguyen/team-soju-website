@@ -31,7 +31,7 @@ describe('HuntFinder', () => {
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
 
-    const minimumTier = screen.getByLabelText('Minimum Tier');
+    const minimumTier = screen.getByLabelText('Minimum tier');
     expect(minimumTier).toHaveAttribute('type', 'number');
     expect(minimumTier).toHaveAttribute('min', '0');
     expect(minimumTier).toHaveAttribute('max', '7');
@@ -63,19 +63,23 @@ describe('HuntFinder', () => {
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
 
-    expect(screen.getByLabelText('Minimum Tier')).toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum tier')).toBeInTheDocument();
     expect(screen.getByLabelText('Minimum level')).toBeInTheDocument();
     expect(screen.getByLabelText('Minimum points/hour')).toBeInTheDocument();
     expect(screen.getByLabelText('Minimum EXP/hour')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'EV yield' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Minimum Tier'), { target: { value: '3' } });
+    expect(screen.getByLabelText('+1 EV')).toBeDisabled();
+    expect(screen.getByLabelText('+2 EV')).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Minimum tier'), { target: { value: '3' } });
     fireEvent.change(screen.getByLabelText('Minimum level'), { target: { value: '30' } });
     fireEvent.click(screen.getByLabelText('Attack'));
+    expect(screen.getByLabelText('+1 EV')).toBeEnabled();
+    expect(screen.getByLabelText('+2 EV')).toBeEnabled();
     fireEvent.click(screen.getByLabelText('+1 EV'));
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
     expect(screen.getByLabelText('Sort direction')).toHaveValue('desc');
-    expect(screen.getByLabelText('Minimum Tier')).toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum tier')).toBeInTheDocument();
     expect(screen.queryByLabelText('Minimum level')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Minimum points/hour')).toBeInTheDocument();
     expect(screen.queryByLabelText('Minimum EXP/hour')).not.toBeInTheDocument();
@@ -89,7 +93,7 @@ describe('HuntFinder', () => {
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
     expect(screen.getByLabelText('Sort direction')).toHaveValue('desc');
-    expect(screen.queryByLabelText('Minimum Tier')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Minimum tier')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Minimum level')).toBeInTheDocument();
     expect(screen.queryByLabelText('Minimum points/hour')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Minimum EXP/hour')).toBeInTheDocument();

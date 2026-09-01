@@ -38,7 +38,7 @@ describe('NumberSpinner', () => {
   it('supports reversed stepping and clears after decrementing the maximum', () => {
     render(
       <Harness
-        aria-label="Minimum Tier"
+        aria-label="Minimum tier"
         clearOnDecrementAtMax
         min={0}
         max={7}
@@ -46,7 +46,7 @@ describe('NumberSpinner', () => {
         value=""
       />
     );
-    const input = screen.getByLabelText('Minimum Tier');
+    const input = screen.getByLabelText('Minimum tier');
 
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     expect(input).toHaveValue(null);

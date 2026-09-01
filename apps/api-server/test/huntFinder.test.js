@@ -34,13 +34,17 @@ describe('Hunt Finder calculations and filtering', () => {
 
   it('OR-matches selected EV stat and amount pairs', () => {
     const spot = { composition: [
-      { ev_attack: 1, ev_speed: 0 },
-      { ev_attack: 0, ev_speed: 2 },
+      { ev_attack: 1, ev_speed: 0, ev_defense: 0, ev_hp: 0 },
+      { ev_attack: 0, ev_speed: 2, ev_defense: 3, ev_hp: 0 },
     ] };
 
     expect(matchesEvYield(spot, ['attack'], ['1'])).toBe(true);
     expect(matchesEvYield(spot, ['attack', 'speed'], ['2'])).toBe(true);
     expect(matchesEvYield(spot, ['speed'], ['1'])).toBe(false);
+    expect(matchesEvYield(spot, ['attack'], [])).toBe(true);
+    expect(matchesEvYield(spot, ['defense'], [])).toBe(true);
+    expect(matchesEvYield(spot, ['hp'], [])).toBe(false);
+    expect(matchesEvYield(spot, [], ['1'])).toBe(true);
   });
 
   it('sorts both metric directions, keeps nulls last, and sorts alphabetically', () => {

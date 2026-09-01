@@ -25,6 +25,7 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
   const scent = ['All', 'Sweet Scent'].includes(f.method);
   const nonSafari = ['All', 'Singles', 'Fishing'].includes(f.method);
   const alphabetical = f.sort === 'alphabetical';
+  const hasEvStats = f.evStats.length > 0;
   const game = getGameTranslations(locale);
   const methods = [['All', m.options.everyMethod], ['Sweet Scent', m.options.sweetScent], ['Singles', m.options.singles], ['Fishing', m.options.fishing], ['Honey Trees', m.options.honeyTrees], ['Headbutt', m.options.headbutt], ['Rock Smash', m.options.rockSmash]] as const;
   return <section aria-labelledby="hunt-filters-heading" className={section}>
@@ -48,8 +49,11 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
     <Check panel disabled={!scent} text={m.options.fullSplit} checked={f.fullSplitOnly} onChange={(v) => set('fullSplitOnly', v)} />
     <Check panel disabled={!nonSafari} text={m.options.nonSafari} checked={f.nonSafari} onChange={(v) => set('nonSafari', v)} />
     {(f.sort === 'expPerHour' || alphabetical) && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.evYield}</legend>
-      <div className="grid gap-4 lg:grid-cols-[3fr_1fr]"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{EV_STAT_OPTIONS.map(([v]) => <label key={v} className="flex items-center gap-2 text-sm"><input className={check} type="checkbox" checked={f.evStats.includes(v)} onChange={() => set('evStats', f.evStats.includes(v) ? f.evStats.filter((x) => x !== v) : [...f.evStats, v])} />{m.evStats[v]}</label>)}</div>
-      <div className="flex gap-4">{(['1', '2'] as EvAmount[]).map((v) => <label key={v} className="flex items-center gap-2 text-sm"><input className={check} type="checkbox" checked={f.evAmounts[0] === v} onChange={() => set('evAmounts', f.evAmounts[0] === v ? [] : [v])} />+{v} EV</label>)}</div></div>
+      <div className="grid gap-4 lg:grid-cols-[3fr_1fr]"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{EV_STAT_OPTIONS.map(([v]) => <label key={v} className="flex items-center gap-2 text-sm"><input className={check} type="checkbox" checked={f.evStats.includes(v)} onChange={() => setFilters((old) => {
+        const evStats = old.evStats.includes(v) ? old.evStats.filter((stat) => stat !== v) : [...old.evStats, v];
+        return { ...old, evStats, evAmounts: evStats.length ? old.evAmounts : [] };
+      })} />{m.evStats[v]}</label>)}</div>
+      <div className="flex gap-4">{(['1', '2'] as EvAmount[]).map((v) => <label key={v} className={`flex items-center gap-2 text-sm ${hasEvStats ? '' : 'opacity-50'}`}><input className={check} disabled={!hasEvStats} type="checkbox" checked={f.evAmounts[0] === v} onChange={() => set('evAmounts', f.evAmounts[0] === v ? [] : [v])} />+{v} EV</label>)}</div></div>
     </fieldset>}
     {context === 'shinyWar' && <War filters={f} messages={m} setFilters={setFilters} teamWarAvailable={teamWarAvailable} />}
   </section>;
@@ -76,7 +80,7 @@ function Select({ title, value, options, onChange, disabled }: { title: string; 
   return <label className={label}>{title}<select aria-label={title} className={`${field} disabled:opacity-50`} disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)}>{options.map(([v, text, off]) => <option key={v} value={v} disabled={off}>{text}</option>)}</select></label>;
 }
 function Spinner({ title, value, setValue, placeholder, min, max, disabled, reverse, step = 1 }: { title: string; value: string; setValue: (v: string) => void; placeholder?: string; min: number; max?: number; disabled?: boolean; reverse?: boolean; step?: number }) {
-  const controlName = title === 'Minimum Tier' ? 'minimum tier' : title;
+  const controlName = title === 'Minimum tier' ? 'minimum tier' : title;
   return <div className={label}><span>{title}</span><NumberSpinner aria-label={title} className={`${field} !mt-0`} disabled={disabled} min={min} max={max} onValueChange={setValue} placeholder={placeholder} step={step} value={value} wrapperClassName="mt-2" reverse={reverse} clearOnDecrementAtMax={reverse} decrementLabel={`Decrease ${controlName}`} incrementLabel={`Increase ${controlName}`} /></div>;
 }
 function Check({ checked, disabled, panel, text, onChange }: { checked: boolean; disabled?: boolean; panel?: boolean; text: string; onChange: (v: boolean) => void }) {

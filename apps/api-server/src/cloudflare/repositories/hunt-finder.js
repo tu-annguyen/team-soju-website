@@ -82,9 +82,12 @@ function calculateExperienceMetrics(composition, encountersPerHour, expCharm, bo
 function matchesEvYield(spot, stats = [], amounts = []) {
   const columns = stats.map((stat) => EV_COLUMNS[stat]).filter(Boolean);
   const yields = new Set(amounts.map(Number).filter((amount) => amount === 1 || amount === 2));
-  if (!columns.length || !yields.size) return true;
+  if (!columns.length) return true;
   return spot.composition.some(
-    (species) => columns.some((column) => yields.has(Number(species[column])))
+    (species) => columns.some((column) => {
+      const amount = Number(species[column]);
+      return yields.size ? yields.has(amount) : amount > 0;
+    })
   );
 }
 

@@ -11,7 +11,7 @@ const en = {
   sections: { filters: 'Filters', sort: 'Sort' },
   fields: {
     season: 'Season', region: 'Region', location: 'Location', species: 'Species', method: 'Encounter method',
-    time: 'Time', minimumTier: 'Minimum Tier', minimumLevel: 'Minimum level', minimumPoints: 'Minimum points/hour', minimumExp: 'Minimum EXP/hour',
+    time: 'Time', minimumTier: 'Minimum tier', minimumLevel: 'Minimum level', minimumPoints: 'Minimum points/hour', minimumExp: 'Minimum EXP/hour',
     hordeSize: 'Horde size', hordesPerHour: 'Hordes/hour', sortBy: 'Sort by', direction: 'Sort direction',
   },
   options: {
