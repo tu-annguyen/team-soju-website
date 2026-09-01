@@ -96,11 +96,11 @@ export default function NumberSpinner({
   };
 
   return (
-    <div className={`relative ${wrapperClassName}`}>
+    <div className={`relative ${disabled ? 'opacity-50' : ''} ${wrapperClassName}`}>
       <input
         {...inputProps}
         aria-label={ariaLabel}
-        className={`${className} pr-10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+        className={`${className} pr-10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
         disabled={disabled}
         max={max}
         min={min}

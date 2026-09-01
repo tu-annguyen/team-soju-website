@@ -28,7 +28,7 @@ function initialFilters(context: HuntFinderContext, defaultSeason: string): Hunt
   return {
     season: defaultSeason || getPokeMmoClockState(new Date()).season,
     region: '', location: '', species: '', minTier: '', minLevel: '', time: '', method: 'All',
-    hordeSize: '', hordesPerHour: '240', eventBoost: false, donator: false,
+    hordeSize: '', encountersPerHour: '', eventBoost: false, donator: false,
     fullSplitOnly: false, minPointsPerHour: '', minExpPerHour: '', personalCharm: false, linkCharm: false,
     chumBucket: false, nonSafari: false,
     officialUniqueBonus: context === 'shinyWar', teamUniqueBonus: false,
@@ -55,7 +55,8 @@ function buildSearchParams(
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
     if (!['All', 'Sweet Scent'].includes(filters.method)
-      && ['hordeSize', 'hordesPerHour', 'fullSplitOnly'].includes(key)) return;
+      && ['hordeSize', 'fullSplitOnly'].includes(key)) return;
+    if (['All', 'Headbutt', 'Rock Smash'].includes(filters.method) && key === 'encountersPerHour') return;
     if (['Headbutt', 'Rock Smash'].includes(filters.method) && ['minPointsPerHour', 'minExpPerHour'].includes(key)) return;
     if (!['All', 'Singles', 'Fishing'].includes(filters.method) && key === 'nonSafari') return;
     if (filters.sort === 'expPerHour' && key === 'minTier') return;

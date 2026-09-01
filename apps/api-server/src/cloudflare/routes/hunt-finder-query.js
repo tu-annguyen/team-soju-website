@@ -50,7 +50,7 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
       : sort === 'alphabetical' ? 'asc' : 'desc',
     page: searchParams.get('page') || undefined,
     pageSize: searchParams.get('pageSize') || undefined,
-    hordesPerHour: Number(searchParams.get('hordesPerHour')) || 240,
+    encountersPerHour: Number(searchParams.get('encountersPerHour')) || undefined,
     profile: {
       eventBoost: boolParam(searchParams, 'eventBoost'),
       donator: boolParam(searchParams, 'donator'),

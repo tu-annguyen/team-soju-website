@@ -901,6 +901,45 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].pointsPerHour).toBe(0.04);
   });
 
+  it('uses a configured encounter rate for points-per-hour calculations', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([{
+        location_id: '0:1', location_name: 'Test Route', region: 'Kanto',
+        method: 'Grass', season: 'Summer', horde_size: 0, is_lure: 0,
+        species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+        tier: 'Tier 3', points: 30, form: '', min_level: 10, max_level: 10,
+        morning_rate: 100, day_rate: 100, night_rate: 100,
+      }]),
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Singles', time: 'day', encountersPerHour: 450, profile: { eventBoost: false },
+    });
+
+    expect(result.items[0].encountersPerHour).toBe(450);
+    expect(result.items[0].pointsPerHour).toBe(0.45);
+  });
+
+  it('treats the configured Sweet Scent rate as hordes per hour', async () => {
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue([{
+        location_id: '0:1', location_name: 'Test Route', region: 'Kanto',
+        method: 'Sweet Scent', season: 'Summer', horde_size: 3, is_lure: 0,
+        species_name: 'Vulpix', slug: 'vulpix', family_key: 'vulpix',
+        tier: 'Tier 3', points: 30, form: '', min_level: 10, max_level: 10,
+        morning_rate: 100, day_rate: 100, night_rate: 100,
+      }]),
+    });
+
+    const result = await repository.listHordeSpots({
+      method: 'Sweet Scent', time: 'day', encountersPerHour: 240, profile: { eventBoost: false },
+    });
+
+    expect(result.items[0].encountersPerHour).toBe(720);
+  });
+
   it('sorts Rock Smash locations by average point potential', async () => {
     const baseRow = {
       region: 'Kanto', method: 'Rocks', season: 'Summer', horde_size: 0, is_lure: 0,

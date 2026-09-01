@@ -232,7 +232,7 @@ describe('HuntFinder', () => {
     expect(screen.getAllByRole('button', { name: 'Expand Location A' })).toHaveLength(1);
   });
 
-  it('enables every filter when every encounter method is selected', async () => {
+  it('shows each method default encounter rate and disables methods without an hourly rate', async () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
@@ -241,12 +241,13 @@ describe('HuntFinder', () => {
     const method = screen.getByLabelText('Encounter method');
     const nonSafari = screen.getByLabelText('Non-Safari only');
     const hordeSize = screen.getByLabelText('Horde size');
-    const hordesPerHour = screen.getByLabelText('Hordes/hour');
+    const encountersPerHour = screen.getByLabelText('Encounters/hour');
     const fullSplitOnly = screen.getByLabelText('100% split hordes only');
     const chumBucket = screen.getByLabelText('Chum bucket');
     expect(nonSafari).toBeEnabled();
     expect(hordeSize).toBeEnabled();
-    expect(hordesPerHour).toBeEnabled();
+    expect(encountersPerHour).toBeDisabled();
+    expect(encountersPerHour).toHaveValue(null);
     expect(fullSplitOnly).toBeEnabled();
     expect(chumBucket).toBeEnabled();
 
@@ -259,7 +260,7 @@ describe('HuntFinder', () => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
       expect(latestUrl).toContain('method=All');
       expect(latestUrl).toContain('hordeSize=5');
-      expect(latestUrl).toContain('hordesPerHour=240');
+      expect(latestUrl).not.toContain('encountersPerHour');
       expect(latestUrl).toContain('fullSplitOnly=true');
       expect(latestUrl).toContain('nonSafari=true');
       expect(latestUrl).toContain('chumBucket=true');
@@ -267,22 +268,44 @@ describe('HuntFinder', () => {
 
     fireEvent.change(method, { target: { value: 'Singles' } });
     expect(nonSafari).toBeEnabled();
+    expect(encountersPerHour).toBeEnabled();
+    expect(encountersPerHour).toHaveValue(300);
 
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
       expect(latestUrl).toContain('method=Singles');
+      expect(latestUrl).toContain('encountersPerHour=300');
       expect(latestUrl).toContain('nonSafari=true');
     });
 
     fireEvent.change(method, { target: { value: 'Sweet Scent' } });
     expect(nonSafari).toBeDisabled();
+    const hordesPerHour = screen.getByLabelText('Hordes/hour');
+    expect(hordesPerHour).toHaveValue(240);
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
       expect(latestUrl).not.toContain('nonSafari');
+      expect(latestUrl).toContain('encountersPerHour=240');
     });
 
     fireEvent.change(method, { target: { value: 'Fishing' } });
     expect(nonSafari).toBeEnabled();
+    const fishingEncountersPerHour = screen.getByLabelText('Encounters/hour');
+    expect(fishingEncountersPerHour).toHaveValue(400);
+
+    fireEvent.click(chumBucket);
+    expect(fishingEncountersPerHour).toHaveValue(200);
+
+    fireEvent.change(method, { target: { value: 'Honey Trees' } });
+    expect(fishingEncountersPerHour).toHaveValue(50);
+
+    fireEvent.change(method, { target: { value: 'Headbutt' } });
+    expect(fishingEncountersPerHour).toBeDisabled();
+    expect(fishingEncountersPerHour).toHaveValue(null);
+
+    fireEvent.change(method, { target: { value: 'Rock Smash' } });
+    expect(fishingEncountersPerHour).toBeDisabled();
+    expect(fishingEncountersPerHour).toHaveValue(null);
   });
 
   it('defaults to Official unique scoring and keeps the war bonuses mutually exclusive', async () => {

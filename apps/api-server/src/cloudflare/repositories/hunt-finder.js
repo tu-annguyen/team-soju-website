@@ -35,9 +35,11 @@ function isSpecialEncounterRow(row) {
 }
 
 function encounterRatePerHour(row, filters) {
+  const configuredRate = Number(filters.encountersPerHour);
   if (Number(row.horde_size) > 0) {
-    return (Number(filters.hordesPerHour) || 240) * Number(row.horde_size);
+    return (configuredRate || 240) * Number(row.horde_size);
   }
+  if (configuredRate > 0 && !METHODS_WITHOUT_HOURLY_DATA.has(row.method)) return configuredRate;
   if (row.method === 'Dark Grass') return 400;
   if (FISHING_METHODS.has(row.method)) return filters.chumBucket ? 400 : 200;
   if (row.method === 'Honey Tree') return 50;

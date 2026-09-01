@@ -61,7 +61,10 @@ describe('NumberSpinner', () => {
 
   it('does not step while disabled', () => {
     render(<Harness aria-label="Disabled value" disabled value="4" />);
+    const input = screen.getByLabelText('Disabled value');
     fireEvent.click(screen.getByRole('button', { name: 'Increase value' }));
-    expect(screen.getByLabelText('Disabled value')).toHaveValue(4);
+    expect(input).toHaveValue(4);
+    expect(input).toHaveClass('disabled:bg-gray-100', 'disabled:text-gray-500');
+    expect(input.parentElement).toHaveClass('opacity-50');
   });
 });

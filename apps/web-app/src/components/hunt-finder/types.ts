@@ -20,7 +20,7 @@ export type HuntFinderFilters = {
   time: string;
   method: string;
   hordeSize: string;
-  hordesPerHour: string;
+  encountersPerHour: string;
   eventBoost: boolean;
   donator: boolean;
   fullSplitOnly: boolean;
