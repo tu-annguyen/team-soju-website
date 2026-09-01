@@ -4,12 +4,16 @@ import type { AuthUser } from '../auth/types';
 
 export type ToolLink = {
   href: string;
-  labelKey: 'catchEventsCard' | 'feebasCard' | 'shinyWarCard';
+  labelKey: 'catchEventsCard' | 'feebasCard' | 'huntFinderCard';
   requiresTeamMembership?: boolean;
   requiredPermission?: string;
 };
 
 export const toolsLinks: ToolLink[] = [
+  {
+    href: '/tools/hunt-finder',
+    labelKey: 'huntFinderCard',
+  },
   {
     href: '/tools/catch-events',
     labelKey: 'catchEventsCard',
@@ -17,10 +21,6 @@ export const toolsLinks: ToolLink[] = [
   {
     href: '/feebas-tile-checker',
     labelKey: 'feebasCard',
-  },
-  {
-    href: '/events/2026/shiny-war',
-    labelKey: 'shinyWarCard',
   },
 ];
 

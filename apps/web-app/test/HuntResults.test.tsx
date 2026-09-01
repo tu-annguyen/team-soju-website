@@ -106,6 +106,61 @@ describe('HuntResults', () => {
     expect(screen.getByText('No one hunting or queued')).toBeInTheDocument();
   });
 
+  it('shows a single level without repeating the range', () => {
+    render(
+      <HuntResults
+        participants={[]}
+        speciesFilter=""
+        spots={[{
+          ...spot,
+          composition: [{ ...vulpix, min_level: 2, max_level: 2 }],
+        }]}
+        view="location"
+      />
+    );
+
+    expect(screen.getByText('Lv. 2')).toBeInTheDocument();
+    expect(screen.queryByText('Lv. 2–2')).not.toBeInTheDocument();
+  });
+
+  it('localizes locations, regions, species, and encounter details', () => {
+    render(
+      <HuntResults
+        locale="zh"
+        participants={[]}
+        speciesFilter=""
+        spots={[{
+          ...spot,
+          location: 'Abandoned Ship',
+          region: 'Hoenn',
+          method: 'Good Rod',
+          season: 'Spring',
+          time: 'Any',
+          horde_size: 0,
+          composition: [{
+            ...vulpix,
+            name: 'Magikarp',
+            slug: 'magikarp',
+            tier: 'Tier 7',
+            split: 0.6,
+            min_level: 20,
+            max_level: 20,
+            ev_speed: 1,
+          }],
+        }]}
+        view="location"
+      />
+    );
+
+    expect(screen.getByText('弃船')).toBeInTheDocument();
+    expect(screen.getByText(/丰缘 · 1/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '好钓竿' })).toBeInTheDocument();
+    expect(screen.getByText('丰缘 · 好钓竿 · 春季')).toBeInTheDocument();
+    expect(screen.getByText('鲤鱼王')).toBeInTheDocument();
+    expect(screen.getByText(/60.00% · 阶级 7/)).toBeInTheDocument();
+    expect(screen.getByText(/等级 20/)).toHaveTextContent('速度 +1 EV');
+  });
+
   it('keeps location results in their calculated order', () => {
     render(
       <HuntResults
@@ -441,6 +496,26 @@ describe('HuntResults', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Expand Sky Pillar' }));
     expect(screen.getByText('1F · Sweet Scent split 1')).toBeInTheDocument();
     expect(screen.getAllByText('Vulpix')).toHaveLength(2);
+  });
+
+  it('keeps split numbering in natural order for descending alphabetical sorting', () => {
+    render(
+      <HuntResults
+        participants={[]}
+        sort="alphabetical"
+        sortDirection="desc"
+        speciesFilter=""
+        spots={[
+          { ...spot, spot_key: 'first', time: 'morning' },
+          { ...spot, spot_key: 'second', time: 'night' },
+        ]}
+        view="location"
+      />
+    );
+
+    const split1 = screen.getByText('Sweet Scent split 1');
+    const split2 = screen.getByText('Sweet Scent split 2');
+    expect(split1.compareDocumentPosition(split2) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('collapses lower points-per-hour splits behind one location-level control', () => {

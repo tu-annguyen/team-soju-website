@@ -1,0 +1,14 @@
+ALTER TABLE pokedex_species ADD COLUMN base_exp INTEGER NOT NULL DEFAULT 0
+  CHECK (base_exp >= 0);
+ALTER TABLE pokedex_species ADD COLUMN ev_hp INTEGER NOT NULL DEFAULT 0
+  CHECK (ev_hp BETWEEN 0 AND 3);
+ALTER TABLE pokedex_species ADD COLUMN ev_attack INTEGER NOT NULL DEFAULT 0
+  CHECK (ev_attack BETWEEN 0 AND 3);
+ALTER TABLE pokedex_species ADD COLUMN ev_defense INTEGER NOT NULL DEFAULT 0
+  CHECK (ev_defense BETWEEN 0 AND 3);
+ALTER TABLE pokedex_species ADD COLUMN ev_sp_attack INTEGER NOT NULL DEFAULT 0
+  CHECK (ev_sp_attack BETWEEN 0 AND 3);
+ALTER TABLE pokedex_species ADD COLUMN ev_sp_defense INTEGER NOT NULL DEFAULT 0
+  CHECK (ev_sp_defense BETWEEN 0 AND 3);
+ALTER TABLE pokedex_species ADD COLUMN ev_speed INTEGER NOT NULL DEFAULT 0
+  CHECK (ev_speed BETWEEN 0 AND 3);

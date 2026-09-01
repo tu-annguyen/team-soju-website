@@ -188,6 +188,39 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].composition.map((species) => species.split)).toEqual([0.5, 0.5]);
   });
 
+  it('requires every species to meet minimum level and OR-matches EV yields', async () => {
+    const base = {
+      region: 'Kanto', method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+      tier: 'Tier 5', points: 10, form: '', morning_rate: 5, day_rate: 5, night_rate: 5,
+      base_exp: 70, ev_hp: 0, ev_attack: 0, ev_defense: 0,
+      ev_sp_attack: 0, ev_sp_defense: 0, ev_speed: 0,
+    };
+    const rows = [
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Rattata', slug: 'rattata', family_key: 'rattata', min_level: 30, max_level: 32, ev_speed: 2 },
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Pidgey', slug: 'pidgey', family_key: 'pidgey', min_level: 29, max_level: 31, ev_speed: 1 },
+      { ...base, location_id: '1:2', location_name: 'Route 2', species_name: 'Spearow', slug: 'spearow', family_key: 'spearow', min_level: 30, max_level: 32, ev_attack: 1 },
+    ];
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue(rows),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', minLevel: 30,
+      evStats: ['speed', 'attack'], evAmounts: ['1'], profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].location).toBe('Route 2');
+    expect(result.items[0].expPerHour).toBeGreaterThan(0);
+
+    const aboveMaximum = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', minExpPerHour: 1_000_000_000,
+      profile: { eventBoost: false },
+    });
+    expect(aboveMaximum.items).toHaveLength(0);
+  });
+
   it('scores the official roster together and the internal teams independently', async () => {
     const participants = [
       { event_id: '2026', member_id: 'bidoof-official', ign: 'BidoofOne', rank: 'Member', team: 'bidoof', is_official: 1, has_app_user: 1 },

@@ -1,4 +1,5 @@
 const { json, readJson } = require('../services/worker-support');
+const { huntFinderFilters } = require('./hunt-finder-query');
 
 const EVENT_ID = '2026';
 
@@ -121,45 +122,9 @@ async function handleShinyWarRoutes(context) {
     if (request.method === 'GET' && pathname === '/api/shiny-war/hordes') {
       const auth = await memberAuth(context);
       if (auth.response) return auth.response;
-      const bool = (name, fallback = false) => {
-        const value = url.searchParams.get(name);
-        return value === null ? fallback : value === 'true';
-      };
-      const familyKeys = (name) => String(url.searchParams.get(name) || '')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean);
-      const data = await repositories.shinyWar.listHordeSpots({
-        season: url.searchParams.get('season') || undefined,
-        region: url.searchParams.get('region') || undefined,
-        location: url.searchParams.get('location') || undefined,
-        method: url.searchParams.get('method') || undefined,
-        hordeSize: url.searchParams.get('hordeSize') || undefined,
-        minTier: url.searchParams.get('minTier') || undefined,
-        species: url.searchParams.get('species') || undefined,
-        time: url.searchParams.get('time') || undefined,
-        fullSplitOnly: bool('fullSplitOnly'),
-        chumBucket: bool('chumBucket'),
-        nonSafari: bool('nonSafari'),
-        officialUniqueBonus: bool('officialUniqueBonus', true),
-        teamUniqueBonus: bool('teamUniqueBonus'),
-        excludeOfficialCaught: bool('excludeOfficialCaught'),
-        excludeTeamCaught: bool('excludeTeamCaught'),
-        officialCaughtFamilyKeys: familyKeys('officialCaughtFamilyKeys'),
-        teamCaughtFamilyKeys: familyKeys('teamCaughtFamilyKeys'),
-        playerCaughtFamilyKeys: familyKeys('playerCaughtFamilyKeys'),
-        minPointsPerHour: url.searchParams.get('minPointsPerHour') || undefined,
-        sort: url.searchParams.get('sort') || undefined,
-        page: url.searchParams.get('page') || undefined,
-        pageSize: url.searchParams.get('pageSize') || undefined,
-        hordesPerHour: Number(url.searchParams.get('hordesPerHour')) || 240,
-        profile: {
-          eventBoost: bool('eventBoost', true),
-          donator: bool('donator'),
-          personalCharm: bool('personalCharm'),
-          linkCharm: bool('linkCharm'),
-        },
-      });
+      const data = await repositories.shinyWar.listHordeSpots(
+        huntFinderFilters(url, { includeWarFilters: true })
+      );
       return json({ success: true, data });
     }
 

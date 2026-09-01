@@ -29,12 +29,12 @@ function getTimeOfDay(hour: number): PokeMmoClockState['timeOfDay'] {
   return 'Night';
 }
 
-function getSeason(at: Date, event: ShinyWarClockEvent) {
+function getSeason(at: Date, event?: ShinyWarClockEvent) {
   const timestamp = at.getTime();
-  const startsAt = Date.parse(event.starts_at);
-  const endsAt = Date.parse(event.ends_at);
+  const startsAt = event ? Date.parse(event.starts_at) : Number.NaN;
+  const endsAt = event ? Date.parse(event.ends_at) : Number.NaN;
 
-  if (timestamp >= startsAt && timestamp < endsAt && event.seasons.length > 0) {
+  if (event && timestamp >= startsAt && timestamp < endsAt && event.seasons.length > 0) {
     const seasonDuration = (event.season_days || 7) * 24 * 60 * 60 * 1000;
     const seasonIndex = Math.floor((timestamp - startsAt) / seasonDuration);
     return event.seasons[seasonIndex] || event.seasons[event.seasons.length - 1];
@@ -43,7 +43,7 @@ function getSeason(at: Date, event: ShinyWarClockEvent) {
   return NATURAL_SEASONS[at.getUTCMonth() % NATURAL_SEASONS.length];
 }
 
-export function getPokeMmoClockState(at: Date, event: ShinyWarClockEvent): PokeMmoClockState {
+export function getPokeMmoClockState(at: Date, event?: ShinyWarClockEvent): PokeMmoClockState {
   const timestamp = at.getTime();
   const dayIndex = Math.floor(timestamp / REAL_DAY_DURATION_MS);
   const elapsedInDay = positiveModulo(timestamp, REAL_DAY_DURATION_MS);

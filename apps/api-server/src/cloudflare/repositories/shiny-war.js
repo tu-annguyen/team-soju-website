@@ -9,6 +9,16 @@ const {
   TIER_POINTS,
 } = require('@team-soju/utils');
 const { groupEquivalentHuntSpots, parentLocationName } = require('./hunt-spot-groups');
+const {
+  ENCOUNTER_METHODS,
+  calculateExperienceMetrics,
+  encounterRatePerHour,
+  isSpecialEncounterRow,
+  matchesEvYield,
+  meetsMinimumTier,
+  normalizeFamilyKey,
+  sortHuntSpots,
+} = require('./hunt-finder');
 
 function parseJson(value, fallback) {
   try {
@@ -16,58 +26,6 @@ function parseJson(value, fallback) {
   } catch {
     return fallback;
   }
-}
-
-const ENCOUNTER_METHODS = Object.freeze({
-  'Sweet Scent': ['Sweet Scent'],
-  Singles: ['Grass', 'Cave', 'Water', 'Inside', 'Dark Grass', 'Dust Cloud', 'Shadow'],
-  Fishing: ['Super Rod', 'Good Rod', 'Old Rod', 'Fishing'],
-  'Honey Trees': ['Honey Tree'],
-  Headbutt: ['Headbutt'],
-  'Rock Smash': ['Rock Smash', 'Rocks'],
-});
-
-const FISHING_METHODS = new Set(ENCOUNTER_METHODS.Fishing);
-const METHODS_WITHOUT_HOURLY_DATA = new Set(['Headbutt', 'Rock Smash', 'Rocks']);
-
-function isSpecialEncounterRow(row) {
-  if (Number(row.horde_size) > 0) return false;
-  if (row.is_special === true || Number(row.is_special) === 1) return true;
-  const hasNoRecordedRates = ['morning', 'day', 'night'].every(
-    (time) => row[`${time}_rate`] === null || row[`${time}_rate`] === undefined
-  );
-  const hasLegacySpecialRate = hasNoRecordedRates
-    || row.is_lure === true
-    || Number(row.is_lure) === 1;
-  if (!hasLegacySpecialRate) return false;
-
-  // Migration 0002 converted every null-rate row to a lure. In the source data,
-  // real lures are Any-season records; Unova's seasonal null-rate records are
-  // phenomena. The remaining Any-season exceptions are identifiable directly.
-  return (row.region === 'Unova' && row.season !== 'Any')
-    || ['Dust Cloud', 'Shadow'].includes(row.method)
-    || row.slug === 'feebas'
-    || (row.region === 'Unova' && row.location_name === 'Marvelous Bridge' && row.slug === 'swanna');
-}
-
-function encounterRatePerHour(row, filters) {
-  if (Number(row.horde_size) > 0) {
-    return (Number(filters.hordesPerHour) || 240) * Number(row.horde_size);
-  }
-  if (row.method === 'Dark Grass') return 400;
-  if (FISHING_METHODS.has(row.method)) return filters.chumBucket ? 400 : 200;
-  if (row.method === 'Honey Tree') return 50;
-  if (METHODS_WITHOUT_HOURLY_DATA.has(row.method)) return null;
-  return 300;
-}
-
-function normalizeFamilyKey(value) {
-  return String(value || '').trim().toLowerCase().replace(/[ .]+/g, '-');
-}
-
-function meetsMinimumTier(species, minTier) {
-  const tier = Number(String(species.tier || '').match(/^Tier ([0-7])$/)?.[1]);
-  return Number.isInteger(tier) && tier <= minTier;
 }
 
 function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
@@ -237,7 +195,8 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       && Number.isInteger(minTier) && minTier >= 0 && minTier <= 7;
     const rows = await runSelect(`
       SELECT e.*, l.region, l.name AS location_name, s.name AS species_name,
-             s.slug, s.family_key, s.tier, s.points
+             s.slug, s.family_key, s.tier, s.points, s.base_exp,
+             s.ev_hp, s.ev_attack, s.ev_defense, s.ev_sp_attack, s.ev_sp_defense, s.ev_speed
       FROM pokedex_encounters e
       JOIN pokedex_locations l ON l.id = e.location_id
       JOIN pokedex_species s ON s.id = e.species_id
@@ -274,6 +233,13 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
               && (Boolean(row.is_lure) || legacyLureEncounter),
             is_special: isSpecialEncounter,
             form: row.form, min_level: row.min_level, max_level: row.max_level,
+            base_exp: Number(row.base_exp) || 0,
+            ev_hp: Number(row.ev_hp) || 0,
+            ev_attack: Number(row.ev_attack) || 0,
+            ev_defense: Number(row.ev_defense) || 0,
+            ev_sp_attack: Number(row.ev_sp_attack) || 0,
+            ev_sp_defense: Number(row.ev_sp_defense) || 0,
+            ev_speed: Number(row.ev_speed) || 0,
           });
         }
       }
@@ -303,6 +269,13 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         0
       ) : 0;
       const averagePoints = baseAveragePoints + uniqueBonus;
+      const experience = calculateExperienceMetrics(
+        metrics.composition, encountersPerHour, filters.expCharm, {
+          expReamplifier: filters.expReamplifier,
+          expDonator: filters.expDonator,
+          tradeBonus: filters.tradeBonus,
+        }
+      );
       return {
         spot_key: key,
         region: row.region,
@@ -316,6 +289,7 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         is_special: scoredSpecies.some((entry) => entry.is_special),
         denominator,
         ...metrics,
+        ...experience,
         averagePoints,
         encountersPerHour,
         pointsPerHour: encountersPerHour === null
@@ -328,15 +302,21 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (species) => meetsMinimumTier(species, minTier)
       ))
       : spots;
+    const minimumLevel = Math.max(0, Number(filters.minLevel) || 0);
+    const levelFilteredSpots = minimumLevel
+      ? tierFilteredSpots.filter((spot) => spot.composition.every(
+        (species) => Number(species.min_level) >= minimumLevel
+      ))
+      : tierFilteredSpots;
     const speciesFilter = String(filters.species || '').trim().toLowerCase();
     const excludedFamilyKeys = filters.excludeTeamCaught
       ? teamCaughtFamilyKeys
       : officialCaughtFamilyKeys;
     const caughtFilteredSpots = (filters.excludeOfficialCaught || filters.excludeTeamCaught)
-      ? tierFilteredSpots.filter((spot) => !spot.composition.some(
+      ? levelFilteredSpots.filter((spot) => !spot.composition.some(
         (species) => excludedFamilyKeys.has(normalizeFamilyKey(species.family_key))
       ))
-      : tierFilteredSpots;
+      : levelFilteredSpots;
     const splitFilteredSpots = ['All', 'Sweet Scent'].includes(selectedMethod) && filters.fullSplitOnly
       ? caughtFilteredSpots.filter(
         (spot) => Number(spot.horde_size) > 0
@@ -348,29 +328,30 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (species) => species.name.toLowerCase().includes(speciesFilter)
       ))
       : splitFilteredSpots;
-    const locations = [...new Set(matchingSpots.map((spot) => parentLocationName(spot.location)))]
+    const evFilteredSpots = matchingSpots.filter(
+      (spot) => matchesEvYield(spot, filters.evStats, filters.evAmounts)
+    );
+    const locations = [...new Set(evFilteredSpots.map((spot) => parentLocationName(spot.location)))]
       .sort((left, right) => left.localeCompare(right));
     const locationFilter = String(filters.location || '').trim().toLowerCase();
     const locationFilteredSpots = locationFilter
-      ? matchingSpots.filter((spot) => parentLocationName(spot.location).toLowerCase().includes(locationFilter))
-      : matchingSpots;
+      ? evFilteredSpots.filter((spot) => parentLocationName(spot.location).toLowerCase().includes(locationFilter))
+      : evFilteredSpots;
     const minimumPointsPerHour = Math.max(0, Number(filters.minPointsPerHour) || 0);
+    const minimumExpPerHour = Math.max(0, Number(filters.minExpPerHour) || 0);
     const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(selectedMethod);
     const pointsFilteredSpots = minimumPointsPerHour && hasHourlyData
       ? locationFilteredSpots.filter(
         (spot) => spot.pointsPerHour !== null && spot.pointsPerHour >= minimumPointsPerHour
       )
       : locationFilteredSpots;
-    const groupedSpots = groupEquivalentHuntSpots(pointsFilteredSpots);
-    const sortByAverage = filters.sort === 'averagePoints' || !hasHourlyData;
-    groupedSpots.sort((a, b) => {
-      if (sortByAverage) return b.averagePoints - a.averagePoints || a.location.localeCompare(b.location);
-      if (a.pointsPerHour === null) return b.pointsPerHour === null
-        ? b.averagePoints - a.averagePoints || a.location.localeCompare(b.location)
-        : 1;
-      if (b.pointsPerHour === null) return -1;
-      return b.pointsPerHour - a.pointsPerHour || a.location.localeCompare(b.location);
-    });
+    const expFilteredSpots = minimumExpPerHour && hasHourlyData
+      ? pointsFilteredSpots.filter(
+        (spot) => spot.expPerHour !== null && spot.expPerHour >= minimumExpPerHour
+      )
+      : pointsFilteredSpots;
+    const groupedSpots = groupEquivalentHuntSpots(expFilteredSpots);
+    sortHuntSpots(groupedSpots, { ...filters, method: selectedMethod }, hasHourlyData);
     const page = Math.max(1, Number(filters.page) || 1);
     const pageSize = Math.min(1000, Math.max(1, Number(filters.pageSize) || 30));
     return {

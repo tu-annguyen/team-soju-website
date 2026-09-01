@@ -5,6 +5,7 @@ import type { CatchEventCollaborator, CatchEventConfig, CatchEventStatus, CatchE
 import { CATCH_EVENT_REGIONS, type CatchEventRegion } from '../utils/catchEventLocations';
 import { getClientLocale, getTranslations, type Locale } from '../i18n';
 import { POKEMON_SPECIES_NAME_SET } from '../utils/pokemonSpecies';
+import { getGameTranslations } from '../utils/gameTranslations';
 import { EventCreateForm } from './catch-events/EventCreateForm';
 import { EventsView } from './catch-events/EventsView';
 import { HostManageView } from './catch-events/HostManageView';
@@ -32,25 +33,13 @@ const CatchEventManager = ({ apiBaseUrl, initialView = 'events', locale }: Props
     [activeLocale]
   );
   const uiCopy = catchEventTranslations.ui as Record<string, string>;
-  const speciesCopy = catchEventTranslations.pokemonSpecies as Record<string, string>;
   const natureCopy = catchEventTranslations.natures as Record<string, string>;
-  const regionCopy = catchEventTranslations.regions as Record<string, string>;
-  const locationCopy = catchEventTranslations.locations as Record<string, string>;
+  const gameTranslations = useMemo(() => getGameTranslations(activeLocale), [activeLocale]);
   const tr = useCallback((text: string) => uiCopy[text] || text, [uiCopy]);
-  const translateSpeciesDisplay = useCallback((species: string) => speciesCopy[species] || species, [speciesCopy]);
+  const translateSpeciesDisplay = useCallback(gameTranslations.species, [gameTranslations]);
   const translateNatureDisplay = useCallback((nature: string) => natureCopy[nature] || nature, [natureCopy]);
-  const translateRegion = useCallback((region: string) => regionCopy[region] || region, [regionCopy]);
-  const translateLocation = useCallback((location: string) => {
-    const translatedLocation = locationCopy[location];
-    if (translatedLocation) {
-      return translatedLocation;
-    }
-    const routeMatch = /^Route (\d+)$/.exec(location);
-    if (routeMatch) {
-      return catchEventTranslations.routePattern.replace('{number}', routeMatch[1]);
-    }
-    return location;
-  }, [catchEventTranslations.routePattern, locationCopy]);
+  const translateRegion = useCallback(gameTranslations.region, [gameTranslations]);
+  const translateLocation = useCallback(gameTranslations.location, [gameTranslations]);
   const statusLabels = useMemo(
     () => Object.fromEntries(
       Object.entries(statusLabelKeys).map(([status, label]) => [status, tr(label)])

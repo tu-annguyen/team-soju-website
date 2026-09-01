@@ -120,6 +120,7 @@ const es = {
       categories: {
         eventOps: 'Operacion de eventos',
         liveCoordination: 'Coordinacion en vivo',
+        pokedexSearch: 'Búsqueda en la Pokédex',
       },
       catchEventsCard: {
         title: 'Gestor de eventos de captura',
@@ -130,6 +131,10 @@ const es = {
         title: 'Rastreador de casillas de Feebas',
         description:
           'Coordina las comprobaciones de casillas de Feebas en tiempo real con un tablero compartido para casillas revisadas, encontradas o confirmadas. Cada marca usa un color translucido para que el tablero funcione como un mapa de calor de la opinion del grupo.',
+      },
+      huntFinderCard: {
+        title: 'Buscador de cacerías',
+        description: 'Compara encuentros salvajes por ubicación, especie, nivel, EV, puntos shiny y EXP estimada por hora.',
       },
       shinyWarCard: {
         title: 'Panel de Shiny Wars',
