@@ -117,9 +117,13 @@ const en = {
         'Jump into the tools we use to organize hunts, share progress, and keep everyone on the same page.',
       openTool: 'Open tool',
       categories: {
+        pokedexSearch: 'Pokédex Search',
         eventOps: 'Event Operations',
         liveCoordination: 'Live Coordination',
-        pokedexSearch: 'Pokédex Search',
+      },
+      huntFinderCard: {
+        title: 'Hunt Finder',
+        description: 'Compare wild encounters by location, species, level, EV yield, shiny points, and estimated EXP per hour.',
       },
       catchEventsCard: {
         title: 'Catch Event Manager',
@@ -130,14 +134,6 @@ const en = {
         title: 'Feebas Tile Tracker',
         description:
           'Coordinate Feebas tile checks in real time with a shared tile board for checked, found, or confirmed calls. Each call has a translucent color so the board behaves like a live heatmap of group opinion.',
-      },
-      huntFinderCard: {
-        title: 'Hunt Finder',
-        description: 'Compare wild encounters by location, species, level, EV yield, shiny points, and estimated EXP per hour.',
-      },
-      shinyWarCard: {
-        title: 'Shiny Wars Dashboard',
-        description: 'Follow Team Soju standings and Shiny Wars progress.',
       },
     },
     feebas: {
