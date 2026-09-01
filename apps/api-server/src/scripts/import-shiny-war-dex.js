@@ -312,6 +312,13 @@ function validateExpectedCounts(data, expected = EXPECTED_2026_COUNTS) {
     .filter(([key, value]) => actual[key] !== value)
     .map(([key, value]) => `${key}: expected ${value}, received ${actual[key]}`);
   if (mismatches.length) throw new Error(`Unexpected Pokédex counts (${mismatches.join('; ')})`);
+  const encounteredSpeciesIds = new Set(data.encounters.map((entry) => entry.speciesId));
+  const missingExperience = data.species
+    .filter((entry) => encounteredSpeciesIds.has(entry.id) && entry.baseExp <= 0)
+    .map((entry) => entry.name);
+  if (missingExperience.length) {
+    throw new Error(`Encountered species missing base EXP: ${missingExperience.join(', ')}`);
+  }
   return actual;
 }
 

@@ -71,7 +71,7 @@ export default function HuntSpotCard({
             <p className="text-xs text-gray-500">{showingExp ? 'EXP/hour' : 'points/hour'}</p>
           </div>
           <div className="text-right">
-            <strong>{showingExp ? Math.round(spot.averageExp || 0).toLocaleString() : spot.averagePoints.toFixed(2)}</strong>
+            <strong>{showingExp ? (spot.averageExp == null ? 'N/A' : Math.round(spot.averageExp).toLocaleString()) : spot.averagePoints.toFixed(2)}</strong>
             <p className="text-xs text-gray-500">{showingExp ? messages.averageExp : messages.averageShiny}</p>
           </div>
         </div>

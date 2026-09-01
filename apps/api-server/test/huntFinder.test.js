@@ -26,6 +26,12 @@ describe('Hunt Finder calculations and filtering', () => {
     expect(result.expPerHour).toBe(39000);
   });
 
+  it('reports unavailable EXP instead of zero when Pokédex EXP data is missing', () => {
+    expect(calculateExperienceMetrics([
+      { base_exp: 0, min_level: 20, max_level: 20, split: 1 },
+    ], 100, 0)).toEqual({ averageExp: null, expPerHour: null });
+  });
+
   it('OR-matches selected EV stat and amount pairs', () => {
     const spot = { composition: [
       { ev_attack: 1, ev_speed: 0 },

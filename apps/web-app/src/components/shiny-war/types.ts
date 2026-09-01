@@ -63,7 +63,7 @@ export type HuntSpot = {
   is_special?: boolean;
   denominator: number;
   averagePoints: number;
-  averageExp?: number;
+  averageExp?: number | null;
   encountersPerHour: number | null;
   pointsPerHour: number | null;
   expPerHour?: number | null;

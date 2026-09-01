@@ -55,6 +55,14 @@ function meetsMinimumTier(species, minTier) {
 }
 
 function calculateExperienceMetrics(composition, encountersPerHour, expCharm, boosts = {}) {
+  const hasCompleteExperienceData = composition.length > 0 && composition.every((species) => (
+    Number(species.base_exp) > 0
+    && Number(species.min_level) > 0
+    && Number(species.max_level) >= Number(species.min_level)
+  ));
+  if (!hasCompleteExperienceData) {
+    return { averageExp: null, expPerHour: null };
+  }
   const averageExp = composition.reduce((sum, species) => {
     const averageLevel = (Number(species.min_level) + Number(species.max_level)) / 2;
     return sum + (((Number(species.base_exp) * averageLevel) / 7) * Number(species.split || 0));
