@@ -1,6 +1,5 @@
 import SpeciesSpriteName from './SpeciesSpriteName';
 import LocationQueueStatus from './LocationQueueStatus';
-import HuntFilterChips from './HuntFilterChips';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { HuntFinderContext, HuntSort } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
@@ -13,16 +12,11 @@ type Props = {
   targetSpecies?: HuntSpecies;
   onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   sort?: HuntSort;
-  selectedSeason?: string;
-  selectedTime?: string;
-  onSeasonChange?: (season: string) => void;
-  onTimeChange?: (time: string) => void;
   title?: string;
 };
 
 export default function HuntSpotCard({
   spot, participants, locale, targetSpecies, onQueue, title, context = 'shinyWar', sort = 'pointsPerHour',
-  selectedSeason = '', selectedTime = '', onSeasonChange, onTimeChange,
 }: Props) {
   const availableTimes = spot.time === 'Any' ? [] : (spot.times?.length ? spot.times : [spot.time]);
   const availability = [
@@ -49,17 +43,6 @@ export default function HuntSpotCard({
               {spot.is_special && <span className="font-semibold text-sky-600 dark:text-sky-400"> · {messages.includesSpecial}</span>}
             </p>
           </div>
-          {(onSeasonChange || onTimeChange) && (
-            <HuntFilterChips
-              season={spot.season}
-              selectedSeason={selectedSeason}
-              selectedTime={selectedTime}
-              time={spot.time}
-              times={spot.times}
-              onSeasonChange={onSeasonChange}
-              onTimeChange={onTimeChange}
-            />
-          )}
         </div>
         <div className="col-span-full grid grid-cols-2 gap-4 lg:contents">
           <div className="lg:text-right">

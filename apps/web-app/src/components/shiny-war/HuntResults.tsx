@@ -21,10 +21,6 @@ type Props = {
   onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   sort?: HuntSort;
   sortDirection?: SortDirection;
-  selectedSeason?: string;
-  selectedTime?: string;
-  onSeasonChange?: (season: string) => void;
-  onTimeChange?: (time: string) => void;
   /** @deprecated Encounter compositions no longer toggle independently. */
   onToggle?: (spotKey: string) => void;
   collapsedLocations?: ReadonlySet<string>;
@@ -35,7 +31,6 @@ export default function HuntResults({
   participants, minimumTier = '', locale, speciesFilter, spots, view, onQueue,
   collapsedLocations, onToggleLocation, context = 'shinyWar',
   sort = 'pointsPerHour', sortDirection = 'desc',
-  selectedSeason = '', selectedTime = '', onSeasonChange, onTimeChange,
 }: Props) {
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
@@ -61,11 +56,7 @@ export default function HuntResults({
             context={context}
             sort={sort}
             sortDirection={sortDirection}
-            selectedSeason={selectedSeason}
-            selectedTime={selectedTime}
             onQueue={onQueue}
-            onSeasonChange={onSeasonChange}
-            onTimeChange={onTimeChange}
             onToggleLocation={() => toggleLocation(group.key)}
           />
         ))}
@@ -112,12 +103,8 @@ export default function HuntResults({
                 context={context}
                 sort={sort}
                 sortDirection={sortDirection}
-                selectedSeason={selectedSeason}
-                selectedTime={selectedTime}
                 targetSpecies={species}
                 onQueue={onQueue}
-                onSeasonChange={onSeasonChange}
-                onTimeChange={onTimeChange}
                 onToggleLocation={() => toggleLocation(group.key)}
               />
             ))}

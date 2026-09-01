@@ -196,15 +196,11 @@ export default function HuntFinder({
         onQueue={onQueue}
         onToggleLocation={toggleLocation}
         participants={participants}
-        selectedSeason={filters.season}
-        selectedTime={filters.time}
         sort={filters.sort}
         sortDirection={filters.sortDirection}
         speciesFilter={filters.species}
         spots={spots}
         view={view}
-        onSeasonChange={(season) => setFilters((current) => ({ ...current, season }))}
-        onTimeChange={(time) => setFilters((current) => ({ ...current, time }))}
       />
     </div>
   );

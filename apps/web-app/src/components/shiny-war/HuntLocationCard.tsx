@@ -15,10 +15,6 @@ type Props = {
   onToggleLocation: () => void;
   sort?: HuntSort;
   sortDirection?: SortDirection;
-  selectedSeason?: string;
-  selectedTime?: string;
-  onSeasonChange?: (season: string) => void;
-  onTimeChange?: (time: string) => void;
 };
 
 const SINGLE_METHODS = new Set(['Grass', 'Cave', 'Water', 'Inside', 'Dark Grass', 'Dust Cloud', 'Shadow']);
@@ -55,7 +51,6 @@ function splitTitles(spots: HuntSpot[]) {
 export default function HuntLocationCard({
   locationOpen, participants, locale, spots, targetSpecies, onQueue, onToggleLocation,
   context = 'shinyWar', sort = 'pointsPerHour', sortDirection = 'desc',
-  selectedSeason = '', selectedTime = '', onSeasonChange, onTimeChange,
 }: Props) {
   const [lowerRateOpen, setLowerRateOpen] = useState(false);
   const messages = getHuntFinderMessages(locale).results;
@@ -63,8 +58,7 @@ export default function HuntLocationCard({
   const titledSpots = spots.map((spot, index) => ({ spot, title: titles[index] }));
   const direction = sortDirection === 'asc' ? 1 : -1;
   const metric = sort === 'expPerHour' ? 'expPerHour' : 'pointsPerHour';
-  const rankedSpots = [...titledSpots].sort((left, right) => {
-    if (sort === 'alphabetical') return direction * left.title.localeCompare(right.title);
+  const rankedSpots = sort === 'alphabetical' ? titledSpots : [...titledSpots].sort((left, right) => {
     const leftValue = left.spot[metric];
     const rightValue = right.spot[metric];
     if (leftValue == null) return rightValue == null ? 0 : 1;
@@ -89,13 +83,9 @@ export default function HuntLocationCard({
       context={context}
       spot={spot}
       sort={sort}
-      selectedSeason={selectedSeason}
-      selectedTime={selectedTime}
       targetSpecies={targetSpecies}
       title={title}
       onQueue={onQueue}
-      onSeasonChange={onSeasonChange}
-      onTimeChange={onTimeChange}
     />
   );
 

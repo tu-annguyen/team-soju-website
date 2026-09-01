@@ -74,7 +74,7 @@ describe('HuntFinder', () => {
     });
   });
 
-  it('uses Any labels and lets card chips update season and time filters', async () => {
+  it('keeps season and time filtering in the main filter section only', async () => {
     const spot = makeSpot('mirage', 'Mirage Tower');
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [spot], locations: ['Mirage Tower'], total: 1 });
 
@@ -83,8 +83,10 @@ describe('HuntFinder', () => {
     expect(await screen.findByRole('option', { name: 'Any season' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Any time' })).toBeInTheDocument();
     expect(await screen.findByText('Mirage Tower')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Any season' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Night time' }));
+    expect(screen.queryByLabelText('Location season and time filters')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Any season' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Season'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: 'night' } });
 
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;

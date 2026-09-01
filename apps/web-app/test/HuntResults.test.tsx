@@ -443,6 +443,26 @@ describe('HuntResults', () => {
     expect(screen.getAllByText('Vulpix')).toHaveLength(2);
   });
 
+  it('keeps split numbering in natural order for descending alphabetical sorting', () => {
+    render(
+      <HuntResults
+        participants={[]}
+        sort="alphabetical"
+        sortDirection="desc"
+        speciesFilter=""
+        spots={[
+          { ...spot, spot_key: 'first', time: 'morning' },
+          { ...spot, spot_key: 'second', time: 'night' },
+        ]}
+        view="location"
+      />
+    );
+
+    const split1 = screen.getByText('Sweet Scent split 1');
+    const split2 = screen.getByText('Sweet Scent split 2');
+    expect(split1.compareDocumentPosition(split2) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('collapses lower points-per-hour splits behind one location-level control', () => {
     render(
       <HuntResults
