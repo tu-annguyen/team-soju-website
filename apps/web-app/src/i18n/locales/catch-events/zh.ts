@@ -984,7 +984,7 @@ const catchEventManager = {
     "Mt. Chimney": "煙突山",
     "Desert Underpass": "沙漠的地下道",
     "New Mauville": "新紫堇",
-    "Abandoned Ship": "棄船",
+    "Abandoned Ship": "弃船",
     "Mt. Pyre": "送火山",
     "Magma Hideout": "熔岩队基地",
     "Aqua Hideout": "海洋队基地",

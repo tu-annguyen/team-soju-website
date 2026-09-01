@@ -123,6 +123,44 @@ describe('HuntResults', () => {
     expect(screen.queryByText('Lv. 2–2')).not.toBeInTheDocument();
   });
 
+  it('localizes locations, regions, species, and encounter details', () => {
+    render(
+      <HuntResults
+        locale="zh"
+        participants={[]}
+        speciesFilter=""
+        spots={[{
+          ...spot,
+          location: 'Abandoned Ship',
+          region: 'Hoenn',
+          method: 'Good Rod',
+          season: 'Spring',
+          time: 'Any',
+          horde_size: 0,
+          composition: [{
+            ...vulpix,
+            name: 'Magikarp',
+            slug: 'magikarp',
+            tier: 'Tier 7',
+            split: 0.6,
+            min_level: 20,
+            max_level: 20,
+            ev_speed: 1,
+          }],
+        }]}
+        view="location"
+      />
+    );
+
+    expect(screen.getByText('弃船')).toBeInTheDocument();
+    expect(screen.getByText(/丰缘 · 1/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '好钓竿' })).toBeInTheDocument();
+    expect(screen.getByText('丰缘 · 好钓竿 · 春季')).toBeInTheDocument();
+    expect(screen.getByText('鲤鱼王')).toBeInTheDocument();
+    expect(screen.getByText(/60.00% · 阶级 7/)).toBeInTheDocument();
+    expect(screen.getByText(/等级 20/)).toHaveTextContent('速度 +1 EV');
+  });
+
   it('keeps location results in their calculated order', () => {
     render(
       <HuntResults

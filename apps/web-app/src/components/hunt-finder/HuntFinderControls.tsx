@@ -5,6 +5,7 @@ import NumberSpinner from '../NumberSpinner';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { getHuntFinderMessages, type HuntFinderMessages } from './messages';
 import { EV_STAT_OPTIONS, type EvAmount, type HuntFinderContext, type HuntFinderFilters } from './types';
+import { getGameTranslations } from '../../utils/gameTranslations';
 
 type Props = { context: HuntFinderContext; filters: HuntFinderFilters; locale?: string; locations: string[]; setFilters: Dispatch<SetStateAction<HuntFinderFilters>>; teamWarAvailable: boolean };
 type SectionProps = Props & { messages: HuntFinderMessages };
@@ -19,18 +20,19 @@ export default function HuntFinderControls(props: Props) {
   return <div className="space-y-4"><Filters {...props} messages={messages} /><Sort {...props} messages={messages} /></div>;
 }
 
-function Filters({ context, filters: f, locations, messages: m, setFilters, teamWarAvailable }: SectionProps) {
+function Filters({ context, filters: f, locale, locations, messages: m, setFilters, teamWarAvailable }: SectionProps) {
   const set = <K extends keyof HuntFinderFilters>(key: K, value: HuntFinderFilters[K]) => setFilters((old) => ({ ...old, [key]: value }));
   const scent = ['All', 'Sweet Scent'].includes(f.method);
   const nonSafari = ['All', 'Singles', 'Fishing'].includes(f.method);
   const alphabetical = f.sort === 'alphabetical';
+  const game = getGameTranslations(locale);
   const methods = [['All', m.options.everyMethod], ['Sweet Scent', m.options.sweetScent], ['Singles', m.options.singles], ['Fishing', m.options.fishing], ['Honey Trees', m.options.honeyTrees], ['Headbutt', m.options.headbutt], ['Rock Smash', m.options.rockSmash]] as const;
   return <section aria-labelledby="hunt-filters-heading" className={section}>
     <h2 className="text-lg font-bold sm:col-span-2 lg:col-span-4" id="hunt-filters-heading">{m.sections.filters}</h2>
     <Select title={m.fields.season} value={f.season} onChange={(v) => set('season', v)} options={[['', m.options.anySeason], ...(['Summer', 'Autumn', 'Winter', 'Spring'] as const).map((v) => [v, m.calendar[v]] as const)]} />
-    <label className={label}>{m.fields.region}<FilteredCombobox className={field} options={CATCH_EVENT_REGIONS} value={f.region} onChange={(region) => setFilters((old) => ({ ...old, region, location: '' }))} placeholder={m.options.everyRegion} /></label>
-    <label className={label}>{m.fields.location}<FilteredCombobox className={field} options={locations} value={f.location} onChange={(v) => set('location', v)} placeholder={m.options.everyLocation} /></label>
-    <label className={label}>{m.fields.species}<FilteredCombobox className={field} options={POKEMON_SPECIES_NAMES} value={f.species} onChange={(v) => set('species', v)} placeholder={m.options.everySpecies} /></label>
+    <label className={label}>{m.fields.region}<FilteredCombobox className={field} getOptionLabel={game.region} options={CATCH_EVENT_REGIONS} value={f.region} onChange={(region) => setFilters((old) => ({ ...old, region, location: '' }))} placeholder={m.options.everyRegion} /></label>
+    <label className={label}>{m.fields.location}<FilteredCombobox className={field} getOptionLabel={game.location} options={locations} value={f.location} onChange={(v) => set('location', v)} placeholder={m.options.everyLocation} /></label>
+    <label className={label}>{m.fields.species}<FilteredCombobox className={field} getOptionLabel={game.species} options={POKEMON_SPECIES_NAMES} value={f.species} onChange={(v) => set('species', v)} placeholder={m.options.everySpecies} /></label>
     <Select title={m.fields.method} value={f.method} onChange={(method) => setFilters((old) => (
       old.sort === 'expPerHour' && !['All', 'Sweet Scent'].includes(method)
         ? { ...old, method, sort: 'alphabetical', sortDirection: 'asc' }

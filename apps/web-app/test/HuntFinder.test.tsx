@@ -442,4 +442,36 @@ describe('HuntFinder', () => {
     expect(screen.queryByRole('button', { name: 'Hunt now' })).not.toBeInTheDocument();
     global.fetch = originalFetch;
   });
+
+  it('localizes filter options while submitting canonical values', async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({
+      items: [], locations: ['Abandoned Ship'], total: 0,
+    });
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Spring" locale="zh" participants={[]} onQueue={jest.fn()} />);
+
+    const region = screen.getByLabelText('地区');
+    fireEvent.focus(region);
+    fireEvent.change(region, { target: { value: '丰缘' } });
+    fireEvent.mouseDown(await screen.findByRole('option', { name: /丰缘.*Hoenn/ }));
+    expect(region).toHaveValue('丰缘');
+
+    const location = screen.getByLabelText('地点');
+    fireEvent.focus(location);
+    fireEvent.change(location, { target: { value: '弃船' } });
+    fireEvent.mouseDown(await screen.findByRole('option', { name: /弃船.*Abandoned Ship/ }));
+    expect(location).toHaveValue('弃船');
+
+    const species = screen.getByLabelText('宝可梦');
+    fireEvent.focus(species);
+    fireEvent.change(species, { target: { value: '鲤鱼王' } });
+    fireEvent.mouseDown(await screen.findByRole('option', { name: /鲤鱼王.*Magikarp/ }));
+    expect(species).toHaveValue('鲤鱼王');
+
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('region=Hoenn');
+      expect(latestUrl).toContain('location=Abandoned+Ship');
+      expect(latestUrl).toContain('species=Magikarp');
+    });
+  });
 });

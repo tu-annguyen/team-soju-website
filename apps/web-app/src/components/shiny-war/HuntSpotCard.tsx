@@ -3,6 +3,7 @@ import LocationQueueStatus from './LocationQueueStatus';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { HuntFinderContext, HuntSort } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
+import { getGameTranslations } from '../../utils/gameTranslations';
 
 type Props = {
   spot: HuntSpot;
@@ -19,16 +20,18 @@ export default function HuntSpotCard({
   spot, participants, locale, targetSpecies, onQueue, title, context = 'shinyWar', sort = 'pointsPerHour',
 }: Props) {
   const availableTimes = spot.time === 'Any' ? [] : (spot.times?.length ? spot.times : [spot.time]);
+  const game = getGameTranslations(locale);
   const availability = [
-    spot.season !== 'Any' ? spot.season : null,
-    ...availableTimes.map((time) => time.charAt(0).toUpperCase() + time.slice(1)),
+    spot.season !== 'Any' ? game.label(spot.season) : null,
+    ...availableTimes.map((time) => game.label(time.charAt(0).toUpperCase() + time.slice(1))),
   ].filter(Boolean).join(' · ');
   const showingExp = sort === 'expPerHour';
-  const messages = getHuntFinderMessages(locale).results;
+  const copy = getHuntFinderMessages(locale);
+  const messages = copy.results;
   const evLabels = (species: HuntSpecies) => ([
     ['HP', species.ev_hp], ['Atk', species.ev_attack], ['Def', species.ev_defense],
     ['Sp. Atk', species.ev_sp_attack], ['Sp. Def', species.ev_sp_defense], ['Speed', species.ev_speed],
-  ] as const).filter(([, value]) => Number(value) > 0).map(([label, value]) => `${label} +${value}`).join(', ');
+  ] as const).filter(([, value]) => Number(value) > 0).map(([label, value]) => `${game.label(label)} +${value}`).join(', ');
 
   return (
     <article className="bg-transparent px-4 py-3">
@@ -37,7 +40,7 @@ export default function HuntSpotCard({
           <div className="w-full text-left">
             <h3 className="text-sm font-bold text-gray-950 dark:text-white">{title || spot.location}</h3>
             <p className="truncate whitespace-nowrap text-xs text-gray-500">
-              {spot.region} · {spot.horde_size ? `${spot.horde_size}× Sweet Scent` : spot.method}
+              {game.region(spot.region)} · {spot.horde_size ? `${spot.horde_size}× ${game.label('Sweet Scent')}` : game.label(spot.method)}
               {availability && <> · {availability}</>}
               {spot.is_lure && <span className="font-semibold text-amber-600 dark:text-amber-400"> · {messages.includesLure}</span>}
               {spot.is_special && <span className="font-semibold text-sky-600 dark:text-sky-400"> · {messages.includesSpecial}</span>}
@@ -51,7 +54,7 @@ export default function HuntSpotCard({
                 ? (spot.expPerHour == null ? 'N/A' : Math.round(spot.expPerHour).toLocaleString())
                 : (spot.pointsPerHour === null ? 'N/A' : spot.pointsPerHour.toFixed(3))}
             </strong>
-            <p className="text-xs text-gray-500">{showingExp ? 'EXP/hour' : 'points/hour'}</p>
+            <p className="text-xs text-gray-500">{showingExp ? copy.options.expHour : copy.options.pointsHour}</p>
           </div>
           <div className="text-right">
             <strong>{showingExp ? (spot.averageExp == null ? 'N/A' : Math.round(spot.averageExp).toLocaleString()) : spot.averagePoints.toFixed(2)}</strong>
@@ -74,17 +77,18 @@ export default function HuntSpotCard({
                 form={species.form}
                 name={species.name}
                 slug={species.slug}
+                displayName={game.species(species.name)}
               />
               <span className="ml-1">
                 · {species.rate_unknown
                   ? <span aria-label="Unknown encounter rate">???</span>
                   : species.is_special
                     ? <span className="font-semibold text-sky-600 dark:text-sky-400">{messages.special}</span>
-                    : `${(species.split * 100).toFixed(2)}%`} · {species.tier}
+                    : `${(species.split * 100).toFixed(2)}%`} · {game.tier(species.tier)}
               </span>
             </div>
             <div className="pl-10">
-              Lv. {species.min_level}{species.max_level !== species.min_level && `–${species.max_level}`}
+              {game.level} {species.min_level}{species.max_level !== species.min_level && `–${species.max_level}`}
               {evLabels(species) && <span className="ml-1 text-emerald-700 dark:text-emerald-300">· {evLabels(species)} EV</span>}
               {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· {messages.lureOnly}</span>}
             </div>
