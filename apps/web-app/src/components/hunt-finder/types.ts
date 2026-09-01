@@ -19,6 +19,7 @@ export type HuntFinderFilters = {
   donator: boolean;
   fullSplitOnly: boolean;
   minPointsPerHour: string;
+  minExpPerHour: string;
   personalCharm: boolean;
   linkCharm: boolean;
   chumBucket: boolean;

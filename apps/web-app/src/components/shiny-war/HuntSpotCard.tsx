@@ -67,24 +67,28 @@ export default function HuntSpotCard({
       </div>
       <div className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 border-t border-gray-100 pt-3 dark:border-gray-800 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {spot.composition.map((species) => (
-          <p key={`${species.slug}-${species.form}`} className="flex min-w-0 flex-wrap items-center text-xs text-gray-700 dark:text-gray-300">
-            <SpeciesSpriteName
-              className="font-bold"
-              form={species.form}
-              name={species.name}
-              slug={species.slug}
-            />
-            <span className="basis-full pl-10 sm:basis-auto sm:pl-0">
-              <span className="hidden sm:inline">&nbsp;· </span>
-              {species.rate_unknown
-                ? <span aria-label="Unknown encounter rate">???</span>
-                : species.is_special
-                  ? <span className="font-semibold text-sky-600 dark:text-sky-400">{messages.special}</span>
-                : `${(species.split * 100).toFixed(2)}%`} · {species.tier} · Lv. {species.min_level}–{species.max_level}
+          <div key={`${species.slug}-${species.form}`} className="min-w-0 text-xs text-gray-700 dark:text-gray-300">
+            <div className="flex min-w-0 flex-wrap items-center">
+              <SpeciesSpriteName
+                className="font-bold"
+                form={species.form}
+                name={species.name}
+                slug={species.slug}
+              />
+              <span className="ml-1">
+                · {species.rate_unknown
+                  ? <span aria-label="Unknown encounter rate">???</span>
+                  : species.is_special
+                    ? <span className="font-semibold text-sky-600 dark:text-sky-400">{messages.special}</span>
+                    : `${(species.split * 100).toFixed(2)}%`} · {species.tier}
+              </span>
+            </div>
+            <div className="pl-10">
+              Lv. {species.min_level}{species.max_level !== species.min_level && `–${species.max_level}`}
               {evLabels(species) && <span className="ml-1 text-emerald-700 dark:text-emerald-300">· {evLabels(species)} EV</span>}
               {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· {messages.lureOnly}</span>}
-            </span>
-          </p>
+            </div>
+          </div>
         ))}
         <p className="text-xs text-gray-500 sm:col-span-2 lg:col-span-3 2xl:col-span-4">
           {spot.encountersPerHour === null

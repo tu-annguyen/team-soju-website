@@ -33,6 +33,7 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
     chumBucket: boolParam(searchParams, 'chumBucket'),
     nonSafari: boolParam(searchParams, 'nonSafari'),
     minPointsPerHour: searchParams.get('minPointsPerHour') || undefined,
+    minExpPerHour: searchParams.get('minExpPerHour') || undefined,
     evStats: listParam(searchParams, 'evStats').filter((stat) => EV_STATS.has(stat)),
     evAmounts: evAmounts.slice(0, 1),
     expCharm: ['0.25', '0.5', '1'].includes(searchParams.get('expCharm'))

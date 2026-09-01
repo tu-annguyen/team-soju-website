@@ -29,7 +29,7 @@ function initialFilters(context: HuntFinderContext, defaultSeason: string): Hunt
     season: defaultSeason || getPokeMmoClockState(new Date()).season,
     region: '', location: '', species: '', minTier: '', minLevel: '', time: '', method: 'All',
     hordeSize: '', hordesPerHour: '240', eventBoost: false, donator: false,
-    fullSplitOnly: false, minPointsPerHour: '', personalCharm: false, linkCharm: false,
+    fullSplitOnly: false, minPointsPerHour: '', minExpPerHour: '', personalCharm: false, linkCharm: false,
     chumBucket: false, nonSafari: false,
     officialUniqueBonus: context === 'shinyWar', teamUniqueBonus: false,
     excludeOfficialCaught: false, excludeTeamCaught: false,
@@ -56,10 +56,13 @@ function buildSearchParams(
   Object.entries(filters).forEach(([key, value]) => {
     if (!['All', 'Sweet Scent'].includes(filters.method)
       && ['hordeSize', 'hordesPerHour', 'fullSplitOnly'].includes(key)) return;
-    if (['Headbutt', 'Rock Smash'].includes(filters.method) && key === 'minPointsPerHour') return;
+    if (['Headbutt', 'Rock Smash'].includes(filters.method) && ['minPointsPerHour', 'minExpPerHour'].includes(key)) return;
     if (!['All', 'Singles', 'Fishing'].includes(filters.method) && key === 'nonSafari') return;
+    if (filters.sort === 'expPerHour' && key === 'minTier') return;
+    if (filters.sort === 'expPerHour' && key === 'minPointsPerHour') return;
+    if (filters.sort === 'pointsPerHour' && ['minLevel', 'minExpPerHour', 'evStats', 'evAmounts'].includes(key)) return;
     if (filters.sort !== 'pointsPerHour'
-      && ['eventBoost', 'donator', 'personalCharm', 'linkCharm', 'chumBucket', 'minPointsPerHour'].includes(key)) return;
+      && ['eventBoost', 'donator', 'personalCharm', 'linkCharm', 'chumBucket'].includes(key)) return;
     if (filters.sort !== 'expPerHour' && ['expCharm', 'expReamplifier', 'expDonator', 'tradeBonus'].includes(key)) return;
     if (key === 'chumBucket' && !['All', 'Fishing'].includes(filters.method)) return;
     if (context === 'public' && [
@@ -128,7 +131,8 @@ export default function HuntFinder({
 
   const locationViewKeys = [...new Set(spots.map(huntLocationKey))];
   const pokemonLocationGroups = groupHuntSpotsByPokemonLocation(
-    spots, filters.species, filters.minTier, filters.sort, filters.sortDirection
+    spots, filters.species, filters.sort === 'expPerHour' ? '' : filters.minTier,
+    filters.sort, filters.sortDirection
   );
   const pokemonLocationDefaults = new Map(
     pokemonLocationGroups.flatMap(({ locations: groupedLocations }) => (
@@ -191,7 +195,7 @@ export default function HuntFinder({
       <HuntResults
         collapsedLocations={collapsedLocations}
         context={context}
-        minimumTier={filters.minTier}
+        minimumTier={filters.sort === 'expPerHour' ? '' : filters.minTier}
         locale={locale}
         onQueue={onQueue}
         onToggleLocation={toggleLocation}

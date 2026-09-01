@@ -338,13 +338,19 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       ? evFilteredSpots.filter((spot) => parentLocationName(spot.location).toLowerCase().includes(locationFilter))
       : evFilteredSpots;
     const minimumPointsPerHour = Math.max(0, Number(filters.minPointsPerHour) || 0);
+    const minimumExpPerHour = Math.max(0, Number(filters.minExpPerHour) || 0);
     const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(selectedMethod);
     const pointsFilteredSpots = minimumPointsPerHour && hasHourlyData
       ? locationFilteredSpots.filter(
         (spot) => spot.pointsPerHour !== null && spot.pointsPerHour >= minimumPointsPerHour
       )
       : locationFilteredSpots;
-    const groupedSpots = groupEquivalentHuntSpots(pointsFilteredSpots);
+    const expFilteredSpots = minimumExpPerHour && hasHourlyData
+      ? pointsFilteredSpots.filter(
+        (spot) => spot.expPerHour !== null && spot.expPerHour >= minimumExpPerHour
+      )
+      : pointsFilteredSpots;
+    const groupedSpots = groupEquivalentHuntSpots(expFilteredSpots);
     sortHuntSpots(groupedSpots, { ...filters, method: selectedMethod }, hasHourlyData);
     const page = Math.max(1, Number(filters.page) || 1);
     const pageSize = Math.min(1000, Math.max(1, Number(filters.pageSize) || 30));

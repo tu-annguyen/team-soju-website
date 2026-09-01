@@ -106,6 +106,23 @@ describe('HuntResults', () => {
     expect(screen.getByText('No one hunting or queued')).toBeInTheDocument();
   });
 
+  it('shows a single level without repeating the range', () => {
+    render(
+      <HuntResults
+        participants={[]}
+        speciesFilter=""
+        spots={[{
+          ...spot,
+          composition: [{ ...vulpix, min_level: 2, max_level: 2 }],
+        }]}
+        view="location"
+      />
+    );
+
+    expect(screen.getByText('Lv. 2')).toBeInTheDocument();
+    expect(screen.queryByText('Lv. 2–2')).not.toBeInTheDocument();
+  });
+
   it('keeps location results in their calculated order', () => {
     render(
       <HuntResults

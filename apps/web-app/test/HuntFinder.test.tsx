@@ -58,6 +58,51 @@ describe('HuntFinder', () => {
     expect(minimumTier).toHaveValue(6);
   });
 
+  it('shows every filter alphabetically and uses metric-specific filters for points and EXP sorting', async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+
+    expect(screen.getByLabelText('Minimum Tier')).toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum level')).toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum points/hour')).toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum EXP/hour')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'EV yield' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Minimum Tier'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Minimum level'), { target: { value: '30' } });
+    fireEvent.click(screen.getByLabelText('Attack'));
+    fireEvent.click(screen.getByLabelText('+1 EV'));
+
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
+    expect(screen.getByLabelText('Minimum Tier')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Minimum level')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum points/hour')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Minimum EXP/hour')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'EV yield' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).toContain('minTier=3');
+      expect(latestUrl).not.toContain('minLevel');
+      expect(latestUrl).not.toContain('evStats');
+    });
+
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
+    expect(screen.queryByLabelText('Minimum Tier')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum level')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Minimum points/hour')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Minimum EXP/hour')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'EV yield' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Minimum EXP/hour'), { target: { value: '100000' } });
+    await waitFor(() => {
+      const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+      expect(latestUrl).not.toContain('minTier');
+      expect(latestUrl).toContain('minLevel=30');
+      expect(latestUrl).not.toContain('minPointsPerHour');
+      expect(latestUrl).toContain('minExpPerHour=100000');
+      expect(latestUrl).toContain('evStats=attack');
+    });
+  });
+
   it("uses Farfetch'd as the species filter value", async () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 

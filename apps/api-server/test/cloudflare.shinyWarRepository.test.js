@@ -213,6 +213,12 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0].location).toBe('Route 2');
     expect(result.items[0].expPerHour).toBeGreaterThan(0);
+
+    const aboveMaximum = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', minExpPerHour: 1_000_000_000,
+      profile: { eventBoost: false },
+    });
+    expect(aboveMaximum.items).toHaveLength(0);
   });
 
   it('scores the official roster together and the internal teams independently', async () => {

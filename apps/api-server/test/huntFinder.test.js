@@ -60,11 +60,11 @@ describe('Hunt Finder calculations and filtering', () => {
 
 describe('Hunt Finder public API', () => {
   it('parses generalized filters without accepting war-only state', () => {
-    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&minLevel=30&evStats=attack,speed&evAmounts=1,2&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
+    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&minLevel=30&minExpPerHour=100000&evStats=attack,speed&evAmounts=1,2&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
     const filters = huntFinderFilters(url);
 
     expect(filters).toMatchObject({
-      method: 'Sweet Scent', minLevel: '30', evStats: ['attack', 'speed'],
+      method: 'Sweet Scent', minLevel: '30', minExpPerHour: '100000', evStats: ['attack', 'speed'],
       evAmounts: ['1'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
       expReamplifier: true, expDonator: true, tradeBonus: true,
       profile: { eventBoost: true },
