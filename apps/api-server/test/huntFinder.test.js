@@ -17,6 +17,15 @@ describe('Hunt Finder calculations and filtering', () => {
     expect(result.expPerHour).toBeCloseTo(592500);
   });
 
+  it('adds EXP boosts and the selected charm without compounding them', () => {
+    const result = calculateExperienceMetrics([
+      { base_exp: 70, min_level: 20, max_level: 20, split: 1 },
+    ], 100, 0.5, { expReamplifier: true, expDonator: true, tradeBonus: true });
+
+    expect(result.averageExp).toBe(200);
+    expect(result.expPerHour).toBe(39000);
+  });
+
   it('OR-matches selected EV stat and amount pairs', () => {
     const spot = { composition: [
       { ev_attack: 1, ev_speed: 0 },
@@ -45,12 +54,13 @@ describe('Hunt Finder calculations and filtering', () => {
 
 describe('Hunt Finder public API', () => {
   it('parses generalized filters without accepting war-only state', () => {
-    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&minLevel=30&evStats=attack,speed&evAmounts=1,2&sort=expPerHour&sortDirection=asc&expCharm=0.5&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
+    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&minLevel=30&evStats=attack,speed&evAmounts=1,2&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
     const filters = huntFinderFilters(url);
 
     expect(filters).toMatchObject({
       method: 'Sweet Scent', minLevel: '30', evStats: ['attack', 'speed'],
       evAmounts: ['1'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
+      expReamplifier: true, expDonator: true, tradeBonus: true,
       profile: { eventBoost: true },
     });
     expect(filters.officialUniqueBonus).toBeUndefined();

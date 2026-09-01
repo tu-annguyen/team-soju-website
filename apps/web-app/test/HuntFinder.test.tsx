@@ -320,13 +320,23 @@ describe('HuntFinder', () => {
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
 
     expect(screen.queryByRole('group', { name: 'Boosts and charms' })).not.toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Charms' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Boosts and Charms' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Exp. Reamplifier +5%')).toHaveAttribute('type', 'checkbox');
+    expect(screen.getByLabelText("Donator's Status +25%")).toHaveAttribute('type', 'checkbox');
+    expect(screen.getByLabelText('Trade Bonus +15%')).toHaveAttribute('type', 'checkbox');
+    expect(screen.getByLabelText('EXP Charm +50%')).toHaveAttribute('type', 'radio');
+    fireEvent.click(screen.getByLabelText('Exp. Reamplifier +5%'));
+    fireEvent.click(screen.getByLabelText("Donator's Status +25%"));
+    fireEvent.click(screen.getByLabelText('Trade Bonus +15%'));
     fireEvent.click(screen.getByLabelText('EXP Charm +50%'));
 
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
       expect(latestUrl).toContain('sort=expPerHour');
       expect(latestUrl).toContain('expCharm=0.5');
+      expect(latestUrl).toContain('expReamplifier=true');
+      expect(latestUrl).toContain('expDonator=true');
+      expect(latestUrl).toContain('tradeBonus=true');
       expect(latestUrl).not.toContain('eventBoost');
     });
 

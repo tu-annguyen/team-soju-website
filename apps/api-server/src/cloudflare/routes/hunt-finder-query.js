@@ -38,6 +38,9 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
     expCharm: ['0.25', '0.5', '1'].includes(searchParams.get('expCharm'))
       ? Number(searchParams.get('expCharm'))
       : 0,
+    expReamplifier: boolParam(searchParams, 'expReamplifier'),
+    expDonator: boolParam(searchParams, 'expDonator'),
+    tradeBonus: boolParam(searchParams, 'tradeBonus'),
     sort: sort === 'expPerHour' && ![undefined, 'All', 'Sweet Scent'].includes(method) ? 'alphabetical' : sort,
     sortDirection: searchParams.get('sortDirection') === 'desc' ? 'desc' : 'asc',
     page: searchParams.get('page') || undefined,

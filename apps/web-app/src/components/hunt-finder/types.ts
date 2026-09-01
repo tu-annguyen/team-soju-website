@@ -30,6 +30,9 @@ export type HuntFinderFilters = {
   evStats: EvStat[];
   evAmounts: EvAmount[];
   expCharm: '' | '0.25' | '0.5' | '1';
+  expReamplifier: boolean;
+  expDonator: boolean;
+  tradeBonus: boolean;
   sort: HuntSort;
   sortDirection: SortDirection;
 };

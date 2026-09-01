@@ -270,7 +270,11 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       ) : 0;
       const averagePoints = baseAveragePoints + uniqueBonus;
       const experience = calculateExperienceMetrics(
-        metrics.composition, encountersPerHour, filters.expCharm
+        metrics.composition, encountersPerHour, filters.expCharm, {
+          expReamplifier: filters.expReamplifier,
+          expDonator: filters.expDonator,
+          tradeBonus: filters.tradeBonus,
+        }
       );
       return {
         spot_key: key,

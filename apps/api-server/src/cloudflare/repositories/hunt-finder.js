@@ -54,15 +54,20 @@ function meetsMinimumTier(species, minTier) {
   return Number.isInteger(tier) && tier <= minTier;
 }
 
-function calculateExperienceMetrics(composition, encountersPerHour, expCharm) {
+function calculateExperienceMetrics(composition, encountersPerHour, expCharm, boosts = {}) {
   const averageExp = composition.reduce((sum, species) => {
     const averageLevel = (Number(species.min_level) + Number(species.max_level)) / 2;
     return sum + (((Number(species.base_exp) * averageLevel) / 7) * Number(species.split || 0));
   }, 0);
   const charm = [0.25, 0.5, 1].includes(Number(expCharm)) ? Number(expCharm) : 0;
+  const boostMultiplier = (boosts.expReamplifier ? 0.05 : 0)
+    + (boosts.expDonator ? 0.25 : 0)
+    + (boosts.tradeBonus ? 0.15 : 0);
   return {
     averageExp,
-    expPerHour: encountersPerHour === null ? null : averageExp * encountersPerHour * (1 + charm),
+    expPerHour: encountersPerHour === null
+      ? null
+      : averageExp * encountersPerHour * (1 + charm + boostMultiplier),
   };
 }
 
