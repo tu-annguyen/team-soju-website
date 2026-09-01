@@ -123,6 +123,35 @@ describe('HuntResults', () => {
     expect(screen.queryByText('Lv. 2–2')).not.toBeInTheDocument();
   });
 
+  it('shows egg groups beside EV yields and places Lure between rarity and tier', () => {
+    render(
+      <HuntResults
+        participants={[]}
+        speciesFilter=""
+        spots={[{
+          ...spot,
+          is_lure: true,
+          composition: [{
+            ...vulpix,
+            split: 0.5,
+            ev_speed: 1,
+            egg_groups: ['Field', 'Dragon'],
+            is_lure: true,
+          }],
+        }]}
+        view="location"
+      />
+    );
+
+    const summary = screen.getByText(/50.00%/);
+    expect(summary).toHaveTextContent('50.00% · Lure · Tier 3');
+    const details = screen.getByText(/Field, Dragon/).parentElement;
+    expect(details).toHaveTextContent('Speed +1 EV');
+    expect(details).toHaveTextContent('Field, Dragon');
+    expect(details).not.toHaveTextContent('Egg groups:');
+    expect(screen.getByText(/Includes Lure encounters/)).toBeInTheDocument();
+  });
+
   it('localizes locations, regions, species, and encounter details', () => {
     render(
       <HuntResults

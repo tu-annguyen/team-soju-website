@@ -3,6 +3,12 @@ export type HuntSort = 'pointsPerHour' | 'expPerHour' | 'alphabetical';
 export type SortDirection = 'asc' | 'desc';
 export type EvStat = 'hp' | 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed';
 export type EvAmount = '1' | '2';
+export type EggGroup = typeof EGG_GROUP_OPTIONS[number];
+
+export const EGG_GROUP_OPTIONS = [
+  'Monster', 'Water A', 'Bug', 'Flying', 'Field', 'Fairy', 'Grass',
+  'Humanoid', 'Water C', 'Mineral', 'Amorphous', 'Water B', 'Dragon',
+] as const;
 
 export type HuntFinderFilters = {
   season: string;
@@ -30,6 +36,7 @@ export type HuntFinderFilters = {
   excludeTeamCaught: boolean;
   evStats: EvStat[];
   evAmounts: EvAmount[];
+  eggGroups: EggGroup[];
   expCharm: '' | '0.25' | '0.5' | '1';
   expReamplifier: boolean;
   expDonator: boolean;

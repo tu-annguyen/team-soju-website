@@ -84,13 +84,15 @@ export default function HuntSpotCard({
                   ? <span aria-label="Unknown encounter rate">???</span>
                   : species.is_special
                     ? <span className="font-semibold text-sky-600 dark:text-sky-400">{messages.special}</span>
-                    : `${(species.split * 100).toFixed(2)}%`} · {game.tier(species.tier)}
+                    : `${(species.split * 100).toFixed(2)}%`}
+                {species.is_lure && <span className="font-semibold text-amber-600 dark:text-amber-400"> · {messages.lureOnly}</span>}
+                {!species.rate_unknown && !species.is_special && <> · {game.tier(species.tier)}</>}
               </span>
             </div>
             <div className="pl-10">
               {game.level} {species.min_level}{species.max_level !== species.min_level && `–${species.max_level}`}
               {evLabels(species) && <span className="ml-1 text-emerald-700 dark:text-emerald-300">· {evLabels(species)} EV</span>}
-              {species.is_lure && <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">· {messages.lureOnly}</span>}
+              {Boolean(species.egg_groups?.length) && <span className="ml-1 text-violet-700 dark:text-violet-300">· {(species.egg_groups || []).map(game.eggGroup).join(', ')}</span>}
             </div>
           </div>
         ))}

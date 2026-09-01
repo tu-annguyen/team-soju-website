@@ -91,6 +91,14 @@ function matchesEvYield(spot, stats = [], amounts = []) {
   );
 }
 
+function matchesEggGroups(spot, selectedGroups = []) {
+  const selected = new Set(selectedGroups.map((group) => String(group).trim().toLowerCase()).filter(Boolean));
+  if (!selected.size) return true;
+  return spot.composition.some((species) => (
+    (species.egg_groups || []).some((group) => selected.has(String(group).toLowerCase()))
+  ));
+}
+
 function compareNullable(left, right, direction) {
   if (left === null || left === undefined) return right === null || right === undefined ? 0 : 1;
   if (right === null || right === undefined) return -1;
@@ -124,6 +132,7 @@ module.exports = {
   encounterRatePerHour,
   isSpecialEncounterRow,
   matchesEvYield,
+  matchesEggGroups,
   meetsMinimumTier,
   normalizeFamilyKey,
   sortHuntSpots,

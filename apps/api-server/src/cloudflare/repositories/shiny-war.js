@@ -14,6 +14,7 @@ const {
   calculateExperienceMetrics,
   encounterRatePerHour,
   isSpecialEncounterRow,
+  matchesEggGroups,
   matchesEvYield,
   meetsMinimumTier,
   normalizeFamilyKey,
@@ -196,7 +197,8 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     const rows = await runSelect(`
       SELECT e.*, l.region, l.name AS location_name, s.name AS species_name,
              s.slug, s.family_key, s.tier, s.points, s.base_exp,
-             s.ev_hp, s.ev_attack, s.ev_defense, s.ev_sp_attack, s.ev_sp_defense, s.ev_speed
+             s.ev_hp, s.ev_attack, s.ev_defense, s.ev_sp_attack, s.ev_sp_defense, s.ev_speed,
+             s.egg_groups_json
       FROM pokedex_encounters e
       JOIN pokedex_locations l ON l.id = e.location_id
       JOIN pokedex_species s ON s.id = e.species_id
@@ -240,6 +242,7 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
             ev_sp_attack: Number(row.ev_sp_attack) || 0,
             ev_sp_defense: Number(row.ev_sp_defense) || 0,
             ev_speed: Number(row.ev_speed) || 0,
+            egg_groups: parseJson(row.egg_groups_json, []),
           });
         }
       }
@@ -331,12 +334,15 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
     const evFilteredSpots = matchingSpots.filter(
       (spot) => matchesEvYield(spot, filters.evStats, filters.evAmounts)
     );
-    const locations = [...new Set(evFilteredSpots.map((spot) => parentLocationName(spot.location)))]
+    const eggGroupFilteredSpots = evFilteredSpots.filter(
+      (spot) => matchesEggGroups(spot, filters.eggGroups)
+    );
+    const locations = [...new Set(eggGroupFilteredSpots.map((spot) => parentLocationName(spot.location)))]
       .sort((left, right) => left.localeCompare(right));
     const locationFilter = String(filters.location || '').trim().toLowerCase();
     const locationFilteredSpots = locationFilter
-      ? evFilteredSpots.filter((spot) => parentLocationName(spot.location).toLowerCase().includes(locationFilter))
-      : evFilteredSpots;
+      ? eggGroupFilteredSpots.filter((spot) => parentLocationName(spot.location).toLowerCase().includes(locationFilter))
+      : eggGroupFilteredSpots;
     const minimumPointsPerHour = Math.max(0, Number(filters.minPointsPerHour) || 0);
     const minimumExpPerHour = Math.max(0, Number(filters.minExpPerHour) || 0);
     const hasHourlyData = !['Headbutt', 'Rock Smash'].includes(selectedMethod);

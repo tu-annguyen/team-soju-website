@@ -68,6 +68,7 @@ describe('HuntFinder', () => {
     expect(screen.getByLabelText('Minimum points/hour')).toBeInTheDocument();
     expect(screen.getByLabelText('Minimum EXP/hour')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'EV yield' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Egg groups' })).toBeInTheDocument();
     expect(screen.getByLabelText('+1 EV')).toBeDisabled();
     expect(screen.getByLabelText('+2 EV')).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Minimum tier'), { target: { value: '3' } });
@@ -84,11 +85,14 @@ describe('HuntFinder', () => {
     expect(screen.getByLabelText('Minimum points/hour')).toBeInTheDocument();
     expect(screen.queryByLabelText('Minimum EXP/hour')).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'EV yield' })).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Egg groups' })).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Field'));
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
       expect(latestUrl).toContain('minTier=3');
       expect(latestUrl).not.toContain('minLevel');
       expect(latestUrl).not.toContain('evStats');
+      expect(latestUrl).toContain('eggGroups=Field');
     });
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
@@ -98,6 +102,7 @@ describe('HuntFinder', () => {
     expect(screen.queryByLabelText('Minimum points/hour')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Minimum EXP/hour')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'EV yield' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Egg groups' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Minimum EXP/hour'), { target: { value: '100000' } });
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
@@ -106,10 +111,12 @@ describe('HuntFinder', () => {
       expect(latestUrl).not.toContain('minPointsPerHour');
       expect(latestUrl).toContain('minExpPerHour=100000');
       expect(latestUrl).toContain('evStats=attack');
+      expect(latestUrl).not.toContain('eggGroups');
     });
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'alphabetical' } });
     expect(screen.getByLabelText('Sort direction')).toHaveValue('asc');
+    expect(screen.getByLabelText('Field')).toBeChecked();
   });
 
   it("uses Farfetch'd as the species filter value", async () => {

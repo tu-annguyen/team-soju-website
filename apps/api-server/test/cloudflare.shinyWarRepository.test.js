@@ -194,6 +194,7 @@ describe('Cloudflare Shiny Wars repository', () => {
       tier: 'Tier 5', points: 10, form: '', morning_rate: 5, day_rate: 5, night_rate: 5,
       base_exp: 70, ev_hp: 0, ev_attack: 0, ev_defense: 0,
       ev_sp_attack: 0, ev_sp_defense: 0, ev_speed: 0,
+      egg_groups_json: '[]',
     };
     const rows = [
       { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Rattata', slug: 'rattata', family_key: 'rattata', min_level: 30, max_level: 32, ev_speed: 2 },
@@ -219,6 +220,32 @@ describe('Cloudflare Shiny Wars repository', () => {
       profile: { eventBoost: false },
     });
     expect(aboveMaximum.items).toHaveLength(0);
+  });
+
+  it('keeps full splits when any species matches a selected egg group', async () => {
+    const base = {
+      region: 'Kanto', method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+      tier: 'Tier 5', points: 10, form: '', morning_rate: 5, day_rate: 5, night_rate: 5,
+      base_exp: 70, ev_hp: 0, ev_attack: 0, ev_defense: 0,
+      ev_sp_attack: 0, ev_sp_defense: 0, ev_speed: 0,
+    };
+    const rows = [
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Rattata', slug: 'rattata', family_key: 'rattata', min_level: 20, max_level: 20, egg_groups_json: '["Field"]' },
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Pidgey', slug: 'pidgey', family_key: 'pidgey', min_level: 20, max_level: 20, egg_groups_json: '["Flying"]' },
+      { ...base, location_id: '1:2', location_name: 'Route 2', species_name: 'Clefairy', slug: 'clefairy', family_key: 'clefairy', min_level: 20, max_level: 20, egg_groups_json: '["Fairy"]' },
+    ];
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue(rows),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', eggGroups: ['field', 'Dragon'], profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].composition.map((entry) => entry.name)).toEqual(['Rattata', 'Pidgey']);
+    expect(result.items[0].composition[0].egg_groups).toEqual(['Field']);
   });
 
   it('scores the official roster together and the internal teams independently', async () => {

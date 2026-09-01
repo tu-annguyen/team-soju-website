@@ -4,7 +4,7 @@ import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
 import NumberSpinner from '../NumberSpinner';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { getHuntFinderMessages, type HuntFinderMessages } from './messages';
-import { EV_STAT_OPTIONS, type EvAmount, type HuntFinderContext, type HuntFinderFilters } from './types';
+import { EGG_GROUP_OPTIONS, EV_STAT_OPTIONS, type EggGroup, type EvAmount, type HuntFinderContext, type HuntFinderFilters } from './types';
 import { getGameTranslations } from '../../utils/gameTranslations';
 
 type Props = { context: HuntFinderContext; filters: HuntFinderFilters; locale?: string; locations: string[]; setFilters: Dispatch<SetStateAction<HuntFinderFilters>>; teamWarAvailable: boolean };
@@ -54,6 +54,9 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
         return { ...old, evStats, evAmounts: evStats.length ? old.evAmounts : [] };
       })} />{m.evStats[v]}</label>)}</div>
       <div className="flex gap-4">{(['1', '2'] as EvAmount[]).map((v) => <label key={v} className={`flex items-center gap-2 text-sm ${hasEvStats ? '' : 'opacity-50'}`}><input className={check} disabled={!hasEvStats} type="checkbox" checked={f.evAmounts[0] === v} onChange={() => set('evAmounts', f.evAmounts[0] === v ? [] : [v])} />+{v} EV</label>)}</div></div>
+    </fieldset>}
+    {(f.sort === 'pointsPerHour' || alphabetical) && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.eggGroups}</legend>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{EGG_GROUP_OPTIONS.map((group) => <label key={group} className="flex items-center gap-2 text-sm"><input className={check} type="checkbox" checked={f.eggGroups.includes(group)} onChange={() => set('eggGroups', f.eggGroups.includes(group) ? f.eggGroups.filter((value) => value !== group) : [...f.eggGroups, group] as EggGroup[])} />{game.eggGroup(group)}</label>)}</div>
     </fieldset>}
     {context === 'shinyWar' && <War filters={f} messages={m} setFilters={setFilters} teamWarAvailable={teamWarAvailable} />}
   </section>;

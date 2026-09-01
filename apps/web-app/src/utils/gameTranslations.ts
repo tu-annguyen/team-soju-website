@@ -23,6 +23,20 @@ const GAME_LABELS: Record<Locale, Record<string, string>> = {
   },
 };
 
+const EGG_GROUP_LABELS: Record<Locale, Record<string, string>> = {
+  en: {},
+  es: {
+    Monster: 'Monstruo', 'Water A': 'Agua A', Bug: 'Bicho', Flying: 'Volador', Field: 'Campo',
+    Fairy: 'Hada', Grass: 'Planta', Humanoid: 'Humanoide', 'Water C': 'Agua C', Mineral: 'Mineral',
+    Amorphous: 'Amorfo', 'Water B': 'Agua B', Dragon: 'Dragón',
+  },
+  zh: {
+    Monster: '怪兽', 'Water A': '水中 A', Bug: '虫', Flying: '飞行', Field: '陆上', Fairy: '妖精',
+    Grass: '植物', Humanoid: '人形', 'Water C': '水中 C', Mineral: '矿物', Amorphous: '不定形',
+    'Water B': '水中 B', Dragon: '龙',
+  },
+};
+
 export function getGameTranslations(localeInput?: string) {
   const locale = getClientLocale(localeInput);
   const translations = getTranslations(locale).tools.catchEventManager;
@@ -43,6 +57,7 @@ export function getGameTranslations(localeInput?: string) {
 
   return {
     locale,
+    eggGroup: (value: string) => EGG_GROUP_LABELS[locale][value] || value,
     label: (value: string) => labels[value] || value,
     location,
     region: (value: string) => regions[value] || value,
@@ -55,4 +70,3 @@ export function getGameTranslations(localeInput?: string) {
     level: locale === 'es' ? 'Nv.' : locale === 'zh' ? '等级' : 'Lv.',
   };
 }
-

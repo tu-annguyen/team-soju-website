@@ -25,7 +25,7 @@ const caughtSpeciesNames = (hunt: Hunt, caughtFamilyKeys: Set<string>) => huntSp
 const SWEET_SCENT_TERRAINS = new Set(['Grass', 'Dark Grass', 'Water', 'Cave', 'Inside']);
 
 const huntLabel = (hunt: Hunt) => {
-  const label = hunt.label.replace(
+  const label = hunt.label.replace(/Lure[- ]only/gi, 'Lure').replace(
     /([35][x×])(?!\s+Sweet Scent)(?=\s*(?:·|$))/g,
     '$1 Sweet Scent',
   );
@@ -43,7 +43,7 @@ const huntSpotData = (hunt: Hunt) => {
   const terrain = SWEET_SCENT_TERRAINS.has(spot.method) ? ` ${spot.method}` : '';
   const method = spot.horde_size ? `${spot.horde_size}× Sweet Scent${terrain}` : spot.method;
   const time = spot.time.charAt(0).toUpperCase() + spot.time.slice(1);
-  return `${spot.region} · ${spot.season} ${time} · ${method}${spot.is_lure ? ' · Lure only' : ''}${spot.is_special ? ' · Special' : ''}`;
+  return `${spot.region} · ${spot.season} ${time} · ${method}${spot.is_lure ? ' · Lure' : ''}${spot.is_special ? ' · Special' : ''}`;
 };
 
 type Props = {

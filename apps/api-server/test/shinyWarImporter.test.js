@@ -17,6 +17,7 @@ describe('Shiny Wars Pokedex importer', () => {
         exp: 51, ev_hp: 0, ev_attack: 0, ev_defense: 0,
         ev_sp_attack: 0, ev_sp_defense: 0, ev_speed: 1,
       },
+      egg_groups: ['Field', { name: 'water-1' }, 'Undiscovered'],
       evolutions: [{ id: 20, name: 'Raticate' }],
       locations: [{
         form: '',
@@ -48,13 +49,14 @@ describe('Shiny Wars Pokedex importer', () => {
     expect(cleanMethod('ꀀSuper Rod')).toBe('Super Rod');
     expect(data.species[0]).toMatchObject({
       slug: 'rattata', familyKey: 'rattata', points: 3,
-      baseExp: 51, evSpeed: 1, evAttack: 0,
+      baseExp: 51, evSpeed: 1, evAttack: 0, eggGroups: ['Water A', 'Field'],
     });
     expect(data.species[1].familyKey).toBe('rattata');
     expect(data.locations[0]).toMatchObject({ id: '0:1', region: 'Kanto' });
     expect(data.encounters[0]).toMatchObject({ hordeSize: 3, morningRate: 2.5 });
     expect(toSql(data)).toContain('INSERT INTO pokedex_encounters');
-    expect(toSql(data)).toContain('base_exp,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed');
+    expect(toSql(data)).toContain('base_exp,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed,egg_groups_json');
+    expect(toSql(data)).toContain("'[\"Water A\",\"Field\"]'");
   });
 
   it('defaults missing EXP and EV yields to zero', () => {
@@ -63,6 +65,7 @@ describe('Shiny Wars Pokedex importer', () => {
     expect(data.species[0]).toMatchObject({
       baseExp: 0, evHp: 0, evAttack: 0, evDefense: 0,
       evSpAttack: 0, evSpDefense: 0, evSpeed: 0,
+      eggGroups: [],
     });
   });
 

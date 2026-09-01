@@ -44,6 +44,7 @@ export type HuntSpecies = {
   ev_sp_attack?: number;
   ev_sp_defense?: number;
   ev_speed?: number;
+  egg_groups?: string[];
   is_lure?: boolean;
   is_special?: boolean;
 };

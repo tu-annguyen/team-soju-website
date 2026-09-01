@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { getPokemonTier, TIER_POINTS } = require('@team-soju/utils');
+const { normalizeEggGroups } = require('../utils/egg-groups');
 
 const EXPECTED_2026_COUNTS = Object.freeze({
   species: 720,
@@ -207,6 +208,7 @@ function normalizePokedex(monsters) {
       evSpAttack: Math.max(0, Number(monster.yields?.ev_sp_attack) || 0),
       evSpDefense: Math.max(0, Number(monster.yields?.ev_sp_defense) || 0),
       evSpeed: Math.max(0, Number(monster.yields?.ev_speed) || 0),
+      eggGroups: normalizeEggGroups(monster.egg_groups),
     });
 
     (monster.locations || []).forEach((rawLocation) => {
@@ -279,10 +281,10 @@ function toSql(data) {
   ];
 
   data.species.forEach((row) => lines.push(
-    `INSERT INTO pokedex_species (id,name,slug,family_key,tier,points,catch_rate,base_exp,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed) VALUES (${[
+    `INSERT INTO pokedex_species (id,name,slug,family_key,tier,points,catch_rate,base_exp,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed,egg_groups_json) VALUES (${[
       row.id, row.name, row.slug, row.familyKey, row.tier, row.points, row.catchRate,
       row.baseExp, row.evHp, row.evAttack, row.evDefense,
-      row.evSpAttack, row.evSpDefense, row.evSpeed,
+      row.evSpAttack, row.evSpDefense, row.evSpeed, JSON.stringify(row.eggGroups),
     ].map(sqlValue).join(',')});`
   ));
   data.locations.forEach((row) => lines.push(

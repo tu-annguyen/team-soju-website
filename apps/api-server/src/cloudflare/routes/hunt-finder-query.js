@@ -37,6 +37,7 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
     minExpPerHour: searchParams.get('minExpPerHour') || undefined,
     evStats: listParam(searchParams, 'evStats').filter((stat) => EV_STATS.has(stat)),
     evAmounts: evAmounts.slice(0, 1),
+    eggGroups: listParam(searchParams, 'eggGroups'),
     expCharm: ['0.25', '0.5', '1'].includes(searchParams.get('expCharm'))
       ? Number(searchParams.get('expCharm'))
       : 0,

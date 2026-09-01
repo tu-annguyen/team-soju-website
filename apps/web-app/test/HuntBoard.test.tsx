@@ -35,7 +35,7 @@ describe('HuntBoard', () => {
     render(<HuntBoard rows={legacyRows} busy={false} onSave={jest.fn()} />);
 
     expect(screen.getByText('Route 1 · Summer Day · 5x Sweet Scent Grass')).toBeInTheDocument();
-    expect(screen.getByText('Route 2 · Winter Night · 3× Sweet Scent Dark Grass · Lure only')).toBeInTheDocument();
+    expect(screen.getByText('Route 2 · Winter Night · 3× Sweet Scent Dark Grass · Lure')).toBeInTheDocument();
     expect(screen.getByText('Route 3 · Any Day · 5× Sweet Scent Water')).toBeInTheDocument();
   });
 
@@ -57,7 +57,7 @@ describe('HuntBoard', () => {
     render(<HuntBoard rows={spotRows} busy={false} onSave={jest.fn()} />);
 
     expect(screen.getByText('Sky Pillar · 1F · Sweet Scent Grass')).toBeInTheDocument();
-    expect(screen.getByText('Hoenn · Summer Day · 5× Sweet Scent Grass · Lure only')).toBeInTheDocument();
+    expect(screen.getByText('Hoenn · Summer Day · 5× Sweet Scent Grass · Lure')).toBeInTheDocument();
   });
 
   it('separates the player duplicate penalty from the team unique species warning', () => {

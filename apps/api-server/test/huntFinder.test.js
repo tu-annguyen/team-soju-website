@@ -1,5 +1,6 @@
 const {
   calculateExperienceMetrics,
+  matchesEggGroups,
   matchesEvYield,
   sortHuntSpots,
 } = require('../src/cloudflare/repositories/hunt-finder');
@@ -47,6 +48,19 @@ describe('Hunt Finder calculations and filtering', () => {
     expect(matchesEvYield(spot, [], ['1'])).toBe(true);
   });
 
+  it('OR-matches egg groups across a split without changing its composition', () => {
+    const spot = { composition: [
+      { name: 'Rattata', egg_groups: ['Field'] },
+      { name: 'Dratini', egg_groups: ['Water A', 'Dragon'] },
+    ] };
+
+    expect(matchesEggGroups(spot, [])).toBe(true);
+    expect(matchesEggGroups(spot, ['field'])).toBe(true);
+    expect(matchesEggGroups(spot, ['Monster', 'DRAGON'])).toBe(true);
+    expect(matchesEggGroups(spot, ['Fairy'])).toBe(false);
+    expect(spot.composition).toHaveLength(2);
+  });
+
   it('sorts both metric directions, keeps nulls last, and sorts alphabetically', () => {
     const spots = [
       { location: 'Celestial Tower', region: 'Unova', pointsPerHour: null, expPerHour: 500 },
@@ -64,12 +78,12 @@ describe('Hunt Finder calculations and filtering', () => {
 
 describe('Hunt Finder public API', () => {
   it('parses generalized filters without accepting war-only state', () => {
-    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&minLevel=30&minExpPerHour=100000&evStats=attack,speed&evAmounts=1,2&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
+    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&minLevel=30&minExpPerHour=100000&evStats=attack,speed&evAmounts=1,2&eggGroups=Field,Dragon&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
     const filters = huntFinderFilters(url);
 
     expect(filters).toMatchObject({
       method: 'Sweet Scent', minLevel: '30', minExpPerHour: '100000', evStats: ['attack', 'speed'],
-      evAmounts: ['1'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
+      evAmounts: ['1'], eggGroups: ['Field', 'Dragon'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
       expReamplifier: true, expDonator: true, tradeBonus: true,
       profile: { eventBoost: true },
     });

@@ -315,7 +315,8 @@ CREATE TABLE IF NOT EXISTS pokedex_species (
   ev_defense INTEGER NOT NULL DEFAULT 0 CHECK (ev_defense BETWEEN 0 AND 3),
   ev_sp_attack INTEGER NOT NULL DEFAULT 0 CHECK (ev_sp_attack BETWEEN 0 AND 3),
   ev_sp_defense INTEGER NOT NULL DEFAULT 0 CHECK (ev_sp_defense BETWEEN 0 AND 3),
-  ev_speed INTEGER NOT NULL DEFAULT 0 CHECK (ev_speed BETWEEN 0 AND 3)
+  ev_speed INTEGER NOT NULL DEFAULT 0 CHECK (ev_speed BETWEEN 0 AND 3),
+  egg_groups_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(egg_groups_json))
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_pokedex_species_family

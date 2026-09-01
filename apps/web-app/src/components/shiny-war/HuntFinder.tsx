@@ -33,7 +33,7 @@ function initialFilters(context: HuntFinderContext, defaultSeason: string): Hunt
     chumBucket: false, nonSafari: false,
     officialUniqueBonus: context === 'shinyWar', teamUniqueBonus: false,
     excludeOfficialCaught: false, excludeTeamCaught: false,
-    evStats: [], evAmounts: [], expCharm: '', expReamplifier: false, expDonator: false, tradeBonus: false,
+    evStats: [], evAmounts: [], eggGroups: [], expCharm: '', expReamplifier: false, expDonator: false, tradeBonus: false,
     sort: 'alphabetical', sortDirection: 'asc',
   };
 }
@@ -61,6 +61,7 @@ function buildSearchParams(
     if (filters.sort === 'expPerHour' && key === 'minTier') return;
     if (filters.sort === 'expPerHour' && key === 'minPointsPerHour') return;
     if (filters.sort === 'pointsPerHour' && ['minLevel', 'minExpPerHour', 'evStats', 'evAmounts'].includes(key)) return;
+    if (filters.sort === 'expPerHour' && key === 'eggGroups') return;
     if (filters.sort !== 'pointsPerHour'
       && ['eventBoost', 'donator', 'personalCharm', 'linkCharm', 'chumBucket'].includes(key)) return;
     if (filters.sort !== 'expPerHour' && ['expCharm', 'expReamplifier', 'expDonator', 'tradeBonus'].includes(key)) return;
