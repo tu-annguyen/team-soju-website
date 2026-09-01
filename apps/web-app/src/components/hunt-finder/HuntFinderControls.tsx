@@ -31,7 +31,11 @@ function Filters({ context, filters: f, locations, messages: m, setFilters, team
     <label className={label}>{m.fields.region}<FilteredCombobox className={field} options={CATCH_EVENT_REGIONS} value={f.region} onChange={(region) => setFilters((old) => ({ ...old, region, location: '' }))} placeholder={m.options.everyRegion} /></label>
     <label className={label}>{m.fields.location}<FilteredCombobox className={field} options={locations} value={f.location} onChange={(v) => set('location', v)} placeholder={m.options.everyLocation} /></label>
     <label className={label}>{m.fields.species}<FilteredCombobox className={field} options={POKEMON_SPECIES_NAMES} value={f.species} onChange={(v) => set('species', v)} placeholder={m.options.everySpecies} /></label>
-    <Select title={m.fields.method} value={f.method} onChange={(method) => setFilters((old) => ({ ...old, method, sort: old.sort === 'expPerHour' && !['All', 'Sweet Scent'].includes(method) ? 'alphabetical' : old.sort }))} options={methods} />
+    <Select title={m.fields.method} value={f.method} onChange={(method) => setFilters((old) => (
+      old.sort === 'expPerHour' && !['All', 'Sweet Scent'].includes(method)
+        ? { ...old, method, sort: 'alphabetical', sortDirection: 'asc' }
+        : { ...old, method }
+    ))} options={methods} />
     <Select title={m.fields.time} value={f.time} onChange={(v) => set('time', v)} options={[['', m.options.anyTime], ['morning', m.options.morning], ['day', m.options.day], ['night', m.options.night]]} />
     {f.sort !== 'expPerHour' && <Spinner title={m.fields.minimumTier} value={f.minTier} setValue={(v) => set('minTier', v)} placeholder={m.options.noMinimum} min={0} max={7} reverse />}
     {f.sort !== 'pointsPerHour' && <Spinner title={m.fields.minimumLevel} value={f.minLevel} setValue={(v) => set('minLevel', v)} placeholder={m.options.noMinimum} min={1} max={100} />}
@@ -55,7 +59,11 @@ function Sort({ filters: f, messages: m, setFilters }: SectionProps) {
   const fishing = ['All', 'Fishing'].includes(f.method);
   return <section aria-labelledby="hunt-sort-heading" className={section}>
     <h2 className="text-lg font-bold sm:col-span-2 lg:col-span-4" id="hunt-sort-heading">{m.sections.sort}</h2>
-    <Select title={m.fields.sortBy} value={f.sort} onChange={(v) => set('sort', v as HuntFinderFilters['sort'])} options={[['alphabetical', m.options.alphabetical], ['pointsPerHour', m.options.pointsHour], ['expPerHour', m.options.expHour, !exp]]} />
+    <Select title={m.fields.sortBy} value={f.sort} onChange={(v) => setFilters((old) => ({
+      ...old,
+      sort: v as HuntFinderFilters['sort'],
+      sortDirection: v === 'alphabetical' ? 'asc' : 'desc',
+    }))} options={[['alphabetical', m.options.alphabetical], ['pointsPerHour', m.options.pointsHour], ['expPerHour', m.options.expHour, !exp]]} />
     <Select title={m.fields.direction} value={f.sortDirection} onChange={(v) => set('sortDirection', v as HuntFinderFilters['sortDirection'])} options={[['asc', m.options.ascending], ['desc', m.options.descending]]} />
     {f.sort === 'pointsPerHour' && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.boosts}</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{([['eventBoost', m.eventBoost], ['donator', m.donator], ['personalCharm', m.personalCharm], ['linkCharm', m.linkCharm], ['chumBucket', m.chumBucket]] as const).map(([k, text]) => <Check key={k} disabled={k === 'chumBucket' && !fishing} text={text} checked={f[k]} onChange={(v) => set(k, v)} />)}</div></fieldset>}
     {f.sort === 'expPerHour' && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.expBoosts}</legend><div className="grid gap-3 sm:grid-cols-3">{([['expReamplifier', m.expReamplifier], ['expDonator', m.expDonator], ['tradeBonus', m.tradeBonus]] as const).map(([key, text]) => <Check key={key} text={text} checked={f[key]} onChange={(value) => set(key, value)} />)}</div><div className="mt-4 grid gap-3 sm:grid-cols-4 border-t pt-4">{([['', m.noExpCharm], ['0.25', m.expCharm25], ['0.5', m.expCharm50], ['1', m.expCharm100]] as const).map(([v, text]) => <label key={v || 'none'} className="flex items-center gap-2 text-sm"><input type="radio" name="exp-charm" checked={f.expCharm === v} onChange={() => set('expCharm', v)} />{text}</label>)}</div>{f.expReamplifier && <p className="mt-3 text-xs text-gray-500">{m.reamplifierNote}</p>}</fieldset>}

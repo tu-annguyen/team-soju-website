@@ -74,6 +74,7 @@ describe('HuntFinder', () => {
     fireEvent.click(screen.getByLabelText('+1 EV'));
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
+    expect(screen.getByLabelText('Sort direction')).toHaveValue('desc');
     expect(screen.getByLabelText('Minimum Tier')).toBeInTheDocument();
     expect(screen.queryByLabelText('Minimum level')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Minimum points/hour')).toBeInTheDocument();
@@ -87,6 +88,7 @@ describe('HuntFinder', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
+    expect(screen.getByLabelText('Sort direction')).toHaveValue('desc');
     expect(screen.queryByLabelText('Minimum Tier')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Minimum level')).toBeInTheDocument();
     expect(screen.queryByLabelText('Minimum points/hour')).not.toBeInTheDocument();
@@ -101,6 +103,9 @@ describe('HuntFinder', () => {
       expect(latestUrl).toContain('minExpPerHour=100000');
       expect(latestUrl).toContain('evStats=attack');
     });
+
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'alphabetical' } });
+    expect(screen.getByLabelText('Sort direction')).toHaveValue('asc');
   });
 
   it("uses Farfetch'd as the species filter value", async () => {

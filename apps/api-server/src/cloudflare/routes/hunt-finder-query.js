@@ -18,6 +18,7 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
   const method = searchParams.get('method') || undefined;
   const requestedSort = searchParams.get('sort') || 'alphabetical';
   const sort = SORTS.has(requestedSort) ? requestedSort : 'alphabetical';
+  const requestedDirection = searchParams.get('sortDirection');
   const evAmounts = listParam(searchParams, 'evAmounts').filter((amount) => amount === '1' || amount === '2');
   const filters = {
     season: searchParams.get('season') || undefined,
@@ -43,7 +44,9 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
     expDonator: boolParam(searchParams, 'expDonator'),
     tradeBonus: boolParam(searchParams, 'tradeBonus'),
     sort: sort === 'expPerHour' && ![undefined, 'All', 'Sweet Scent'].includes(method) ? 'alphabetical' : sort,
-    sortDirection: searchParams.get('sortDirection') === 'desc' ? 'desc' : 'asc',
+    sortDirection: requestedDirection === 'asc' || requestedDirection === 'desc'
+      ? requestedDirection
+      : sort === 'alphabetical' ? 'asc' : 'desc',
     page: searchParams.get('page') || undefined,
     pageSize: searchParams.get('pageSize') || undefined,
     hordesPerHour: Number(searchParams.get('hordesPerHour')) || 240,

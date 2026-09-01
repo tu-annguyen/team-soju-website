@@ -88,4 +88,11 @@ describe('Hunt Finder public API', () => {
       sort: 'alphabetical', sortDirection: 'asc', profile: expect.objectContaining({ eventBoost: false }),
     }));
   });
+
+  it('defaults metric sorts to descending and alphabetical sorting to ascending', () => {
+    expect(huntFinderFilters(new URL('https://example.test/?sort=pointsPerHour')).sortDirection).toBe('desc');
+    expect(huntFinderFilters(new URL('https://example.test/?sort=expPerHour')).sortDirection).toBe('desc');
+    expect(huntFinderFilters(new URL('https://example.test/?sort=alphabetical')).sortDirection).toBe('asc');
+    expect(huntFinderFilters(new URL('https://example.test/?sort=pointsPerHour&sortDirection=asc')).sortDirection).toBe('asc');
+  });
 });
