@@ -73,7 +73,7 @@ export default function HuntLocationCard({
   const firstSpot = bestSpots[0]?.spot || spots[0];
   const secondaryLabel = sort === 'pointsPerHour' && sortDirection === 'desc'
     ? messages.lowerPoints
-    : sort === 'expPerHour' ? messages.additionalExp : messages.lowerPoints;
+    : sort === 'expPerHour' ? messages.lowerExp : messages.lowerPoints;
 
   const renderSpot = ({ spot, title }: typeof titledSpots[number]) => (
     <HuntSpotCard
