@@ -200,7 +200,7 @@ function normalizeOcrResult(raw, jobRequest) {
     const basis = requestedDateOrder === 'auto'
       ? `Discord locale (${jobRequest.locale})`
       : `the requested ${requestedDateOrder.toUpperCase()} date order`;
-    notes.push(`The screenshot date "${rawCatchDate}" can use multiple date orders. It was interpreted as ${normalizedDate.dateOrder.toUpperCase()} using ${basis}.`);
+    notes.push(`The screenshot date "${rawCatchDate}" can use multiple date orders. It was interpreted as ${normalizedDate.dateOrder.toUpperCase()} using ${basis}. Select **Edit** > **Catch Date** to change.`);
   } else if (parsed.dateAmbiguous || (!rawCatchDate && raw?.dateAmbiguous)) {
     parsed.catchDate = getFallbackLocalDate(jobRequest.command_called_at, jobRequest.timezone);
     notes.push(`Ambiguous date was found in screenshot. The caught date was set to today's date (${parsed.catchDate}), instead. Select **Edit** > **Catch Date** to change.`);
@@ -210,7 +210,7 @@ function normalizeOcrResult(raw, jobRequest) {
   }
   if (parsed.catchDate && parsed.catchDate > latestToday()) {
     const fallback = getFallbackLocalDate(jobRequest.command_called_at, jobRequest.timezone);
-    notes.push(`The date was read as ${parsed.catchDate}, which is in the future. It was set to today's date (${fallback}) instead.`);
+    notes.push(`The date was read as ${parsed.catchDate}, which is in the future. It was set to today's date (${fallback}) instead. Select **Edit** > **Catch Date** to change.`);
     parsed.catchDate = fallback;
   }
   if (!parsed.pokemon || !parsed.trainer || !/^\d{4}-\d{2}-\d{2}$/.test(parsed.catchDate || '') || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(parsed.catchTime || '')) {
