@@ -1,6 +1,7 @@
 export type HuntFinderContext = 'public' | 'shinyWar';
 export type HuntSort = 'pointsPerHour' | 'expPerHour' | 'alphabetical';
 export type SortDirection = 'asc' | 'desc';
+export type DisplayedPokemonInfo = 'pointsPerHour' | 'averageShiny' | 'encountersPerHour' | 'effectiveOdds' | 'tier' | 'level' | 'evYield' | 'eggGroups';
 export type EvStat = 'hp' | 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed';
 export type EvAmount = '1' | '2';
 export type EggGroup = typeof EGG_GROUP_OPTIONS[number];

@@ -4,10 +4,10 @@ import { POKEMON_SPECIES_NAMES } from '../../utils/pokemonSpecies';
 import NumberSpinner from '../NumberSpinner';
 import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { getHuntFinderMessages, type HuntFinderMessages } from './messages';
-import { EGG_GROUP_OPTIONS, EV_STAT_OPTIONS, type EggGroup, type EvAmount, type HuntFinderContext, type HuntFinderFilters } from './types';
+import { EGG_GROUP_OPTIONS, EV_STAT_OPTIONS, type DisplayedPokemonInfo, type EggGroup, type EvAmount, type HuntFinderContext, type HuntFinderFilters } from './types';
 import { getGameTranslations } from '../../utils/gameTranslations';
 
-type Props = { context: HuntFinderContext; filters: HuntFinderFilters; locale?: string; locations: string[]; setFilters: Dispatch<SetStateAction<HuntFinderFilters>>; teamWarAvailable: boolean };
+type Props = { context: HuntFinderContext; displayedInfo: DisplayedPokemonInfo[]; filters: HuntFinderFilters; locale?: string; locations: string[]; setDisplayedInfo: Dispatch<SetStateAction<DisplayedPokemonInfo[]>>; setFilters: Dispatch<SetStateAction<HuntFinderFilters>>; teamWarAvailable: boolean };
 type SectionProps = Props & { messages: HuntFinderMessages };
 const field = 'mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:border-gray-700 dark:bg-gray-950 dark:text-white';
 const label = 'text-sm font-semibold text-gray-800 dark:text-gray-100';
@@ -69,14 +69,14 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
       })} />{m.evStats[v]}</label>)}</div>
       <div className="flex gap-4">{(['1', '2'] as EvAmount[]).map((v) => <label key={v} className={`flex items-center gap-2 text-sm ${hasEvStats ? '' : 'opacity-50'}`}><input className={check} disabled={!hasEvStats} type="checkbox" checked={f.evAmounts[0] === v} onChange={() => set('evAmounts', f.evAmounts[0] === v ? [] : [v])} />+{v} EV</label>)}</div></div>
     </fieldset>}
-    {(f.sort === 'pointsPerHour' || alphabetical) && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.eggGroups}</legend>
+    {(f.sort === 'expPerHour' || alphabetical) && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.eggGroups}</legend>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{EGG_GROUP_OPTIONS.map((group) => <label key={group} className="flex items-center gap-2 text-sm"><input className={check} type="checkbox" checked={f.eggGroups.includes(group)} onChange={() => set('eggGroups', f.eggGroups.includes(group) ? f.eggGroups.filter((value) => value !== group) : [...f.eggGroups, group] as EggGroup[])} />{game.eggGroup(group)}</label>)}</div>
     </fieldset>}
     {context === 'shinyWar' && <War filters={f} messages={m} setFilters={setFilters} teamWarAvailable={teamWarAvailable} />}
   </section>;
 }
 
-function Sort({ filters: f, messages: m, setFilters }: SectionProps) {
+function Sort({ displayedInfo, filters: f, messages: m, setDisplayedInfo, setFilters }: SectionProps) {
   const set = <K extends keyof HuntFinderFilters>(key: K, value: HuntFinderFilters[K]) => setFilters((old) => ({ ...old, [key]: value }));
   const exp = ['All', 'Sweet Scent'].includes(f.method);
   const fishing = ['All', 'Fishing'].includes(f.method);
@@ -96,7 +96,18 @@ function Sort({ filters: f, messages: m, setFilters }: SectionProps) {
         : {}),
     }))} />)}</div></fieldset>}
     {f.sort === 'expPerHour' && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.expBoosts}</legend><div className="grid gap-3 sm:grid-cols-3">{([['expReamplifier', m.expReamplifier], ['expDonator', m.expDonator], ['tradeBonus', m.tradeBonus]] as const).map(([key, text]) => <Check key={key} text={text} checked={f[key]} onChange={(value) => set(key, value)} />)}</div><div className="mt-4 grid gap-3 sm:grid-cols-4 border-t pt-4">{([['', m.noExpCharm], ['0.25', m.expCharm25], ['0.5', m.expCharm50], ['1', m.expCharm100]] as const).map(([v, text]) => <label key={v || 'none'} className="flex items-center gap-2 text-sm"><input type="radio" name="exp-charm" checked={f.expCharm === v} onChange={() => set('expCharm', v)} />{text}</label>)}</div>{f.expReamplifier && <p className="mt-3 text-xs text-gray-500">{m.reamplifierNote}</p>}</fieldset>}
+    <DisplayedInfoOptions displayedInfo={displayedInfo} messages={m} setDisplayedInfo={setDisplayedInfo} sort={f.sort} />
   </section>;
+}
+
+const DISPLAYED_INFO_BY_SORT: Record<HuntFinderFilters['sort'], DisplayedPokemonInfo[]> = {
+  alphabetical: ['pointsPerHour', 'averageShiny', 'encountersPerHour', 'effectiveOdds', 'tier', 'level', 'evYield', 'eggGroups'],
+  pointsPerHour: ['level', 'evYield', 'eggGroups'],
+  expPerHour: ['pointsPerHour', 'averageShiny', 'encountersPerHour', 'effectiveOdds'],
+};
+
+function DisplayedInfoOptions({ displayedInfo, messages: m, setDisplayedInfo, sort }: Pick<SectionProps, 'displayedInfo' | 'messages' | 'setDisplayedInfo'> & { sort: HuntFinderFilters['sort'] }) {
+  return <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.displayedPokemonInfo}</legend><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{DISPLAYED_INFO_BY_SORT[sort].map((info) => <Check key={info} text={m.pokemonInfo[info]} checked={displayedInfo.includes(info)} onChange={(checked) => setDisplayedInfo((current) => checked ? [...current, info] : current.filter((value) => value !== info))} />)}</div></fieldset>;
 }
 
 function Select({ title, value, options, onChange, disabled }: { title: string; value: string; options: ReadonlyArray<readonly [string, string, boolean?]>; onChange: (v: string) => void; disabled?: boolean }) {

@@ -6,6 +6,8 @@ type Props = {
   displayName?: string;
 };
 
+type SpriteProps = Pick<Props, 'name' | 'slug' | 'form'>;
+
 const spriteSlug = (name: string, slug?: string, form?: string) => {
   const base = (slug || name)
     .toLowerCase()
@@ -21,19 +23,25 @@ const spriteSlug = (name: string, slug?: string, form?: string) => {
   return base;
 };
 
-export default function SpeciesSpriteName({ name, slug, form, className = '', displayName }: Props) {
+export function SpeciesSprite({ name, slug, form }: SpriteProps) {
   const imageSlug = spriteSlug(name, slug, form);
 
   return (
+    <img
+      aria-hidden="true"
+      alt=""
+      className="h-12 w-12 shrink-0 object-contain [image-rendering:pixelated]"
+      loading="lazy"
+      onError={(event) => { event.currentTarget.style.display = 'none'; }}
+      src={`https://img.pokemondb.net/sprites/black-white/anim/shiny/${imageSlug}.gif`}
+    />
+  );
+}
+
+export default function SpeciesSpriteName({ name, slug, form, className = '', displayName }: Props) {
+  return (
     <span className={`inline-flex items-center gap-1.5 ${className}`}>
-      <img
-        aria-hidden="true"
-        alt=""
-        className="h-8 w-8 shrink-0 object-contain [image-rendering:pixelated]"
-        loading="lazy"
-        onError={(event) => { event.currentTarget.style.display = 'none'; }}
-        src={`https://img.pokemondb.net/sprites/black-white/anim/shiny/${imageSlug}.gif`}
-      />
+      <SpeciesSprite form={form} name={name} slug={slug} />
       <span>{displayName || name}</span>
     </span>
   );

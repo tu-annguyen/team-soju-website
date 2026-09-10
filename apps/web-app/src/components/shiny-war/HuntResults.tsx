@@ -4,7 +4,7 @@ import SpeciesSpriteName from './SpeciesSpriteName';
 import { groupHuntSpotsByLocation } from './huntLocationGroups';
 import { groupHuntSpotsByPokemonLocation } from './huntPokemonLocationGroups';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
-import type { HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
+import type { DisplayedPokemonInfo, HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
 import { getGameTranslations } from '../../utils/gameTranslations';
 
@@ -15,6 +15,7 @@ type Props = {
   expanded?: ReadonlySet<string>;
   participants: ParticipantHunts[];
   context?: HuntFinderContext;
+  displayedInfo?: DisplayedPokemonInfo[];
   minimumTier?: string;
   locale?: string;
   speciesFilter: string;
@@ -31,7 +32,7 @@ type Props = {
 
 export default function HuntResults({
   participants, minimumTier = '', locale, speciesFilter, spots, view, onQueue,
-  collapsedLocations, onToggleLocation, context = 'shinyWar',
+  collapsedLocations, onToggleLocation, context = 'shinyWar', displayedInfo = [],
   sort = 'pointsPerHour', sortDirection = 'desc',
 }: Props) {
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
@@ -58,6 +59,7 @@ export default function HuntResults({
             locale={locale}
             spots={group.spots}
             context={context}
+            displayedInfo={displayedInfo}
             sort={sort}
             sortDirection={sortDirection}
             onQueue={onQueue}
@@ -105,6 +107,7 @@ export default function HuntResults({
                 locale={locale}
                 spots={group.spots}
                 context={context}
+                displayedInfo={displayedInfo}
                 sort={sort}
                 sortDirection={sortDirection}
                 targetSpecies={species}

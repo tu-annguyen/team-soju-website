@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import HuntSpotCard from './HuntSpotCard';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
-import type { HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
+import type { DisplayedPokemonInfo, HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
 import { getGameTranslations } from '../../utils/gameTranslations';
 
@@ -9,6 +9,7 @@ type Props = {
   participants: ParticipantHunts[];
   locale?: string;
   context?: HuntFinderContext;
+  displayedInfo?: DisplayedPokemonInfo[];
   spots: HuntSpot[];
   targetSpecies?: HuntSpecies;
   locationOpen: boolean;
@@ -56,7 +57,7 @@ function splitTitles(
 
 export default function HuntLocationCard({
   locationOpen, participants, locale, spots, targetSpecies, onQueue, onToggleLocation,
-  context = 'shinyWar', sort = 'pointsPerHour', sortDirection = 'desc',
+  context = 'shinyWar', displayedInfo = [], sort = 'pointsPerHour', sortDirection = 'desc',
 }: Props) {
   const [lowerRateOpen, setLowerRateOpen] = useState(false);
   const messages = getHuntFinderMessages(locale).results;
@@ -88,6 +89,7 @@ export default function HuntLocationCard({
       participants={participants}
       locale={locale}
       context={context}
+      displayedInfo={displayedInfo}
       spot={spot}
       sort={sort}
       targetSpecies={targetSpecies}

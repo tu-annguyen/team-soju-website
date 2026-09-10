@@ -110,6 +110,7 @@ describe('HuntResults', () => {
     render(
       <HuntResults
         participants={[]}
+        sort="expPerHour"
         speciesFilter=""
         spots={[{
           ...spot,
@@ -127,6 +128,7 @@ describe('HuntResults', () => {
     render(
       <HuntResults
         participants={[]}
+        sort="expPerHour"
         speciesFilter=""
         spots={[{
           ...spot,
@@ -157,6 +159,7 @@ describe('HuntResults', () => {
       <HuntResults
         locale="zh"
         participants={[]}
+        sort="expPerHour"
         speciesFilter=""
         spots={[{
           ...spot,
@@ -187,7 +190,7 @@ describe('HuntResults', () => {
     expect(screen.getByText('丰缘 · 好钓竿 · 春季')).toBeInTheDocument();
     expect(screen.getByText('鲤鱼王')).toBeInTheDocument();
     expect(screen.getByText(/60.00% · 阶级 7/)).toBeInTheDocument();
-    expect(screen.getByText(/等级 20/)).toHaveTextContent('速度 +1 EV');
+    expect(screen.getByText(/等级 20/).parentElement).toHaveTextContent('速度 +1 EV');
   });
 
   it('keeps location results in their calculated order', () => {
@@ -545,6 +548,87 @@ describe('HuntResults', () => {
     const split1 = screen.getByText('Sweet Scent split 1');
     const split2 = screen.getByText('Sweet Scent split 2');
     expect(split1.compareDocumentPosition(split2) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows simplified Pokemon details and larger sprites when sorting alphabetically', () => {
+    const { container } = render(
+      <HuntResults
+        participants={[]}
+        sort="alphabetical"
+        speciesFilter=""
+        spots={[{
+          ...spot,
+          composition: [{
+            ...vulpix,
+            ev_speed: 1,
+            egg_groups: ['Field'],
+          }],
+        }]}
+        view="location"
+      />
+    );
+
+    expect(screen.getByText('Vulpix')).toBeInTheDocument();
+    expect(screen.getByText(/100.00%/)).toBeInTheDocument();
+    expect(screen.queryByText(/Tier 3/)).not.toBeInTheDocument();
+    expect(screen.queryByText('1.333')).not.toBeInTheDocument();
+    expect(screen.queryByText('30.00')).not.toBeInTheDocument();
+    expect(screen.queryByText(/encounters\/hour/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/effective odds/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lv\. 20/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Speed \+1 EV/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Field')).not.toBeInTheDocument();
+    expect(container.querySelector('img')).toHaveClass('h-12', 'w-12');
+  });
+
+  it('shows the details associated with points and EXP sorting', () => {
+    const detailedSpot = {
+      ...spot,
+      expPerHour: 12345,
+      averageExp: 678,
+      composition: [{
+        ...vulpix,
+        ev_speed: 1,
+        egg_groups: ['Field'],
+      }],
+    };
+    const { rerender } = render(
+      <HuntResults
+        participants={[]}
+        sort="pointsPerHour"
+        speciesFilter=""
+        spots={[detailedSpot]}
+        view="location"
+      />
+    );
+
+    expect(screen.getByText('1.333')).toBeInTheDocument();
+    expect(screen.getByText('30.00')).toBeInTheDocument();
+    expect(screen.getByText(/encounters\/hour/i)).toBeInTheDocument();
+    expect(screen.getByText(/effective odds/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Lv\. 20/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Speed \+1 EV/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Field')).not.toBeInTheDocument();
+
+    rerender(
+      <HuntResults
+        participants={[]}
+        sort="expPerHour"
+        speciesFilter=""
+        spots={[detailedSpot]}
+        view="location"
+      />
+    );
+
+    expect(screen.getByText('12,345')).toBeInTheDocument();
+    expect(screen.getByText('678')).toBeInTheDocument();
+    const expDetails = screen.getByText(/Lv\. 20/).parentElement;
+    expect(expDetails).toHaveTextContent('Speed +1 EV');
+    expect(expDetails).toHaveTextContent('Field');
+    expect(screen.getByText(/Speed \+1 EV/)).toHaveClass('text-emerald-700', 'dark:text-emerald-300');
+    expect(screen.getByText(/Field/)).toHaveClass('text-violet-700', 'dark:text-violet-300');
+    expect(screen.queryByText(/encounters\/hour/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/effective odds/i)).not.toBeInTheDocument();
   });
 
   it('collapses lower points-per-hour splits behind one location-level control', () => {

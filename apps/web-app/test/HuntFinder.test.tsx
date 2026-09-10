@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import HuntFinder from '../src/components/shiny-war/HuntFinder';
 import { shinyWarRequest } from '../src/components/shiny-war/api';
 import type { HuntSpot } from '../src/components/shiny-war/types';
+import { getHuntFinderMessages } from '../src/components/hunt-finder/messages';
 
 jest.mock('../src/components/shiny-war/api', () => ({
   shinyWarRequest: jest.fn(),
@@ -26,6 +27,13 @@ const makeSpot = (spotKey: string, location: string): HuntSpot => ({
 });
 
 describe('HuntFinder', () => {
+  it('localizes displayed Pokemon information controls', () => {
+    expect(getHuntFinderMessages('es').displayedPokemonInfo).toBe('Información de Pokémon mostrada');
+    expect(getHuntFinderMessages('es').pokemonInfo.eggGroups).toBe('Grupos Huevo');
+    expect(getHuntFinderMessages('zh').displayedPokemonInfo).toBe('显示的宝可梦信息');
+    expect(getHuntFinderMessages('zh').pokemonInfo.effectiveOdds).toBe('有效概率');
+  });
+
   it('uses an integer-only minimum tier filter', async () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 
@@ -90,14 +98,13 @@ describe('HuntFinder', () => {
     expect(screen.getByLabelText('Minimum points/hour')).toBeInTheDocument();
     expect(screen.queryByLabelText('Minimum EXP/hour')).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'EV yield' })).not.toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Egg groups' })).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('Field'));
+    expect(screen.queryByRole('group', { name: 'Egg groups' })).not.toBeInTheDocument();
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
       expect(latestUrl).toContain('minTier=3');
       expect(latestUrl).not.toContain('minLevel');
       expect(latestUrl).not.toContain('evStats');
-      expect(latestUrl).toContain('eggGroups=Field');
+      expect(latestUrl).not.toContain('eggGroups');
     });
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
@@ -107,7 +114,8 @@ describe('HuntFinder', () => {
     expect(screen.queryByLabelText('Minimum points/hour')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Minimum EXP/hour')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'EV yield' })).toBeInTheDocument();
-    expect(screen.queryByRole('group', { name: 'Egg groups' })).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Egg groups' })).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Field'));
     fireEvent.change(screen.getByLabelText('Minimum EXP/hour'), { target: { value: '100000' } });
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
@@ -116,12 +124,55 @@ describe('HuntFinder', () => {
       expect(latestUrl).not.toContain('minPointsPerHour');
       expect(latestUrl).toContain('minExpPerHour=100000');
       expect(latestUrl).toContain('evStats=attack');
-      expect(latestUrl).not.toContain('eggGroups');
+      expect(latestUrl).toContain('eggGroups=Field');
     });
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'alphabetical' } });
     expect(screen.getByLabelText('Sort direction')).toHaveValue('asc');
     expect(screen.getByLabelText('Field')).toBeChecked();
+  });
+
+  it('toggles supplemental Pokemon information from within the Sort section', async () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({
+      items: [{
+        ...makeSpot('mansion', 'Pokemon Mansion'),
+        averageExp: 678,
+        expPerHour: 12345,
+        composition: [{
+          ...makeSpot('mansion', 'Pokemon Mansion').composition[0],
+          ev_speed: 1,
+          egg_groups: ['Field'],
+        }],
+      }],
+      locations: ['Pokemon Mansion'],
+      total: 1,
+    });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+    await screen.findByText('Pokemon Mansion');
+
+    const infoGroup = screen.getByRole('group', { name: 'Displayed Pokémon Info' });
+    expect(infoGroup.closest('section')).toHaveAttribute('aria-labelledby', 'hunt-sort-heading');
+    expect(screen.getByLabelText('Points/hour')).not.toBeChecked();
+    expect(screen.queryByText('1.333')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tier 3/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Points/hour'));
+    fireEvent.click(screen.getByLabelText('Tier'));
+    fireEvent.click(screen.getByLabelText('Level'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'EV yield' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Egg groups' }));
+
+    expect(screen.getByText('1.333')).toBeInTheDocument();
+    expect(screen.getByText(/Tier 3/)).toBeInTheDocument();
+    expect(screen.getByText(/Lv\. 20/)).toBeInTheDocument();
+    expect(screen.getByText(/Speed \+1 EV/)).toBeInTheDocument();
+    expect(screen.getByText('Field')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
+    expect(screen.getByRole('group', { name: 'Displayed Pokémon Info' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Points/hour')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Level')).toBeChecked();
   });
 
   it("uses Farfetch'd as the species filter value", async () => {
@@ -444,6 +495,7 @@ describe('HuntFinder', () => {
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
     fireEvent.click(screen.getByLabelText('Attack'));
     fireEvent.click(screen.getByLabelText('Speed'));
+    fireEvent.click(screen.getByLabelText('Field'));
     fireEvent.click(screen.getByLabelText('+1 EV'));
     fireEvent.click(screen.getByLabelText('+2 EV'));
 
@@ -452,6 +504,7 @@ describe('HuntFinder', () => {
       expect(latestUrl).toContain('minLevel=30');
       expect(latestUrl).toContain('evStats=attack%2Cspeed');
       expect(latestUrl).toContain('evAmounts=2');
+      expect(latestUrl).toContain('eggGroups=Field');
       expect(latestUrl).not.toContain('evAmounts=1%2C2');
     });
   });
@@ -505,6 +558,10 @@ describe('HuntFinder', () => {
     fireEvent.change(species, { target: { value: '鲤鱼王' } });
     fireEvent.mouseDown(await screen.findByRole('option', { name: /鲤鱼王.*Magikarp/ }));
     expect(species).toHaveValue('鲤鱼王');
+    expect(screen.getByRole('group', { name: '显示的宝可梦信息' })).toBeInTheDocument();
+    expect(screen.getByLabelText('积分/小时')).toBeInTheDocument();
+    expect(screen.getByLabelText('EV 产出')).toBeInTheDocument();
+    expect(screen.getByLabelText('蛋群')).toBeInTheDocument();
 
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;

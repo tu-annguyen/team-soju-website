@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import HuntFinderControls from '../hunt-finder/HuntFinderControls';
-import type { HuntFinderContext, HuntFinderFilters } from '../hunt-finder/types';
+import type { DisplayedPokemonInfo, HuntFinderContext, HuntFinderFilters } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
 import { getPokeMmoClockState } from './pokeMmoClockState';
 import { shinyWarRequest } from './api';
@@ -62,7 +62,7 @@ function buildSearchParams(
     if (filters.sort === 'expPerHour' && key === 'minTier') return;
     if (filters.sort === 'expPerHour' && key === 'minPointsPerHour') return;
     if (filters.sort === 'pointsPerHour' && ['minLevel', 'minExpPerHour', 'evStats', 'evAmounts'].includes(key)) return;
-    if (filters.sort === 'expPerHour' && key === 'eggGroups') return;
+    if (filters.sort === 'pointsPerHour' && key === 'eggGroups') return;
     if (filters.sort !== 'pointsPerHour'
       && ['eventBoost', 'donator', 'personalCharm', 'linkCharm', 'chumBucket'].includes(key)) return;
     if (filters.sort !== 'expPerHour' && ['expCharm', 'expReamplifier', 'expDonator', 'tradeBonus'].includes(key)) return;
@@ -101,6 +101,7 @@ export default function HuntFinder({
   onQueue,
 }: Props) {
   const [filters, setFilters] = useState<HuntFinderFilters>(() => initialFilters(context, defaultSeason));
+  const [displayedInfo, setDisplayedInfo] = useState<DisplayedPokemonInfo[]>([]);
   const [spots, setSpots] = useState<HuntSpot[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
@@ -181,7 +182,7 @@ export default function HuntFinder({
 
   return (
     <div className="space-y-5">
-      <HuntFinderControls context={context} filters={filters} locale={locale} locations={locations} setFilters={setFilters} teamWarAvailable={teamCaughtFamilyKeys !== undefined} />
+      <HuntFinderControls context={context} displayedInfo={displayedInfo} filters={filters} locale={locale} locations={locations} setDisplayedInfo={setDisplayedInfo} setFilters={setFilters} teamWarAvailable={teamCaughtFamilyKeys !== undefined} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2" aria-label="Group hunt results by" role="group">
           {([['location', messages.results.location], ['pokemon', messages.results.pokemon]] as const).map(([value, label]) => (
@@ -197,6 +198,7 @@ export default function HuntFinder({
       <HuntResults
         collapsedLocations={collapsedLocations}
         context={context}
+        displayedInfo={displayedInfo}
         minimumTier={filters.sort === 'expPerHour' ? '' : filters.minTier}
         locale={locale}
         onQueue={onQueue}
