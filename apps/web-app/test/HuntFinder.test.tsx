@@ -26,18 +26,46 @@ const makeSpot = (spotKey: string, location: string): HuntSpot => ({
   }],
 });
 
+function openAdvancedFilters() {
+  fireEvent.click(screen.getByRole('button', { name: 'Advanced Filters' }));
+}
+
 describe('HuntFinder', () => {
   it('localizes displayed Pokemon information controls', () => {
     expect(getHuntFinderMessages('es').displayedPokemonInfo).toBe('Información de Pokémon mostrada');
     expect(getHuntFinderMessages('es').pokemonInfo.eggGroups).toBe('Grupos Huevo');
     expect(getHuntFinderMessages('zh').displayedPokemonInfo).toBe('显示的宝可梦信息');
     expect(getHuntFinderMessages('zh').pokemonInfo.effectiveOdds).toBe('有效概率');
+    expect(getHuntFinderMessages('es').sections.advancedFilters).toBe('Filtros avanzados');
+    expect(getHuntFinderMessages('zh').sections.advancedFilters).toBe('高级筛选');
+  });
+
+  it('keeps primary filters visible and folds the remaining filters under a green toggle', () => {
+    (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+
+    ['Season', 'Region', 'Location', 'Encounter method', 'Time', 'Species'].forEach((name) => {
+      expect(screen.getByLabelText(name)).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText('Minimum tier')).not.toBeInTheDocument();
+    const toggle = screen.getByRole('button', { name: 'Advanced Filters' });
+    expect(toggle).toHaveTextContent('+ Advanced Filters');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveClass('bg-green-100', 'rounded-full');
+    expect(toggle.parentElement).toHaveClass('lg:col-span-1', 'lg:col-start-4', 'lg:justify-end');
+
+    fireEvent.click(toggle);
+    expect(screen.getByLabelText('Minimum tier')).toBeInTheDocument();
+    expect(toggle).toHaveTextContent('- Advanced Filters');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('uses an integer-only minimum tier filter', async () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+    openAdvancedFilters();
 
     const minimumTier = screen.getByLabelText('Minimum tier');
     expect(minimumTier).toHaveAttribute('type', 'number');
@@ -70,6 +98,7 @@ describe('HuntFinder', () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+    openAdvancedFilters();
 
     expect(screen.getByLabelText('Minimum tier')).toBeInTheDocument();
     expect(screen.getByLabelText('Minimum level')).toBeInTheDocument();
@@ -167,7 +196,7 @@ describe('HuntFinder', () => {
     expect(screen.getByText(/Tier 3/)).toBeInTheDocument();
     expect(screen.getByText(/Lv\. 20/)).toBeInTheDocument();
     expect(screen.getByText(/Speed \+1 EV/)).toBeInTheDocument();
-    expect(screen.getByText('Field')).toBeInTheDocument();
+    expect(screen.getByText(/Field/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
     expect(screen.getByRole('group', { name: 'Displayed Pokémon Info' })).toBeInTheDocument();
@@ -288,6 +317,7 @@ describe('HuntFinder', () => {
 
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
+    openAdvancedFilters();
 
     const method = screen.getByLabelText('Encounter method');
     const nonSafari = screen.getByLabelText('Non-Safari only');
@@ -372,6 +402,7 @@ describe('HuntFinder', () => {
         onQueue={jest.fn()}
       />
     );
+    openAdvancedFilters();
 
     const officialBonus = screen.getByLabelText('Official unique species +8');
     const teamBonus = screen.getByLabelText('Team War unique species +8');
@@ -428,6 +459,7 @@ describe('HuntFinder', () => {
         onQueue={jest.fn()}
       />
     );
+    openAdvancedFilters();
 
     const officialExclusion = screen.getByLabelText('Exclude Official caught evolution lines');
     const teamExclusion = screen.getByLabelText('Exclude Team War caught evolution lines');
@@ -490,6 +522,7 @@ describe('HuntFinder', () => {
   it('sends minimum-level and multi-select EV filters', async () => {
     (shinyWarRequest as jest.Mock).mockResolvedValue({ items: [], locations: [], total: 0 });
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+    openAdvancedFilters();
 
     fireEvent.change(screen.getByLabelText('Minimum level'), { target: { value: '30' } });
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });

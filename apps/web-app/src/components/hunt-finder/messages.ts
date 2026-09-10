@@ -8,7 +8,7 @@ const en = {
     heading: 'Hunt Finder',
     intro: 'Find and compare wild encounters by location, species, level, EV yield, shiny points, or estimated EXP per hour.',
   },
-  sections: { filters: 'Filters', sort: 'Sort' },
+  sections: { filters: 'Filters', sort: 'Sort', advancedFilters: 'Advanced Filters' },
   fields: {
     season: 'Season', region: 'Region', location: 'Location', species: 'Species', method: 'Encounter method',
     time: 'Time', minimumTier: 'Minimum tier', minimumLevel: 'Minimum level', minimumPoints: 'Minimum points/hour', minimumExp: 'Minimum EXP/hour',
@@ -53,7 +53,7 @@ type HuntFinderMessages = WidenStrings<typeof en>;
 
 const es: HuntFinderMessages = {
   page: { title: 'Buscador de cacerías - Team Soju', description: 'Compara lugares de encuentros salvajes por puntos shiny, experiencia, niveles y EV.', eyebrow: 'Búsqueda en la Pokédex', heading: 'Buscador de cacerías', intro: 'Busca y compara encuentros salvajes por lugar, especie, nivel, EV, puntos shiny o EXP estimada por hora.' },
-  sections: { filters: 'Filtros', sort: 'Ordenar' },
+  sections: { filters: 'Filtros', sort: 'Ordenar', advancedFilters: 'Filtros avanzados' },
   fields: { season: 'Estación', region: 'Región', location: 'Lugar', species: 'Especie', method: 'Método de encuentro', time: 'Hora', minimumTier: 'Tier mínimo', minimumLevel: 'Nivel mínimo', minimumPoints: 'Puntos/hora mínimos', minimumExp: 'EXP/hora mínima', hordeSize: 'Tamaño de horda', hordesPerHour: 'Hordas/hora', encountersPerHour: 'Encuentros/hora', sortBy: 'Ordenar por', direction: 'Dirección' },
   options: { anySeason: 'Cualquier estación', everyRegion: 'Todas las regiones', everyLocation: 'Todos los lugares', everySpecies: 'Todas las especies', everyMethod: 'Todos los métodos de encuentro salvaje', sweetScent: 'Dulce Aroma (Hordas)', singles: 'Individuales', fishing: 'Pesca', honeyTrees: 'Árboles de miel', headbutt: 'Golpe Cabeza', rockSmash: 'Golpe Roca', anyTime: 'Cualquier hora', morning: 'Mañana', day: 'Día', night: 'Noche', noMinimum: 'Sin mínimo', hourlyUnavailable: 'Datos por hora no disponibles', bothHordes: '3× y 5×', threeOnly: 'Solo 3×', fiveOnly: 'Solo 5×', pointsHour: 'Puntos/hora', expHour: 'EXP/hora', alphabetical: 'Alfabético', descending: 'Descendente', ascending: 'Ascendente', fullSplit: 'Solo hordas con reparto al 100%', nonSafari: 'Solo fuera de Safari' },
   evYield: 'EV otorgados', eggGroups: 'Grupos Huevo', displayedPokemonInfo: 'Información de Pokémon mostrada', pokemonInfo: { pointsPerHour: 'Puntos/hora', averageShiny: 'Media/shiny', encountersPerHour: 'Encuentros/hora', effectiveOdds: 'Probabilidad efectiva', tier: 'Tier', level: 'Nivel', evYield: 'EV otorgados', eggGroups: 'Grupos Huevo' }, evStats: { hp: 'PS', attack: 'Ataque', defense: 'Defensa', spAttack: 'Ataque Especial', spDefense: 'Defensa Especial', speed: 'Velocidad' },
@@ -66,7 +66,7 @@ const es: HuntFinderMessages = {
 
 const zh: HuntFinderMessages = {
   page: { title: '狩猎查找器 - Team Soju', description: '按闪光积分、经验、等级和 EV 产出比较野外遭遇地点。', eyebrow: '图鉴搜索', heading: '狩猎查找器', intro: '按地点、宝可梦、等级、EV 产出、闪光积分或每小时预估经验查找并比较野外遭遇。' },
-  sections: { filters: '筛选', sort: '排序' },
+  sections: { filters: '筛选', sort: '排序', advancedFilters: '高级筛选' },
   fields: { season: '季节', region: '地区', location: '地点', species: '宝可梦', method: '遭遇方式', time: '时段', minimumTier: '最低阶级', minimumLevel: '最低等级', minimumPoints: '最低积分/小时', minimumExp: '最低经验/小时', hordeSize: '群怪数量', hordesPerHour: '每小时群怪数', encountersPerHour: '每小时遭遇数', sortBy: '排序方式', direction: '排序方向' },
   options: { anySeason: '任意季节', everyRegion: '所有地区', everyLocation: '所有地点', everySpecies: '所有宝可梦', everyMethod: '所有野外遭遇方式', sweetScent: '甜甜香气（群怪）', singles: '单只遭遇', fishing: '钓鱼', honeyTrees: '蜂蜜树', headbutt: '头锤', rockSmash: '碎岩', anyTime: '任意时段', morning: '早晨', day: '白天', night: '夜晚', noMinimum: '无最低限制', hourlyUnavailable: '无每小时数据', bothHordes: '3× 和 5×', threeOnly: '仅 3×', fiveOnly: '仅 5×', pointsHour: '积分/小时', expHour: '经验/小时', alphabetical: '字母顺序', descending: '降序', ascending: '升序', fullSplit: '仅 100% 固定群怪', nonSafari: '仅非狩猎地带' },
   evYield: 'EV 产出', eggGroups: '蛋群', displayedPokemonInfo: '显示的宝可梦信息', pokemonInfo: { pointsPerHour: '积分/小时', averageShiny: '平均值/闪光', encountersPerHour: '每小时遭遇数', effectiveOdds: '有效概率', tier: '阶级', level: '等级', evYield: 'EV 产出', eggGroups: '蛋群' }, evStats: { hp: 'HP', attack: '攻击', defense: '防御', spAttack: '特攻', spDefense: '特防', speed: '速度' },
