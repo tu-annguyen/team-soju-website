@@ -45,6 +45,7 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
     <Select title={m.fields.season} value={f.season} onChange={(v) => set('season', v)} options={[['', m.options.anySeason], ...(['Summer', 'Autumn', 'Winter', 'Spring'] as const).map((v) => [v, m.calendar[v]] as const)]} />
     <label className={label}>{m.fields.region}<FilteredCombobox className={field} getOptionLabel={game.region} options={CATCH_EVENT_REGIONS} value={f.region} onChange={(region) => setFilters((old) => ({ ...old, region, location: '' }))} placeholder={m.options.everyRegion} /></label>
     <label className={label}>{m.fields.location}<FilteredCombobox className={field} getOptionLabel={game.location} options={locations} value={f.location} onChange={(v) => set('location', v)} placeholder={m.options.everyLocation} /></label>
+    <label className={label}>{m.fields.species}<FilteredCombobox className={field} getOptionLabel={game.species} options={POKEMON_SPECIES_NAMES} value={f.species} onChange={(v) => set('species', v)} placeholder={m.options.everySpecies} /></label>
     <Select title={m.fields.method} value={f.method} onChange={(method) => setFilters((old) => ({
       ...old,
       method,
@@ -54,7 +55,6 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
         : {}),
     }))} options={methods} />
     <Select title={m.fields.time} value={f.time} onChange={(v) => set('time', v)} options={[['', m.options.anyTime], ['morning', m.options.morning], ['day', m.options.day], ['night', m.options.night]]} />
-    <label className={label}>{m.fields.species}<FilteredCombobox className={field} getOptionLabel={game.species} options={POKEMON_SPECIES_NAMES} value={f.species} onChange={(v) => set('species', v)} placeholder={m.options.everySpecies} /></label>
     <div className="flex items-end sm:col-span-2 lg:col-span-1 lg:col-start-4 lg:justify-end">
       <button aria-controls="advanced-hunt-filters" aria-expanded={advancedFiltersOpen} className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800" onClick={() => setAdvancedFiltersOpen((open) => !open)} type="button">
         <span aria-hidden="true">{advancedFiltersOpen ? '-' : '+'}</span>{' '}{m.sections.advancedFilters}
