@@ -55,7 +55,7 @@ export default function HuntSpotCard({
         <div className="min-w-0 flex-1 basis-full lg:basis-64">
           <div className="w-full text-left">
             <h3 className="text-sm font-bold text-gray-950 dark:text-white">{title || spot.location}</h3>
-            <p className="truncate whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {game.region(spot.region)} · {spot.horde_size ? `${spot.horde_size}× ${game.label('Sweet Scent')}` : game.label(spot.method)}
               {availability.map(({ kind, label, value }) => (
                 <Fragment key={`${kind}-${value}`}>
