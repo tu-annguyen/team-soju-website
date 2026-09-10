@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import HuntSpotCard from './HuntSpotCard';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { DisplayedPokemonInfo, HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
@@ -12,9 +12,10 @@ type Props = {
   displayedInfo?: DisplayedPokemonInfo[];
   spots: HuntSpot[];
   targetSpecies?: HuntSpecies;
+  locationKey?: string;
   locationOpen: boolean;
   onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
-  onToggleLocation: () => void;
+  onToggleLocation: (locationKey: string) => void;
   sort?: HuntSort;
   sortDirection?: SortDirection;
 };
@@ -55,29 +56,31 @@ function splitTitles(
   });
 }
 
-export default function HuntLocationCard({
+function HuntLocationCard({
   locationOpen, participants, locale, spots, targetSpecies, onQueue, onToggleLocation,
-  context = 'shinyWar', displayedInfo = [], sort = 'pointsPerHour', sortDirection = 'desc',
+  locationKey = '', context = 'shinyWar', displayedInfo = [], sort = 'pointsPerHour', sortDirection = 'desc',
 }: Props) {
   const [lowerRateOpen, setLowerRateOpen] = useState(false);
-  const messages = getHuntFinderMessages(locale).results;
-  const game = getGameTranslations(locale);
-  const titles = splitTitles(spots, game.label, game.location, messages.split);
-  const titledSpots = spots.map((spot, index) => ({ spot, title: titles[index] }));
-  const direction = sortDirection === 'asc' ? 1 : -1;
-  const metric = sort === 'expPerHour' ? 'expPerHour' : 'pointsPerHour';
-  const rankedSpots = sort === 'alphabetical' ? titledSpots : [...titledSpots].sort((left, right) => {
-    const leftValue = left.spot[metric];
-    const rightValue = right.spot[metric];
-    if (leftValue == null) return rightValue == null ? 0 : 1;
-    if (rightValue == null) return -1;
-    return direction * (leftValue - rightValue);
-  });
-  const firstRanked = rankedSpots[0];
-  const bestSpots = sort === 'alphabetical'
-    ? rankedSpots
-    : rankedSpots.filter(({ spot }) => spot[metric] === firstRanked?.spot[metric]);
-  const lowerRateSpots = rankedSpots.filter((entry) => !bestSpots.includes(entry));
+  const messages = useMemo(() => getHuntFinderMessages(locale).results, [locale]);
+  const game = useMemo(() => getGameTranslations(locale), [locale]);
+  const { bestSpots, lowerRateSpots } = useMemo(() => {
+    const titles = splitTitles(spots, game.label, game.location, messages.split);
+    const titledSpots = spots.map((spot, index) => ({ spot, title: titles[index] }));
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    const metric = sort === 'expPerHour' ? 'expPerHour' : 'pointsPerHour';
+    const rankedSpots = sort === 'alphabetical' ? titledSpots : [...titledSpots].sort((left, right) => {
+      const leftValue = left.spot[metric];
+      const rightValue = right.spot[metric];
+      if (leftValue == null) return rightValue == null ? 0 : 1;
+      if (rightValue == null) return -1;
+      return direction * (leftValue - rightValue);
+    });
+    const firstRanked = rankedSpots[0];
+    const best = sort === 'alphabetical'
+      ? rankedSpots
+      : rankedSpots.filter(({ spot }) => spot[metric] === firstRanked?.spot[metric]);
+    return { bestSpots: best, lowerRateSpots: rankedSpots.filter((entry) => !best.includes(entry)) };
+  }, [game.label, game.location, messages.split, sort, sortDirection, spots]);
   const firstSpot = bestSpots[0]?.spot || spots[0];
   const secondaryLabel = sort === 'pointsPerHour' && sortDirection === 'desc'
     ? messages.lowerPoints
@@ -99,12 +102,12 @@ export default function HuntLocationCard({
   );
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+    <article className="[content-visibility:auto] [contain-intrinsic-size:auto_300px] overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
       <header className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:flex-nowrap">
         <button
           aria-expanded={locationOpen}
           className="min-w-0 flex-1 rounded-lg text-left transition-colors hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:text-primary-300"
-          onClick={onToggleLocation}
+          onClick={() => onToggleLocation(locationKey)}
           type="button"
         >
           <span className="block text-lg font-bold leading-tight text-gray-950 dark:text-white">{game.location(firstSpot.location)}</span>
@@ -116,7 +119,7 @@ export default function HuntLocationCard({
           aria-expanded={locationOpen}
           aria-label={`${locationOpen ? messages.collapse : messages.expand} ${game.location(firstSpot.location)}`}
           className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-bold text-primary-700 transition-colors hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-primary-950 dark:text-primary-200 dark:hover:bg-primary-900"
-          onClick={onToggleLocation}
+          onClick={() => onToggleLocation(locationKey)}
           type="button"
         >
           <span aria-hidden="true">{locationOpen ? '−' : '+'}</span>
@@ -152,3 +155,21 @@ export default function HuntLocationCard({
     </article>
   );
 }
+
+function equalProps(previous: Props, next: Props) {
+  return previous.locationOpen === next.locationOpen
+    && previous.locationKey === next.locationKey
+    && previous.participants === next.participants
+    && previous.locale === next.locale
+    && previous.context === next.context
+    && previous.displayedInfo === next.displayedInfo
+    && previous.targetSpecies === next.targetSpecies
+    && previous.onQueue === next.onQueue
+    && previous.onToggleLocation === next.onToggleLocation
+    && previous.sort === next.sort
+    && previous.sortDirection === next.sortDirection
+    && previous.spots.length === next.spots.length
+    && previous.spots.every((spot, index) => spot === next.spots[index]);
+}
+
+export default memo(HuntLocationCard, equalProps);

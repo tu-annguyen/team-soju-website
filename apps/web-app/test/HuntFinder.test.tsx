@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import HuntFinder from '../src/components/shiny-war/HuntFinder';
 import { shinyWarRequest } from '../src/components/shiny-war/api';
 import type { HuntSpot } from '../src/components/shiny-war/types';
@@ -44,7 +44,9 @@ describe('HuntFinder', () => {
     expect(skeleton.querySelectorAll('article')).toHaveLength(3);
 
     await waitFor(() => expect(shinyWarRequest).toHaveBeenCalled());
-    resolveRequest({ items: [makeSpot('forest', 'Viridian Forest')], locations: ['Viridian Forest'], total: 1 });
+    await act(async () => {
+      resolveRequest({ items: [makeSpot('forest', 'Viridian Forest')], locations: ['Viridian Forest'], total: 1 });
+    });
 
     expect(await screen.findByText('Viridian Forest')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Loading hunt results' })).not.toBeInTheDocument();
@@ -57,6 +59,79 @@ describe('HuntFinder', () => {
     expect(getHuntFinderMessages('zh').pokemonInfo.effectiveOdds).toBe('有效概率');
     expect(getHuntFinderMessages('es').sections.advancedFilters).toBe('Filtros avanzados');
     expect(getHuntFinderMessages('zh').sections.advancedFilters).toBe('高级筛选');
+  });
+
+  it('loads 30 results at a time and appends the next page', async () => {
+    const firstPage = [makeSpot('forest', 'Viridian Forest'), makeSpot('route-1', 'Route 1')];
+    const secondPage = [makeSpot('route-2', 'Route 2')];
+    (shinyWarRequest as jest.Mock).mockImplementation((_baseUrl: string, path: string) => (
+      Promise.resolve(path.includes('page=2')
+        ? { items: secondPage, locations: ['Viridian Forest', 'Route 1', 'Route 2'], total: 3, page: 2, pageSize: 30 }
+        : { items: firstPage, locations: ['Viridian Forest', 'Route 1', 'Route 2'], total: 3, page: 1, pageSize: 30 })
+    ));
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} />);
+
+    expect(await screen.findByText('Viridian Forest')).toBeInTheDocument();
+    const firstUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
+    expect(firstUrl).toContain('page=1');
+    expect(firstUrl).toContain('pageSize=30');
+    expect(screen.getByText(/Showing 2 of 3 matching encounter groups/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+    expect(await screen.findByText('Route 2')).toBeInTheDocument();
+    expect((shinyWarRequest as jest.Mock).mock.calls.at(-1)[1]).toContain('page=2');
+    expect(screen.getByText(/Showing 3 of 3 matching encounter groups/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+  });
+
+  it('keeps current results and allows retrying when loading more fails', async () => {
+    (shinyWarRequest as jest.Mock)
+      .mockResolvedValueOnce({ items: [makeSpot('forest', 'Viridian Forest')], locations: ['Viridian Forest'], total: 2, page: 1 })
+      .mockRejectedValueOnce(new Error('Network unavailable'));
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} />);
+    expect(await screen.findByText('Viridian Forest')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Network unavailable');
+    expect(screen.getByText('Viridian Forest')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Load more' })).toBeEnabled();
+  });
+
+  it('ignores a stale filter response after a newer request finishes', async () => {
+    let resolvePikachu!: (value: { items: HuntSpot[]; locations: string[]; total: number }) => void;
+    let resolveVulpix!: (value: { items: HuntSpot[]; locations: string[]; total: number }) => void;
+    (shinyWarRequest as jest.Mock).mockImplementation((_baseUrl: string, path: string) => {
+      if (path.includes('species=Pikachu')) {
+        return new Promise((resolve) => { resolvePikachu = resolve; });
+      }
+      if (path.includes('species=Vulpix')) {
+        return new Promise((resolve) => { resolveVulpix = resolve; });
+      }
+      return Promise.resolve({ items: [makeSpot('initial', 'Initial Route')], locations: ['Initial Route'], total: 1 });
+    });
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} />);
+    expect(await screen.findByText('Initial Route')).toBeInTheDocument();
+
+    const species = screen.getByLabelText('Species');
+    fireEvent.change(species, { target: { value: 'Pikachu' } });
+    await waitFor(() => expect((shinyWarRequest as jest.Mock).mock.calls.at(-1)[1]).toContain('species=Pikachu'));
+    fireEvent.change(species, { target: { value: 'Vulpix' } });
+    await waitFor(() => expect((shinyWarRequest as jest.Mock).mock.calls.at(-1)[1]).toContain('species=Vulpix'));
+
+    await act(async () => {
+      resolveVulpix({ items: [makeSpot('new', 'Vulpix Route')], locations: ['Vulpix Route'], total: 1 });
+    });
+    expect(await screen.findByText('Vulpix Route')).toBeInTheDocument();
+
+    await act(async () => {
+      resolvePikachu({ items: [makeSpot('stale', 'Pikachu Route')], locations: ['Pikachu Route'], total: 1 });
+    });
+    expect(screen.getByText('Vulpix Route')).toBeInTheDocument();
+    expect(screen.queryByText('Pikachu Route')).not.toBeInTheDocument();
   });
 
   it('keeps primary filters visible and folds the remaining filters under a green toggle', () => {

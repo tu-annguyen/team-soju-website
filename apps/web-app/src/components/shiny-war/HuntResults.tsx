@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import HuntLocationCard from './HuntLocationCard';
 import SpeciesSpriteName from './SpeciesSpriteName';
-import { groupHuntSpotsByLocation } from './huntLocationGroups';
-import { groupHuntSpotsByPokemonLocation } from './huntPokemonLocationGroups';
+import { groupHuntSpotsByLocation, type HuntLocationGroup } from './huntLocationGroups';
+import { groupHuntSpotsByPokemonLocation, type HuntPokemonLocationSection } from './huntPokemonLocationGroups';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { DisplayedPokemonInfo, HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
@@ -17,10 +17,12 @@ type Props = {
   context?: HuntFinderContext;
   displayedInfo?: DisplayedPokemonInfo[];
   minimumTier?: string;
+  locationGroups?: HuntLocationGroup[];
   locale?: string;
-  speciesFilter: string;
+  speciesFilter?: string;
   spots: HuntSpot[];
   view: HuntView;
+  pokemonLocationGroups?: HuntPokemonLocationSection[];
   onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   sort?: HuntSort;
   sortDirection?: SortDirection;
@@ -30,25 +32,36 @@ type Props = {
   onToggleLocation?: (locationKey: string) => void;
 };
 
-export default function HuntResults({
-  participants, minimumTier = '', locale, speciesFilter, spots, view, onQueue,
+function HuntResults({
+  participants, minimumTier = '', locale, speciesFilter = '', spots, view, onQueue,
   collapsedLocations, onToggleLocation, context = 'shinyWar', displayedInfo = [],
-  sort = 'pointsPerHour', sortDirection = 'desc',
+  sort = 'pointsPerHour', sortDirection = 'desc', locationGroups: providedLocationGroups,
+  pokemonLocationGroups: providedPokemonLocationGroups,
 }: Props) {
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
-  const messages = getHuntFinderMessages(locale).results;
-  const game = getGameTranslations(locale);
+  const messages = useMemo(() => getHuntFinderMessages(locale).results, [locale]);
+  const game = useMemo(() => getGameTranslations(locale), [locale]);
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
-  const toggleLocation = onToggleLocation || ((locationKey: string) => {
+  const internalToggleLocation = useCallback((locationKey: string) => {
     setInternalCollapsedLocations((current) => {
       const next = new Set(current);
       if (next.has(locationKey)) next.delete(locationKey);
       else next.add(locationKey);
       return next;
     });
-  });
+  }, []);
+  const toggleLocation = onToggleLocation || internalToggleLocation;
+  const locationGroups = useMemo(
+    () => providedLocationGroups || groupHuntSpotsByLocation(spots),
+    [providedLocationGroups, spots]
+  );
+  const pokemonLocationGroups = useMemo(
+    () => providedPokemonLocationGroups || groupHuntSpotsByPokemonLocation(
+      spots, speciesFilter, minimumTier, sort, sortDirection
+    ),
+    [minimumTier, providedPokemonLocationGroups, sort, sortDirection, speciesFilter, spots]
+  );
   if (view === 'location') {
-    const locationGroups = groupHuntSpotsByLocation(spots);
     return (
       <div className="space-y-3">
         {locationGroups.map((group) => (
@@ -63,22 +76,23 @@ export default function HuntResults({
             sort={sort}
             sortDirection={sortDirection}
             onQueue={onQueue}
-            onToggleLocation={() => toggleLocation(group.key)}
+            locationKey={group.key}
+            onToggleLocation={toggleLocation}
           />
         ))}
       </div>
     );
   }
 
-  const groups = groupHuntSpotsByPokemonLocation(
-    spots, speciesFilter, minimumTier, sort, sortDirection
-  );
-
   return (
     <div className="space-y-4">
-      {groups.map(({ species, spots: speciesSpots, locations }) => (
+      {pokemonLocationGroups.map(({ species, spots: speciesSpots, locations }) => {
+        const wildLocationCount = new Set(
+          speciesSpots.map((spot) => `${spot.region}|${spot.location}`)
+        ).size;
+        return (
         <section
-          className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950"
+          className="[content-visibility:auto] [contain-intrinsic-size:auto_500px] rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950"
           key={`${species.slug}-${species.form}`}
         >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
@@ -94,8 +108,8 @@ export default function HuntResults({
               </span>
             </div>
             <p className="text-sm text-gray-500">
-              {new Set(speciesSpots.map((spot) => `${spot.region}|${spot.location}`)).size}{' '}
-              {new Set(speciesSpots.map((spot) => `${spot.region}|${spot.location}`)).size === 1 ? messages.wildLocation : messages.wildLocations}
+              {wildLocationCount}{' '}
+              {wildLocationCount === 1 ? messages.wildLocation : messages.wildLocations}
             </p>
           </div>
           <div className="space-y-3">
@@ -112,12 +126,15 @@ export default function HuntResults({
                 sortDirection={sortDirection}
                 targetSpecies={species}
                 onQueue={onQueue}
-                onToggleLocation={() => toggleLocation(group.key)}
+                locationKey={group.key}
+                onToggleLocation={toggleLocation}
               />
             ))}
           </div>
         </section>
-      ))}
+      )})}
     </div>
   );
 }
+
+export default memo(HuntResults);

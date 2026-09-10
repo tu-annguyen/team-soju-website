@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, memo } from 'react';
 import { SpeciesSprite } from './SpeciesSpriteName';
 import LocationQueueStatus from './LocationQueueStatus';
 import ClockAttributeIcon from './ClockAttributeIcon';
@@ -19,7 +19,7 @@ type Props = {
   title?: string;
 };
 
-export default function HuntSpotCard({
+function HuntSpotCard({
   spot, participants, locale, targetSpecies, onQueue, title, context = 'shinyWar', displayedInfo = [], sort = 'pointsPerHour',
 }: Props) {
   const availableTimes = spot.time === 'Any' ? [] : (spot.times?.length ? spot.times : [spot.time]);
@@ -131,3 +131,5 @@ export default function HuntSpotCard({
     </article>
   );
 }
+
+export default memo(HuntSpotCard);
