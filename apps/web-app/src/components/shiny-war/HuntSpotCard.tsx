@@ -1,5 +1,7 @@
+import { Fragment } from 'react';
 import { SpeciesSprite } from './SpeciesSpriteName';
 import LocationQueueStatus from './LocationQueueStatus';
+import ClockAttributeIcon from './ClockAttributeIcon';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { DisplayedPokemonInfo, HuntFinderContext, HuntSort } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
@@ -23,9 +25,14 @@ export default function HuntSpotCard({
   const availableTimes = spot.time === 'Any' ? [] : (spot.times?.length ? spot.times : [spot.time]);
   const game = getGameTranslations(locale);
   const availability = [
-    spot.season !== 'Any' ? game.label(spot.season) : null,
-    ...availableTimes.map((time) => game.label(time.charAt(0).toUpperCase() + time.slice(1))),
-  ].filter(Boolean).join(' · ');
+    ...(spot.season !== 'Any'
+      ? [{ kind: 'season' as const, label: game.label(spot.season), value: spot.season }]
+      : []),
+    ...availableTimes.map((time) => {
+      const value = time.charAt(0).toUpperCase() + time.slice(1);
+      return { kind: 'timeOfDay' as const, label: game.label(value), value };
+    }),
+  ];
   const showingExp = sort === 'expPerHour';
   const showPointsPerHour = sort === 'pointsPerHour' || displayedInfo.includes('pointsPerHour');
   const showAverageShiny = sort === 'pointsPerHour' || displayedInfo.includes('averageShiny');
@@ -48,9 +55,13 @@ export default function HuntSpotCard({
         <div className="min-w-0 flex-1 basis-full lg:basis-64">
           <div className="w-full text-left">
             <h3 className="text-sm font-bold text-gray-950 dark:text-white">{title || spot.location}</h3>
-            <p className="truncate whitespace-nowrap text-xs text-gray-500">
+            <p className="truncate whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
               {game.region(spot.region)} · {spot.horde_size ? `${spot.horde_size}× ${game.label('Sweet Scent')}` : game.label(spot.method)}
-              {availability && <> · {availability}</>}
+              {availability.map(({ kind, label, value }) => (
+                <Fragment key={`${kind}-${value}`}>
+                  {' · '}<ClockAttributeIcon className="mr-1 align-[-0.125em]" kind={kind} size="sm" value={value} />{label}
+                </Fragment>
+              ))}
               {spot.is_lure && <span className="font-semibold text-amber-600 dark:text-amber-400"> · {messages.includesLure}</span>}
               {spot.is_special && <span className="font-semibold text-sky-600 dark:text-sky-400"> · {messages.includesSpecial}</span>}
             </p>

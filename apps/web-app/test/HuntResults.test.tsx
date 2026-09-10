@@ -78,7 +78,10 @@ describe('HuntResults', () => {
     expect(screen.getByText('Tier 3')).toBeInTheDocument();
     expect(screen.getByText('30 points')).toBeInTheDocument();
     expect(screen.getByText('Pokemon Mansion 2F')).toBeInTheDocument();
-    expect(screen.getByText('Kanto · 5× Sweet Scent · Summer · Night')).toBeInTheDocument();
+    const splitDetails = screen.getByText('Kanto · 5× Sweet Scent · Summer · Night');
+    expect(splitDetails).toBeInTheDocument();
+    expect(splitDetails.querySelector('[data-clock-icon="sun"]')).toBeInTheDocument();
+    expect(splitDetails.querySelector('[data-clock-icon="moon"]')).toBeInTheDocument();
     expect(screen.queryByLabelText('Location season and time filters')).not.toBeInTheDocument();
     expect(screen.getByText('1.333')).toBeInTheDocument();
     expect(screen.getByText('30.00')).toBeInTheDocument();
