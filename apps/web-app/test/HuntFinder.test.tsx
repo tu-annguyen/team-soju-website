@@ -31,6 +31,25 @@ function openAdvancedFilters() {
 }
 
 describe('HuntFinder', () => {
+  it('reserves the results layout with a skeleton until the initial request finishes', async () => {
+    let resolveRequest!: (value: { items: HuntSpot[]; locations: string[]; total: number }) => void;
+    (shinyWarRequest as jest.Mock).mockReturnValue(new Promise((resolve) => {
+      resolveRequest = resolve;
+    }));
+
+    render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
+
+    const skeleton = screen.getByRole('region', { name: 'Loading hunt results' });
+    expect(skeleton).toHaveAttribute('aria-busy', 'true');
+    expect(skeleton.querySelectorAll('article')).toHaveLength(3);
+
+    await waitFor(() => expect(shinyWarRequest).toHaveBeenCalled());
+    resolveRequest({ items: [makeSpot('forest', 'Viridian Forest')], locations: ['Viridian Forest'], total: 1 });
+
+    expect(await screen.findByText('Viridian Forest')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Loading hunt results' })).not.toBeInTheDocument();
+  });
+
   it('localizes displayed Pokemon information controls', () => {
     expect(getHuntFinderMessages('es').displayedPokemonInfo).toBe('Información de Pokémon mostrada');
     expect(getHuntFinderMessages('es').pokemonInfo.eggGroups).toBe('Grupos Huevo');

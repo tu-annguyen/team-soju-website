@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import HuntFinderControls from '../hunt-finder/HuntFinderControls';
+import HuntResultsSkeleton from '../hunt-finder/HuntResultsSkeleton';
 import type { DisplayedPokemonInfo, HuntFinderContext, HuntFinderFilters } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
 import { getPokeMmoClockState } from './pokeMmoClockState';
@@ -109,6 +110,7 @@ export default function HuntFinder({
   const [pokemonLocationOverrides, setPokemonLocationOverrides] = useState<Map<string, boolean>>(() => new Map());
   const [view, setView] = useState<HuntView>('location');
   const [error, setError] = useState('');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const messages = getHuntFinderMessages(locale);
 
   useEffect(() => {
@@ -127,6 +129,8 @@ export default function HuntFinder({
         setLocations(data.locations || []);
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : messages.results.couldNotLoad);
+      } finally {
+        setIsInitialLoading(false);
       }
     }, 200);
     return () => window.clearTimeout(timer);
@@ -195,21 +199,25 @@ export default function HuntFinder({
       </div>
       <p className="text-sm text-gray-500">{total} {messages.results.matching}</p>
       {error && <p role="alert" className="text-rose-600">{error}</p>}
-      <HuntResults
-        collapsedLocations={collapsedLocations}
-        context={context}
-        displayedInfo={displayedInfo}
-        minimumTier={filters.sort === 'expPerHour' ? '' : filters.minTier}
-        locale={locale}
-        onQueue={onQueue}
-        onToggleLocation={toggleLocation}
-        participants={participants}
-        sort={filters.sort}
-        sortDirection={filters.sortDirection}
-        speciesFilter={filters.species}
-        spots={spots}
-        view={view}
-      />
+      {isInitialLoading ? (
+        <HuntResultsSkeleton label={messages.results.loading} />
+      ) : (
+        <HuntResults
+          collapsedLocations={collapsedLocations}
+          context={context}
+          displayedInfo={displayedInfo}
+          minimumTier={filters.sort === 'expPerHour' ? '' : filters.minTier}
+          locale={locale}
+          onQueue={onQueue}
+          onToggleLocation={toggleLocation}
+          participants={participants}
+          sort={filters.sort}
+          sortDirection={filters.sortDirection}
+          speciesFilter={filters.species}
+          spots={spots}
+          view={view}
+        />
+      )}
     </div>
   );
 }
