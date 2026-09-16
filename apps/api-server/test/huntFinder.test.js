@@ -48,6 +48,24 @@ describe('Hunt Finder calculations and filtering', () => {
     expect(matchesEvYield(spot, [], ['1'])).toBe(true);
   });
 
+  it('requires every Pokemon in a split to match when EV yields are exclusive', () => {
+    const mixedSpot = { composition: [
+      { ev_attack: 1, ev_speed: 0 },
+      { ev_attack: 0, ev_speed: 2 },
+    ] };
+    const attackSpot = { composition: [
+      { ev_attack: 1, ev_speed: 0 },
+      { ev_attack: 1, ev_speed: 0 },
+    ] };
+
+    expect(matchesEvYield(mixedSpot, ['attack'], ['1'], true)).toBe(false);
+    expect(matchesEvYield(attackSpot, ['attack'], ['1'], true)).toBe(true);
+    expect(matchesEvYield(mixedSpot, ['attack', 'speed'], [], true)).toBe(true);
+    expect(matchesEvYield(mixedSpot, ['attack', 'speed'], ['1'], true)).toBe(false);
+    expect(matchesEvYield({ composition: [] }, ['attack'], [], true)).toBe(false);
+    expect(matchesEvYield(mixedSpot, [], [], true)).toBe(true);
+  });
+
   it('OR-matches egg groups across a split without changing its composition', () => {
     const spot = { composition: [
       { name: 'Rattata', egg_groups: ['Field'] },
@@ -78,12 +96,12 @@ describe('Hunt Finder calculations and filtering', () => {
 
 describe('Hunt Finder public API', () => {
   it('parses generalized filters without accepting war-only state', () => {
-    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&encountersPerHour=240&minLevel=30&minExpPerHour=100000&evStats=attack,speed&evAmounts=1,2&eggGroups=Field,Dragon&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
+    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&encountersPerHour=240&minLevel=30&minExpPerHour=100000&evStats=attack,speed&evAmounts=1,2&exclusiveEvYield=true&eggGroups=Field,Dragon&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
     const filters = huntFinderFilters(url);
 
     expect(filters).toMatchObject({
       method: 'Sweet Scent', encountersPerHour: 240, minLevel: '30', minExpPerHour: '100000', evStats: ['attack', 'speed'],
-      evAmounts: ['1'], eggGroups: ['Field', 'Dragon'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
+      evAmounts: ['1'], exclusiveEvYield: true, eggGroups: ['Field', 'Dragon'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
       expReamplifier: true, expDonator: true, tradeBonus: true,
       profile: { eventBoost: true },
     });

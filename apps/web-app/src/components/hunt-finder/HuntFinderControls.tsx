@@ -72,9 +72,10 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
     {(f.sort === 'expPerHour' || alphabetical) && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.evYield}</legend>
       <div className="grid gap-4 lg:grid-cols-[3fr_1fr]"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{EV_STAT_OPTIONS.map(([v]) => <label key={v} className="flex items-center gap-2 text-sm"><input className={check} type="checkbox" checked={f.evStats.includes(v)} onChange={() => setFilters((old) => {
         const evStats = old.evStats.includes(v) ? old.evStats.filter((stat) => stat !== v) : [...old.evStats, v];
-        return { ...old, evStats, evAmounts: evStats.length ? old.evAmounts : [] };
+        return { ...old, evStats, evAmounts: evStats.length ? old.evAmounts : [], exclusiveEvYield: evStats.length ? old.exclusiveEvYield : false };
       })} />{m.evStats[v]}</label>)}</div>
       <div className="flex gap-4">{(['1', '2'] as EvAmount[]).map((v) => <label key={v} className={`flex items-center gap-2 text-sm ${hasEvStats ? '' : 'opacity-50'}`}><input className={check} disabled={!hasEvStats} type="checkbox" checked={f.evAmounts[0] === v} onChange={() => set('evAmounts', f.evAmounts[0] === v ? [] : [v])} />+{v} EV</label>)}</div></div>
+      <div className="mt-4 border-t border-gray-200 pt-3 dark:border-gray-700"><Check disabled={!hasEvStats} text={m.exclusiveEvYield} checked={f.exclusiveEvYield} onChange={(v) => set('exclusiveEvYield', v)} /></div>
     </fieldset>}
     {(f.sort === 'expPerHour' || alphabetical) && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.eggGroups}</legend>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{EGG_GROUP_OPTIONS.map((group) => <label key={group} className="flex items-center gap-2 text-sm"><input className={check} type="checkbox" checked={f.eggGroups.includes(group)} onChange={() => set('eggGroups', f.eggGroups.includes(group) ? f.eggGroups.filter((value) => value !== group) : [...f.eggGroups, group] as EggGroup[])} />{game.eggGroup(group)}</label>)}</div>

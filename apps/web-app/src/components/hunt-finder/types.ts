@@ -37,6 +37,7 @@ export type HuntFinderFilters = {
   excludeTeamCaught: boolean;
   evStats: EvStat[];
   evAmounts: EvAmount[];
+  exclusiveEvYield: boolean;
   eggGroups: EggGroup[];
   expCharm: '' | '0.25' | '0.5' | '1';
   expReamplifier: boolean;

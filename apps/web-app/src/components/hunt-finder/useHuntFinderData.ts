@@ -41,7 +41,7 @@ function buildSearchParams(
     if (['Headbutt', 'Rock Smash'].includes(filters.method) && ['minPointsPerHour', 'minExpPerHour'].includes(key)) return;
     if (!['All', 'Singles', 'Fishing'].includes(filters.method) && key === 'nonSafari') return;
     if (filters.sort === 'expPerHour' && ['minTier', 'minPointsPerHour'].includes(key)) return;
-    if (filters.sort === 'pointsPerHour' && ['minLevel', 'minExpPerHour', 'evStats', 'evAmounts', 'eggGroups'].includes(key)) return;
+    if (filters.sort === 'pointsPerHour' && ['minLevel', 'minExpPerHour', 'evStats', 'evAmounts', 'exclusiveEvYield', 'eggGroups'].includes(key)) return;
     if (filters.sort !== 'pointsPerHour'
       && ['eventBoost', 'donator', 'personalCharm', 'linkCharm', 'chumBucket'].includes(key)) return;
     if (filters.sort !== 'expPerHour' && ['expCharm', 'expReamplifier', 'expDonator', 'tradeBonus'].includes(key)) return;

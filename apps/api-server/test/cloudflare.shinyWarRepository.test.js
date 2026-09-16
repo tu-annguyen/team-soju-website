@@ -222,6 +222,34 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(aboveMaximum.items).toHaveLength(0);
   });
 
+  it('keeps only splits where every species matches an exclusive EV yield', async () => {
+    const base = {
+      region: 'Kanto', method: 'Sweet Scent', season: 'Summer', horde_size: 5,
+      tier: 'Tier 5', points: 10, form: '', min_level: 30, max_level: 32,
+      morning_rate: 5, day_rate: 5, night_rate: 5, base_exp: 70,
+      ev_hp: 0, ev_attack: 0, ev_defense: 0, ev_sp_attack: 0, ev_sp_defense: 0, ev_speed: 0,
+      egg_groups_json: '[]',
+    };
+    const rows = [
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Mankey', slug: 'mankey', family_key: 'mankey', ev_attack: 1 },
+      { ...base, location_id: '1:1', location_name: 'Route 1', species_name: 'Spearow', slug: 'spearow', family_key: 'spearow', ev_speed: 1 },
+      { ...base, location_id: '1:2', location_name: 'Route 2', species_name: 'Machop', slug: 'machop', family_key: 'machop', ev_attack: 1 },
+      { ...base, location_id: '1:2', location_name: 'Route 2', species_name: 'Machoke', slug: 'machoke', family_key: 'machop', ev_attack: 1 },
+    ];
+    const repository = createShinyWarRepository({
+      dialect: 'd1', parameter: () => '?', runCommand: jest.fn(), runOne: jest.fn(),
+      runSelect: jest.fn().mockResolvedValue(rows),
+    });
+
+    const result = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', evStats: ['attack'], evAmounts: ['1'],
+      exclusiveEvYield: true, profile: { eventBoost: false },
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].location).toBe('Route 2');
+  });
+
   it('keeps full splits when any species matches a selected egg group', async () => {
     const base = {
       region: 'Kanto', method: 'Sweet Scent', season: 'Summer', horde_size: 5,

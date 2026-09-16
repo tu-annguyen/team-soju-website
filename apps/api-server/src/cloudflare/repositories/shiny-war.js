@@ -333,7 +333,7 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
       ))
       : splitFilteredSpots;
     const evFilteredSpots = matchingSpots.filter(
-      (spot) => matchesEvYield(spot, filters.evStats, filters.evAmounts)
+      (spot) => matchesEvYield(spot, filters.evStats, filters.evAmounts, filters.exclusiveEvYield)
     );
     const eggGroupFilteredSpots = evFilteredSpots.filter(
       (spot) => matchesEggGroups(spot, filters.eggGroups)

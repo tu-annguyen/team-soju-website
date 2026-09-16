@@ -207,11 +207,13 @@ describe('HuntFinder', () => {
     expect(screen.queryByLabelText('Amorphous')).not.toBeInTheDocument();
     expect(screen.getByLabelText('+1 EV')).toBeDisabled();
     expect(screen.getByLabelText('+2 EV')).toBeDisabled();
+    expect(screen.getByLabelText('Only selected EV yields')).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Minimum tier'), { target: { value: '3' } });
     fireEvent.change(screen.getByLabelText('Minimum level'), { target: { value: '30' } });
     fireEvent.click(screen.getByLabelText('Attack'));
     expect(screen.getByLabelText('+1 EV')).toBeEnabled();
     expect(screen.getByLabelText('+2 EV')).toBeEnabled();
+    expect(screen.getByLabelText('Only selected EV yields')).toBeEnabled();
     fireEvent.click(screen.getByLabelText('+1 EV'));
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
@@ -625,12 +627,14 @@ describe('HuntFinder', () => {
     fireEvent.click(screen.getByLabelText('Field'));
     fireEvent.click(screen.getByLabelText('+1 EV'));
     fireEvent.click(screen.getByLabelText('+2 EV'));
+    fireEvent.click(screen.getByLabelText('Only selected EV yields'));
 
     await waitFor(() => {
       const latestUrl = (shinyWarRequest as jest.Mock).mock.calls.at(-1)[1] as string;
       expect(latestUrl).toContain('minLevel=30');
       expect(latestUrl).toContain('evStats=attack%2Cspeed');
       expect(latestUrl).toContain('evAmounts=2');
+      expect(latestUrl).toContain('exclusiveEvYield=true');
       expect(latestUrl).toContain('eggGroups=Field');
       expect(latestUrl).not.toContain('evAmounts=1%2C2');
     });

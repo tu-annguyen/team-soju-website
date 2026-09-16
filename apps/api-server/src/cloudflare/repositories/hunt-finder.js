@@ -81,16 +81,17 @@ function calculateExperienceMetrics(composition, encountersPerHour, expCharm, bo
   };
 }
 
-function matchesEvYield(spot, stats = [], amounts = []) {
+function matchesEvYield(spot, stats = [], amounts = [], exclusive = false) {
   const columns = stats.map((stat) => EV_COLUMNS[stat]).filter(Boolean);
   const yields = new Set(amounts.map(Number).filter((amount) => amount === 1 || amount === 2));
   if (!columns.length) return true;
-  return spot.composition.some(
-    (species) => columns.some((column) => {
-      const amount = Number(species[column]);
-      return yields.size ? yields.has(amount) : amount > 0;
-    })
-  );
+  const matchesSpecies = (species) => columns.some((column) => {
+    const amount = Number(species[column]);
+    return yields.size ? yields.has(amount) : amount > 0;
+  });
+  return exclusive
+    ? spot.composition.length > 0 && spot.composition.every(matchesSpecies)
+    : spot.composition.some(matchesSpecies);
 }
 
 function matchesEggGroups(spot, selectedGroups = []) {

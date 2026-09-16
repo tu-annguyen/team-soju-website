@@ -33,7 +33,7 @@ function initialFilters(context: HuntFinderContext, defaultSeason: string): Hunt
     chumBucket: false, nonSafari: false,
     officialUniqueBonus: context === 'shinyWar', teamUniqueBonus: false,
     excludeOfficialCaught: false, excludeTeamCaught: false,
-    evStats: [], evAmounts: [], eggGroups: [], expCharm: '', expReamplifier: false, expDonator: false, tradeBonus: false,
+    evStats: [], evAmounts: [], exclusiveEvYield: false, eggGroups: [], expCharm: '', expReamplifier: false, expDonator: false, tradeBonus: false,
     sort: 'alphabetical', sortDirection: 'asc',
   };
 }
