@@ -19,6 +19,10 @@ const es = {
     language: 'Idioma',
     toggleMenu: 'Abrir o cerrar menu',
   },
+  appUpdate: {
+    message: 'Hay una nueva version de sitio web disponible.',
+    updateLabel: 'Actualizar',
+  },
   auth: {
     title: 'Cuenta - Team Soju',
     description: 'Crea o accede a tu cuenta de Team Soju.',

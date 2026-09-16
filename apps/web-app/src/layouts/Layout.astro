@@ -3,6 +3,7 @@ import '../styles/global.css';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ScrollToTop from '../components/ScrollToTop';
+import AppUpdateBanner from '../components/AppUpdateBanner';
 import Analytics from '@vercel/analytics/astro'
 import SpeedInsights from '@vercel/speed-insights/astro'
 import { DEFAULT_LOCALE, getTranslations, resolveLocale } from '../i18n';
@@ -27,6 +28,7 @@ const localeStorageKey = 'team-soju-locale';
 const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8787/api';
 const siteUrl = "https://teamsoju.com";
 const imageUrl = `${siteUrl}/images/banner.png`;
+const buildId = import.meta.env.PUBLIC_APP_BUILD_ID;
 ---
 
 <!doctype html>
@@ -132,6 +134,12 @@ const imageUrl = `${siteUrl}/images/banner.png`;
     <SpeedInsights />
     <Header client:load locale={locale} apiBaseUrl={apiBaseUrl} />
     <main class="pt-16">
+      <AppUpdateBanner
+        client:load
+        currentBuildId={buildId}
+        message={messages.appUpdate.message}
+        updateLabel={messages.appUpdate.updateLabel}
+      />
       <div class="border-y border-secondary-300 bg-secondary-100 text-secondary-950 dark:border-secondary-500/40 dark:bg-secondary-950 dark:text-secondary-50" role="status">
         <div class="container flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-center sm:gap-2 sm:text-center">
           <span class="font-bold">Hunt Finder:</span>

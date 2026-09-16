@@ -19,6 +19,10 @@ const en = {
     language: 'Language',
     toggleMenu: 'Toggle menu',
   },
+  appUpdate: {
+    message: 'A new version of the website is available.',
+    updateLabel: 'Update',
+  },
   auth: {
     title: 'Account - Team Soju',
     description: 'Create or access your Team Soju account.',

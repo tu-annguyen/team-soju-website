@@ -18,6 +18,10 @@ const zh = {
     language: '语言',
     toggleMenu: '切换菜单',
   },
+  appUpdate: {
+    message: '网站有新版本可用。',
+    updateLabel: '更新',
+  },
   auth: {
     title: '账户 - Team Soju',
     description: '创建或访问你的 Team Soju 账户。',
