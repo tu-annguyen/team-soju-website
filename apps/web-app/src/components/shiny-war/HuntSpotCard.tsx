@@ -20,7 +20,7 @@ type Props = {
 };
 
 function HuntSpotCard({
-  spot, participants, locale, targetSpecies, onQueue, title, context = 'shinyWar', displayedInfo = [], sort = 'pointsPerHour',
+  spot, participants, locale, targetSpecies, onQueue, title, context = 'shinyWar', displayedInfo = [],
 }: Props) {
   const availableTimes = spot.time === 'Any' ? [] : (spot.times?.length ? spot.times : [spot.time]);
   const game = getGameTranslations(locale);
@@ -33,15 +33,16 @@ function HuntSpotCard({
       return { kind: 'timeOfDay' as const, label: game.label(value), value };
     }),
   ];
-  const showingExp = sort === 'expPerHour';
-  const showPointsPerHour = sort === 'pointsPerHour' || displayedInfo.includes('pointsPerHour');
-  const showAverageShiny = sort === 'pointsPerHour' || displayedInfo.includes('averageShiny');
-  const showEncountersPerHour = sort === 'pointsPerHour' || displayedInfo.includes('encountersPerHour');
-  const showEffectiveOdds = sort === 'pointsPerHour' || displayedInfo.includes('effectiveOdds');
-  const showTier = sort !== 'alphabetical' || displayedInfo.includes('tier');
-  const showLevel = showingExp || displayedInfo.includes('level');
-  const showEvYield = showingExp || displayedInfo.includes('evYield');
-  const showEggGroups = showingExp || displayedInfo.includes('eggGroups');
+  const showPointsPerHour = displayedInfo.includes('pointsPerHour');
+  const showExpPerHour = displayedInfo.includes('expPerHour');
+  const showAverageExp = displayedInfo.includes('averageExp');
+  const showAverageShiny = displayedInfo.includes('averageShiny');
+  const showEncountersPerHour = displayedInfo.includes('encountersPerHour');
+  const showEffectiveOdds = displayedInfo.includes('effectiveOdds');
+  const showTier = displayedInfo.includes('tier');
+  const showLevel = displayedInfo.includes('level');
+  const showEvYield = displayedInfo.includes('evYield');
+  const showEggGroups = displayedInfo.includes('eggGroups');
   const copy = getHuntFinderMessages(locale);
   const messages = copy.results;
   const evLabels = (species: HuntSpecies) => ([
@@ -67,20 +68,18 @@ function HuntSpotCard({
             </p>
           </div>
         </div>
-        {(showingExp || showPointsPerHour || showAverageShiny) && (
+        {(showExpPerHour || showAverageExp || showPointsPerHour || showAverageShiny) && (
           <div className="flex flex-wrap items-start justify-end gap-6">
-            {showingExp && <>
-            <div className="text-right">
+            {showExpPerHour && <div className="text-right">
               <strong className="text-lg text-primary-600">
                 {spot.expPerHour == null ? 'N/A' : Math.round(spot.expPerHour).toLocaleString()}
               </strong>
               <p className="text-xs text-gray-500">{copy.options.expHour}</p>
-            </div>
-            <div className="text-right">
+            </div>}
+            {showAverageExp && <div className="text-right">
               <strong>{spot.averageExp == null ? 'N/A' : Math.round(spot.averageExp).toLocaleString()}</strong>
               <p className="text-xs text-gray-500">{messages.averageExp}</p>
-            </div>
-            </>}
+            </div>}
             {showPointsPerHour && <div className="text-right"><strong className="text-lg text-primary-600">{spot.pointsPerHour === null ? 'N/A' : spot.pointsPerHour.toFixed(3)}</strong><p className="text-xs text-gray-500">{copy.options.pointsHour}</p></div>}
             {showAverageShiny && <div className="text-right"><strong>{spot.averagePoints.toFixed(2)}</strong><p className="text-xs text-gray-500">{messages.averageShiny}</p></div>}
           </div>

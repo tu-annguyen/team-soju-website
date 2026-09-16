@@ -30,6 +30,10 @@ function openAdvancedFilters() {
   fireEvent.click(screen.getByRole('button', { name: 'Advanced Filters' }));
 }
 
+function openInfoDisplayOptions() {
+  fireEvent.click(screen.getByRole('button', { name: 'Info Display Options' }));
+}
+
 describe('HuntFinder', () => {
   it('reserves the results layout with a skeleton until the initial request finishes', async () => {
     let resolveRequest!: (value: { items: HuntSpot[]; locations: string[]; total: number }) => void;
@@ -59,6 +63,8 @@ describe('HuntFinder', () => {
     expect(getHuntFinderMessages('zh').pokemonInfo.effectiveOdds).toBe('有效概率');
     expect(getHuntFinderMessages('es').sections.advancedFilters).toBe('Filtros avanzados');
     expect(getHuntFinderMessages('zh').sections.advancedFilters).toBe('高级筛选');
+    expect(getHuntFinderMessages('es').sections.infoDisplayOptions).toBe('Opciones de información');
+    expect(getHuntFinderMessages('zh').sections.infoDisplayOptions).toBe('信息显示选项');
   });
 
   it('loads 30 results at a time and appends the next page', async () => {
@@ -276,8 +282,16 @@ describe('HuntFinder', () => {
     render(<HuntFinder apiBaseUrl="https://example.test" defaultSeason="Summer" participants={[]} onQueue={jest.fn()} />);
     await screen.findByText('Pokemon Mansion');
 
+    const infoToggle = screen.getByRole('button', { name: 'Info Display Options' });
+    expect(infoToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('group', { name: 'Displayed Pokémon Info' })).not.toBeInTheDocument();
+    openInfoDisplayOptions();
+    expect(infoToggle).toHaveAttribute('aria-expanded', 'true');
     const infoGroup = screen.getByRole('group', { name: 'Displayed Pokémon Info' });
     expect(infoGroup.closest('section')).toHaveAttribute('aria-labelledby', 'hunt-sort-heading');
+    expect(infoGroup.querySelectorAll('input[type="checkbox"]')).toHaveLength(10);
+    expect(screen.getByLabelText('EXP/hour')).not.toBeChecked();
+    expect(screen.getByLabelText('Average EXP/encounter')).not.toBeChecked();
     expect(screen.getByLabelText('Points/hour')).not.toBeChecked();
     expect(screen.queryByText('1.333')).not.toBeInTheDocument();
     expect(screen.queryByText(/Tier 3/)).not.toBeInTheDocument();
@@ -296,8 +310,30 @@ describe('HuntFinder', () => {
 
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'pointsPerHour' } });
     expect(screen.getByRole('group', { name: 'Displayed Pokémon Info' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('Points/hour')).not.toBeInTheDocument();
+    expect(infoGroup.querySelectorAll('input[type="checkbox"]')).toHaveLength(10);
+    expect(screen.getByLabelText('Points/hour')).toBeChecked();
+    expect(screen.getByLabelText('Level')).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'EV yield' })).not.toBeChecked();
+
+    fireEvent.click(screen.getByLabelText('Encounters/hour'));
+    expect(screen.getByLabelText('Encounters/hour')).not.toBeChecked();
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'expPerHour' } });
+    expect(screen.getByLabelText('EXP/hour')).toBeChecked();
+    expect(screen.getByLabelText('Average EXP/encounter')).toBeChecked();
+    expect(screen.getByLabelText('Encounters/hour')).toBeChecked();
+    expect(screen.getByLabelText('Points/hour')).not.toBeChecked();
     expect(screen.getByLabelText('Level')).toBeChecked();
+    expect(screen.getByText('12,345')).toBeInTheDocument();
+    expect(screen.getByText('678')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+    Array.from(infoGroup.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))
+      .forEach((option) => expect(option).toBeChecked());
+    fireEvent.click(screen.getByRole('button', { name: 'Hide all' }));
+    Array.from(infoGroup.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))
+      .forEach((option) => expect(option).not.toBeChecked());
+    expect(screen.queryByText('12,345')).not.toBeInTheDocument();
+    expect(screen.queryByText('678')).not.toBeInTheDocument();
   });
 
   it("uses Farfetch'd as the species filter value", async () => {
@@ -689,6 +725,7 @@ describe('HuntFinder', () => {
     fireEvent.change(species, { target: { value: '鲤鱼王' } });
     fireEvent.mouseDown(await screen.findByRole('option', { name: /鲤鱼王.*Magikarp/ }));
     expect(species).toHaveValue('鲤鱼王');
+    fireEvent.click(screen.getByRole('button', { name: '信息显示选项' }));
     expect(screen.getByRole('group', { name: '显示的宝可梦信息' })).toBeInTheDocument();
     expect(screen.getByLabelText('积分/小时')).toBeInTheDocument();
     expect(screen.getByLabelText('EV 产出')).toBeInTheDocument();

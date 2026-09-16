@@ -7,6 +7,7 @@ import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { DisplayedPokemonInfo, HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
 import { getHuntFinderMessages } from '../hunt-finder/messages';
 import { getGameTranslations } from '../../utils/gameTranslations';
+import { DEFAULT_DISPLAYED_INFO_BY_SORT } from '../hunt-finder/displayedInfo';
 
 export type HuntView = 'location' | 'pokemon';
 
@@ -34,7 +35,7 @@ type Props = {
 
 function HuntResults({
   participants, minimumTier = '', locale, speciesFilter = '', spots, view, onQueue,
-  collapsedLocations, onToggleLocation, context = 'shinyWar', displayedInfo = [],
+  collapsedLocations, onToggleLocation, context = 'shinyWar', displayedInfo,
   sort = 'pointsPerHour', sortDirection = 'desc', locationGroups: providedLocationGroups,
   pokemonLocationGroups: providedPokemonLocationGroups,
 }: Props) {
@@ -42,6 +43,7 @@ function HuntResults({
   const messages = useMemo(() => getHuntFinderMessages(locale).results, [locale]);
   const game = useMemo(() => getGameTranslations(locale), [locale]);
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
+  const effectiveDisplayedInfo = displayedInfo || DEFAULT_DISPLAYED_INFO_BY_SORT[sort];
   const internalToggleLocation = useCallback((locationKey: string) => {
     setInternalCollapsedLocations((current) => {
       const next = new Set(current);
@@ -72,7 +74,7 @@ function HuntResults({
             locale={locale}
             spots={group.spots}
             context={context}
-            displayedInfo={displayedInfo}
+            displayedInfo={effectiveDisplayedInfo}
             sort={sort}
             sortDirection={sortDirection}
             onQueue={onQueue}
@@ -121,7 +123,7 @@ function HuntResults({
                 locale={locale}
                 spots={group.spots}
                 context={context}
-                displayedInfo={displayedInfo}
+                displayedInfo={effectiveDisplayedInfo}
                 sort={sort}
                 sortDirection={sortDirection}
                 targetSpecies={species}

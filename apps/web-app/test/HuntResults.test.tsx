@@ -630,7 +630,7 @@ describe('HuntResults', () => {
     expect(expDetails).toHaveTextContent('Field');
     expect(screen.getByText(/Speed \+1 EV/)).toHaveClass('text-emerald-700', 'dark:text-emerald-300');
     expect(screen.getByText(/Field/)).toHaveClass('text-violet-700', 'dark:text-violet-300');
-    expect(screen.queryByText(/encounters\/hour/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/encounters\/hour/i)).toBeInTheDocument();
     expect(screen.queryByText(/effective odds/i)).not.toBeInTheDocument();
   });
 

@@ -6,6 +6,7 @@ import { FilteredCombobox } from '../catch-events/FilteredCombobox';
 import { getHuntFinderMessages, type HuntFinderMessages } from './messages';
 import { EGG_GROUP_OPTIONS, EV_STAT_OPTIONS, type DisplayedPokemonInfo, type EggGroup, type EvAmount, type HuntFinderContext, type HuntFinderFilters } from './types';
 import { getGameTranslations } from '../../utils/gameTranslations';
+import { DEFAULT_DISPLAYED_INFO_BY_SORT, DISPLAYED_POKEMON_INFO_OPTIONS } from './displayedInfo';
 
 type Props = { context: HuntFinderContext; displayedInfo: DisplayedPokemonInfo[]; filters: HuntFinderFilters; locale?: string; locations: string[]; setDisplayedInfo: Dispatch<SetStateAction<DisplayedPokemonInfo[]>>; setFilters: Dispatch<SetStateAction<HuntFinderFilters>>; teamWarAvailable: boolean };
 type SectionProps = Props & { messages: HuntFinderMessages };
@@ -86,17 +87,23 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
 }
 
 function Sort({ displayedInfo, filters: f, messages: m, setDisplayedInfo, setFilters }: SectionProps) {
+  const [displayOptionsOpen, setDisplayOptionsOpen] = useState(false);
   const set = <K extends keyof HuntFinderFilters>(key: K, value: HuntFinderFilters[K]) => setFilters((old) => ({ ...old, [key]: value }));
   const exp = ['All', 'Sweet Scent'].includes(f.method);
   const fishing = ['All', 'Fishing'].includes(f.method);
   return <section aria-labelledby="hunt-sort-heading" className={section}>
     <h2 className="text-lg font-bold sm:col-span-2 lg:col-span-4" id="hunt-sort-heading">{m.sections.sort}</h2>
-    <Select title={m.fields.sortBy} value={f.sort} onChange={(v) => setFilters((old) => ({
-      ...old,
-      sort: v as HuntFinderFilters['sort'],
-      sortDirection: v === 'alphabetical' ? 'asc' : 'desc',
-    }))} options={[['alphabetical', m.options.alphabetical], ['pointsPerHour', m.options.pointsHour], ['expPerHour', m.options.expHour, !exp]]} />
+    <Select title={m.fields.sortBy} value={f.sort} onChange={(v) => {
+      const sort = v as HuntFinderFilters['sort'];
+      setFilters((old) => ({ ...old, sort, sortDirection: sort === 'alphabetical' ? 'asc' : 'desc' }));
+      setDisplayedInfo([...DEFAULT_DISPLAYED_INFO_BY_SORT[sort]]);
+    }} options={[['alphabetical', m.options.alphabetical], ['pointsPerHour', m.options.pointsHour], ['expPerHour', m.options.expHour, !exp]]} />
     <Select title={m.fields.direction} value={f.sortDirection} onChange={(v) => set('sortDirection', v as HuntFinderFilters['sortDirection'])} options={[['asc', m.options.ascending], ['desc', m.options.descending]]} />
+    <div className="flex items-end sm:col-span-2 lg:col-span-2 lg:justify-end">
+      <button aria-controls="hunt-info-display-options" aria-expanded={displayOptionsOpen} className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800" onClick={() => setDisplayOptionsOpen((open) => !open)} type="button">
+        <span aria-hidden="true">{displayOptionsOpen ? '-' : '+'}</span>{' '}{m.sections.infoDisplayOptions}
+      </button>
+    </div>
     {f.sort === 'pointsPerHour' && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.boosts}</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{([['eventBoost', m.eventBoost], ['donator', m.donator], ['personalCharm', m.personalCharm], ['linkCharm', m.linkCharm], ['chumBucket', m.chumBucket]] as const).map(([k, text]) => <Check key={k} disabled={k === 'chumBucket' && !fishing} text={text} checked={f[k]} onChange={(v) => setFilters((old) => ({
       ...old,
       [k]: v,
@@ -105,18 +112,18 @@ function Sort({ displayedInfo, filters: f, messages: m, setDisplayedInfo, setFil
         : {}),
     }))} />)}</div></fieldset>}
     {f.sort === 'expPerHour' && <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.expBoosts}</legend><div className="grid gap-3 sm:grid-cols-3">{([['expReamplifier', m.expReamplifier], ['expDonator', m.expDonator], ['tradeBonus', m.tradeBonus]] as const).map(([key, text]) => <Check key={key} text={text} checked={f[key]} onChange={(value) => set(key, value)} />)}</div><div className="mt-4 grid gap-3 sm:grid-cols-4 border-t pt-4 broder-gray-200 dark:border-gray-700">{([['', m.noExpCharm], ['0.25', m.expCharm25], ['0.5', m.expCharm50], ['1', m.expCharm100]] as const).map(([v, text]) => <label key={v || 'none'} className="flex items-center gap-2 text-sm"><input type="radio" name="exp-charm" checked={f.expCharm === v} onChange={() => set('expCharm', v)} />{text}</label>)}</div>{f.expReamplifier && <p className="mt-3 text-xs text-gray-500">{m.reamplifierNote}</p>}</fieldset>}
-    <DisplayedInfoOptions displayedInfo={displayedInfo} messages={m} setDisplayedInfo={setDisplayedInfo} sort={f.sort} />
+    {displayOptionsOpen && <DisplayedInfoOptions displayedInfo={displayedInfo} messages={m} setDisplayedInfo={setDisplayedInfo} />}
   </section>;
 }
 
-const DISPLAYED_INFO_BY_SORT: Record<HuntFinderFilters['sort'], DisplayedPokemonInfo[]> = {
-  alphabetical: ['pointsPerHour', 'averageShiny', 'encountersPerHour', 'effectiveOdds', 'tier', 'level', 'evYield', 'eggGroups'],
-  pointsPerHour: ['level', 'evYield', 'eggGroups'],
-  expPerHour: ['pointsPerHour', 'averageShiny', 'encountersPerHour', 'effectiveOdds'],
-};
-
-function DisplayedInfoOptions({ displayedInfo, messages: m, setDisplayedInfo, sort }: Pick<SectionProps, 'displayedInfo' | 'messages' | 'setDisplayedInfo'> & { sort: HuntFinderFilters['sort'] }) {
-  return <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`}><legend className="px-1 text-sm font-semibold">{m.displayedPokemonInfo}</legend><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{DISPLAYED_INFO_BY_SORT[sort].map((info) => <Check key={info} text={m.pokemonInfo[info]} checked={displayedInfo.includes(info)} onChange={(checked) => setDisplayedInfo((current) => checked ? [...current, info] : current.filter((value) => value !== info))} />)}</div></fieldset>;
+function DisplayedInfoOptions({ displayedInfo, messages: m, setDisplayedInfo }: Pick<SectionProps, 'displayedInfo' | 'messages' | 'setDisplayedInfo'>) {
+  const allDisplayed = displayedInfo.length === DISPLAYED_POKEMON_INFO_OPTIONS.length;
+  return <fieldset className={`${subsection} sm:col-span-2 lg:col-span-4`} id="hunt-info-display-options"><legend className="px-1 text-sm font-semibold">{m.displayedPokemonInfo}</legend>
+    <div className="flex flex-col gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-4">
+      <button className="self-start rounded-full bg-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-300 lg:col-start-2 lg:row-start-1 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" onClick={() => setDisplayedInfo(allDisplayed ? [] : [...DISPLAYED_POKEMON_INFO_OPTIONS])} type="button">{allDisplayed ? m.displayedPokemonInfoActions.hideAll : m.displayedPokemonInfoActions.showAll}</button>
+      <div className="grid gap-2 sm:grid-cols-2 lg:col-start-1 lg:row-start-1 lg:grid-cols-4">{DISPLAYED_POKEMON_INFO_OPTIONS.map((info) => <Check key={info} text={m.pokemonInfo[info]} checked={displayedInfo.includes(info)} onChange={(checked) => setDisplayedInfo((current) => checked ? [...current, info] : current.filter((value) => value !== info))} />)}</div>
+    </div>
+  </fieldset>;
 }
 
 function Select({ title, value, options, onChange, disabled }: { title: string; value: string; options: ReadonlyArray<readonly [string, string, boolean?]>; onChange: (v: string) => void; disabled?: boolean }) {
