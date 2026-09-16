@@ -53,9 +53,18 @@ const buildId = import.meta.env.PUBLIC_APP_BUILD_ID;
     
     <!-- Prevent flash of unstyled content -->
     <script is:inline>
-      const theme = localStorage.getItem('theme') || 
+      let storedTheme = null;
+      try {
+        const savedTheme = localStorage.getItem('theme');
+        storedTheme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : null;
+      } catch {
+        // Fall back to the system preference when storage is unavailable.
+      }
+
+      const theme = storedTheme ??
         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       document.documentElement.classList.toggle('dark', theme === 'dark');
+      document.documentElement.style.colorScheme = theme;
     </script>
     <script is:inline>
       (() => {

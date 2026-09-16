@@ -1,29 +1,65 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
+type Theme = 'light' | 'dark';
+
+const themeStorageKey = 'theme';
+const darkModeQuery = '(prefers-color-scheme: dark)';
+
+function getStoredTheme(): Theme | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const storedTheme = window.localStorage.getItem(themeStorageKey);
+    return storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : null;
+  } catch {
+    return null;
+  }
+}
+
+function getSystemTheme(): Theme {
+  return typeof window !== 'undefined' && window.matchMedia(darkModeQuery).matches
+    ? 'dark'
+    : 'light';
+}
+
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  root.classList.toggle('dark', theme === 'dark');
+  root.style.colorScheme = theme;
+}
+
 const ThemeToggle = () => {
-  const [theme, setTheme] = useState(() => {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
-      return localStorage.getItem('theme');
-    }
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
-  });
+  const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? getSystemTheme());
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme || 'light');
+    applyTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    const systemTheme = window.matchMedia(darkModeQuery);
+    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+      if (getStoredTheme() === null) {
+        setTheme(event.matches ? 'dark' : 'light');
+      }
+    };
+
+    systemTheme.addEventListener('change', handleSystemThemeChange);
+    return () => systemTheme.removeEventListener('change', handleSystemThemeChange);
+  }, []);
+
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+
+    try {
+      window.localStorage.setItem(themeStorageKey, nextTheme);
+    } catch {
+      // The current page can still change theme when storage is unavailable.
+    }
+
+    setTheme(nextTheme);
   };
 
   return (
