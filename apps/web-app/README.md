@@ -51,3 +51,13 @@ A dynamic, content-driven frontend built with React.js and Astro components.
 - Add `requiresTeamMembership` or `requiredPermission` to entries in the shared
   tool registry to hide inaccessible navigation and Tools index links. Sensitive
   data and mutations must still be protected by the corresponding API guard.
+
+## Application update detection
+
+- Production builds derive their application ID from browser-facing inputs: the web app,
+  its public assets, the shared browser utilities, and `PUBLIC_*` build variables. Changes
+  limited to the API server, Discord bot, or other services do not prompt open tabs to reload.
+- If an API rollout specifically requires all open web clients to reload, change the
+  `WEB_APP_COMPATIBILITY_VERSION` environment variable on the web deployment.
+- `APP_BUILD_ID` remains available as an explicit build ID override for local validation or
+  specialized deployment workflows.

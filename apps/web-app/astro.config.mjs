@@ -1,17 +1,15 @@
 // @ts-check
-import { randomUUID } from 'node:crypto';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
 import tailwind from '@astrojs/tailwind';
 import react from '@astrojs/react';
+import { deriveWebAppBuildId } from './build/derive-build-id.mjs';
 
-const buildId = [
-  process.env.APP_BUILD_ID,
-  process.env.GITHUB_SHA,
-  process.env.CI_COMMIT_SHA,
-  process.env.BUILD_SOURCEVERSION,
-  process.env.VERCEL_GIT_COMMIT_SHA,
-  process.env.VERCEL_DEPLOYMENT_ID,
-].find((value) => typeof value === 'string' && value.trim().length > 0) || randomUUID();
+const webAppDirectory = dirname(fileURLToPath(import.meta.url));
+const repositoryDirectory = resolve(webAppDirectory, '../..');
+const explicitBuildId = process.env.APP_BUILD_ID?.trim();
+const buildId = explicitBuildId || deriveWebAppBuildId(repositoryDirectory, process.env);
 
 // https://astro.build/config
 export default defineConfig({
