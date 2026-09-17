@@ -55,7 +55,10 @@ describe('Shiny Wars Pokedex importer', () => {
     expect(data.locations[0]).toMatchObject({ id: '0:1', region: 'Kanto' });
     expect(data.encounters[0]).toMatchObject({ hordeSize: 3, morningRate: 2.5 });
     expect(toSql(data)).toContain('INSERT INTO pokedex_encounters');
+    expect(toSql(data)).toContain('INSERT INTO hunt_spots');
+    expect(toSql(data)).toContain('INSERT OR IGNORE INTO hunt_spot_species');
     expect(toSql(data)).toContain('base_exp,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed,egg_groups_json');
+    expect(toSql(data)).toContain('family_key,points,tier_number');
     expect(toSql(data)).toContain("'[\"Water A\",\"Field\"]'");
   });
 

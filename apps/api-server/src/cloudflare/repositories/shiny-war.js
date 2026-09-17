@@ -9,6 +9,7 @@ const {
   TIER_POINTS,
 } = require('@team-soju/utils');
 const { groupEquivalentHuntSpots, parentLocationName } = require('./hunt-spot-groups');
+const { createMaterializedHuntFinder } = require('./hunt-finder-materialized');
 const { normalizeEggGroups } = require('../../utils/egg-groups');
 const {
   ENCOUNTER_METHODS,
@@ -32,6 +33,7 @@ function parseJson(value, fallback) {
 
 function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
   const nowExpression = dialect === 'd1' ? "datetime('now')" : 'now()';
+  const materializedHuntFinder = createMaterializedHuntFinder({ parameter, runOne, runSelect });
 
   async function getEvent(eventId = '2026') {
     const row = await runOne(
@@ -142,6 +144,8 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
   }
 
   async function listHordeSpots(filters = {}) {
+    const materializedResult = await materializedHuntFinder.list(filters);
+    if (materializedResult) return materializedResult;
     const params = [];
     const where = [];
     const requestedMethod = filters.method || 'Sweet Scent';

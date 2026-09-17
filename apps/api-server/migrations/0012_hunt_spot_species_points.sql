@@ -1,0 +1,2 @@
+ALTER TABLE hunt_spot_species
+  ADD COLUMN points REAL NOT NULL DEFAULT 0;
