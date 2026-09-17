@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { getPokemonTier, TIER_POINTS } = require('@team-soju/utils');
 const { normalizeEggGroups } = require('../utils/egg-groups');
+const { materializeHuntSpots } = require('./materialize-hunt-spots');
 
 const EXPECTED_2026_COUNTS = Object.freeze({
   species: 720,
@@ -273,8 +274,12 @@ function normalizePokedex(monsters) {
 }
 
 function toSql(data) {
+  const huntSpots = materializeHuntSpots(data);
   const lines = [
     'PRAGMA foreign_keys = ON;',
+    'DELETE FROM hunt_spot_egg_groups;',
+    'DELETE FROM hunt_spot_species;',
+    'DELETE FROM hunt_spots;',
     'DELETE FROM pokedex_encounters;',
     'DELETE FROM pokedex_locations;',
     'DELETE FROM pokedex_species;',
@@ -300,6 +305,27 @@ function toSql(data) {
       row.morningRate, row.dayRate, row.nightRate,
     ].map(sqlValue).join(',')});`
   ));
+  huntSpots.forEach((spot) => {
+    const cleanComposition = spot.composition.map(({ species_id, tier_number, ...species }) => species);
+    const cleanSpot = { ...spot, composition: cleanComposition };
+    lines.push(`INSERT INTO hunt_spots (spot_key,region,location,method,season,time,horde_size,is_lure,is_special,average_points,points_per_hour,exp_per_hour,spot_json) VALUES (${[
+      spot.spot_key, spot.region, spot.location, spot.method, spot.season, spot.time,
+      spot.horde_size, spot.is_lure ? 1 : 0, spot.is_special ? 1 : 0,
+      spot.averagePoints, spot.pointsPerHour, spot.expPerHour, JSON.stringify(cleanSpot),
+    ].map(sqlValue).join(',')});`);
+    spot.composition.forEach((species) => lines.push(
+      `INSERT OR IGNORE INTO hunt_spot_species (spot_key,species_id,name,family_key,tier_number,min_level,split,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed,egg_groups_json) VALUES (${[
+        spot.spot_key, species.species_id, species.name, species.family_key, species.tier_number,
+        species.min_level, species.split, species.ev_hp, species.ev_attack, species.ev_defense,
+        species.ev_sp_attack, species.ev_sp_defense, species.ev_speed, JSON.stringify(species.egg_groups),
+      ].map(sqlValue).join(',')});`
+    ));
+    [...new Set(spot.composition.flatMap((species) => species.egg_groups || []))].forEach((eggGroup) => lines.push(
+      `INSERT OR IGNORE INTO hunt_spot_egg_groups (spot_key,egg_group) VALUES (${[
+        spot.spot_key, String(eggGroup).toLowerCase(),
+      ].map(sqlValue).join(',')});`
+    ));
+  });
   return `${lines.join('\n')}\n`;
 }
 

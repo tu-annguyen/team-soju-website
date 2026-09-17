@@ -252,6 +252,7 @@ async function handleFeebasRoutes(context) {
         const leaderboard = await getRepositories().feebas.getLeaderboard(match[1], {
           ...value,
           currentUserId: authenticatedUser?.id,
+          waitUntil: (promise) => ctx.waitUntil(promise),
         });
         return json({
           success: true,

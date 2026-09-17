@@ -12,6 +12,7 @@ type Params = {
   actorFingerprint: string;
   loadBoardMessage: string;
   normalizedApiBaseUrl: string;
+  includeLeaderboard?: boolean;
 };
 
 function buildQuery(params: Record<string, string | undefined>) {
@@ -66,6 +67,7 @@ export async function fetchFeebasBoardData({
   actorFingerprint,
   loadBoardMessage,
   normalizedApiBaseUrl,
+  includeLeaderboard = true,
 }: Params) {
   const actorQuery = buildQuery({ actorFingerprint });
 
@@ -93,9 +95,11 @@ export async function fetchFeebasBoardData({
     fetchOptionalJson(`${normalizedApiBaseUrl}/feebas/${activeLocation}/votes${actorQuery}`, {
       credentials: 'include',
     }),
-    fetchOptionalJson(`${normalizedApiBaseUrl}/feebas/${activeLocation}/leaderboard`, {
-      credentials: 'include',
-    }),
+    includeLeaderboard
+      ? fetchOptionalJson(`${normalizedApiBaseUrl}/feebas/${activeLocation}/leaderboard`, {
+          credentials: 'include',
+        })
+      : Promise.resolve(null),
   ]);
   const currentVotes = normalizeVotesResponse(votesPayload);
   const leaderboard = normalizeLeaderboardResponse(leaderboardPayload) || boardPayload.data.leaderboard;
@@ -114,4 +118,12 @@ export async function fetchFeebasBoardData({
       currentUserVote: currentVotes.tiles.get(tile.tileId) || tile.currentUserVote || 'unchecked',
     })),
   };
+}
+
+export async function fetchFeebasLeaderboardData(normalizedApiBaseUrl: string, activeLocation: string) {
+  const payload = await fetchOptionalJson(
+    `${normalizedApiBaseUrl}/feebas/${activeLocation}/leaderboard`,
+    { credentials: 'include' },
+  );
+  return normalizeLeaderboardResponse(payload);
 }

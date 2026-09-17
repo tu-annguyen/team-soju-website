@@ -1533,6 +1533,7 @@ describe('Cloudflare Worker API', () => {
       limit: 5,
       sortBy: 'ign',
       currentUserId: 'user-1',
+      waitUntil: expect.any(Function),
     });
     expect(body.data).toEqual(leaderboard);
   });

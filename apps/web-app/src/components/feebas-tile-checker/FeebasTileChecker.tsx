@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchFeebasBoardData } from './feebasBoardData';
+import { fetchFeebasBoardData, fetchFeebasLeaderboardData } from './feebasBoardData';
 import { mergeFeebasBoardUpdate } from './feebasBoardMerge';
 import { FeebasTileCheckerView } from './FeebasTileCheckerView';
 import { useFeebasDisplayModeState } from './useFeebasDisplayModeState';
@@ -19,7 +19,8 @@ import type {
 } from './shared';
 import {
   ACTIVITY_PAGE_SIZE, formatActorName, formatCopy,
-  FEEBAS_BOARD_POLL_INTERVAL_MS, formatCountdown, getBoardMinWidth, getPendingActivityEntries, getTileLabel,
+  FEEBAS_BOARD_POLL_INTERVAL_MS, FEEBAS_LEADERBOARD_POLL_INTERVAL_MS,
+  formatCountdown, getBoardMinWidth, getPendingActivityEntries, getTileLabel,
   PENDING_NOMINATION_NOTIFICATION_TIMEOUT_MS, RESET_REFRESH_RETRY_MS,
 } from './shared';
 type NotificationLocationSource = Pick<FeebasBoardType, 'location' | 'displayName'>;
@@ -243,7 +244,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     });
   }, [syncPendingNominationActivityDelta]);
 
-  const fetchBoard = useCallback(async () => {
+  const fetchBoard = useCallback(async (includeLeaderboard = true) => {
     if (!actorFingerprint) return;
 
     const nextBoard = await fetchFeebasBoardData({
@@ -251,6 +252,7 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
       actorFingerprint,
       loadBoardMessage: messages.errors.loadBoard,
       normalizedApiBaseUrl,
+      includeLeaderboard,
     });
 
     applyBoardUpdate(nextBoard);
@@ -295,10 +297,17 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
   }, [clearResetRetryTimeout, fetchBoard, messages.errors.refreshBoard]);
 
   const refreshBoardSilently = useCallback(() => {
-    void fetchBoard().catch((nextError) => {
+    void fetchBoard(false).catch((nextError) => {
       setError(nextError instanceof Error ? nextError.message : messages.errors.refreshBoard);
     });
   }, [fetchBoard, messages.errors.refreshBoard]);
+
+  const refreshLeaderboardSilently = useCallback(() => {
+    void fetchFeebasLeaderboardData(normalizedApiBaseUrl, activeLocation).then((leaderboard) => {
+      if (!leaderboard) return;
+      setBoard((currentBoard) => currentBoard ? { ...currentBoard, leaderboard } : currentBoard);
+    }).catch(() => undefined);
+  }, [activeLocation, normalizedApiBaseUrl]);
 
   useEffect(() => {
     if (!actorFingerprint || isAuthLoading) return undefined;
@@ -519,6 +528,12 @@ const FeebasTileChecker = ({ apiBaseUrl, location, locale }: FeebasTileCheckerPr
     enabled: Boolean(actorFingerprint && !isAuthLoading && board),
     intervalMs: FEEBAS_BOARD_POLL_INTERVAL_MS,
     onPoll: refreshBoardSilently,
+  });
+
+  useVisiblePolling({
+    enabled: Boolean(actorFingerprint && !isAuthLoading && board),
+    intervalMs: FEEBAS_LEADERBOARD_POLL_INTERVAL_MS,
+    onPoll: refreshLeaderboardSilently,
   });
 
   return (

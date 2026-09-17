@@ -12,24 +12,13 @@ const {
   validateStatus,
   validateWeather,
 } = require('../../utils/feebas');
+const { LEADERBOARD_SORT_OPTIONS, createFeebasLeaderboard } = require('./feebas-leaderboard');
 
 const DEFAULT_LEADERBOARD_LIMIT = 10;
 const MAX_LEADERBOARD_LIMIT = 50;
 const LEADERBOARD_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
 const ACCOUNT_FINGERPRINT_PREFIX = 'account-';
-const LEADERBOARD_SORT_OPTIONS = [
-  { key: 'ign', defaultDirection: 'asc' },
-  { key: 'weeklyContributionScore', defaultDirection: 'desc' },
-  { key: 'allTimeContributionScore', defaultDirection: 'desc' },
-  { key: 'verifiedDiscoveries', defaultDirection: 'desc' },
-  { key: 'feebasUptimeCreatedMinutes', defaultDirection: 'desc' },
-  { key: 'confirmations', defaultDirection: 'desc' },
-  { key: 'searchCoverage', defaultDirection: 'desc' },
-  { key: 'reportAccuracy', defaultDirection: 'desc' },
-  { key: 'efficiency', defaultDirection: 'desc' },
-  { key: 'currentStreak', defaultDirection: 'desc' },
-];
 const LEADERBOARD_SORT_OPTION_KEYS = new Set(LEADERBOARD_SORT_OPTIONS.map((option) => option.key));
 const DEFAULT_LEADERBOARD_SORT_BY = 'rank';
 const DEFAULT_LEADERBOARD_SORT_DIRECTION = 'asc';
@@ -315,6 +304,7 @@ function buildWeatherStatus({ location, rows, now, actorFingerprint }) {
 }
 
 function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSelect }) {
+  const leaderboardSnapshots = createFeebasLeaderboard({ dialect, parameter, runCommand, runOne, runSelect });
   const leaderboardCache = new Map();
   const activeTimestampOrder = dialect === 'd1'
     ? 'datetime(created_at)'
@@ -585,10 +575,11 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       actorFingerprint,
       toIsoString(now),
     ]);
+    await leaderboardSnapshots.markDirty(location);
     clearLeaderboardCache(location);
   }
 
-  async function getLeaderboard(location, options = {}) {
+  async function getLeaderboardLegacy(location, options = {}) {
     const leaderboardLocations = getLeaderboardLocationIds(location);
 
     const now = options.now ? new Date(options.now) : new Date();
@@ -945,7 +936,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       LIMIT 20
     `, [cycle.id]);
     const leaderboard = includeLeaderboard
-      ? await getLeaderboard(location, { now, currentUserId: options.currentUserId })
+      ? await leaderboardSnapshots.getLeaderboard(location, { now, currentUserId: options.currentUserId })
       : undefined;
     const weather = await getWeatherStatus(location, now, actorFingerprint);
     const votesByTile = votes.reduce((map, row) => {
@@ -1351,7 +1342,7 @@ function createFeebasRepository({ dialect, parameter, runCommand, runOne, runSel
       );
     },
 
-    getLeaderboard,
+    getLeaderboard: leaderboardSnapshots.getLeaderboard,
   };
 }
 

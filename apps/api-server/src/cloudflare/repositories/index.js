@@ -126,10 +126,29 @@ function createD1Repositories(env, options = {}) {
     return statement;
   };
 
+  const recordQueryTelemetry = (result, queryName, startedAt) => {
+    const rowsRead = Number(result?.meta?.rows_read) || 0;
+    const durationMs = Number(result?.meta?.duration) || (Date.now() - startedAt);
+    // Sampling by cost keeps routine queries quiet while retaining every likely regression.
+    if (rowsRead < 1000 && durationMs < 100) return;
+    console.log(JSON.stringify({
+      event: 'd1_query',
+      queryName: queryName || 'repository.select',
+      rowsRead,
+      durationMs,
+      returnedRows: mapD1Rows(result).length,
+    }));
+  };
+
   return createRepositoryBundle({
     query: execute,
     parameter: (index) => `?${index}`,
-    runSelect: async (text, params) => mapD1Rows(await (await execute(text, params)).all()),
+    runSelect: async (text, params, queryName) => {
+      const startedAt = Date.now();
+      const result = await (await execute(text, params)).all();
+      recordQueryTelemetry(result, queryName, startedAt);
+      return mapD1Rows(result);
+    },
     runOne: async (text, params) => {
       const result = await (await execute(text, params)).first();
       return result || null;
