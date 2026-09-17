@@ -34,7 +34,7 @@ Configure these alerts in the production observability destination:
 
 ## Rollout order
 
-1. Apply D1 migrations `0010` and `0011`.
+1. Apply D1 migrations `0010` through `0012`.
 2. Regenerate and import the Pokédex SQL so `hunt_spots`, `hunt_spot_species`, and `hunt_spot_egg_groups` are populated.
 3. Deploy the Worker and web application.
 4. Verify the saved query and structured events, then compare normalized seven-day windows.

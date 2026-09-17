@@ -7,6 +7,7 @@ const {
   ENCOUNTER_METHODS,
   calculateExperienceMetrics,
   encounterRatePerHour,
+  normalizeFamilyKey,
 } = require('./hunt-finder');
 
 const EV_COLUMNS = {
@@ -27,7 +28,57 @@ function createMaterializedHuntFinder({ parameter, runOne, runSelect }) {
     return availability;
   }
 
-  function buildWhere(filters, includeLocation) {
+  function familyKeys(values) {
+    return [...new Set((values || []).map(normalizeFamilyKey).filter(Boolean))];
+  }
+
+  function familyPredicate(params, column, values, operator = 'IN') {
+    const keys = familyKeys(values);
+    if (!keys.length) return null;
+    return `${column} ${operator} (${keys.map((key) => bind(params, key)).join(', ')})`;
+  }
+
+  function scoreExpressions(filters, params) {
+    const adjustments = [];
+    const playerCaught = familyPredicate(params, 'score_species.family_key', filters.playerCaughtFamilyKeys);
+    if (playerCaught) {
+      adjustments.push(`CASE WHEN ${playerCaught} THEN (1 - score_species.points) * score_species.split ELSE 0 END`);
+    }
+    if (filters.officialUniqueBonus || filters.teamUniqueBonus) {
+      const caught = filters.teamUniqueBonus ? filters.teamCaughtFamilyKeys : filters.officialCaughtFamilyKeys;
+      const alreadyCaught = familyPredicate(params, 'score_species.family_key', caught);
+      adjustments.push(alreadyCaught
+        ? `CASE WHEN NOT (${alreadyCaught}) THEN 8 * score_species.split ELSE 0 END`
+        : '8 * score_species.split');
+    }
+    const average = adjustments.length
+      ? `(hs.average_points + COALESCE((SELECT SUM(${adjustments.join(' + ')}) FROM hunt_spot_species score_species WHERE score_species.spot_key = hs.spot_key), 0))`
+      : 'hs.average_points';
+    const denominator = effectiveShinyDenominator(filters.profile);
+    const defaultEncounters = `CASE
+      WHEN hs.horde_size > 0 THEN 240 * hs.horde_size
+      WHEN hs.method = 'Dark Grass' THEN 400
+      WHEN hs.method IN ('Super Rod', 'Good Rod', 'Old Rod', 'Fishing') THEN 200
+      WHEN hs.method = 'Honey Tree' THEN 50
+      WHEN hs.method IN ('Headbutt', 'Rock Smash', 'Rocks') THEN NULL
+      ELSE 300 END`;
+    const configuredRate = Number(filters.encountersPerHour);
+    const encounters = configuredRate > 0
+      ? `CASE WHEN hs.horde_size > 0 THEN ${configuredRate} * hs.horde_size
+          WHEN hs.method IN ('Headbutt', 'Rock Smash', 'Rocks') THEN NULL ELSE ${configuredRate} END`
+      : filters.chumBucket
+        ? `CASE WHEN hs.method IN ('Super Rod', 'Good Rod', 'Old Rod', 'Fishing') THEN 400 ELSE (${defaultEncounters}) END`
+        : defaultEncounters;
+    const expScale = 1 + ([0.25, 0.5, 1].includes(Number(filters.expCharm)) ? Number(filters.expCharm) : 0)
+      + (filters.expReamplifier ? 0.05 : 0) + (filters.expDonator ? 0.25 : 0) + (filters.tradeBonus ? 0.15 : 0);
+    return {
+      average,
+      expPerHour: `(hs.exp_per_hour * (${encounters}) / NULLIF((${defaultEncounters}), 0) * ${expScale})`,
+      pointsPerHour: `((${average}) * (${encounters}) / ${denominator})`,
+    };
+  }
+
+  function buildWhere(filters, includeLocation, includeOrdering = false) {
     const params = [];
     const where = [];
     const requestedMethod = filters.method || 'Sweet Scent';
@@ -84,56 +135,76 @@ function createMaterializedHuntFinder({ parameter, runOne, runSelect }) {
       const groups = filters.eggGroups.map((group) => bind(params, String(group).toLowerCase()));
       where.push(`EXISTS (SELECT 1 FROM hunt_spot_egg_groups hseg WHERE hseg.spot_key = hs.spot_key AND hseg.egg_group IN (${groups.join(', ')}))`);
     }
-    const denominator = effectiveShinyDenominator(filters.profile);
-    const pointScale = effectiveShinyDenominator({}) / denominator;
+    const excluded = filters.excludeTeamCaught ? filters.teamCaughtFamilyKeys : filters.officialCaughtFamilyKeys;
+    const excludedFamily = familyPredicate(params, 'excluded_species.family_key', excluded);
+    if ((filters.excludeOfficialCaught || filters.excludeTeamCaught) && excludedFamily) {
+      where.push(`NOT EXISTS (SELECT 1 FROM hunt_spot_species excluded_species WHERE excluded_species.spot_key = hs.spot_key AND ${excludedFamily})`);
+    }
+    const needsScores = ((Number(filters.minPointsPerHour) > 0 || Number(filters.minExpPerHour) > 0)
+        && !['Headbutt', 'Rock Smash'].includes(selectedMethod))
+      || (includeOrdering && (filters.sort || 'pointsPerHour') !== 'alphabetical');
+    const scores = needsScores ? scoreExpressions(filters, params) : {
+      average: 'hs.average_points',
+      expPerHour: 'hs.exp_per_hour',
+      pointsPerHour: 'hs.points_per_hour',
+    };
     if (Number(filters.minPointsPerHour) > 0 && !['Headbutt', 'Rock Smash'].includes(selectedMethod)) {
-      where.push(`hs.points_per_hour * ${pointScale} >= ${bind(params, Number(filters.minPointsPerHour))}`);
+      where.push(`${scores.pointsPerHour} >= ${bind(params, Number(filters.minPointsPerHour))}`);
     }
-    const expScale = 1 + ([0.25, 0.5, 1].includes(Number(filters.expCharm)) ? Number(filters.expCharm) : 0)
-      + (filters.expReamplifier ? 0.05 : 0) + (filters.expDonator ? 0.25 : 0) + (filters.tradeBonus ? 0.15 : 0);
     if (Number(filters.minExpPerHour) > 0 && !['Headbutt', 'Rock Smash'].includes(selectedMethod)) {
-      where.push(`hs.exp_per_hour * ${expScale} >= ${bind(params, Number(filters.minExpPerHour))}`);
+      where.push(`${scores.expPerHour} >= ${bind(params, Number(filters.minExpPerHour))}`);
     }
-    return { params, selectedMethod, sql: where.join(' AND '), pointScale, expScale };
+    return { params, scores, selectedMethod, sql: where.join(' AND ') };
   }
 
-  function orderBy(filters, selectedMethod) {
+  function orderBy(filters, selectedMethod, scores) {
     const direction = filters.sortDirection === 'desc' ? 'DESC' : 'ASC';
     if ((filters.sort || 'pointsPerHour') === 'alphabetical') return `hs.location ${direction}, hs.region ASC, hs.spot_key ASC`;
-    if (filters.sort === 'averagePoints' || ['Headbutt', 'Rock Smash'].includes(selectedMethod)) return `hs.average_points ${direction}, hs.location ASC`;
-    const field = filters.sort === 'expPerHour' ? 'hs.exp_per_hour' : 'hs.points_per_hour';
+    if (filters.sort === 'averagePoints' || ['Headbutt', 'Rock Smash'].includes(selectedMethod)) return `${scores.average} ${direction}, hs.location ASC`;
+    const field = filters.sort === 'expPerHour' ? scores.expPerHour : scores.pointsPerHour;
     return `(${field} IS NULL) ASC, ${field} ${direction}, hs.location ASC`;
   }
 
   function applyRuntimeMetrics(spot, filters) {
+    const playerCaught = new Set(familyKeys(filters.playerCaughtFamilyKeys));
+    const bonusCaught = new Set(familyKeys(filters.teamUniqueBonus
+      ? filters.teamCaughtFamilyKeys : filters.officialCaughtFamilyKeys));
+    const composition = spot.composition.map((species) => ({
+      ...species,
+      points: playerCaught.has(normalizeFamilyKey(species.family_key)) ? 1 : species.points,
+    }));
     const denominator = effectiveShinyDenominator(filters.profile);
     const encountersPerHour = encounterRatePerHour({ method: spot.method, horde_size: spot.horde_size }, filters);
-    const metrics = calculateHordeMetrics(spot.composition, { hordesPerHour: encountersPerHour || 0, denominator, hordeSize: 1 });
-    const special = spot.composition.filter((species) => species.is_special);
-    const averagePoints = special.length === spot.composition.length
+    const metrics = calculateHordeMetrics(composition, { hordesPerHour: encountersPerHour || 0, denominator, hordeSize: 1 });
+    const special = composition.filter((species) => species.is_special);
+    const baseAveragePoints = special.length === composition.length
       ? special.reduce((sum, species) => sum + Number(species.points || 0), 0) / special.length
       : metrics.averagePoints;
+    const uniqueBonus = filters.officialUniqueBonus || filters.teamUniqueBonus
+      ? metrics.composition.reduce((sum, species) => bonusCaught.has(normalizeFamilyKey(species.family_key))
+        ? sum : sum + (8 * species.split), 0)
+      : 0;
+    const averagePoints = baseAveragePoints + uniqueBonus;
     return {
       ...spot, denominator, ...metrics,
       ...calculateExperienceMetrics(metrics.composition, encountersPerHour, filters.expCharm, filters),
       averagePoints, encountersPerHour,
-      pointsPerHour: encountersPerHour === null ? null : metrics.pointsPerHour,
+      pointsPerHour: encountersPerHour === null
+        ? null : metrics.pointsPerHour + ((uniqueBonus * encountersPerHour) / denominator),
     };
   }
 
   async function list(filters = {}) {
-    const hasUserSpecificScoring = ['officialUniqueBonus', 'teamUniqueBonus', 'excludeOfficialCaught', 'excludeTeamCaught']
-      .some((key) => filters[key]) || ['officialCaughtFamilyKeys', 'teamCaughtFamilyKeys', 'playerCaughtFamilyKeys']
-      .some((key) => filters[key]?.length);
-    if (hasUserSpecificScoring || filters.encountersPerHour || filters.chumBucket || !(await isAvailable())) return null;
+    if (!(await isAvailable())) return null;
     const locationsQuery = buildWhere(filters, false);
     const locationsRows = await runSelect(`SELECT DISTINCT hs.location FROM hunt_spots hs WHERE ${locationsQuery.sql} ORDER BY hs.location`, locationsQuery.params, 'huntFinder.locations');
-    const query = buildWhere(filters, true);
-    const totalRow = await runOne(`SELECT COUNT(*) AS count FROM hunt_spots hs WHERE ${query.sql}`, query.params);
+    const countQuery = buildWhere(filters, true);
+    const totalRow = await runOne(`SELECT COUNT(*) AS count FROM hunt_spots hs WHERE ${countQuery.sql}`, countQuery.params);
+    const query = buildWhere(filters, true, true);
     const page = Math.max(1, Number(filters.page) || 1);
     const pageSize = Math.min(1000, Math.max(1, Number(filters.pageSize) || 30));
     const rows = await runSelect(`SELECT hs.spot_json FROM hunt_spots hs WHERE ${query.sql}
-      ORDER BY ${orderBy(filters, query.selectedMethod)} LIMIT ${bind(query.params, pageSize)} OFFSET ${bind(query.params, (page - 1) * pageSize)}`,
+      ORDER BY ${orderBy(filters, query.selectedMethod, query.scores)} LIMIT ${bind(query.params, pageSize)} OFFSET ${bind(query.params, (page - 1) * pageSize)}`,
     query.params, 'huntFinder.page');
     return {
       items: rows.map((row) => applyRuntimeMetrics(JSON.parse(row.spot_json), filters)),

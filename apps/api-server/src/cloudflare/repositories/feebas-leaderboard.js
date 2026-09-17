@@ -248,20 +248,30 @@ function createFeebasLeaderboard({ dialect, parameter, runCommand, runOne, runSe
         .filter((value) => value > now.getTime()).sort((a, b) => a - b)[0] || now.getTime() + LEADERBOARD_WEEK_MS;
       const sourceId = rows.length ? rows[rows.length - 1].id : null;
       const values = [scope, JSON.stringify(locations), now.toISOString(), weeklySince.toISOString(), new Date(nextExpiryMs).toISOString(), sourceId, JSON.stringify(entries)];
+      const concurrentActivityParams = locations.map((value) => {
+        values.push(value);
+        return parameter(values.length);
+      }).join(', ');
+      const dirtyValue = (value) => dialect === 'd1' ? String(Number(value)) : String(Boolean(value));
+      const preserveConcurrentDirty = `CASE WHEN EXISTS (
+        SELECT 1 FROM feebas_activity_logs
+        WHERE location IN (${concurrentActivityParams})
+          AND id > COALESCE(excluded.source_activity_id, 0)
+      ) THEN ${dirtyValue(true)} ELSE ${dirtyValue(false)} END`;
       if (dialect === 'd1') {
         await runCommand(`INSERT INTO feebas_leaderboard_snapshots
           (scope, locations_json, generated_at, weekly_since, next_weekly_expiration, source_activity_id, dirty, refresh_lease_until, entries_json)
           VALUES (?, ?, ?, ?, ?, ?, 0, NULL, ?) ON CONFLICT(scope) DO UPDATE SET
           locations_json=excluded.locations_json, generated_at=excluded.generated_at, weekly_since=excluded.weekly_since,
           next_weekly_expiration=excluded.next_weekly_expiration, source_activity_id=excluded.source_activity_id,
-          dirty=0, refresh_lease_until=NULL, entries_json=excluded.entries_json`, values);
+          dirty=${preserveConcurrentDirty}, refresh_lease_until=NULL, entries_json=excluded.entries_json`, values);
       } else {
         await runCommand(`INSERT INTO feebas_leaderboard_snapshots
           (scope, locations_json, generated_at, weekly_since, next_weekly_expiration, source_activity_id, dirty, refresh_lease_until, entries_json)
           VALUES ($1, $2, $3, $4, $5, $6, false, NULL, $7) ON CONFLICT(scope) DO UPDATE SET
           locations_json=EXCLUDED.locations_json, generated_at=EXCLUDED.generated_at, weekly_since=EXCLUDED.weekly_since,
           next_weekly_expiration=EXCLUDED.next_weekly_expiration, source_activity_id=EXCLUDED.source_activity_id,
-          dirty=false, refresh_lease_until=NULL, entries_json=EXCLUDED.entries_json`, values);
+          dirty=${preserveConcurrentDirty}, refresh_lease_until=NULL, entries_json=EXCLUDED.entries_json`, values);
       }
       const snapshot = {
         scope,

@@ -41,15 +41,53 @@ describe('materialized Hunt Finder', () => {
     expect(runSelect.mock.calls[1][1].slice(-2)).toEqual([30, 60]);
   });
 
-  it('uses the legacy path for user-specific Shiny War scoring', async () => {
-    const runOne = jest.fn();
+  it('keeps user-specific Shiny War scoring on the materialized page', async () => {
+    const runOne = jest.fn()
+      .mockResolvedValueOnce({ count: 100 })
+      .mockResolvedValueOnce({ count: 1 });
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([{ location: 'Route 1' }])
+      .mockResolvedValueOnce([{ spot_json: JSON.stringify(spot) }]);
     const finder = createMaterializedHuntFinder({
       parameter: (index) => `?${index}`,
       runOne,
-      runSelect: jest.fn(),
+      runSelect,
     });
 
-    await expect(finder.list({ officialUniqueBonus: true })).resolves.toBeNull();
-    expect(runOne).not.toHaveBeenCalled();
+    const result = await finder.list({
+      officialUniqueBonus: true,
+      officialCaughtFamilyKeys: [],
+      playerCaughtFamilyKeys: ['pidgey'],
+      sort: 'pointsPerHour',
+    });
+
+    expect(result.items[0].composition[0].points).toBe(1);
+    expect(result.items[0].averagePoints).toBe(9);
+    expect(runSelect.mock.calls[1][0]).toContain('hunt_spot_species score_species');
+    expect(runSelect.mock.calls[1][0]).toContain('LIMIT');
+  });
+
+  it('keeps custom encounter rates on the bounded SQL path', async () => {
+    const runOne = jest.fn()
+      .mockResolvedValueOnce({ count: 100 })
+      .mockResolvedValueOnce({ count: 1 });
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([{ location: 'Route 1' }])
+      .mockResolvedValueOnce([{ spot_json: JSON.stringify(spot) }]);
+    const finder = createMaterializedHuntFinder({
+      parameter: (index) => `?${index}`,
+      runOne,
+      runSelect,
+    });
+
+    const result = await finder.list({
+      method: 'Sweet Scent',
+      encountersPerHour: 300,
+      sort: 'expPerHour',
+    });
+
+    expect(result).not.toBeNull();
+    expect(result.items[0].encountersPerHour).toBe(1500);
+    expect(runSelect.mock.calls[1][0]).toContain('NULLIF');
   });
 });

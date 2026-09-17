@@ -314,8 +314,8 @@ function toSql(data) {
       spot.averagePoints, spot.pointsPerHour, spot.expPerHour, JSON.stringify(cleanSpot),
     ].map(sqlValue).join(',')});`);
     spot.composition.forEach((species) => lines.push(
-      `INSERT OR IGNORE INTO hunt_spot_species (spot_key,species_id,name,family_key,tier_number,min_level,split,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed,egg_groups_json) VALUES (${[
-        spot.spot_key, species.species_id, species.name, species.family_key, species.tier_number,
+      `INSERT OR IGNORE INTO hunt_spot_species (spot_key,species_id,name,family_key,points,tier_number,min_level,split,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed,egg_groups_json) VALUES (${[
+        spot.spot_key, species.species_id, species.name, species.family_key, species.points, species.tier_number,
         species.min_level, species.split, species.ev_hp, species.ev_attack, species.ev_defense,
         species.ev_sp_attack, species.ev_sp_defense, species.ev_speed, JSON.stringify(species.egg_groups),
       ].map(sqlValue).join(',')});`

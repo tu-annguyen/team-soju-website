@@ -60,5 +60,6 @@ describe('Feebas leaderboard snapshots', () => {
     expect(runSelect).toHaveBeenCalledTimes(2);
     expect(runCommand.mock.calls[0][0]).toContain('refresh_lease_until');
     expect(runCommand.mock.calls.at(-1)[0]).toContain('entries_json=excluded.entries_json');
+    expect(runCommand.mock.calls.at(-1)[0]).toContain('id > COALESCE(excluded.source_activity_id, 0)');
   });
 });
