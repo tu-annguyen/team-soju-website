@@ -30,19 +30,23 @@ type Props = {
   /** @deprecated Encounter compositions no longer toggle independently. */
   onToggle?: (spotKey: string) => void;
   collapsedLocations?: ReadonlySet<string>;
+  collapsedSplits?: ReadonlySet<string>;
   onToggleLocation?: (locationKey: string) => void;
+  onToggleSplits?: (locationKey: string) => void;
 };
 
 function HuntResults({
   participants, minimumTier = '', locale, speciesFilter = '', spots, view, onQueue,
-  collapsedLocations, onToggleLocation, context = 'shinyWar', displayedInfo,
+  collapsedLocations, collapsedSplits, onToggleLocation, onToggleSplits, context = 'shinyWar', displayedInfo,
   sort = 'pointsPerHour', sortDirection = 'desc', locationGroups: providedLocationGroups,
   pokemonLocationGroups: providedPokemonLocationGroups,
 }: Props) {
   const [internalCollapsedLocations, setInternalCollapsedLocations] = useState<Set<string>>(() => new Set());
+  const [internalCollapsedSplits, setInternalCollapsedSplits] = useState<Set<string>>(() => new Set());
   const messages = useMemo(() => getHuntFinderMessages(locale).results, [locale]);
   const game = useMemo(() => getGameTranslations(locale), [locale]);
   const effectiveCollapsedLocations = collapsedLocations || internalCollapsedLocations;
+  const effectiveCollapsedSplits = collapsedSplits || internalCollapsedSplits;
   const effectiveDisplayedInfo = displayedInfo || DEFAULT_DISPLAYED_INFO_BY_SORT[sort];
   const internalToggleLocation = useCallback((locationKey: string) => {
     setInternalCollapsedLocations((current) => {
@@ -53,6 +57,15 @@ function HuntResults({
     });
   }, []);
   const toggleLocation = onToggleLocation || internalToggleLocation;
+  const internalToggleSplits = useCallback((locationKey: string) => {
+    setInternalCollapsedSplits((current) => {
+      const next = new Set(current);
+      if (next.has(locationKey)) next.delete(locationKey);
+      else next.add(locationKey);
+      return next;
+    });
+  }, []);
+  const toggleSplits = onToggleSplits || internalToggleSplits;
   const locationGroups = useMemo(
     () => providedLocationGroups || groupHuntSpotsByLocation(spots),
     [providedLocationGroups, spots]
@@ -70,6 +83,7 @@ function HuntResults({
           <HuntLocationCard
             key={group.key}
             locationOpen={!effectiveCollapsedLocations.has(group.key)}
+            splitsOpen={!effectiveCollapsedSplits.has(group.key)}
             participants={participants}
             locale={locale}
             spots={group.spots}
@@ -80,6 +94,7 @@ function HuntResults({
             onQueue={onQueue}
             locationKey={group.key}
             onToggleLocation={toggleLocation}
+            onToggleSplits={toggleSplits}
           />
         ))}
       </div>
@@ -119,6 +134,7 @@ function HuntResults({
               <HuntLocationCard
                 key={`${species.slug}-${species.form}-${group.key}`}
                 locationOpen={!effectiveCollapsedLocations.has(group.key)}
+                splitsOpen={!effectiveCollapsedSplits.has(group.key)}
                 participants={participants}
                 locale={locale}
                 spots={group.spots}
@@ -130,6 +146,7 @@ function HuntResults({
                 onQueue={onQueue}
                 locationKey={group.key}
                 onToggleLocation={toggleLocation}
+                onToggleSplits={toggleSplits}
               />
             ))}
           </div>

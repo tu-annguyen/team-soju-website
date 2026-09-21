@@ -122,6 +122,10 @@ function createMaterializedHuntFinder({ parameter, runOne, runSelect }) {
     if (minLevel) {
       where.push(`NOT EXISTS (SELECT 1 FROM hunt_spot_species hss WHERE hss.spot_key = hs.spot_key AND hss.min_level < ${bind(params, minLevel)})`);
     }
+    const maxLevel = Math.max(0, Number(filters.maxLevel) || 0);
+    if (maxLevel) {
+      where.push(`NOT EXISTS (SELECT 1 FROM hunt_spot_species hss WHERE hss.spot_key = hs.spot_key AND (hss.max_level <= 0 OR hss.max_level > ${bind(params, maxLevel)}))`);
+    }
     if (filters.fullSplitOnly && ['All', 'Sweet Scent'].includes(selectedMethod)) {
       where.push('hs.horde_size > 0 AND EXISTS (SELECT 1 FROM hunt_spot_species hss WHERE hss.spot_key = hs.spot_key AND hss.split = 1)');
     }
@@ -140,7 +144,9 @@ function createMaterializedHuntFinder({ parameter, runOne, runSelect }) {
     if ((filters.excludeOfficialCaught || filters.excludeTeamCaught) && excludedFamily) {
       where.push(`NOT EXISTS (SELECT 1 FROM hunt_spot_species excluded_species WHERE excluded_species.spot_key = hs.spot_key AND ${excludedFamily})`);
     }
-    const needsScores = ((Number(filters.minPointsPerHour) > 0 || Number(filters.minExpPerHour) > 0)
+    const excludeZeroExp = filters.excludeZeroExp
+      && filters.sort === 'expPerHour' && filters.sortDirection === 'asc';
+    const needsScores = ((Number(filters.minPointsPerHour) > 0 || Number(filters.minExpPerHour) > 0 || excludeZeroExp)
         && !['Headbutt', 'Rock Smash'].includes(selectedMethod))
       || (includeOrdering && (filters.sort || 'pointsPerHour') !== 'alphabetical');
     const scores = needsScores ? scoreExpressions(filters, params) : {
@@ -154,6 +160,7 @@ function createMaterializedHuntFinder({ parameter, runOne, runSelect }) {
     if (Number(filters.minExpPerHour) > 0 && !['Headbutt', 'Rock Smash'].includes(selectedMethod)) {
       where.push(`${scores.expPerHour} >= ${bind(params, Number(filters.minExpPerHour))}`);
     }
+    if (excludeZeroExp) where.push(`COALESCE(${scores.expPerHour}, -1) <> 0`);
     return { params, scores, selectedMethod, sql: where.join(' AND ') };
   }
 

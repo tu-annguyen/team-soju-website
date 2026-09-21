@@ -28,6 +28,7 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
     hordeSize: searchParams.get('hordeSize') || undefined,
     minTier: searchParams.get('minTier') || undefined,
     minLevel: searchParams.get('minLevel') || undefined,
+    maxLevel: searchParams.get('maxLevel') || undefined,
     species: searchParams.get('species') || undefined,
     time: searchParams.get('time') || undefined,
     fullSplitOnly: boolParam(searchParams, 'fullSplitOnly'),
@@ -38,6 +39,7 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
     evStats: listParam(searchParams, 'evStats').filter((stat) => EV_STATS.has(stat)),
     evAmounts: evAmounts.slice(0, 1),
     exclusiveEvYield: boolParam(searchParams, 'exclusiveEvYield'),
+    excludeZeroExp: boolParam(searchParams, 'excludeZeroExp'),
     eggGroups: listParam(searchParams, 'eggGroups'),
     expCharm: ['0.25', '0.5', '1'].includes(searchParams.get('expCharm'))
       ? Number(searchParams.get('expCharm'))
@@ -45,7 +47,7 @@ function huntFinderFilters(url, { includeWarFilters = false } = {}) {
     expReamplifier: boolParam(searchParams, 'expReamplifier'),
     expDonator: boolParam(searchParams, 'expDonator'),
     tradeBonus: boolParam(searchParams, 'tradeBonus'),
-    sort: sort === 'expPerHour' && ![undefined, 'All', 'Sweet Scent'].includes(method) ? 'alphabetical' : sort,
+    sort: sort === 'expPerHour' && ![undefined, 'All', 'Sweet Scent', 'Singles'].includes(method) ? 'alphabetical' : sort,
     sortDirection: requestedDirection === 'asc' || requestedDirection === 'desc'
       ? requestedDirection
       : sort === 'alphabetical' ? 'asc' : 'desc',

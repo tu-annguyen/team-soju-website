@@ -188,7 +188,7 @@ describe('Cloudflare Shiny Wars repository', () => {
     expect(result.items[0].composition.map((species) => species.split)).toEqual([0.5, 0.5]);
   });
 
-  it('requires every species to meet minimum level and OR-matches EV yields', async () => {
+  it('requires every species to fit the level range and OR-matches EV yields', async () => {
     const base = {
       region: 'Kanto', method: 'Sweet Scent', season: 'Summer', horde_size: 5,
       tier: 'Tier 5', points: 10, form: '', morning_rate: 5, day_rate: 5, night_rate: 5,
@@ -207,13 +207,18 @@ describe('Cloudflare Shiny Wars repository', () => {
     });
 
     const result = await repository.listHordeSpots({
-      season: 'Summer', time: 'day', minLevel: 30,
+      season: 'Summer', time: 'day', minLevel: 30, maxLevel: 32,
       evStats: ['speed', 'attack'], evAmounts: ['1'], profile: { eventBoost: false },
     });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].location).toBe('Route 2');
     expect(result.items[0].expPerHour).toBeGreaterThan(0);
+
+    const belowMaximum = await repository.listHordeSpots({
+      season: 'Summer', time: 'day', maxLevel: 31, profile: { eventBoost: false },
+    });
+    expect(belowMaximum.items).toHaveLength(0);
 
     const aboveMaximum = await repository.listHordeSpots({
       season: 'Summer', time: 'day', minExpPerHour: 1_000_000_000,
@@ -756,14 +761,14 @@ describe('Cloudflare Shiny Wars repository', () => {
           location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
           method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 1,
           species_name: 'Drilbur', slug: 'drilbur', family_key: 'drilbur',
-          tier: 'Tier 1', points: 45, form: '', min_level: 36, max_level: 41,
+          tier: 'Tier 1', points: 45, form: '', min_level: 36, max_level: 41, base_exp: 66,
           morning_rate: null, day_rate: null, night_rate: null,
         },
         {
           location_id: '4:1', location_name: 'Guidance Chamber', region: 'Unova',
           method: 'Dust Cloud', season: 'Any', horde_size: 0, is_lure: 0, is_special: 1,
           species_name: 'Lucario', slug: 'lucario', family_key: 'riolu',
-          tier: 'Tier 0', points: 50, form: '', min_level: 36, max_level: 41,
+          tier: 'Tier 0', points: 50, form: '', min_level: 36, max_level: 41, base_exp: 184,
           morning_rate: null, day_rate: null, night_rate: null,
         },
       ]),
@@ -775,7 +780,14 @@ describe('Cloudflare Shiny Wars repository', () => {
 
     expect(result.items[0].averagePoints).toBe(47.5);
     expect(result.items[0].pointsPerHour).toBe(0);
+    expect(result.items[0].expPerHour).toBe(0);
     expect(result.items[0].composition.every((entry) => entry.split === 0)).toBe(true);
+
+    const withoutZeroExp = await repository.listHordeSpots({
+      method: 'Singles', season: 'Summer', time: 'day', sort: 'expPerHour',
+      sortDirection: 'asc', excludeZeroExp: true, profile: { eventBoost: false },
+    });
+    expect(withoutZeroExp.items).toHaveLength(0);
   });
 
   it('includes legacy Any-season Lure encounters such as Togetic in every season', async () => {

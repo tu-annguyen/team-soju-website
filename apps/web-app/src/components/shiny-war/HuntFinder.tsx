@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HuntFinderControls from '../hunt-finder/HuntFinderControls';
 import HuntResultsSkeleton from '../hunt-finder/HuntResultsSkeleton';
 import type { DisplayedPokemonInfo, HuntFinderContext, HuntFinderFilters } from '../hunt-finder/types';
@@ -27,13 +27,13 @@ const EMPTY_FAMILY_KEYS: string[] = [];
 function initialFilters(context: HuntFinderContext, defaultSeason: string): HuntFinderFilters {
   return {
     season: defaultSeason || getPokeMmoClockState(new Date()).season,
-    region: '', location: '', species: '', minTier: '', minLevel: '', time: '', method: 'All',
+    region: '', location: '', species: '', minTier: '', minLevel: '', maxLevel: '', time: '', method: 'All',
     hordeSize: '', encountersPerHour: '', eventBoost: false, donator: false,
     fullSplitOnly: false, minPointsPerHour: '', minExpPerHour: '', personalCharm: false, linkCharm: false,
     chumBucket: false, nonSafari: false,
     officialUniqueBonus: context === 'shinyWar', teamUniqueBonus: false,
     excludeOfficialCaught: false, excludeTeamCaught: false,
-    evStats: [], evAmounts: [], exclusiveEvYield: false, eggGroups: [], expCharm: '', expReamplifier: false, expDonator: false, tradeBonus: false,
+    evStats: [], evAmounts: [], exclusiveEvYield: false, excludeZeroExp: false, eggGroups: [], expCharm: '', expReamplifier: false, expDonator: false, tradeBonus: false,
     sort: 'alphabetical', sortDirection: 'asc',
   };
 }
@@ -53,6 +53,7 @@ export default function HuntFinder({
   const [displayedInfo, setDisplayedInfo] = useState<DisplayedPokemonInfo[]>([]);
   const [collapsedLocationViewLocations, setCollapsedLocationViewLocations] = useState<Set<string>>(() => new Set());
   const [pokemonLocationOverrides, setPokemonLocationOverrides] = useState<Map<string, boolean>>(() => new Map());
+  const [collapsedSplits, setCollapsedSplits] = useState<Set<string>>(() => new Set());
   const [view, setView] = useState<HuntView>('location');
   const messages = getHuntFinderMessages(locale);
   const {
@@ -89,9 +90,20 @@ export default function HuntFinder({
     pokemonViewKeys.filter((key) => pokemonLocationOverrides.get(key) ?? pokemonLocationDefaults.get(key))
   ), [pokemonLocationDefaults, pokemonLocationOverrides, pokemonViewKeys]);
   const visibleLocationKeys = view === 'location' ? locationViewKeys : pokemonViewKeys;
+  const visibleSplitKeys = useMemo(() => appliedFilters.sort === 'alphabetical' ? [] : view === 'location'
+    ? locationGroups.filter(({ spots: groupedSpots }) => groupedSpots.length > 1).map(({ key }) => key)
+    : pokemonLocationGroups.flatMap(({ locations: groupedLocations }) => groupedLocations
+      .filter(({ spots: groupedSpots }) => groupedSpots.length > 1).map(({ key }) => key)),
+  [appliedFilters.sort, locationGroups, pokemonLocationGroups, view]);
   const collapsedLocations = view === 'location' ? collapsedLocationViewLocations : collapsedPokemonViewLocations;
   const allLocationsOpen = visibleLocationKeys.length > 0
     && visibleLocationKeys.every((locationKey) => !collapsedLocations.has(locationKey));
+  const allSplitsOpen = visibleSplitKeys.length > 0
+    && visibleSplitKeys.every((locationKey) => !collapsedSplits.has(locationKey));
+
+  useEffect(() => {
+    if (appliedFilters.sort === 'pointsPerHour') setCollapsedSplits(new Set());
+  }, [appliedFilters.sort]);
 
   const toggleAllLocations = () => startTransition(() => {
     if (view === 'location') {
@@ -123,6 +135,19 @@ export default function HuntFinder({
     }
   }, [view]);
 
+  const toggleAllSplits = () => setCollapsedSplits((current) => {
+    const next = new Set(current);
+    visibleSplitKeys.forEach((key) => allSplitsOpen ? next.add(key) : next.delete(key));
+    return next;
+  });
+
+  const toggleSplits = useCallback((locationKey: string) => setCollapsedSplits((current) => {
+    const next = new Set(current);
+    if (next.has(locationKey)) next.delete(locationKey);
+    else next.add(locationKey);
+    return next;
+  }), []);
+
   const showingSummary = messages.results.showing
     .replace('{shown}', String(spots.length))
     .replace('{total}', String(total));
@@ -140,9 +165,14 @@ export default function HuntFinder({
             <button aria-pressed={view === value} className={`rounded-full px-4 py-2 text-sm font-semibold ${view === value ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'}`} key={value} onClick={() => changeView(value)} type="button">{label}</button>
           ))}
         </div>
-        <button className="rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" disabled={visibleLocationKeys.length === 0} onClick={toggleAllLocations} type="button">
-          <span aria-hidden="true">{allLocationsOpen ? '-' : '+'}</span>{' '}{allLocationsOpen ? messages.results.collapseAll : messages.results.openAll}
-        </button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button className="rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" disabled={visibleSplitKeys.length === 0} onClick={toggleAllSplits} type="button">
+            <span aria-hidden="true">{allSplitsOpen ? '-' : '+'}</span>{' '}{allSplitsOpen ? messages.results.collapseAllSplits : messages.results.openAllSplits}
+          </button>
+          <button className="rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" disabled={visibleLocationKeys.length === 0} onClick={toggleAllLocations} type="button">
+            <span aria-hidden="true">{allLocationsOpen ? '-' : '+'}</span>{' '}{allLocationsOpen ? messages.results.collapseAllLocations : messages.results.openAllLocations}
+          </button>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
         <p>{showingSummary}</p>
@@ -154,12 +184,14 @@ export default function HuntFinder({
       ) : (
         <HuntResults
           collapsedLocations={collapsedLocations}
+          collapsedSplits={collapsedSplits}
           context={context}
           displayedInfo={displayedInfo}
           locationGroups={locationGroups}
           locale={locale}
           onQueue={onQueue}
           onToggleLocation={toggleLocation}
+          onToggleSplits={toggleSplits}
           participants={participants}
           pokemonLocationGroups={pokemonLocationGroups}
           sort={appliedFilters.sort}

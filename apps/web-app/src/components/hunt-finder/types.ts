@@ -18,6 +18,7 @@ export type HuntFinderFilters = {
   species: string;
   minTier: string;
   minLevel: string;
+  maxLevel: string;
   time: string;
   method: string;
   hordeSize: string;
@@ -38,6 +39,7 @@ export type HuntFinderFilters = {
   evStats: EvStat[];
   evAmounts: EvAmount[];
   exclusiveEvYield: boolean;
+  excludeZeroExp: boolean;
   eggGroups: EggGroup[];
   expCharm: '' | '0.25' | '0.5' | '1';
   expReamplifier: boolean;

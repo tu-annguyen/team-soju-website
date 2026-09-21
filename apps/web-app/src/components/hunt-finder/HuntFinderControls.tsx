@@ -51,7 +51,7 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
       ...old,
       method,
       encountersPerHour: defaultEncountersPerHour(method, old.chumBucket),
-      ...(old.sort === 'expPerHour' && !['All', 'Sweet Scent'].includes(method)
+      ...(old.sort === 'expPerHour' && !['All', 'Sweet Scent', 'Singles'].includes(method)
         ? { sort: 'alphabetical' as const, sortDirection: 'asc' as const }
         : {}),
     }))} options={methods} />
@@ -64,6 +64,7 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
     {advancedFiltersOpen && <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-4" id="advanced-hunt-filters">
     {f.sort !== 'expPerHour' && <Spinner title={m.fields.minimumTier} value={f.minTier} setValue={(v) => set('minTier', v)} placeholder={m.options.noMinimum} min={0} max={7} reverse />}
     {f.sort !== 'pointsPerHour' && <Spinner title={m.fields.minimumLevel} value={f.minLevel} setValue={(v) => set('minLevel', v)} placeholder={m.options.noMinimum} min={1} max={100} />}
+    {f.sort !== 'pointsPerHour' && <Spinner title={m.fields.maximumLevel} value={f.maxLevel} setValue={(v) => set('maxLevel', v)} placeholder={m.options.noMaximum} min={1} max={100} />}
     {(f.sort === 'pointsPerHour' || alphabetical) && <Spinner title={m.fields.minimumPoints} value={f.minPointsPerHour} setValue={(v) => set('minPointsPerHour', v)} placeholder={m.options.noMinimum} min={0} step={0.001} />}
     {(f.sort === 'expPerHour' || alphabetical) && <Spinner title={m.fields.minimumExp} value={f.minExpPerHour} setValue={(v) => set('minExpPerHour', v)} placeholder={m.options.noMinimum} min={0} />}
     <Select title={m.fields.hordeSize} value={f.hordeSize} disabled={!scent} onChange={(v) => set('hordeSize', v)} options={[['', m.options.bothHordes], ['3', m.options.threeOnly], ['5', m.options.fiveOnly]]} />
@@ -89,7 +90,7 @@ function Filters({ context, filters: f, locale, locations, messages: m, setFilte
 function Sort({ displayedInfo, filters: f, messages: m, setDisplayedInfo, setFilters }: SectionProps) {
   const [displayOptionsOpen, setDisplayOptionsOpen] = useState(false);
   const set = <K extends keyof HuntFinderFilters>(key: K, value: HuntFinderFilters[K]) => setFilters((old) => ({ ...old, [key]: value }));
-  const exp = ['All', 'Sweet Scent'].includes(f.method);
+  const exp = ['All', 'Sweet Scent', 'Singles'].includes(f.method);
   const fishing = ['All', 'Fishing'].includes(f.method);
   return <section aria-labelledby="hunt-sort-heading" className={section}>
     <h2 className="text-lg font-bold sm:col-span-2 lg:col-span-4" id="hunt-sort-heading">{m.sections.sort}</h2>
@@ -99,7 +100,8 @@ function Sort({ displayedInfo, filters: f, messages: m, setDisplayedInfo, setFil
       setDisplayedInfo([...DEFAULT_DISPLAYED_INFO_BY_SORT[sort]]);
     }} options={[['alphabetical', m.options.alphabetical], ['pointsPerHour', m.options.pointsHour], ['expPerHour', m.options.expHour, !exp]]} />
     <Select title={m.fields.direction} value={f.sortDirection} onChange={(v) => set('sortDirection', v as HuntFinderFilters['sortDirection'])} options={[['asc', m.options.ascending], ['desc', m.options.descending]]} />
-    <div className="flex items-end sm:col-span-2 lg:col-span-2 lg:justify-end">
+    {f.sort === 'expPerHour' && f.sortDirection === 'asc' && <div className="flex items-end"><Check panel text={m.options.excludeZeroExp} checked={f.excludeZeroExp} onChange={(v) => set('excludeZeroExp', v)} /></div>}
+    <div className={`flex items-end sm:col-span-2 lg:justify-end ${f.sort === 'expPerHour' && f.sortDirection === 'asc' ? 'lg:col-span-1' : 'lg:col-span-2'}`}>
       <button aria-controls="hunt-info-display-options" aria-expanded={displayOptionsOpen} className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800" onClick={() => setDisplayOptionsOpen((open) => !open)} type="button">
         <span aria-hidden="true">{displayOptionsOpen ? '-' : '+'}</span>{' '}{m.sections.infoDisplayOptions}
       </button>

@@ -316,15 +316,22 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (species) => Number(species.min_level) >= minimumLevel
       ))
       : tierFilteredSpots;
+    const maximumLevel = Math.max(0, Number(filters.maxLevel) || 0);
+    const levelRangeFilteredSpots = maximumLevel
+      ? levelFilteredSpots.filter((spot) => spot.composition.every(
+        (species) => Number(species.max_level) > 0
+          && Number(species.max_level) <= maximumLevel
+      ))
+      : levelFilteredSpots;
     const speciesFilter = String(filters.species || '').trim().toLowerCase();
     const excludedFamilyKeys = filters.excludeTeamCaught
       ? teamCaughtFamilyKeys
       : officialCaughtFamilyKeys;
     const caughtFilteredSpots = (filters.excludeOfficialCaught || filters.excludeTeamCaught)
-      ? levelFilteredSpots.filter((spot) => !spot.composition.some(
+      ? levelRangeFilteredSpots.filter((spot) => !spot.composition.some(
         (species) => excludedFamilyKeys.has(normalizeFamilyKey(species.family_key))
       ))
-      : levelFilteredSpots;
+      : levelRangeFilteredSpots;
     const splitFilteredSpots = ['All', 'Sweet Scent'].includes(selectedMethod) && filters.fullSplitOnly
       ? caughtFilteredSpots.filter(
         (spot) => Number(spot.horde_size) > 0
@@ -361,7 +368,11 @@ function createShinyWarRepository({ dialect, parameter, runCommand, runOne, runS
         (spot) => spot.expPerHour !== null && spot.expPerHour >= minimumExpPerHour
       )
       : pointsFilteredSpots;
-    const groupedSpots = groupEquivalentHuntSpots(expFilteredSpots);
+    const nonzeroExpSpots = filters.excludeZeroExp
+      && filters.sort === 'expPerHour' && filters.sortDirection === 'asc'
+      ? expFilteredSpots.filter((spot) => spot.expPerHour !== 0)
+      : expFilteredSpots;
+    const groupedSpots = groupEquivalentHuntSpots(nonzeroExpSpots);
     sortHuntSpots(groupedSpots, { ...filters, method: selectedMethod }, hasHourlyData);
     const page = Math.max(1, Number(filters.page) || 1);
     const pageSize = Math.min(1000, Math.max(1, Number(filters.pageSize) || 30));

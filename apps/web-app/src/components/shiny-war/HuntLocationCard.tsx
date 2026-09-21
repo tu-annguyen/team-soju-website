@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo } from 'react';
 import HuntSpotCard from './HuntSpotCard';
 import type { HuntSpecies, HuntSpot, ParticipantHunts } from './types';
 import type { DisplayedPokemonInfo, HuntFinderContext, HuntSort, SortDirection } from '../hunt-finder/types';
@@ -14,8 +14,10 @@ type Props = {
   targetSpecies?: HuntSpecies;
   locationKey?: string;
   locationOpen: boolean;
+  splitsOpen: boolean;
   onQueue?: (spot: HuntSpot, current: boolean, targetSpecies?: HuntSpecies, title?: string) => void;
   onToggleLocation: (locationKey: string) => void;
+  onToggleSplits: (locationKey: string) => void;
   sort?: HuntSort;
   sortDirection?: SortDirection;
 };
@@ -57,10 +59,9 @@ function splitTitles(
 }
 
 function HuntLocationCard({
-  locationOpen, participants, locale, spots, targetSpecies, onQueue, onToggleLocation,
+  locationOpen, splitsOpen, participants, locale, spots, targetSpecies, onQueue, onToggleLocation, onToggleSplits,
   locationKey = '', context = 'shinyWar', displayedInfo = [], sort = 'pointsPerHour', sortDirection = 'desc',
 }: Props) {
-  const [lowerRateOpen, setLowerRateOpen] = useState(false);
   const messages = useMemo(() => getHuntFinderMessages(locale).results, [locale]);
   const game = useMemo(() => getGameTranslations(locale), [locale]);
   const { bestSpots, lowerRateSpots } = useMemo(() => {
@@ -82,9 +83,9 @@ function HuntLocationCard({
     return { bestSpots: best, lowerRateSpots: rankedSpots.filter((entry) => !best.includes(entry)) };
   }, [game.label, game.location, messages.split, sort, sortDirection, spots]);
   const firstSpot = bestSpots[0]?.spot || spots[0];
-  const secondaryLabel = sort === 'pointsPerHour' && sortDirection === 'desc'
-    ? messages.lowerPoints
-    : sort === 'expPerHour' ? messages.lowerExp : messages.lowerPoints;
+  const secondaryLabel = sort === 'expPerHour'
+    ? sortDirection === 'asc' ? messages.higherExp : messages.lowerExp
+    : sortDirection === 'asc' ? messages.higherPoints : messages.lowerPoints;
 
   const renderSpot = ({ spot, title }: typeof titledSpots[number]) => (
     <HuntSpotCard
@@ -131,19 +132,19 @@ function HuntLocationCard({
           {lowerRateSpots.length > 0 && (
             <section>
               <button
-                aria-expanded={lowerRateOpen}
+                aria-expanded={splitsOpen}
                 className="flex w-full items-center justify-between gap-3 bg-gray-50 px-4 py-2.5 text-left text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 dark:bg-gray-950/50 dark:text-gray-300 dark:hover:bg-gray-800"
-                onClick={() => setLowerRateOpen((open) => !open)}
+                onClick={() => onToggleSplits(locationKey)}
                 type="button"
               >
                 <span>
-                  {lowerRateOpen ? messages.hide : messages.show} {lowerRateSpots.length} {secondaryLabel} {lowerRateSpots.length === 1 ? messages.split : messages.splits}
+                  {splitsOpen ? messages.hide : messages.show} {lowerRateSpots.length} {secondaryLabel} {lowerRateSpots.length === 1 ? messages.split : messages.splits}
                 </span>
                 <span aria-hidden="true" className="text-base text-primary-600 dark:text-primary-300">
-                  {lowerRateOpen ? '−' : '+'}
+                  {splitsOpen ? '−' : '+'}
                 </span>
               </button>
-              {lowerRateOpen && (
+              {splitsOpen && (
                 <div className="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
                   {lowerRateSpots.map(renderSpot)}
                 </div>
@@ -158,6 +159,7 @@ function HuntLocationCard({
 
 function equalProps(previous: Props, next: Props) {
   return previous.locationOpen === next.locationOpen
+    && previous.splitsOpen === next.splitsOpen
     && previous.locationKey === next.locationKey
     && previous.participants === next.participants
     && previous.locale === next.locale
@@ -166,6 +168,7 @@ function equalProps(previous: Props, next: Props) {
     && previous.targetSpecies === next.targetSpecies
     && previous.onQueue === next.onQueue
     && previous.onToggleLocation === next.onToggleLocation
+    && previous.onToggleSplits === next.onToggleSplits
     && previous.sort === next.sort
     && previous.sortDirection === next.sortDirection
     && previous.spots.length === next.spots.length

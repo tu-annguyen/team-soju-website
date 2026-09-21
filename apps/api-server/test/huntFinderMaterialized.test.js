@@ -90,4 +90,45 @@ describe('materialized Hunt Finder', () => {
     expect(result.items[0].encountersPerHour).toBe(1500);
     expect(runSelect.mock.calls[1][0]).toContain('NULLIF');
   });
+
+  it('applies both level bounds to every species in a spot', async () => {
+    const runOne = jest.fn()
+      .mockResolvedValueOnce({ count: 100 })
+      .mockResolvedValueOnce({ count: 1 });
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([{ location: 'Route 1' }])
+      .mockResolvedValueOnce([{ spot_json: JSON.stringify(spot) }]);
+    const finder = createMaterializedHuntFinder({
+      parameter: (index) => `?${index}`,
+      runOne,
+      runSelect,
+    });
+
+    await finder.list({ minLevel: 2, maxLevel: 4, sort: 'alphabetical' });
+
+    expect(runSelect.mock.calls[1][0]).toContain('hss.min_level < ?1');
+    expect(runSelect.mock.calls[1][0]).toContain('hss.max_level <= 0 OR hss.max_level > ?2');
+    expect(runSelect.mock.calls[1][1].slice(0, 2)).toEqual([2, 4]);
+  });
+
+  it('excludes zero EXP rows when ascending EXP sorting requests it', async () => {
+    const runOne = jest.fn()
+      .mockResolvedValueOnce({ count: 100 })
+      .mockResolvedValueOnce({ count: 1 });
+    const runSelect = jest.fn()
+      .mockResolvedValueOnce([{ location: 'Route 1' }])
+      .mockResolvedValueOnce([{ spot_json: JSON.stringify(spot) }]);
+    const finder = createMaterializedHuntFinder({
+      parameter: (index) => `?${index}`,
+      runOne,
+      runSelect,
+    });
+
+    await finder.list({
+      excludeZeroExp: true, sort: 'expPerHour', sortDirection: 'asc',
+    });
+
+    expect(runSelect.mock.calls[1][0]).toContain('COALESCE(');
+    expect(runSelect.mock.calls[1][0]).toContain('<> 0');
+  });
 });

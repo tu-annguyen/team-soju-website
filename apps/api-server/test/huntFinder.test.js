@@ -92,16 +92,30 @@ describe('Hunt Finder calculations and filtering', () => {
     sortHuntSpots(spots, { sort: 'alphabetical', sortDirection: 'desc', method: 'All' }, true);
     expect(spots.map(({ location }) => location)).toEqual(['Route 12', 'Celestial Tower', 'Abundant Shrine']);
   });
+
+  it('sorts Singles by EXP/hour in ascending order instead of falling back to alphabetical', () => {
+    const spots = [
+      { location: 'Abandoned Ship', expPerHour: 102143 },
+      { location: 'Abundant Shrine', expPerHour: 0 },
+      { location: 'Acuity Lakefront', expPerHour: 133676 },
+    ];
+
+    sortHuntSpots(spots, {
+      sort: 'expPerHour', sortDirection: 'asc', method: 'Singles',
+    }, true);
+
+    expect(spots.map(({ expPerHour }) => expPerHour)).toEqual([0, 102143, 133676]);
+  });
 });
 
 describe('Hunt Finder public API', () => {
   it('parses generalized filters without accepting war-only state', () => {
-    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&encountersPerHour=240&minLevel=30&minExpPerHour=100000&evStats=attack,speed&evAmounts=1,2&exclusiveEvYield=true&eggGroups=Field,Dragon&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
+    const url = new URL('https://example.test/api/hunt-finder/spots?method=Sweet%20Scent&encountersPerHour=240&minLevel=30&maxLevel=40&minExpPerHour=100000&evStats=attack,speed&evAmounts=1,2&exclusiveEvYield=true&excludeZeroExp=true&eggGroups=Field,Dragon&sort=expPerHour&sortDirection=asc&expCharm=0.5&expReamplifier=true&expDonator=true&tradeBonus=true&eventBoost=true&officialUniqueBonus=true&officialCaughtFamilyKeys=vulpix');
     const filters = huntFinderFilters(url);
 
     expect(filters).toMatchObject({
-      method: 'Sweet Scent', encountersPerHour: 240, minLevel: '30', minExpPerHour: '100000', evStats: ['attack', 'speed'],
-      evAmounts: ['1'], exclusiveEvYield: true, eggGroups: ['Field', 'Dragon'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
+      method: 'Sweet Scent', encountersPerHour: 240, minLevel: '30', maxLevel: '40', minExpPerHour: '100000', evStats: ['attack', 'speed'],
+      evAmounts: ['1'], exclusiveEvYield: true, excludeZeroExp: true, eggGroups: ['Field', 'Dragon'], sort: 'expPerHour', sortDirection: 'asc', expCharm: 0.5,
       expReamplifier: true, expDonator: true, tradeBonus: true,
       profile: { eventBoost: true },
     });
@@ -130,5 +144,10 @@ describe('Hunt Finder public API', () => {
     expect(huntFinderFilters(new URL('https://example.test/?sort=expPerHour')).sortDirection).toBe('desc');
     expect(huntFinderFilters(new URL('https://example.test/?sort=alphabetical')).sortDirection).toBe('asc');
     expect(huntFinderFilters(new URL('https://example.test/?sort=pointsPerHour&sortDirection=asc')).sortDirection).toBe('asc');
+  });
+
+  it('keeps EXP sorting for Singles but rejects it for methods without hourly data', () => {
+    expect(huntFinderFilters(new URL('https://example.test/?method=Singles&sort=expPerHour')).sort).toBe('expPerHour');
+    expect(huntFinderFilters(new URL('https://example.test/?method=Fishing&sort=expPerHour')).sort).toBe('alphabetical');
   });
 });

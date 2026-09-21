@@ -634,7 +634,7 @@ describe('HuntResults', () => {
     expect(screen.queryByText(/effective odds/i)).not.toBeInTheDocument();
   });
 
-  it('collapses lower points-per-hour splits behind one location-level control', () => {
+  it('opens secondary splits by default and allows collapsing them per location', () => {
     render(
       <HuntResults
         participants={[]}
@@ -660,6 +660,11 @@ describe('HuntResults', () => {
     );
 
     expect(screen.getByText('Vulpix')).toBeInTheDocument();
+    expect(screen.getByText('Raticate')).toBeInTheDocument();
+    expect(screen.getByText('Ditto')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide 2 lower points/hour splits' }));
+
     expect(screen.queryByText('Raticate')).not.toBeInTheDocument();
     expect(screen.queryByText('Ditto')).not.toBeInTheDocument();
 
@@ -668,5 +673,26 @@ describe('HuntResults', () => {
     expect(screen.getByText('Raticate')).toBeInTheDocument();
     expect(screen.getByText('Ditto')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Hide 2 lower points/hour splits' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['pointsPerHour', 'Hide 2 higher points/hour splits'],
+    ['expPerHour', 'Hide 2 higher EXP/hour splits'],
+  ] as const)('labels ascending %s splits as higher', (sort, label) => {
+    render(
+      <HuntResults
+        participants={[]}
+        sort={sort}
+        sortDirection="asc"
+        spots={[
+          { ...spot, spot_key: 'lowest', pointsPerHour: 0.5, expPerHour: 100 },
+          { ...spot, spot_key: 'middle', pointsPerHour: 1, expPerHour: 200 },
+          { ...spot, spot_key: 'highest', pointsPerHour: 1.5, expPerHour: 300 },
+        ]}
+        view="location"
+      />
+    );
+
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
   });
 });
