@@ -12,7 +12,7 @@ const shinyScreenshotJobSchema = Joi.object({
   is_secret: Joi.boolean().default(false),
   is_alpha: Joi.boolean().default(false),
   command_called_at: Joi.string().isoDate().optional(),
-  timezone: Joi.string().trim().max(80).required().custom((value, helpers) => (
+  timezone: Joi.string().trim().max(80).optional().custom((value, helpers) => (
     isValidTimezone(value) ? normalizeTimezoneInput(value) : helpers.error('any.invalid')
   )),
   locale: Joi.string().trim().max(35).allow(null).default(null),

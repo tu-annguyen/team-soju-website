@@ -103,9 +103,9 @@ async function handleAddShiny(interaction) {
   }
 
   const pokemon = interaction.options.getString('pokemon');
-  const timezone = getTimezoneOption(interaction);
-  const catchDate = interaction.options.getString('catch_date') || getDateInTimezone(new Date(), timezone);
-  const catchTime = interaction.options.getString('catch_time') || getTimeInTimezone(new Date(), timezone);
+  const timezoneOption = getTimezoneOption(interaction);
+  const requestedCatchDate = interaction.options.getString('catch_date');
+  const requestedCatchTime = interaction.options.getString('catch_time');
   const encounterType = normalizeEncounterType(interaction.options.getString('encounter_type'));
   const status = interaction.options.getString('status') || 'Owned';
   const isSecret = interaction.options.getBoolean('secret') || false;
@@ -140,6 +140,18 @@ async function handleAddShiny(interaction) {
     await interaction.editReply({ content: `Error: Could not find trainer with IGN "${trainerIgn}"` });
     return;
   }
+
+  if (!trainer.timezone) {
+    const embed = new EmbedBuilder()
+      .setColor(0xE53935)
+      .setTitle('Unable to Add Shiny')
+      .setDescription(`${trainer.ign} needs a timezone set with /editmember before adding shinies.`);
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+  const timezone = timezoneOption || trainer.timezone;
+  const catchDate = requestedCatchDate || getDateInTimezone(new Date(), timezone);
+  const catchTime = requestedCatchTime || getTimeInTimezone(new Date(), timezone);
 
   try {
     const info = {

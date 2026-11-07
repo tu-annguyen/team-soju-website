@@ -19,12 +19,14 @@ async function handleAddMember(interaction) {
   const ign = interaction.options.getString('ign');
   const discordUser = interaction.options.getUser('discord');
   const rank = interaction.options.getString('rank') || 'Trainer';
+  const timezone = interaction.options.getString('timezone');
 
   try {
     const response = await fetchClient.post(`${getApiBaseUrl()}/members`, {
       ign,
       discord_id: discordUser?.id,
-      rank
+      rank,
+      ...(timezone ? { timezone } : {})
     }, getAuthHeaders());
 
     const member = response.data.data;
@@ -54,6 +56,7 @@ async function handleEditMember(interaction) {
   const newIgn = interaction.options.getString('new_ign');
   const discordUser = interaction.options.getUser('discord');
   const rank = interaction.options.getString('rank');
+  const timezone = interaction.options.getString('timezone');
 
   try {
     const memberResponse = await fetchClient.get(`${getApiBaseUrl()}/members/ign/${ign}`, getAuthHeaders());
@@ -63,6 +66,7 @@ async function handleEditMember(interaction) {
     if (newIgn) updates.ign = newIgn;
     if (discordUser) updates.discord_id = discordUser.id;
     if (rank) updates.rank = rank;
+    if (timezone) updates.timezone = timezone;
 
     if (Object.keys(updates).length === 0) {
       await interaction.editReply({ content: 'No updates provided' });

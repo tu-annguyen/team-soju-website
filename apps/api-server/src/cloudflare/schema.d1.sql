@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS team_members (
   ign TEXT NOT NULL UNIQUE,
   discord_id TEXT UNIQUE,
   rank TEXT NOT NULL DEFAULT 'Trainer',
+  timezone TEXT,
   notes TEXT,
   join_date TEXT NOT NULL DEFAULT (date('now')),
   is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))

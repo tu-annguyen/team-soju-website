@@ -63,6 +63,8 @@ function getCommandHandler(commandName) {
 
 function getAutocompleteHandler(commandName) {
   const handlerMap = {
+    'addmember': shinyHandlers.handleShinyAutocomplete,
+    'editmember': shinyHandlers.handleShinyAutocomplete,
     'addshiny': shinyHandlers.handleShinyAutocomplete,
     'addshinyscreenshot': shinyHandlers.handleShinyAutocomplete,
     'editshiny': shinyHandlers.handleShinyAutocomplete,

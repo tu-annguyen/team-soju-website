@@ -228,25 +228,25 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
 
     async create(memberData) {
       const id = memberData.id || crypto.randomUUID();
-      const params = [id, memberData.ign, memberData.discord_id || null, memberData.rank || 'Member', memberData.notes || null];
+      const params = [id, memberData.ign, memberData.discord_id || null, memberData.rank || 'Member', memberData.notes || null, memberData.timezone || null];
       if (dialect === 'd1') {
         await (await query(`
-          INSERT INTO team_members (id, ign, discord_id, rank, notes)
-          VALUES (?, ?, ?, ?, ?)
+          INSERT INTO team_members (id, ign, discord_id, rank, notes, timezone)
+          VALUES (?, ?, ?, ?, ?, ?)
         `, params)).run();
         return runOne(`SELECT * FROM team_members WHERE id = ?`, [id]).then(normalizeMemberRow);
       }
 
       const result = await query(`
-        INSERT INTO team_members (id, ign, discord_id, rank, notes)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO team_members (id, ign, discord_id, rank, notes, timezone)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       `, params);
       return normalizeMemberRow(result.rows[0]);
     },
 
     async update(id, memberData) {
-      const { ign, discord_id, rank, notes, is_active } = memberData;
+      const { ign, discord_id, rank, notes, is_active, timezone } = memberData;
 
       if (dialect === 'd1') {
         await (await query(`
@@ -254,10 +254,11 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
           SET ign = COALESCE(?, ign),
               discord_id = COALESCE(?, discord_id),
               rank = COALESCE(?, rank),
+              timezone = COALESCE(?, timezone),
               notes = COALESCE(?, notes),
               is_active = COALESCE(?, is_active)
           WHERE id = ?
-        `, [ign ?? null, discord_id ?? null, rank ?? null, notes ?? null, is_active ?? null, id])).run();
+        `, [ign ?? null, discord_id ?? null, rank ?? null, timezone ?? null, notes ?? null, is_active ?? null, id])).run();
         return runOne(`SELECT * FROM team_members WHERE id = ?`, [id]).then(normalizeMemberRow);
       }
 
@@ -266,11 +267,12 @@ function createRepositoryBundle({ query, parameter, runSelect, runOne, runComman
         SET ign = COALESCE($2, ign),
             discord_id = COALESCE($3, discord_id),
             rank = COALESCE($4, rank),
-            notes = COALESCE($5, notes),
-            is_active = COALESCE($6, is_active)
+            timezone = COALESCE($5, timezone),
+            notes = COALESCE($6, notes),
+            is_active = COALESCE($7, is_active)
         WHERE id = $1
         RETURNING *
-      `, [id, ign, discord_id, rank, notes, is_active]);
+      `, [id, ign, discord_id, rank, timezone, notes, is_active]);
       return normalizeMemberRow(result.rows[0] || null);
     },
 
