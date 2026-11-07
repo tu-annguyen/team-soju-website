@@ -132,7 +132,8 @@ const COMMANDS = [
       option.setName('rank')
         .setDescription('Member rank')
         .setRequired(false)
-        .addChoices(...RANK_CHOICES)),
+        .addChoices(...RANK_CHOICES))
+    .addStringOption(option => configureTimezoneAutocompleteOption(option, false)),
 
   new SlashCommandBuilder()
     .setName('editmember')
@@ -153,7 +154,8 @@ const COMMANDS = [
       option.setName('rank')
         .setDescription('Member rank')
         .setRequired(false)
-        .addChoices(...RANK_CHOICES)),
+        .addChoices(...RANK_CHOICES))
+    .addStringOption(option => configureTimezoneAutocompleteOption(option, false)),
 
   new SlashCommandBuilder()
     .setName('deletemember')
@@ -188,7 +190,7 @@ const COMMANDS = [
       option.setName('catch_date')
         .setDescription('Date of catch (YYYY-MM-DD)')
         .setRequired(true))
-    .addStringOption(option => configureTimezoneAutocompleteOption(option, true))
+    .addStringOption(option => configureTimezoneAutocompleteOption(option, false))
     .addStringOption(option =>
       option.setName('catch_time')
         .setDescription('Local capture time (HH:MM)')
@@ -236,7 +238,7 @@ const COMMANDS = [
         .setDescription('How was it encountered?')
         .setRequired(true)
         .addChoices(...ENCOUNTER_TYPE_CHOICES))
-    .addStringOption(option => configureTimezoneAutocompleteOption(option, true))
+    .addStringOption(option => configureTimezoneAutocompleteOption(option, false))
     .addStringOption(option =>
       option.setName('date_order')
         .setDescription('Date order shown in the screenshot')

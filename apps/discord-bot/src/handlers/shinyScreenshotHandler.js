@@ -16,8 +16,10 @@ function normalizeEncounterType(value) {
 }
 
 function getTimezoneOption(interaction) {
-  const timezone = normalizeTimezoneInput(interaction.options.getString('timezone'));
-  if (!timezone) throw new Error('Timezone is required and must be a valid IANA timezone.');
+  const raw = interaction.options.getString('timezone');
+  if (!raw) return undefined;
+  const timezone = normalizeTimezoneInput(raw);
+  if (!timezone) throw new Error('Timezone must be a valid IANA timezone.');
   return timezone;
 }
 
@@ -32,13 +34,14 @@ async function handleAddShinyScreenshot(interaction) {
     if (!interaction.id) throw new Error('Discord interaction ID is missing.');
 
     const screenshot = interaction.options.getAttachment('screenshot');
+    const timezone = getTimezoneOption(interaction);
     const response = await fetchClient.post(`${getApiBaseUrl()}/shinies/from-screenshot/async`, {
       screenshot_url: screenshot.proxyURL || screenshot.url,
       encounter_type: normalizeEncounterType(interaction.options.getString('encounter_type')),
       is_secret: interaction.options.getBoolean('secret') || false,
       is_alpha: interaction.options.getBoolean('alpha') || false,
       command_called_at: new Date(interaction.createdTimestamp || Date.now()).toISOString(),
-      timezone: getTimezoneOption(interaction),
+      ...(timezone ? { timezone } : {}),
       locale: interaction.locale || interaction.raw?.locale || null,
       date_order: interaction.options.getString('date_order') || 'auto',
       discord_user_id: interaction.user.id,

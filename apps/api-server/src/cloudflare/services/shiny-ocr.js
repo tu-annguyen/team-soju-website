@@ -284,8 +284,22 @@ async function resolveTrainer(repositories, parsed, request) {
 async function createShinyFromJob(env, job, repositories) {
   const object = await getStorage(env).get(job.storage_key);
   if (!object) throw new Error('Queued screenshot was not found in R2.');
+  const requestingMember = await repositories.members.findByDiscordId(job.request.discord_user_id);
+  const effectiveTimezone = job.request.timezone || requestingMember?.timezone;
+  if (!effectiveTimezone) {
+    const error = new Error('Set your member timezone with /editmember before adding shinies.');
+    error.status = 400;
+    throw error;
+  }
+  job.request.timezone = effectiveTimezone;
   const { parsed, notes } = await extractScreenshotFields(env, object, job.request);
   const trainer = await resolveTrainer(repositories, parsed, job.request);
+  if (!trainer.timezone) {
+    const error = new Error(`${trainer.ign} needs a timezone set with /editmember before adding shinies.`);
+    error.status = 400;
+    throw error;
+  }
+  job.request.timezone = trainer.timezone;
   const variants = await getPokemonVariants(parsed.pokemon);
   if (!variants?.national_number) {
     const error = new Error(`Could not find national number for Pokémon "${parsed.pokemon}"`);

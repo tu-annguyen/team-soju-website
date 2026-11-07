@@ -36,6 +36,7 @@ const memberSchema = Joi.object({
   ign: Joi.string().min(1).max(50).required(),
   discord_id: Joi.string().max(20).optional(),
   rank: Joi.string().max(20).default('Trainer'),
+  timezone: Joi.string().trim().max(80).optional(),
   notes: Joi.string().optional(),
 });
 
@@ -43,6 +44,7 @@ const updateMemberSchema = Joi.object({
   ign: Joi.string().min(1).max(50).optional(),
   discord_id: Joi.string().max(20).optional(),
   rank: Joi.string().max(20).optional(),
+  timezone: Joi.string().trim().max(80).optional(),
   notes: Joi.string().optional(),
   join_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
   is_active: Joi.boolean().optional(),

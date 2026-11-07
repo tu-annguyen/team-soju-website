@@ -48,7 +48,13 @@ function buildSuccessPayload(shiny, notes, extractedFields) {
 
 function buildErrorPayload(error) {
   const detail = error?.ocrText ? `\nOCR result:\n\`\`\`\n${error.ocrText}\n\`\`\`` : '';
-  return { content: `Error: ${error?.publicMessage || error?.message || 'Failed to create shiny entry from screenshot'}${detail}` };
+  return {
+    embeds: [{
+      color: 0xE53935,
+      title: 'Unable to Add Shiny',
+      description: `${error?.publicMessage || error?.message || 'Failed to create shiny entry from screenshot'}${detail}`.slice(0, 4096),
+    }],
+  };
 }
 
 function buildExtractedFields(parsed, timezone) {
