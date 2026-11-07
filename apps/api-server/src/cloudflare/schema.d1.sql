@@ -377,6 +377,7 @@ CREATE TABLE IF NOT EXISTS hunt_spot_species (
   points REAL NOT NULL,
   tier_number INTEGER,
   min_level INTEGER NOT NULL,
+  max_level INTEGER NOT NULL DEFAULT 0,
   split REAL NOT NULL,
   ev_hp INTEGER NOT NULL,
   ev_attack INTEGER NOT NULL,

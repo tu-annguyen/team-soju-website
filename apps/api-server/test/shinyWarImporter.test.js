@@ -59,6 +59,8 @@ describe('Shiny Wars Pokedex importer', () => {
     expect(toSql(data)).toContain('INSERT OR IGNORE INTO hunt_spot_species');
     expect(toSql(data)).toContain('base_exp,ev_hp,ev_attack,ev_defense,ev_sp_attack,ev_sp_defense,ev_speed,egg_groups_json');
     expect(toSql(data)).toContain('family_key,points,tier_number');
+    expect(toSql(data)).toContain('min_level,max_level,split');
+    expect(toSql(data)).toContain(',2,3,1,');
     expect(toSql(data)).toContain("'[\"Water A\",\"Field\"]'");
   });
 

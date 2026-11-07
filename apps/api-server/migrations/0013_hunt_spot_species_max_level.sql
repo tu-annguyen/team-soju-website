@@ -1,0 +1,2 @@
+ALTER TABLE hunt_spot_species
+  ADD COLUMN max_level INTEGER NOT NULL DEFAULT 0;
