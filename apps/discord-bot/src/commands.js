@@ -88,7 +88,7 @@ function configurePokemonAutocompleteOption(option, description, required) {
 function configureTimezoneAutocompleteOption(option, required) {
   return option
     .setName('timezone')
-    .setDescription('Timezone where the shiny was caught')
+    .setDescription('IANA timezone where the shiny was caught (i.e. Region/City)')
     .setRequired(required)
     .setAutocomplete(true);
 }

@@ -1,9 +1,30 @@
 export const DEFAULT_TIMEZONE = 'America/New_York';
 
+const PRIORITY_TIMEZONES = [
+  'America/Los_Angeles',
+  'America/Chicago',
+  'America/Denver',
+  'America/New_York',
+  'Europe/London',
+  'Europe/Paris',
+  'Asia/Shanghai',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+  'UTC',
+];
+
 export function getSupportedTimezones() {
-  return typeof Intl.supportedValuesOf === 'function'
+  const timezones = typeof Intl.supportedValuesOf === 'function'
     ? Intl.supportedValuesOf('timeZone')
     : [DEFAULT_TIMEZONE, 'America/Los_Angeles', 'UTC', 'Europe/London', 'Asia/Tokyo'];
+
+  const supported = new Set(timezones);
+  const prioritized = PRIORITY_TIMEZONES.filter((timezone) => (
+    timezone === 'UTC' || supported.has(timezone)
+  ));
+  const remaining = timezones.filter((timezone) => !prioritized.includes(timezone));
+
+  return [...prioritized, ...remaining];
 }
 
 export function getTimezoneOptions(now = new Date()) {
